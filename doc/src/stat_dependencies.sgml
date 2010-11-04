@@ -1,0 +1,58 @@
+<para>
+STAT has several dependencies
+</para>
+<table frame='all'><title>STAT Dependent Packages</title>
+<tgroup cols='2' align='left' colsep='1' rowsep='0'>
+<colspec colname="c1">
+<colspec colname="c2">
+<thead>
+<row>
+    <entry align="left">Package</entry>
+    <entry align="left">What It Does</entry>
+</row>
+<row rowsep="1">
+    <entry align="left" namest="c1" nameend="c2">Package Web Page</entry>
+</row>
+</thead>
+<tbody>
+<row rowsep="0">
+    <entry>Graphlib</entry>
+    <entry>Graph creation, merging, and export</entry>
+</row>
+<row rowsep="1">
+    <entry namest="c1" nameend="c2"><ulink url="https://outreach.scidac.gov/projects/stat/"></ulink></entry>
+</row>
+<row>
+    <entry>Launchmon</entry>
+    <entry>Scalable daemon co-location</entry>
+</row>
+<row rowsep="1">
+    <entry namest="c1" nameend="c2"><ulink url="http://sourceforge.net/projects/launchmon/"></ulink></entry>
+</row>
+<row>
+    <entry>Libdwarf</entry>
+    <entry>Debug information parsing (Required by StackWalker)</entry>
+</row>
+<row rowsep="1">
+    <entry namest="c1" nameend="c2"><ulink url="http://reality.sgiweb.org/davea/dwarf.html"></ulink></entry>
+</row>
+<row>
+    <entry>MRNet</entry>
+    <entry>Scalable multicast and reduction network</entry>
+</row>
+<row rowsep="1">
+    <entry namest="c1" nameend="c2"><ulink url="http://www.paradyn.org/mrnet/"></ulink></entry>
+</row>
+<row>
+    <entry>StackWalker</entry>
+    <entry>Lightweight stack trace sampling</entry>
+</row>
+<row rowsep="1">
+    <entry namest="c1" nameend="c2"><ulink url="http://www.paradyn.org/html/downloads.html"></ulink></entry>
+</row>
+</tbody>
+</tgroup>
+</table>
+<para>
+In addition, the STAT GUI requires <ulink url="http://www.python.org/">Python</ulink> with <ulink url="http://www.pygtk.org/">PyGTK</ulink>, both of which are commonly preinstalled with many Linux operating systems.  The <ulink url="http://pygments.org/">Pygments</ulink> Python module can optionally be installed to allow the STAT GUI to perform syntax highlighting of source code.
+</para>

@@ -1,0 +1,144 @@
+<para>
+The main window also has several tree manipulation options <![%userguide[(<xref linkend="statview_toolbar">)]]>.  Note the initial click of a traversal operation operates on the original call prefix tree, while the remaining operations are performed on the current visible state of the call prefix tree.
+</para>
+<![%userguide[
+<figure id="statview_toolbar">
+    <title>The STATview tree manipulation toolbar.</title>
+    <screenshot><mediaobject><imageobject>
+    <imagedata scale="40" fileref="figs/statview_toolbar.png">
+    </imageobject></mediaobject></screenshot>
+</figure>
+]]>
+<para>
+The toolbar operations are defined as follows:
+</para>
+<variablelist>
+<varlistentry>
+    <term><GUIbutton>Open</GUIbutton></term>
+    <listitem>
+        <para>
+        Open a STAT generated .dot file
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>Save As</GUIbutton></term>
+    <listitem>
+        <para>
+        Save the current graph in .dot format, which can be displayed by STATview or in an image format, such as PNG or PDF, which can be viewed on any computer with an image viewer
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>Undo</GUIbutton></term>
+    <listitem>
+    <para>
+    Undo the previous operation
+    </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>Redo</GUIbutton></term>
+    <listitem>
+        <para>
+        Redo the undone operation
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>Reset</GUIbutton></term>
+    <listitem>
+        <para>
+        Revert to the original graph
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Cut] MPI</GUIbutton></term>
+    <listitem>
+        <para>
+        Collapse the MPI implementation frames below the MPI function call
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Traverse] Eq C</GUIbutton></term>
+    <listitem>
+        <para>
+        Traverse the prefix tree by expanding the leaves to the next equivalence class set.  The first click will display the top-level equivalence class.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Traverse Longest] Path</GUIbutton></term>
+    <listitem>
+        <para>
+        Traversal focus on the next longest call path(s).  The first click will focus on the longest path.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Traverse Shortest] Path</GUIbutton></term>
+    <listitem>
+        <para>
+        Traversal focus on the next shortest call path(s).  The first click will focus on the shortest path.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Traverse Least] Tasks</GUIbutton></term>
+    <listitem>
+        <para>
+        Traversal focus on the path(s) with the next least visiting tasks.  The first click will focus on the path with the least visiting tasks.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Traverse Most] Tasks</GUIbutton></term>
+    <listitem>
+        <para>
+        Traversal focus on the path(s) with the next most visiting tasks.  The first click will focus on the path with the most visiting tasks.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Traverse Least] TO</GUIbutton></term>
+    <listitem>
+        <para>
+        Temporal Order traversal focus on the path(s) that have made the least execution progress in the application.  The first click will focus on the path that has made the least progress.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Traverse Most] TO</GUIbutton></term>
+    <listitem>
+        <para>
+        Temporal Order traversal focus on the path(s) that have made the most execution progress in the application.  The first click will focus on the path that has made the most progress.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Focus] Task</GUIbutton></term>
+    <listitem>
+        <para>
+        Only display call paths taken by the specified task
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Focus] Text</GUIbutton></term>
+    <listitem>
+        <para>
+        Only display call paths containing the specified text
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Identify] Eq C</GUIbutton></term>
+    <listitem>
+        <para>
+        Identify the equivalence classes of the visible graph.  After clicking on this button, a window will pop up showing the complete list of equivalence classes.
+        </para>
+    </listitem>
+</varlistentry>
+</variablelist>

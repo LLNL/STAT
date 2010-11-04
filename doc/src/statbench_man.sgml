@@ -1,0 +1,76 @@
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook V4.1//EN" [
+<!ENTITY % manpage "INCLUDE">
+<!ENTITY % userguide "IGNORE">
+<!ENTITY % llnluserguide "IGNORE">
+<!ENTITY statbench_options SYSTEM "statbench_options.sgml">
+<!ENTITY statbench_example SYSTEM "statbench_example.sgml">
+<!ENTITY stat_copyright SYSTEM "stat_copyright.sgml">
+<!ENTITY statbench_description SYSTEM "statbench_description.sgml">
+]>
+<refentry>
+<refentryinfo>
+    <date>2010-03-25</date>
+</refentryinfo>
+<refmeta>
+    <refentrytitle><application>STATBench</application></refentrytitle>
+    <manvolnum>1</manvolnum>
+</refmeta>
+<refnamediv>
+    <refname>
+        <application>STATBench</application>
+    </refname>
+    <refpurpose>
+    invoke the Stack Trace Analysis Tool Benchmark.
+    </refpurpose>
+</refnamediv>
+<refsynopsisdiv>
+    <cmdsynopsis>
+    <command>STATBench</command> <arg><replaceable class="option">OPTIONS</replaceable></arg> 
+    </cmdsynopsis>
+    <para>
+    where
+    <synopsis>
+    <cmdsynopsis><arg><replaceable class="option">OPTIONS</replaceable></arg></cmdsynopsis>
+    represents zero or more STATBench options.
+    </synopsis>
+    </para>
+</refsynopsisdiv>
+<refsect1>
+    <refsect1info>
+        <date>2010-03-25</date>
+    </refsect1info>
+    <title>DESCRIPTION</title>
+    &statbench_description
+</refsect1>
+<refsect1>
+    <title>OPTIONS</title>
+    &statbench_options
+</refsect1>
+<refsect1>
+    <title>EXAMPLE</title>
+    &statbench_example
+</refsect1>
+<refsect1>
+    <title>AUTHOR</title>
+    <para>
+    <author>
+        <contrib>Written by </contrib>
+        <firstname>Gregory </firstname>
+        <othername role="mi">L. </othername>
+        <surname>Lee </surname>
+    </author>
+    <email>lee218@llnl.gov</email>
+    </para>
+</refsect1>
+<refsect1>
+    <title>COPYRIGHT</title>
+    &stat_copyright
+</refsect1>
+<refsect1>
+    <title>SEE ALSO</title>
+    <para>
+    <command>STAT</command>(1), <command>STATGUI</command>(1), <command>STATview</command>(1)
+    </para>
+</refsect1>
+</refentry>
+

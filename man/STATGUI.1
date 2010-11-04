@@ -1,0 +1,50 @@
+.TH STATGUI "1" "JUNE 2009" "STATGUI" "The Stack Trace Analysis Tool Graphical User Interface"
+
+.SH NAME
+STATGUI \- invokes the Stack Trace Analysis Tool GUI
+
+.SH SYNOPSIS
+.TP
+\fBSTATGUI\fR 
+
+.SH DESCRIPTION
+STATGUI is a GUI that drives STAT, the Stack Trace Analysis Tool, and allows you to interactively control the sampling of stack traces from your parallel application.  STATGUI is built on STATview and provides the same call tree manipulation operations.  For more on these operations see \fBman STATview\fR.
+
+In addition to the operations provided by STATview, STATGUI provides the following operations:
+
+.TP
+\fBAttach\fR
+Attach to your parallel application and gather an initial sample.  
+.TP
+\fBReAttach\fR
+Reattach to the previous parallel application and gather an initial sample.  
+.TP
+\fBDetach\fR
+Detach from your parallel application.  If the applicaiton is in a stopped state, you will be prompted as to whether you wish to resume the application upon detaching.
+.TP
+\fBPause\fR
+Put the application in a stopped state
+.TP
+\fBResume\fR
+Set the application running
+.TP
+\fBSample\fR
+Gather and merge a single stack trace from each task in your parallel application.  The applicaiton is left in a stopped state upon sampling.
+.TP
+\fBSample Multiple\fR
+Gather and merge multiple stack traces from each task in your parallel application.  The applicaiton is left in a stopped state upon sampling.
+.TP
+
+STATGUI can also serve as an interface to attach a full-featured debugger such as TotalView or DDT to a subset of application tasks.  This interface can be accessed through the \fBEq Classes\fR button.
+
+.SH AUTHOR
+Written by Gregory L. Lee.
+
+.SH COPYRIGHT
+Copyright \(co 2008 Lawrence Livermore National Laboratory.
+.br
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+.SH "SEE ALSO"
+.BR STAT (1), STATBench (1).

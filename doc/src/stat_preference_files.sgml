@@ -1,0 +1,142 @@
+<para>
+Several files can influence how STAT runs.  The first such file is $prefix/etc/STAT/nodes.txt, which specifies a list of hostnames, one hostname per line, on which to launch MRNet communication processes.  This file is designed to be shared by all users and should point to shared resources that all users have remote shell access to, such as login nodes.  Note that STAT will test access to a node before trying to launch communication processes, so it is OK to list nodes that may be down or unaccessible.
+</para>
+<para>
+STAT GUI preferences can be set with an installation specific or user specific .STATrc file.  The installation specific file should be placed in $prefix/etc/STAT/STAT.conf, while the user specific file should be placed in $HOME/.STATrc.  Options specified in the user's .STATrc file will always take precedence over the STAT installation's .STATrc file.  Each .STATrc file specifies one option per line of the format:
+</para>
+<para>
+Option = Value
+</para>
+<para>
+Here is a list of options:
+</para>
+<variablelist>
+<varlistentry>
+    <term>Remote Host = <replaceable class="parameter">hostname</replaceable></term>
+    <listitem>
+        <para>
+        Sets the default remote host to <replaceable class="parameter">hostname</replaceable> to search for the job launcher process.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Remote Host Shell = <replaceable class="parameter">rsh|ssh</replaceable></term>
+    <listitem>
+        <para>
+        Sets the default remote host shell to <replaceable class="parameter">rsh</replaceable> or <replaceable class="parameter">ssh</replaceable> to get a process listing on remote hosts.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Job Launcher = <replaceable class="parameter">exe</replaceable></term>
+    <listitem>
+        <para>
+        Sets the default job launcher for filtering the process listing to <replaceable class="parameter">exe</replaceable> (i.e., mpirun or srun).
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Tool Daemon Path = <replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the STAT deamon executable installed in <replaceable class="parameter">path</replaceable> instead of the default.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Filter Path = <replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the STAT filter shared object installed in <replaceable class="parameter">path</replaceable> instead of the default.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Communication Nodes = <replaceable class="parameter">nodelist</replaceable></term>
+    <listitem>
+        <para>
+        Use the nodes listed in <replaceable class="parameter">nodelist</replaceable> for MRNet communication processes.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Communication Processes per Node = <replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Launch no more than <replaceable class="parameter">count</replaceable> MRNet communication processes per node.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term># Retries = <replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Attempt <replaceable class="parameter">count</replaceable> retries to try to obtain a complete stack trace.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Retry Frequency (ms) = <replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Let the process run <replaceable class="parameter">count</replaceable> milliseconds between retries.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>With Threads = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to gather stack traces from threads.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Sample Type = <replaceable class="parameter">function only|function and pc|function and line</replaceable></term>
+    <listitem>
+        <para>
+        Controls the granularity of the stack traces gathered.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>DDT Path = <replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the DDT executable installed in <replaceable class="parameter">path</replaceable> for subset debugging.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>TotalView Path = <replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the TotalView executable installed in <replaceable class="parameter">path</replaceable> for subset debugging.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Log Dir = <replaceable class="parameter">directory</replaceable></term>
+    <listitem>
+        <para>
+        Write STAT debug logs to <replaceable class="parameter">directory</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Log Frontend = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to enable debug logging of the STAT frontend.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Log Backend = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to enable debug logging of the STAT backend.
+        </para>
+    </listitem>
+</varlistentry>
+</variablelist>

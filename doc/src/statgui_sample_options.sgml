@@ -1,0 +1,72 @@
+<para>
+STAT has several options for stack trace sampling <![%userguide[(<xref linkend="statgui_sample_multiple_dialog">)]]>.
+</para>
+<![%userguide[
+<figure id="statgui_sample_multiple_dialog">
+    <title>The STATGUI operation toolbar.</title>
+    <screenshot><mediaobject><imageobject>
+    <imagedata scale="50" fileref="figs/statgui_sample_multiple_dialog.png">
+    </imageobject></mediaobject></screenshot>
+</figure>
+]]>
+<para>
+ These options are defined as follows:
+</para>
+<variablelist>
+<varlistentry>
+    <term><GUIbutton>With Threads</GUIbutton></term>
+    <listitem>
+        <para>
+        Sample helper threads in addition to the main thread.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>function only</GUIbutton> | <GUIbutton>function and pc</GUIbutton> | <GUIbutton>function and line</GUIbutton></term>
+    <listitem>
+        <para>
+        Sample traces with function name only, or function name with the CPU program counter, or function name with the source file and line number.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>Run Time Before Sample</GUIbutton></term>
+    <listitem>
+        <para>
+        Resume the application and let it run for the specified amount of time before gathering the sample
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton># Retries/Retry Frequency</GUIbutton> (Advanced)</term>
+    <listitem>
+        <para>
+        Sometimes a process may be in a state (i.e., function prologue or epilogue) such that a complete stack trace may not be obtainable.  This option controls how many times to retry sampling and how often to wait between retries to try and get a complete trace.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton># Traces/Trace Frequency</GUIbutton></term>
+    <listitem>
+        <para>
+        When sampling multiple traces over time, these options specify how many traces to gather per process and how long to wait between samples.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>Gather Individual Samples</GUIbutton></term>
+    <listitem>
+        <para>
+        When sampling multiple traces over time, this option enables STAT to gather all of the intermediate 2D prefix trees in addition to the fully merged 3D prefix tree.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>Clear On Sample</GUIbutton></term>
+    <listitem>
+        <para>
+        When sampling multiple traces over time, STAT accumulates the traces that are gathered.  This option determines whether to clear the accumulated traces when gathering additional traces.
+        </para>
+    </listitem>
+</varlistentry>
+</variablelist>

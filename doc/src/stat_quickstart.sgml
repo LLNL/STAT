@@ -1,0 +1,43 @@
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V4.1//EN" [
+<!ENTITY stat_auspice SYSTEM "stat_auspice.sgml">
+<!ENTITY stat_license SYSTEM "stat_license.sgml">
+<!ENTITY stat_copyright SYSTEM "stat_copyright.sgml">
+<!ENTITY stat_whentouse SYSTEM "stat_whentouse.sgml">
+<!ENTITY statgui_tutorial SYSTEM "statgui_tutorial.sgml">
+]>
+
+<book>
+<title>STAT: the Stack Trace Analysis Tool Quick Start Guide</title>
+<titleabbrev>STAT</titleabbrev>
+<bookinfo>
+    <title>STAT: the Stack Trace Analysis Tool Quick Start Guide</title>
+    <titleabbrev>STAT</titleabbrev>
+    <date>2010-03-25</date>
+    <mediaobject><imageobject>
+        <imagedata scale="75" fileref="figs/stat_logo.png">
+    </imageobject></mediaobject>
+    <author>
+        <contrib>Written by </contrib>
+        <firstname>Gregory L. </firstname>
+        <surname>Lee </surname>
+    </author>
+    <author><firstname>Dorian C.</firstname><surname>Arnold</surname></author>
+    <author><firstname>Dong H.</firstname><surname>Ahn</surname></author>
+    <author><firstname>Bronis R.</firstname><surname>de Supinski</surname></author>
+    <author><firstname>Barton P.</firstname><surname>Miller</surname></author>
+    <author><firstname>Martin</firstname><surname>Schulz</surname></author>
+</bookinfo>
+<preface>
+    <title>Disclaimer</title>
+    <section><title>Auspice</title>&stat_auspice</section>
+    <section><title>License</title>&stat_license</section>
+</preface>
+<chapter>
+    <title>When To Use</title>
+    &stat_whentouse
+</chapter>
+<chapter>
+    <title>Using the STAT GUI</title>
+    &statgui_tutorial
+</chapter>
+</book>

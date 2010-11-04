@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# runs the specified command and kills it after 1 second
+# checks for completion every .05 seconds
+
+"$@" &
+PID=$!
+DONE=0
+while test ${DONE} -lt 20
+do
+  DONE=`expr ${DONE} + 1`
+  sleep .05
+  ps x | grep ${PID} | grep -v grep > /dev/null
+  if test $? != 0
+  then
+    DONE=22
+  fi
+done
+if test ${DONE} = 20
+then
+    kill -TERM ${PID}
+fi

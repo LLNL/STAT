@@ -1,0 +1,116 @@
+.TH STAT "1" "AUGUST 2008" "STAT" "The Stack Trace Analysis Tool"
+
+.SH NAME
+STAT \- invokes the Stack Trace Analysis Tool
+
+.SH SYNOPSIS
+.TP
+\fBSTAT\fR \fB[\fR\fIOPTIONS\fR\fB]\fR \fIpid\fR where:
+.TP
+\fIOPTIONS\fR
+represent zero or more STAT options.
+.TP
+\fIpid\fR
+is the PID of the parallel job launcher of the application
+
+.SH DESCRIPTION
+The Stack Trace Analysis Tool is a highly scalable, lightweight tool that gathers and merges stack traces from all of the processes of a parallel application.  After completion, STAT will create a STAT_results directory in your current working directory.  This directory will contain a subdirectory, based on your parallel application's executable name,  with the merged stack traces in DOT and GML formats.
+
+.SH OPTIONS
+.TP
+\fB\-a\fR, \fB\-\-autotopo\fR 
+let STAT automatically create topology.
+.TP
+\fB\-f\fR, \fB\-\-fanout\fR \fIwidth\fR
+Sets the maximum tree topology fanout to \fIwidth\fR. Specify nodes to launch communication processes on with \fB\-\-nodes\fR.
+.TP
+\fB\-d\fR, \fB\-\-depth\fR \fIdepth\fR
+Sets the tree topology depth to \fIdepth\fR.  This option takes precedence over the \fB\-\-fanout\fR option. Specify nodes to launch communication processes on with \fB\-\-nodes\fR.
+.TP
+\fB\-u\fR, \fB\-\-usertopology\fR \fItopology\fR
+Specify the number of communication nodes per layer in the tree topology, separated by dashes, with \fItopology\fR. This option takes precedence over the \fB\-\-fanout\fR and \fB\-\-depth\fR options. Specify nodes to launch communication processes on with \fB\-\-nodes\fR. Example topologies: 4, 4-16, 5-20-75. 
+.TP
+\fB\-n\fR, \fB\-\-nodes\fR \fInodelist\fR
+Use the specified nodes in \fInodelist\fR for communication processes. To be used with \fB\-\-fanout\fR, \fB\-\-depth\fR, or \fB\-\-usertopology\fR. Example node lists: host1; host1,host2; host[1,5-7,9].
+.TP
+\fB\-p\fR, \fB\-\-procs\fR \fIprocesses\fR
+Sets the maximum number of communication processes to be spawned per node to \fIprocesses\fR.  This should typically set to the number of CPUs per node.
+.TP
+\fB\-j\fR, \fB-\-jobid\fR \fIid\fR
+Append \fIid\fR to the output directory and file prefixes.  This is useful for associating STAT results with a batch job.
+.TP
+\fB\-r\fR, \fB-\-retries\fR \fIcount\fR
+Attempt \fIcount\fR stack gather retries per sample to try to get a complete stack trace.
+.TP
+\fB\-R\fR, \fB-\-retryfreq\fR \fIfrequency\fR
+Wait \fIfrequency\fR milli-seconds between sample retries.  To be used with the \fB-\-retries\fR option.
+.TP
+\fB\-P\fR, \fB-\-withpc\fR
+Sample program counter values in addition to function names.
+.TP
+\fB\-i\fR, \fB-\-withline\fR
+Sample source line number in addition to function names.
+.TP
+\fB\-c\fR, \fB-\-comprehensive\fR
+Gather 4 traces: function only; function + line; function + PC; and 3D function only.
+.TP
+\fB\-w\fR, \fB-\-withthreads\fR
+Sample helper threads in addition to the main thread.
+.TP
+\fB\-t\fR, \fB\-\-traces\fR \fIcount\fR
+gather \fIcount\fB traces per process.
+.TP
+\fB\-T\fR, \fB\-\-tracefreq\fR \fIfrequency\fR
+Wait \fIfrequency\fR milli-seconds between samples.  To be used with the \fB\-\-traces\fR option.
+.TP
+\fB\-S\fR, \fB-\-sampleindividual\fR
+Save all individual samples.
+.TP
+\fB\-D\fR, \fB\-\-daemon\fR \fIpath\fR
+Where \fIpath\fR specifies the full path to a STAT daemon executable.  Use this only if you wish to override the default.
+.TP
+\fB\-F\fR, \fB\-\-filter\fR \fIpath\fR
+Where \fIpath\fR specifies the full path to the STAT filter shared object.  Use this only if you wish to override the default.
+.TP
+\fB\-s\fR, \fB\-\-sleep\fR \fItime\fR
+Sleep for \fItime\fR seconds before attaching and gathering trace.  This gives the application time to get to a hung state.
+.TP
+\fB\-l\fR, \fB\-\-log\fR [\fIFE\fR|\fIBE\fR|\fIALL\fR]\fR 
+Enable debug logging of the \fIFE\fR, \fIBE\fR, or \fIALL\fR 
+.TP
+\fB\-L\fR, \fB\-\-logdir \fIlog_directory\fR
+Dump logging output into \fIlog_directory\fR.  To be used with the \fB\-\-log\fR option.
+
+.SH EXAMPLES
+The most typical usage will be to invoke STAT on the job launcher's PID:
+.nf
+
+  > srun mpi_application &
+  [1] 16482
+
+  > ps
+    PID TTY          TIME CMD
+  16755 pts/0    00:00:00 bash
+  16842 pts/0    00:00:00 srun
+  16871 pts/0    00:00:00 ps
+
+  > STAT 16482
+.fi
+.PP
+At larger scales, you may want to employ a more scalable tree topology.  For example, if you're running on 1024 nodes, you may want to try a fanout of sqrt(1024) = 32.  You will need to specify a list of nodes that contains enough processors to accomodate the ceil(1024/32) = 32 communication processes being launched.  Be sure that you have login permissions to the specified nodes and that they contain the mrnet_commnode executable and the STAT_FilterDefinitions.so library:
+.nf
+
+  > STAT --fanout 32 --nodes atlas[1-4] --procs 8 16482
+.fi
+
+.SH AUTHOR
+Written by Gregory L. Lee.
+
+.SH COPYRIGHT
+Copyright \(co 2008 Lawrence Livermore National Laboratory.
+.br
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+.SH "SEE ALSO"
+.BR STATview (1), STATBench (1).

@@ -1,0 +1,51 @@
+<formalpara><title>stack walks not making it to _start</title>
+<para>
+Processes can be in portions of code from which a debugger cannot walk the stack (i.e., function prologue or epilogue).  Try the -r option to enable STAT to let the process run a bit and then retry the stack sample.
+</para></formalpara>
+
+<formalpara><title>stack walks with line number information returning ??</title>
+<para>
+Stack traces with line number information requires your code to be compiled with debug information (i.e., with the -g flag).
+</para></formalpara>
+
+<formalpara><title>/usr/lib/python2.6/site-packages/gtk-2.0/gtk/__init__.py :72: GtkWarning: could not open display</title>
+<para>
+Be sure to enable X-forwarding and to set your $DISPLAY environment variable.
+</para></formalpara>
+
+<formalpara><title>STATview requires gtk</title>
+<para>
+STAT requires the pygtk module to be installed.  If it is side-installed, but sure to set your $PYTHONPATH environment variable to the directory containing the pygtk module.
+</para></formalpara>
+
+<formalpara><title>ImportError: No module named STAT</title>
+<para>
+Make sure to run `make install` to install STAT.py in the bin directory or set your $PYTHONPATH environment variable to the directory containing STAT.py
+</para></formalpara>
+
+<formalpara><title>
+(ERROR): LaunchMON Engine invocation failed, exiting: No such file or directory</title>
+<para>
+Make sure the <command>launchmon</command> executable is in your $PATH or set the $LMON_LAUNCHMON_ENGINE_PATH engine path to the full path to the executable.
+</para></formalpara>
+
+<formalpara><title>OptionParsing (ERROR): unknown launcher: a.out</title>
+<para>
+You need to attach to your <command>mpirun</command> or equivalent parallel job launch process.
+</para></formalpara>
+
+<formalpara><title>OptionParsing (ERROR): the path[/usr/local/bin/STATD] does not exit.</title>
+<para>
+STAT looks for its components in the configured $prefix.  Be sure to run `make install` or set STAT_DAEMON_PATH to the full path to the <command>STATD</command> executable.
+</para></formalpara>
+
+<formalpara><title>LaunchMON prints a usage message.</title>
+<para>
+This is typically a mismatch in versions of the LaunchMON API and the LaunchMON engine.  Make sure to set your LMON_LAUNCHMON_ENGINE_PATH enviornment variable to the full path to the appropriate <command>launchmon</command> executable.
+</para></formalpara>
+
+<formalpara><title>(ERROR): accepting a connection with an engine timed out</title>
+<para>
+STAT may need additional time to launch all of its daemons.  You may need to set your $LMON_FE_ENGINE_TIMEOUT to a larger value, such as 600.
+</para></formalpara>
+

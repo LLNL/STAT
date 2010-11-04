@@ -1,0 +1,75 @@
+
+Installing STAT
+     _________________________________________________________
+
+   Table of Contents
+   Dependent Packages
+   Installation
+     _________________________________________________________
+
+Dependent Packages
+
+   STAT has several dependencies
+
+   Table 1. STAT Dependent Packages
+   Package     What It Does
+   Package Web Page
+   Graphlib    Graph creation, merging, and export
+   https://outreach.scidac.gov/projects/stat/
+   Launchmon   Scalable daemon co-location
+   http://sourceforge.net/projects/launchmon/
+   Libdwarf    Debug information parsing (Required by StackWalker)
+   http://reality.sgiweb.org/davea/dwarf.html
+   MRNet       Scalable multicast and reduction network
+   http://www.paradyn.org/mrnet/
+   StackWalker Lightweight stack trace sampling
+   http://www.paradyn.org/html/downloads.html
+
+   In addition, the STAT GUI requires Python with PyGTK, both of which
+   are commonly preinstalled with many Linux operating systems. The
+   Pygments Python module can optionally be installed to allow the STAT
+   GUI to perform syntax highlighting of source code.
+     _________________________________________________________
+
+Installation
+
+   First run configure. You will need to use the --with-package options
+   to  specify the install prefix for mrnet, graphlib, launchmon,
+   libdwarf, and stackwalker. These options will add the necessary
+   includes and library search paths to the compile options. Refer to
+   configure --help for exact options. You may also wish to specify the
+   maximum number of communication processes to launch per node with
+   the option --with-procspernode=number, generally set to the number
+   of cores per node.
+
+   STAT will use StackWalker by default. However, it can use Dyninst
+   instead if you specify --with-dyninst to the configure script.
+
+   To enable the building of the STAT GUI, configure with --enable-gui
+   and also specify --with-python-include-dir=dir, where dir contains
+   Python.h.
+
+   On BlueGene systems, also be sure to configure --with-bluegene. This
+   will  enable  the BGL macro for BlueGene specific compilation.
+   Similarly, to compile on Cray XT systems, specify --with-cray-xt.
+
+   An example configure line for Cray XT:
+
+./configure --with-launchmon=/tmp/work/lee218/install --with-mrnet=/tmp
+/work/lee218/install --with-graphlib==/tmp/work/lee218/install --with-s
+tackwalker=/tmp/work/lee218/install --with-libdwarf=/tmp/work/lee218/in
+stall --prefix=/tmp/work/lee218/install --with-cray-xt MPICC=cc MPICXX=
+CC MPIF77=ftn --enable-shared LD=/usr/bin/ld.x
+
+   Next you just need to run:
+
+make
+make install
+
+   Note that STAT hardcodes the paths to its daemon and filter shared
+   object,  assuming that they are in $prefix/bin and $prefix/lib
+   respectively, thus testing should be done in the install prefix
+   after running "make install" and the installation directory should
+   not  be  moved.  The path to these components can, however, be
+   overridden with the --daemon and --filter arguments. Refer to STAT
+   --help or the STAT man page for more details.

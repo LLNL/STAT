@@ -1,0 +1,440 @@
+2010-11-02 Gregory L. Lee <lee218@llnl.gov>
+	* cleaned Python doxygen implementation (description in docstring, params + return in comments)
+
+2010-11-01 Gregory L. Lee <lee218@llnl.gov>
+	* added doxygen documentation main page
+	* moved doxygen comments to header files
+
+2010-10-27 Gregory L. Lee <lee218@llnl.gov>
+	* added application properties option to GUI
+	* better search for .ptab file during subset attach in GUI
+
+2010-10-25 Gregory L. Lee <lee218@llnl.gov>
+	* only 1 source view window with tabs
+	* STAT command line and STATGUI tolerate application exit during sample multiple
+	* made sample multiple cancellable in GUI
+
+2010-10-22 Gregory L. Lee <lee218@llnl.gov>
+	* fixed STATBenchD's management of deleting traces
+
+2010-10-20 Gregory L. Lee <lee218@llnl.gov>
+	* added non-blocking option to MRNet connect operation
+
+2010-10-20 Gregory L. Lee <lee218@llnl.gov>
+	* added "ACLOCAL_AMFLAGS = -I config" to Makefile.am to avoid need to ./bootstrap every time
+	* rename STAT_DAEMON and STAT_FILTER env vars to STAT_DAEMON_PATH and STAT_FILTER_PATH
+	* added STAT_PREFIX env var to override compile-time macro when defined
+	* added STAT_PROCS_PER_NODE env var + renamed PROCS_PER_NODE macro to STAT_PROCS_PER_NODE
+	* added non-blocking option to receive stack traces operation
+
+2010-10-08 Gregory L. Lee <lee218@llnl.gov>
+	* stream lined topology generation code
+
+2010-10-07 Gregory L. Lee <lee218@llnl.gov>
+	* wrapped MRN_COMM_PATH and LMON_LAUNCHMON_ENGINE_PATH env vars with prefix STAT_
+
+2010-10-06 Gregory L. Lee <lee218@llnl.gov>
+	* fixed auto topology generation's process count calculation
+
+2010-10-05 Gregory L. Lee <lee218@llnl.gov>
+	* added more logging messages for debugging
+
+2010-10-01 Gregory L. Lee <lee218@llnl.gov>
+	* changed "while gtk.events_pending" to "if gtk.events_pending"
+
+2010-09-30 Gregory L. Lee <lee218@llnl.gov>
+	* official CrayXT support
+
+2010-09-20 Gregory L. Lee <lee218@llnl.gov>
+	* zero pad fileNameCount for output directory and file prefix
+
+2010-09-01 Gregory L. Lee <lee218@llnl.gov>
+	* modified MRNet m4 macro to support Cray XT platform
+	* STAT.h define statPrintErrorType as a macro to avoid multiple definitions
+
+2010-08-24 Gregory L. Lee <lee218@llnl.gov>
+	* Added MRNet 3 support (new ifdef macro and modified mrnet m4 macro)
+
+2010-07-14 Gregory L. Lee <lee218@llnl.gov>
+	* attach and launch functions delineated
+	* removal of unneccessary class variables + set/get in favor of function args
+	* !WIFBESPAWNED breaking STATBench... set lmonState with proper bit set
+	* STAT_FilterDefinitions.C modified to conform to style guidelines
+
+2010-07-13 Gregory L. Lee <lee218@llnl.gov>
+	* install directory hierarchy fixes
+
+2010-07-08 Gregory L. Lee <lee218@llnl.gov>
+	* Use LMON's !WIFBESPAWNED() instead of WIFDETACHED()
+
+2010-06-25 Gregory L. Lee <lee218@llnl.gov>
+	* Modified STATBench to not rely on PMGR rank
+	* Application node set changed to multiset to allow duplicate entries for STATBench
+	* STATBench binary = STATBenchbin plus creation of STATBench script
+
+2010-06-25 Gregory L. Lee <lee218@llnl.gov>
+	* Write to $HOME if $PWD not writable
+
+2010-06-23 Gregory L. Lee <lee218@llnl.gov>
+	* Typo bug fixes from Kathryn Mohror
+
+2010-06-21 Gregory L. Lee <lee218@llnl.gov>
+	* C++ variables and functions renamed to conform to C++ style guidelines
+
+2010-06-14 Gregory L. Lee <lee218@llnl.gov>
+	* added check and config option for graphviz and dot exe
+	* added check for launchmon and mrnet_commnode exes
+	* added creation of STAT script, binary = STATbin
+
+2010-06-09 Gregory L. Lee <lee218@llnl.gov>
+	* application_node_list changed to set type for faster search
+
+2010-06-02 Gregory L. Lee <lee218@llnl.gov>
+	* Added FE code to determine merge order + remove rank array (modified to single rank) from packet format
+	* Deprecated MRNet 1.X
+
+2010-05-24 Gregory L. Lee <lee218@llnl.gov>
+	* Modified host lookup for prefix tree bit vector reordering
+
+2010-05-19 Gregory L. Lee <lee218@llnl.gov>
+	* Fixed bug in filter that could have merged packets in wrong order
+
+2010-05-12 Gregory L. Lee <lee218@llnl.gov>
+	* Restructured project directory
+	* Rewrote build system to use autoconf/automake
+
+2010-04-27 Gregory L. Lee <lee218@llnl.gov>
+	* Install new user guide in Makefile.in
+
+2010-04-20 Gregory L. Lee <lee218@llnl.gov>
+	* Added connection timeout with STAT_CONNECTION_TIMEOUT env var.
+
+2010-04-19 Gregory L. Lee <lee218@llnl.gov>
+	* Pop up attach dialog on startup.
+	* Added launch capability to command line and GUI
+
+2010-04-13 Gregory L. Lee <lee218@llnl.gov>
+	* Fix from Ramya to have BE extract parent_rank from the leaf info.
+
+2010-04-12 Gregory L. Lee <lee218@llnl.gov>
+	* Add TO include search path in STATview constructor for default/config paths
+
+2010-04-08 Gregory L. Lee <lee218@llnl.gov>
+	* Further optimization of get_task_list (assign unique ID to each edge label and store with then ode).  This prevents comparisons of large strings.
+
+2010-04-02 Gregory L. Lee <lee218@llnl.gov>
+	* Reimplemented get_task_list (don't parse 1 char at at time) => more than 15x faster for STATBench 1M task test
+	* STATview keep map of string task list to integer task list
+
+2010-03-25 Gregory L. Lee <lee218@llnl.gov>
+	* Added support for full path filenames (new Stackwalker switch).  Only basename displayed, but full path available in node menu.  Also used for source view.
+
+2010-03-22 Gregory L. Lee <lee218@llnl.gov>
+	* Added support for long names in stack frames (new graphlib feature).  Displayed frames still truncated to 64 chars, but full names available in node menu.
+
+2010-03-19 Gregory L. Lee <lee218@llnl.gov>
+	* Added help menu
+
+2010-03-18 Gregory L. Lee <lee218@llnl.gov>
+	* Added "Job Launcher" to options, default to mpirun
+
+2010-03-17 Gregory L. Lee <lee218@llnl.gov>
+	* Added case insensitive option to text search
+
+2010-03-15 Gregory L. Lee <lee218@llnl.gov>
+	* Fixed double window exit issue by not calling on_detach from on_destroy b/c it tries to draw a wait dialog.  Instead call STAT detach directly.
+	* look for site default options in $prefix/share/.STATrc and over write with user default options in $HOME/.STATrc
+	* added Remote Host Shell option and combo box in attach dialog
+	* applied patch from Dane Gardner for better handling of import gtk exceptions
+	* applied patch from Dane Gardner for searching $PATH for default TotalView and DDT 
+
+2010-03-12 Gregory L. Lee <lee218@llnl.gov>
+	* Implemented leave subset stopped on detach
+
+2010-03-11 Gregory L. Lee <lee218@llnl.gov>
+	* Added leaf tasks count to dialog for on_node_click
+
+2010-03-10 Gregory L. Lee <lee218@llnl.gov>
+	* Added text search in GUI
+	* Modified STATview buttons
+	* Removed single task button
+	* Added traversal by least/most tasks count
+
+2010-03-10 Gregory L. Lee <lee218@llnl.gov>
+	* Tag version 0.9.2
+
+2010-02-17 Gregory L. Lee <lee218@llnl.gov>
+	* Separated recv of ack from sending of command in FE
+	* Improved wait dialog, with use of non-blocking acks
+
+2010-02-12 Gregory L. Lee <lee218@llnl.gov>
+	* Removed creation of GML files
+
+2010-02-03 Gregory L. Lee <lee218@llnl.gov>
+	* View source option always visible, but set to insensitive in absence of line number info
+	* GUI cleanup - removed redundant functions and dummy args and variables
+	* register status callback for each LMON session (instead of only the 1st)
+
+2010-02-02 Gregory L. Lee <lee218@llnl.gov>
+	* Improved handling of application exit (FE detection and GUI tracking)
+	* Improved handling of application exit in command line too
+	* Centralized handling of single sampling (i.e. for attach/reattach)
+	* Job launcher exe (for subset debugging) parsed from attach dialog's process listing
+	* BE detect all processes exited => don't monitor notification fd anymore
+
+2010-02-01 Gregory L. Lee <lee218@llnl.gov>
+	* Source line info defaults to '?' instead of PC value on error
+	* Centralized handling of STAT action button sensitivity
+
+2010-01-29 Gregory L. Lee <lee218@llnl.gov>
+	* Removed ability to leave a job stopped on detach
+
+2010-01-22 Gregory L. Lee <lee218@llnl.gov>
+	* Sample Multiple in the GUI now driven by the GUI (i.e., GUI does run, sleep, sample)
+	* STAT command line (STAT.C) also drives sample multiple
+
+2010-01-07 Gregory L. Lee <lee218@llnl.gov>
+	* Added usage logging capability and configure option
+
+2010-01-06 Gregory L. Lee <lee218@llnl.gov>
+	* Modified performance data recording functionality
+
+2010-01-04 Gregory L. Lee <lee218@llnl.gov>
+	* New filter check function instead of hijacking merge filter function
+	* Fixed TV remote debugging with -remote option
+	* Fixed EQ Class identification, an EQ leaf can be an internal node
+	* Optimized GUI is_leaf function with use of Python sets
+	* focus_task function in GUI optimized to use sets
+
+2009-12-18 Gregory L. Lee <lee218@llnl.gov>
+	* Applied patch from Dane Gardner for daemons to use MRNet GetHostName to get non-fully qualified hostname to find the appropriate connection information
+
+2009-12-17 Gregory L. Lee <lee218@llnl.gov>
+	* Added -S option to gather multiple individual samples
+	* Modified FE not to error if LMON detects app exit
+
+2009-10-07 Gregory L. Lee <lee218@llnl.gov>
+	* Fixed select to handle false positives from MRNet and SW and false negatives from SW.
+	* Modified Makefile.in to automatically set rpath to ${prefix}/lib
+
+2009-10-05 Gregory L. Lee <lee218@llnl.gov>
+	* Fixed EQ Class identification, an EQ leaf can be an internal node
+	* Optimized GUI is_leaf function with use of Python sets
+	* focus_task function in GUI optimized to use sets
+
+2009-12-18 Gregory L. Lee <lee218@llnl.gov>
+	* Applied patch from Dane Gardner for daemons to use MRNet GetHostName to get non-fully qualified hostname to find the appropriate connection information
+
+2009-12-17 Gregory L. Lee <lee218@llnl.gov>
+	* Added -S option to gather multiple individual samples
+	* Modified FE not to error if LMON detects app exit
+
+2009-10-07 Gregory L. Lee <lee218@llnl.gov>
+	* Fixed select to handle false positives from MRNet and SW and false negatives from SW.
+	* Modified Makefile.in to automatically set rpath to ${prefix}/lib
+
+2009-10-05 Gregory L. Lee <lee218@llnl.gov>
+	* Fixed SW notificaiton handling... need dummy write, except fds
+
+2009-10-02 Gregory L. Lee <lee218@llnl.gov>
+	* Set state to stopped after attach
+	* select over MRNet and StackWalker notification FD's
+
+2009-09-11 Gregory L. Lee <lee218@llnl.gov>
+	* STAT GUI shutdown on STAT error
+	* Exception catching in wait dialog + exception dialog
+	* Added subset debug specification for TotalView 8.7.0
+
+2009-09-10 Gregory L. Lee <lee218@llnl.gov>
+	* Cleaned up TO traversal; hide non TO nodes + original graph remove lex strings.
+
+2009-09-09 Gregory L. Lee <lee218@llnl.gov>
+	* Added doxygen comments to STATGUI.py and STATview.py
+	* Added doxygen doc building to Makefile.in
+
+2009-09-08 Gregory L. Lee <lee218@llnl.gov>
+	* Added get_last_error_message to STAT FE + use in GUI error dialogs
+	* Updating configure.in and Makefile.in to install GUI + other components
+
+2009-09-04 Gregory L. Lee <lee218@llnl.gov>
+	* Made all FE MRNet recv calls non-blocking in loop that checks for daemon exit
+
+2009-09-03 Gregory L. Lee <lee218@llnl.gov>
+	* Added StackWalker variable extraction
+
+2009-08-28 Gregory L. Lee <lee218@llnl.gov>
+	* Added Doxygen comments to STAT FE, BE, and Filter
+
+2009-08-26 Gregory L. Lee <lee218@llnl.gov>
+	* Added Cray modifications from Ramya
+
+2009-08-14 Gregory L. Lee <lee218@llnl.gov>
+	* Added STAT logo to GUI
+
+2009-08-07 Gregory L. Lee <lee218@llnl.gov>
+	* Added automatic topology option to GUI
+	* Added default resource manager filter
+
+2009-07-30 Gregory L. Lee <lee218@llnl.gov>
+	* Added TO traversal to GUI
+
+2009-07-27 Gregory L. Lee <lee218@llnl.gov>
+	* Adding retry semantics to DynInst support
+
+2009-07-24 Gregory L. Lee <lee218@llnl.gov>
+	* Added LOV extraction API to FE and BE
+	* Added LOV extraction interface to GUI
+
+2009-07-23 Gregory L. Lee <lee218@llnl.gov>
+	* Added global variable LOV extraction with DynInst
+
+2009-07-20 Gregory L. Lee <lee218@llnl.gov>
+	* Added PC sampling and Line Number resolution for DynInst
+
+2009-07-10 Gregory L. Lee <lee218@llnl.gov>
+	* Fixed node name truncation (strncpy -> snprintf)
+
+2009-06-17 Gregory L. Lee <lee218@llnl.gov>
+	* Added function to test access to a node before launching CPs
+	* Added ability to read input file with list of nodes
+	* Added option to create automatic topology
+	* Added "run_one_sec" script to handle case where rsh hangs
+
+2009-06-11 Gregory L. Lee <lee218@llnl.gov>
+	* Modfied STATBench to use optarg instead of ad hoc command line parser
+
+2009-06-10 Gregory L. Lee <lee218@llnl.gov>
+	* Added --with-package options for graphlib, mrnet, lmon, sw
+
+2009-06-03 Gregory L. Lee <lee218@llnl.gov>
+	* Use cmath.h instead of math.h for pow (MRNet compatibility)
+	* Use LMON status macros instead of bit masking
+
+2009-06-02 Gregory L. Lee <lee218@llnl.gov>
+	* STATBench use PMGR for rank
+
+2009-06-01 Gregory L. Lee <lee218@llnl.gov>
+	* daemons compare both hostname and ip to lmon proctable info for BG/L
+	* STATBench Daemons use PMGR collective for rank
+
+2009-05-22 Gregory L. Lee <lee218@llnl.gov>
+	* resume process between retries
+	* don't resume process on attach
+	* if process detached in stopped state, leave stopped
+
+2009-05-06 Gregory L. Lee <lee218@llnl.gov>
+	* allow STAT to detach from app processes but keep session alive
+
+2009-04-15 Gregory L. Lee <lee218@llnl.gov>
+	* creating STATGUI.py, extension of STATview.py
+
+2009-03-18 Gregory L. Lee <lee218@llnl.gov>
+	* added pause, resume functions to STAT_FrontEnd
+	* decoupled Get_Traces into Get_Traces and Get_Last_Trace
+	* added clear_on_sample to clear accumulated traces on next sample
+
+2009-03-18 Gregory L. Lee <lee218@llnl.gov>
+	* added stack walking with line number info
+
+2009-03-16 Gregory L. Lee <lee218@llnl.gov>
+	* wrapping STAT FrontEnd with SWIG
+
+2009-02-09 Gregory L. Lee <lee218@llnl.gov>
+	* added thread walking
+
+2009-01-16 Gregory L. Lee <lee218@llnl.gov>
+	* added ability to sample PC value with -P/--withpc option
+
+2008-10-20 Gregory L. Lee <lee218@llnl.gov>	
+	* Simplified print usage.
+	* Print time of day before sleeping with -s option
+
+2008-10-08 Gregory L. Lee <lee218@llnl.gov>	
+	* No longer automatically use the node that the STAT FE is running on for CPs.
+
+2008-09-09 Gregory L. Lee <lee218@llnl.gov>	
+	* configure test for get/setrlimit and ifdef macro in the code
+
+2008-09-08 Gregory L. Lee <lee218@llnl.gov>	
+	* STAT now increases max proc and max fd to hard limits
+	* Added ability for user to specify comm node topology 
+
+2008-09-05 Gregory L. Lee <lee218@llnl.gov>	
+	* Connection info sent to daemons based on MRNet(2.0)'s # of leaves reported instead of assuming they all worked
+
+2008-08-29 Gregory L. Lee <lee218@llnl.gov>	
+	* Implemented filter version check
+	* Topology generator spreads commnodes across physical nodes (instead of first filling a physical node with commnodes before moving to next physical node)
+
+2008-08-27 Gregory L. Lee <lee218@llnl.gov>	
+	* Added semantics to retry sampling if we don't get a complete trace
+	* Modified to use getopt_long arg parsing
+	* Now the options come BEFORE the PID on command line
+	* Updated man pages and usage message
+
+2008-08-18 Gregory L. Lee <lee218@llnl.gov>	
+	* Completed some MRNet 2.0 usage fixes
+
+2008-08-08 Gregory L. Lee <lee218@llnl.gov>	
+	* Completed MRNet 2.0 support, enabled with -DMRNET2
+	* If call to walkStack returns an error, try one more time after a 10ms sleep.  If the second attempt fails to, return StackWalker_Error frame.
+
+2008-08-01 Gregory L. Lee <lee218@llnl.gov>	
+	* FE deletion of MRNet vars in desctructor... no longer in ShutDown
+
+2008-07-28 Gregory L. Lee <lee218@llnl.gov>	
+	* Initializing all class pointers to NULL in constructor
+
+2008-07-25 Gregory L. Lee <lee218@llnl.gov>	
+	* Removed calls to LMON from STATD.C and added API calls to STAT_BackEnd.C to replace them
+	* LMON_be_init now wrapped in STAT_Init... that way LMON can correct argc and argv when it is done with its args
+	* Simplified API calls (removed STAT_/STAT_BE_ prefixes)
+	* Made non-API calls in STAT_BE private
+
+2008-07-21 Gregory L. Lee <lee218@llnl.gov>	
+	* Removed output directory passing from attach command (previously used by daemons for dumping a timing log)
+
+2008-07-18 Gregory L. Lee <lee218@llnl.gov>	
+	* Modified standard output in FE with newline i.e., "attaching...\n" because daemon messages were being outputed before "...attached\n"
+	* Added STAT_WARNING type for non-fatal events
+	* Use printLastErrorMsg() for StackWalker errors
+	* Centralized printing STAT error type from the FE and BE to STAT.h
+	* Moved stdout messages to STAT_PrintError so it gets logged too
+	* Added STAT_VERBOSITY message type
+	* Added STAT logging messages to the FE
+	* Fixed Makefile.in compile/link line for STAT Filter (specify file name before link libs, otherwise they don't get linked in)
+	* Added ability to specify single node w/o [] brackets
+	* Added ability to specify a more generic node list specification (i.e., a1,b[2,4,6-8],c[10-12],d14 is now OK)
+	* Added ability to debug remote node (i.e., attach to job launcher on another node)
+	* added const to char * args in STAT_FrontEnd API calls
+	* removed exit() calls from API calls and modified to use stat_error_t return vals instead
+	* Added timestamp and filename + source line to all error messages
+	* Modified daemon main() functions to print error messages before return
+	* Added scaffolding for debug logging messages
+
+2008-07-11 Gregory L. Lee <lee218@llnl.gov>	
+	* Added text to README
+
+2008-06-23 Gregory L. Lee <lee218@llnl.gov>	
+	* Modified configure.in and Makefile.in for LMON0.6 support and BG/L support
+	* Added #ifdef BGL macros for BG/L specifics
+	* Added --enable-STATBench flag to configure.in for optional compilation of STATBench
+	* Added --enable-debug for addition of -g flag
+
+2008-06-20 Gregory L. Lee <lee218@llnl.gov>	
+	* BG/L port:
+		* Must attach with exe path
+		* BG/L IO nodes must connect to FE-io interface
+		* BG/L must issue a continue after attach
+		* All daemons must call LMON_be_recvUsrData w/ LMON0.6
+
+2008-06-19 Gregory L. Lee <lee218@llnl.gov>	
+	* Changed Usage message to invoke with "STAT" instead of argv[0] full path to binary (to avoid confusion when running under a script)
+
+2008-06-18 Gregory L. Lee <lee218@llnl.gov>	
+	* Changed the configure script to a real configure script (instead of a python script)
+	* Created libstatfe.so and libstatbe.so to export APIs
+
+2008-03-08 Gregory L. Lee <lee218@llnl.gov>	
+	* Created man pages for STAT and STATBench
+

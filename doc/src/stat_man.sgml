@@ -1,0 +1,80 @@
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook V4.1//EN" [
+<!ENTITY % manpage "INCLUDE">
+<!ENTITY % userguide "IGNORE">
+<!ENTITY % llnluserguide "IGNORE">
+<!ENTITY stat_options SYSTEM "stat_options.sgml">
+<!ENTITY stat_example SYSTEM "stat_example.sgml">
+<!ENTITY stat_copyright SYSTEM "stat_copyright.sgml">
+<!ENTITY stat_description SYSTEM "stat_description.sgml">
+]>
+<refentry>
+<refentryinfo>
+    <date>2010-03-25</date>
+</refentryinfo>
+<refmeta>
+    <refentrytitle><application>STAT</application></refentrytitle>
+    <manvolnum>1</manvolnum>
+</refmeta>
+<refnamediv>
+    <refname>
+        <application>STAT</application>
+    </refname>
+    <refpurpose>
+    invoke the Stack Trace Analysis Tool.
+    </refpurpose>
+</refnamediv>
+<refsynopsisdiv>
+    <cmdsynopsis>
+    <command>STAT</command> <arg><replaceable class="option">OPTIONS</replaceable></arg> <arg choice="plain"><replaceable class="parameter">PID</replaceable></arg> 
+    </cmdsynopsis>
+    <cmdsynopsis>
+    <command>STAT</command> <arg><replaceable class="option">OPTIONS</replaceable></arg><arg choice="plain">-C</arg> <arg choice="plain" rep="repeat"><replaceable class="parameter">COMMAND</replaceable></arg> 
+    </cmdsynopsis>
+    <para>
+    where
+    <synopsis>
+    <cmdsynopsis><arg><replaceable class="option">OPTIONS</replaceable></arg></cmdsynopsis>
+    represents zero or more STAT options.
+    <cmdsynopsis><arg choice="plain"><replaceable class="parameter">PID</replaceable></arg></cmdsynopsis> 
+    is the PID of the parallel job launcher for the target application to attach to.
+    <cmdsynopsis><arg choice="plain" rep="repeat"><replaceable class="parameter">COMMAND</replaceable></arg></cmdsynopsis> 
+    is the command to launch the application.
+    </synopsis>
+    </para>
+</refsynopsisdiv>
+<refsect1>
+    <title>DESCRIPTION</title>
+    &stat_description
+</refsect1>
+<refsect1>
+    <title>OPTIONS</title>
+    &stat_options
+</refsect1>
+<refsect1>
+    <title>EXAMPLE</title>
+    &stat_example
+</refsect1>
+<refsect1>
+    <title>AUTHOR</title>
+    <para>
+    <author>
+        <contrib>Written by </contrib>
+        <firstname>Gregory </firstname>
+        <othername role="mi">L. </othername>
+        <surname>Lee </surname>
+    </author>
+    <email>lee218@llnl.gov</email>
+    </para>
+</refsect1>
+<refsect1>
+    <title>COPYRIGHT</title>
+    &stat_copyright
+</refsect1>
+<refsect1>
+    <title>SEE ALSO</title>
+    <para>
+    <command>STATGUI</command>(1), <command>STATview</command>(1), <command>STATBench</command>(1)
+    </para>
+</refsect1>
+</refentry>
+

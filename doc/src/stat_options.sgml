@@ -1,0 +1,178 @@
+<variablelist>
+<varlistentry>
+    <term>-a, --autotopo</term>
+    <listitem>
+        <para>
+        let STAT automatically create topology.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-f, --fanout <replaceable class="parameter">width</replaceable></term>
+    <listitem>
+        <para>
+        Sets the maximum tree topology fanout to <replaceable class="parameter">width</replaceable>.  Specify nodes to launch communications processes on with <option>--nodes</option>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-d, --depth <replaceable class="parameter">depth</replaceable></term>
+    <listitem>
+        <para>
+        Sets the tree topology depth to <replaceable class="parameter">depth</replaceable>.  This option takes precedence over the <option>--fanout</option> option.  Specify nodes to launch communications processes on with <option>--nodes</option>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-u, --usertopology <replaceable class="parameter">topology</replaceable></term>
+    <listitem>
+        <para>
+        Specify the number of communication nodes per layer in the tree topology, separated by dashes, with <replaceable class="parameter">topology</replaceable>.  This option takes precedence over the <option>--fanout</option> and <option>--depth</option> options.  Specify nodes to launch communications processes on with <option>--nodes</option>.  Example topologies: 4, 4-16, 5-20-75.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-n, --nodes <replaceable class="parameter">nodelist</replaceable></term>
+    <listitem>
+        <para>
+        Use the specified nodes in <replaceable class="parameter">nodelist</replaceable>.  To be used with <option>--fanout</option>, <option>--depth</option>, or <option>--usertopology</option>.  Example nodes lists: host1; host1,host2; host[1,5-7,9].
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-p, --procs <replaceable class="parameter">processes</replaceable></term>
+    <listitem>
+        <para>
+        Sets the maximum number of communication processes to be spawned per node to <replaceable class="parameter">processes</replaceable>.  This should typically be set to the number of CPUs per node.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-j, --jobid <replaceable class="parameter">id</replaceable></term>
+    <listitem>
+        <para>
+        Append <replaceable class="parameter">id</replaceable> to the output directoory and file prefixes.  This is useful for associating STAT results with a batch job.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-r, --retries <replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Attempt <replaceable class="parameter">count</replaceable> retries per sample to try to get a complete stack trace.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-R, --retryfreq <replaceable class="parameter">frequency</replaceable></term>
+    <listitem>
+        <para>
+        Wait <replaceable class="parameter">frequency</replaceable> milliseconds between sample retries.  To be used with the <option>--retries</option> option.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-P, --withpc</term>
+    <listitem>
+        <para>
+        Sample program counter values in addition to function names.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-i, --withline</term>
+    <listitem>
+        <para>
+        Sample source line number in addition to function names.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-c, --comprehensive</term>
+    <listitem>
+        <para>
+        Gather 4 traces: function only; function + line; function + PC; and 3D function only.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-w, --withthreads</term>
+    <listitem>
+        <para>
+        Sample helper threads in addition to the main thread.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-t, --traces <replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Gather <replaceable class="parameter">count</replaceable> traces per process.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-T, --tracefreq <replaceable class="parameter">frequency</replaceable></term>
+    <listitem>
+        <para>
+        Wait <replaceable class="parameter">frequency</replaceable> milliseconds between samples.  To be used with the <option>--traces</option> option.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-S, --sampleindividual</term>
+    <listitem>
+        <para>
+        Save all individual samples in addition to the 3D trace when using <option>--traces</option> option.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-C, --create <replaceable class="parameter">arg_list</replaceable></term>
+    <listitem>
+        <para>
+        Launch the application under STAT's control.  All arguments after -C are used to launch the app.  Namely, <replaceable class="parameter">arg_list</replaceable> is the command that you would normally use to launch your application.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-D, --daemon <replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Specify the full path <replaceable class="parameter">path</replaceable> to the STAT daemon executable.  Use this only if you wish to override the default.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-F, --filter <replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Specify the full path <replaceable class="parameter">path</replaceable> to the STAT filter shared object.  Use this only if you wish to override the default.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-s, --sleep <replaceable class="parameter">time</replaceable></term>
+    <listitem>
+        <para>
+        Sleep for <replaceable class="parameter">time</replaceable> seconds before attaching and gathering traces.  This gives the application time to get to a hung state.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-l, --log <cmdsynopsis><group><arg><replaceable class="parameter">FE</replaceable></arg><arg><replaceable class="parameter">BE</replaceable></arg><arg><replaceable class="parameter">ALL</replaceable></arg></group></cmdsynopsis></term>
+    <listitem>
+        <para>
+        Enable debug logging of the <replaceable class="parameter">FE</replaceable>, <replaceable class="parameter">BE</replaceable>, or <replaceable class="parameter">ALL</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-L, --logdir <replaceable class="parameter">log_directory</replaceable></term>
+    <listitem>
+        <para>
+        Dump logging output into <replaceable class="parameter">log_directory</replaceable>.  To be used with the <option>--log</option> option.
+        </para>
+    </listitem>
+</varlistentry>
+</variablelist>

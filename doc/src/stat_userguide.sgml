@@ -1,0 +1,117 @@
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V4.1//EN" [
+<!ENTITY % userguide "INCLUDE">
+<!ENTITY % llnluserguide "INCLUDE">
+<!ENTITY % manpage "IGNORE">
+<!ENTITY stat_auspice SYSTEM "stat_auspice.sgml">
+<!ENTITY stat_license SYSTEM "stat_license.sgml">
+<!ENTITY stat_options SYSTEM "stat_options.sgml">
+<!ENTITY stat_example SYSTEM "stat_example.sgml">
+<!ENTITY stat_copyright SYSTEM "stat_copyright.sgml">
+<!ENTITY stat_description SYSTEM "stat_description.sgml">
+<!ENTITY stat_dependencies SYSTEM "stat_dependencies.sgml">
+<!ENTITY stat_installation SYSTEM "stat_installation.sgml">
+<!ENTITY io_watchdog SYSTEM "io_watchdog.sgml">
+<!ENTITY statview_description SYSTEM "statview_description.sgml">
+<!ENTITY statview_node_menu SYSTEM "statview_node_menu.sgml">
+<!ENTITY statview_toolbar SYSTEM "statview_toolbar.sgml">
+<!ENTITY statgui_description SYSTEM "statgui_description.sgml">
+<!ENTITY statgui_toolbar SYSTEM "statgui_toolbar.sgml">
+<!ENTITY statgui_sample_options SYSTEM "statgui_sample_options.sgml">
+<!ENTITY statgui_eq_class SYSTEM "statgui_eq_class.sgml">
+<!ENTITY stat_llnl_availability SYSTEM "stat_llnl_availability.sgml">
+<!ENTITY statbench_options SYSTEM "statbench_options.sgml">
+<!ENTITY statbench_example SYSTEM "statbench_example.sgml">
+<!ENTITY statbench_description SYSTEM "statbench_description.sgml">
+<!ENTITY stat_introduction SYSTEM "stat_introduction.sgml">
+<!ENTITY stat_overview SYSTEM "stat_overview.sgml">
+<!ENTITY stat_using_gui SYSTEM "stat_using_gui.sgml">
+<!ENTITY stat_preference_files SYSTEM "stat_preference_files.sgml">
+<!ENTITY stat_preferences SYSTEM "stat_preferences.sgml">
+<!ENTITY stat_environment_variables SYSTEM "stat_environment_variables.sgml">
+<!ENTITY stat_troubleshoot SYSTEM "stat_troubleshoot.sgml">
+<!ENTITY stat_bibliography SYSTEM "stat_bibliography.sgml">
+<!ENTITY stat_batch_script SYSTEM "stat_batch_script.sgml">
+]>
+
+<book>
+<title>STAT: the Stack Trace Analysis Tool</title>
+<titleabbrev>STAT</titleabbrev>
+<bookinfo>
+    <title>STAT: the Stack Trace Analysis Tool</title>
+    <titleabbrev>STAT</titleabbrev>
+    <date>2010-03-25</date>
+    <mediaobject><imageobject>
+        <imagedata scale="75" fileref="figs/stat_logo.png">
+    </imageobject></mediaobject>
+    <author>
+        <contrib>Written by </contrib>
+        <firstname>Gregory L. </firstname>
+        <surname>Lee </surname>
+    </author>
+    <author><firstname>Dorian C.</firstname><surname>Arnold</surname></author>
+    <author><firstname>Dong H.</firstname><surname>Ahn</surname></author>
+    <author><firstname>Bronis R.</firstname><surname>de Supinski</surname></author>
+    <author><firstname>Barton P.</firstname><surname>Miller</surname></author>
+    <author><firstname>Martin</firstname><surname>Schulz</surname></author>
+</bookinfo>
+<preface>
+    <title>Disclaimer</title>
+    <section><title>Auspice</title>&stat_auspice</section>
+    <section><title>License</title>&stat_license</section>
+</preface>
+<chapter>
+    <title>Introduction</title>
+    &stat_introduction
+</chapter>
+<chapter>
+    <title>Overview</title>
+    &stat_overview
+</chapter>
+<chapter>
+    <title>Installing STAT</title>
+    <section><title>Dependent Packages</title>&stat_dependencies</section>
+    <section><title>Installation</title>&stat_installation</section>
+</chapter>
+<chapter>
+    <title>Using the STAT Command</title>
+    <section><title>Description</title>&stat_description</section>
+    <section><title>STAT Options</title>&stat_options</section>
+    <section><title>STAT Usage Example</title>&stat_example</section>
+</chapter>
+<chapter>
+    <title>Using the STATview GUI</title>
+    <section><title>Description</title>&statview_description</section>
+    <section><title>The STATview Node Menu</title>&statview_node_menu</section>
+    <section><title>The STATview Toolbar</title>&statview_toolbar</section>
+</chapter>
+<chapter>
+    <title>Using the STAT GUI</title>
+    <section><title>Description</title>&statgui_description</section>
+    <section><title>The STAT GUI Toolbar</title>&statgui_toolbar</section>
+    <section><title>Sample Options</title>&statgui_sample_options</section>
+    <section><title>Equivalence Classes and Subset Debugging</title>&statgui_eq_class</section>
+    <![%llnluserguide[<section><title>Availability</title>&stat_llnl_availability</section>]]>
+</chapter>
+<chapter>
+    <title>Setting STAT Preferences and Options</title>
+    <section><title>Preference Files</title>&stat_preference_files</section>
+    <section><title>Loading and Saving Preferences</title>&stat_preferences</section>
+    <section><title>Environment Variables</title>&stat_environment_variables</section>
+</chapter>
+<chapter>
+    <title>Tips and Tricks Using STAT</title>
+    <section><title>Using STAT with IO Watchdog and SLURM</title>&io_watchdog</section>
+    <section><title>Running STAT in a Batch Script</title>&stat_batch_script</section>
+</chapter>
+<chapter>
+    <title>Using the STATBench Emulator</title>
+    <section><title>Description</title>&statbench_description</section>
+    <section><title>STATBench Options</title>&statbench_options</section>
+    <section><title>STATBench Usage Example</title>&statbench_example</section>
+</chapter>
+<chapter>
+    <title>Troubleshooting Guide</title>
+    <section><title>Troubleshooting</title>&stat_troubleshoot</section>
+</chapter>
+&stat_bibliography
+</book>

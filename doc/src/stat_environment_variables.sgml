@@ -1,0 +1,86 @@
+<para>
+Several environment variables influence STAT and its dependent packages.
+</para>
+<variablelist>
+<varlistentry>
+    <term>STAT_PREFIX=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use <replaceable class="parameter">prefix</replaceable> as the installation prefix instead of the compile-time STAT_PREFIX macro when looking for STAT components and configuration files.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_CONNECTION_TIMEOUT=<replaceable class="parameter">time</replaceable></term>
+    <listitem>
+        <para>
+        Wait <replaceable class="parameter">time</replaceable> seconds for daemons to connect to MRNet.  Upon timeout, run with the available subset.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_DAEMON_PATH=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the STAT daemon located at <replaceable class="parameter">path</replaceable> instead of the default.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_FILTER_PATH=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the STAT filter shared object located at <replaceable class="parameter">path</replaceable> instead of the default.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_MRNET_OUTPUT_LEVEL=<replaceable class="parameter">level</replaceable></term>
+    <listitem>
+        <para>
+        Enable MRNet debug logging at <replaceable class="parameter">level</replaceable> (0-5).
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_OUTPUT_REDIRECT_DIR=<replaceable class="parameter">directory</replaceable></term>
+    <listitem>
+        <para>
+        Redirect stdout and stderr to a hostname specific files in <replaceable class="parameter">directory</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_SW_DEBUG_LOG_DIR=<replaceable class="parameter">directory</replaceable></term>
+    <listitem>
+        <para>
+        Enable StackWalker debug logging to a hostname specific files in <replaceable class="parameter">directory</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_MRN_COMM_PATH=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the mrnet_commnode binary in <replaceable class="parameter">path</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_PROCS_PER_NODE=<replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Allow up to <replaceable class="parameter">count</replaceable> communication processes to be launched per node.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_LMON_LAUNCHMON_ENGINE_PATH=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the launchmon binary in <replaceable class="parameter">path</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+</variablelist>
+
