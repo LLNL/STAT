@@ -425,7 +425,9 @@ def create_temp(dot_filename):
                     cur_lineNum = int(sourceLine[sourceLine.find(':') + 1:])
                     if os.path.isabs(source):
                         source = os.path.basename(source)
-                    label = "%s@%s:%d" %(function_name, source, cur_lineNum)
+                    if iter_string != '':
+                        iter_string = '$' + iter_string
+                    label = "%s@%s:%d%s" %(function_name, source, cur_lineNum, iter_string)
             if len(label) > MAX_NODE_NAME:
                 # clip long node names at the front (preserve most significant characters)
                 if label[2-MAX_NODE_NAME] == '\\':
