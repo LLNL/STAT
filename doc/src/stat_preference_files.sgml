@@ -2,7 +2,7 @@
 Several files can influence how STAT runs.  The first such file is $prefix/etc/STAT/nodes.txt, which specifies a list of hostnames, one hostname per line, on which to launch MRNet communication processes.  This file is designed to be shared by all users and should point to shared resources that all users have remote shell access to, such as login nodes.  Note that STAT will test access to a node before trying to launch communication processes, so it is OK to list nodes that may be down or unaccessible.
 </para>
 <para>
-STAT GUI preferences can be set with an installation specific or user specific .STATrc file.  The installation specific file should be placed in $prefix/etc/STAT/STAT.conf, while the user specific file should be placed in $HOME/.STATrc.  Options specified in the user's .STATrc file will always take precedence over the STAT installation's .STATrc file.  Each .STATrc file specifies one option per line of the format:
+STAT GUI preferences can be set with an installation specific STAT.conf or user specific .STATrc file.  The installation specific file should be placed in $prefix/etc/STAT/STAT.conf, while the user specific file should be placed in $HOME/.STATrc.  Options specified in the user's .STATrc file will always take precedence over the STAT installation's .STATrc file.  Each preference file specifies one option per line of the format:
 </para>
 <para>
 Option = Value

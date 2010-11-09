@@ -20,13 +20,13 @@ STAT requires the pygtk module to be installed.  If it is side-installed, but su
 
 <formalpara><title>ImportError: No module named STAT</title>
 <para>
-Make sure to run `make install` to install STAT.py in the bin directory or set your $PYTHONPATH environment variable to the directory containing STAT.py
+Make sure to run `make install` to install STAT.py in the lib/python[version]/site-packages directory or set your $PYTHONPATH environment variable to the directory containing STAT.py
 </para></formalpara>
 
 <formalpara><title>
 (ERROR): LaunchMON Engine invocation failed, exiting: No such file or directory</title>
 <para>
-Make sure the <command>launchmon</command> executable is in your $PATH or set the $LMON_LAUNCHMON_ENGINE_PATH engine path to the full path to the executable.
+Make sure the <command>launchmon</command> executable is in your $PATH or set the $STAT_LMON_LAUNCHMON_ENGINE_PATH engine path to the full path to the executable.
 </para></formalpara>
 
 <formalpara><title>OptionParsing (ERROR): unknown launcher: a.out</title>
@@ -41,7 +41,7 @@ STAT looks for its components in the configured $prefix.  Be sure to run `make i
 
 <formalpara><title>LaunchMON prints a usage message.</title>
 <para>
-This is typically a mismatch in versions of the LaunchMON API and the LaunchMON engine.  Make sure to set your LMON_LAUNCHMON_ENGINE_PATH enviornment variable to the full path to the appropriate <command>launchmon</command> executable.
+This is typically a mismatch in versions of the LaunchMON API and the LaunchMON engine.  Make sure to set your $STAT_LMON_LAUNCHMON_ENGINE_PATH enviornment variable to the full path to the appropriate <command>launchmon</command> executable.
 </para></formalpara>
 
 <formalpara><title>(ERROR): accepting a connection with an engine timed out</title>

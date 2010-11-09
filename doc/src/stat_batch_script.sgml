@@ -33,7 +33,7 @@ done
 # if the application is still running then invoke STAT 
 if test ${application_exited} -eq 0
 then
-    /usr/global/tools/stat/chaos_4_x86_64_ib/stat-test/bin/STATscript -c ${pid}
+    /usr/local/bin/STAT -c ${pid}
     waitpid ${pid} # alternatively you may want to `kill -TERM ${pid}`
 fi    
 

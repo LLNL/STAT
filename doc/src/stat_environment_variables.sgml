@@ -46,7 +46,7 @@ Several environment variables influence STAT and its dependent packages.
     <term>STAT_OUTPUT_REDIRECT_DIR=<replaceable class="parameter">directory</replaceable></term>
     <listitem>
         <para>
-        Redirect stdout and stderr to a hostname specific files in <replaceable class="parameter">directory</replaceable>.
+        Redirect stdout and stderr to a set of hostname specific files in <replaceable class="parameter">directory</replaceable>.
         </para>
     </listitem>
 </varlistentry>
@@ -54,7 +54,7 @@ Several environment variables influence STAT and its dependent packages.
     <term>STAT_SW_DEBUG_LOG_DIR=<replaceable class="parameter">directory</replaceable></term>
     <listitem>
         <para>
-        Enable StackWalker debug logging to a hostname specific files in <replaceable class="parameter">directory</replaceable>.
+        Enable StackWalker debug logging to a set of hostname specific files in <replaceable class="parameter">directory</replaceable>.
         </para>
     </listitem>
 </varlistentry>

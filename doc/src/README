@@ -8,7 +8,7 @@ docbook2man statview_man.sgml -o ../../man
 docbook2man statbench_man.sgml -o ../../man
 
 docbook2pdf stat_userguide.sgml -o ../userguide
-docbook2pdf stat_quickstart.pdf -o ../quickstart
+docbook2pdf stat_quickstart.sgml -o ../quickstart
 
 docbook2html stat_userguide.sgml -o ../userguide/html
 
