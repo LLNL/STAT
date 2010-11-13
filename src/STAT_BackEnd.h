@@ -71,17 +71,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     #include "sbrs_std.h"
 #endif
 
-extern "C"{
-
-using namespace std;
-using namespace MRN;
-
-#ifdef STACKWALKER
-    using namespace Dyninst;
-    using namespace Dyninst::Stackwalker;
-    using namespace Dyninst::SymtabAPI;
-#endif
-
 
 //! A struct that contains MRNet connection information to send to the daemons
 typedef struct
@@ -257,14 +246,14 @@ class STAT_BackEnd
             \param walker - the process to pause
             \return STAT_OK on success
         */
-        StatError_t pauseImpl(Walker *walker);
+        StatError_t pauseImpl(Dyninst::Stackwalker::Walker *walker);
 
         //! Resumes a single process
         /*!
             \param walker - the process to resume
             \return STAT_OK on success
         */
-        StatError_t resumeImpl(Walker *walker);
+        StatError_t resumeImpl(Dyninst::Stackwalker::Walker *walker);
 #else
         //! Pauses a single process
         /*!
@@ -310,7 +299,7 @@ class STAT_BackEnd
             \param nVariables - the number of variables to extract
             \return STAT_OK on success
         */
-        StatError_t getStackTrace(graphlib_graph_p retGraph, Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, statVariable_t *extractVariables, int nVariables);
+        StatError_t getStackTrace(graphlib_graph_p retGraph, Dyninst::Stackwalker::Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, statVariable_t *extractVariables, int nVariables);
 
         //! Translates an address into a source file and line number
         /*!
@@ -320,7 +309,7 @@ class STAT_BackEnd
             \param[out] lineNum - the line number
             \return STAT_OK on success
         */
-        StatError_t getSourceLine(Walker *proc, Address addr, char *outBuf, int *lineNum);
+        StatError_t getSourceLine(Dyninst::Stackwalker::Walker *proc, Dyninst::Address addr, char *outBuf, int *lineNum);
 
         //! Extract a variable value from the application
         /*!
@@ -329,7 +318,7 @@ class STAT_BackEnd
             \param variableName - the name of the variable to gather
             \param[out] outBuf - the value of the variable
         */
-        StatError_t getVariable(vector<Frame> swalk, unsigned int frame, char *variableName, char *outBuf);
+        StatError_t getVariable(std::vector<Dyninst::Stackwalker::Frame> swalk, unsigned int frame, char *variableName, char *outBuf);
 #else
         //! Get a single stack trace
         /*!
@@ -400,7 +389,7 @@ class STAT_BackEnd
             \param tag - the packet tag
             \param val - the ack return value, 0 for success, 1 for failure
         */
-        StatError_t sendAck(Stream *stream, int tag, int val);
+        StatError_t sendAck(MRN::Stream *stream, int tag, int val);
 
         //! Creates stack traces
         /*!
@@ -438,21 +427,19 @@ class STAT_BackEnd
         bool initialized_;                      /*!< whether LauncMON has been initialized */
         bool connected_;                        /*!< whether this daemon has been conected to MRNet */
         bool isRunning_;                        /*!< whether the target processes are running */
-        Network *network_;                      /*!< the MRNet Network object */
-        Rank myRank_;                           /*!< this daemon's MRNet rank */
-        Rank parentRank_;                       /*!< the MRNet parent's rank */
-        Port parentPort_;                       /*!< the MRNet parent's port */
+        MRN::Network *network_;                      /*!< the MRNet Network object */
+        MRN::Rank myRank_;                           /*!< this daemon's MRNet rank */
+        MRN::Rank parentRank_;                       /*!< the MRNet parent's rank */
+        MRN::Port parentPort_;                       /*!< the MRNet parent's port */
         graphlib_graph_p prefixTree3d_;         /*!< the 3D prefix tree */
         graphlib_graph_p prefixTree2d_;         /*!< the 2D prefix tree */
         MPIR_PROCDESC_EXT *proctab_;            /*!< the process table */
 #ifdef STACKWALKER
-        map <int, Walker *> processMap_;        /*!< the debug process objects */
+        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;        /*!< the debug process objects */
 #else
         BPatch bpatch_;                         /*!< the application bpatch object */
-        map<int, BPatch_process*> processMap_;  /*!< the debug process objects */
+        ap<int, BPatch_process*> processMap_;  /*!< the debug process objects */
 #endif
 };
-
-} /* extern "C" */
 
 #endif /* __STAT_BACKEND_H */

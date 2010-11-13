@@ -20,7 +20,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "0.9.4"
+__version__ = "1.0.0"
 
 import STATview
 from STATview import *
@@ -106,9 +106,9 @@ class STATGUI(STATDotWindow):
         self.options['Verbosity Type'] = 'error'
         self.options['Communication Nodes'] = ''
         self.options['Communication Processes per Node'] = 8
-        self.options['# Traces'] = 10
+        self.options['Num Traces'] = 10
         self.options['Trace Frequency (ms)'] = 1000
-        self.options['# Retries'] = 5
+        self.options['Num Retries'] = 5
         self.options['Retry Frequency (ms)'] = 10
         self.options['With Threads'] = False
         self.options['Clear On Sample'] = True
@@ -128,6 +128,8 @@ class STATGUI(STATDotWindow):
                     sys.stderr.write('failed to open preferences file %s\n' %(path))
                     continue
                 for line in f.readlines():
+                    if line[0] == '#':
+                        continue
                     split_line = line.split('=')
                     if len(split_line) != 2:
                         sys.stderr.write('invalid preference specification %s in file %s\n' %(line.strip('\n'), path))
@@ -889,11 +891,11 @@ class STATGUI(STATDotWindow):
     def update_sample_options(self):
         """Update sample options."""
         try:
-            self.options['# Traces'] = int(self.spinners['# Traces'].get_value())
+            self.options['Num Traces'] = int(self.spinners['Num Traces'].get_value())
             self.options['Trace Frequency (ms)'] = int(self.spinners['Trace Frequency (ms)'].get_value())
         except:
             pass
-        self.options['# Retries'] = int(self.spinners['# Retries'].get_value())
+        self.options['Num Retries'] = int(self.spinners['Num Retries'].get_value())
         self.options['Retry Frequency (ms)'] = int(self.spinners['Retry Frequency (ms)'].get_value())
         try:
             self.options['Run Time Before Sample (sec)'] = int(self.spinners['Run Time Before Sample (sec)'].get_value())
@@ -960,7 +962,7 @@ class STATGUI(STATDotWindow):
             sample_type = STAT_FUNCTION_AND_PC
         elif self.options['Sample Type'] == 'function and line':
             sample_type = STAT_FUNCTION_AND_LINE
-        ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 1, self.options['# Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
+        ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 1, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
         if ret != STAT_OK:
             show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -1013,7 +1015,7 @@ class STATGUI(STATDotWindow):
         self.update_sample_options()
         stat_wait_dialog.update_progress_bar(0.01)
 
-        for i in range(self.options['# Traces']):
+        for i in range(self.options['Num Traces']):
             if stat_wait_dialog.cancelled == True:
                 stat_wait_dialog.cancelled = False
                 break
@@ -1033,7 +1035,7 @@ class STATGUI(STATDotWindow):
                 sample_type = STAT_FUNCTION_AND_PC
             elif self.options['Sample Type'] == 'function and line':
                 sample_type = STAT_FUNCTION_AND_LINE
-            ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 0, self.options['# Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
+            ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 0, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
             if ret != STAT_OK:
                 if ret == STAT_APPLICATION_EXITED:
                     break
@@ -1082,10 +1084,10 @@ class STATGUI(STATDotWindow):
                 self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
                 self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
 
-            stat_wait_dialog.update_progress_bar(float(i) / self.options['# Traces'])
+            stat_wait_dialog.update_progress_bar(float(i) / self.options['Num Traces'])
             if ret_val != STAT_OK:
                 break
-            if i != self.options['# Traces'] -1:
+            if i != self.options['Num Traces'] -1:
                 ret = self.STAT.resume()
                 if ret == STAT_APPLICATION_EXITED:
                     ret_val = STAT_APPLICATION_EXITED
@@ -1513,7 +1515,7 @@ class STATGUI(STATDotWindow):
             self.pack_spinbutton(vbox2, 'Run Time Before Sample (sec)')
         expander = gtk.Expander("Advanced")
         hbox = gtk.HBox()
-        self.pack_spinbutton(hbox, '# Retries')
+        self.pack_spinbutton(hbox, 'Num Retries')
         self.pack_spinbutton(hbox, 'Retry Frequency (ms)')
         expander.add(hbox)
         vbox2.pack_start(expander, False, False, 5)
@@ -1523,7 +1525,7 @@ class STATGUI(STATDotWindow):
             frame = gtk.Frame('Multiple Sample Options')
             vbox2 = gtk.VBox()
             hbox = gtk.HBox()
-            self.pack_spinbutton(hbox, '# Traces')
+            self.pack_spinbutton(hbox, 'Num Traces')
             self.pack_spinbutton(hbox, 'Trace Frequency (ms)')
             vbox2.pack_start(hbox, False, False, 5)
             self.pack_check_button(vbox2, 'Gather Individual Samples')

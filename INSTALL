@@ -42,12 +42,22 @@ Installation
    the option --with-procspernode=number, generally set to the number
    of cores per node.
 
+   STAT creates wrapper scripts for the STAT command line and STATGUI
+   commands. These wrappers set appropriate paths for the launchmon and
+   mrnet_commnode executables, based on the the --with-launchmon and
+   --with-mrnet configure options, thus it is important to specify both
+   of these even if they share a prefix.
+
    STAT will use StackWalker by default. However, it can use Dyninst
    instead if you specify --with-dyninst to the configure script.
 
-   To enable the building of the STAT GUI, configure with --enable-gui
-   and also specify --with-python-include-dir=dir, where dir contains
-   Python.h.
+   STAT will try to build the GUI by default. If you need to modify
+   your PYTHONPATH envirnment variable to search for side installed
+   site-packages, you can do this by specifying STAT_PYTHONPATH=path
+   during configure. This will add the appropriate directory to the
+   $PYTHONPATH environment variable within the STATGUI script. To
+   disable the building of the GUI, use the --enable-gui=no configure
+   option.
 
    On BlueGene systems, also be sure to configure --with-bluegene. This
    will  enable  the BGL macro for BlueGene specific compilation.
@@ -55,11 +65,13 @@ Installation
 
    An example configure line for Cray XT:
 
-./configure --with-launchmon=/tmp/work/lee218/install --with-mrnet=/tmp
-/work/lee218/install --with-graphlib==/tmp/work/lee218/install --with-s
-tackwalker=/tmp/work/lee218/install --with-libdwarf=/tmp/work/lee218/in
-stall --prefix=/tmp/work/lee218/install --with-cray-xt MPICC=cc MPICXX=
-CC MPIF77=ftn --enable-shared LD=/usr/bin/ld.x
+./configure --with-launchmon=/tmp/work/lee218/install \
+--with-mrnet=/tmp/work/lee218/install \
+--with-graphlib==/tmp/work/lee218/install \
+--with-stackwalker=/tmp/work/lee218/install \
+--with-libdwarf=/tmp/work/lee218/install \
+--prefix=/tmp/work/lee218/install --with-cray-xt \
+MPICC=cc MPICXX=CC MPIF77=ftn --enable-shared LD=/usr/bin/ld.x
 
    Next you just need to run:
 
@@ -71,5 +83,6 @@ make install
    respectively, thus testing should be done in the install prefix
    after running "make install" and the installation directory should
    not  be  moved.  The path to these components can, however, be
-   overridden with the --daemon and --filter arguments. Refer to STAT
-   --help or the STAT man page for more details.
+   overridden with the --daemon and --filter arguments. Further, the
+   STAT_PREFIX environment variable can be defined to override the
+   hardcoded paths in STAT.

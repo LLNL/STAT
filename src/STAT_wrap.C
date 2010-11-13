@@ -2605,6 +2605,12 @@ namespace swig {
 }
 
 
+#include "config.h"
+
+
+#include "STAT_FrontEnd.h"
+
+
 typedef int intArray;
 
 
@@ -2834,9 +2840,6 @@ SWIGINTERN int *intArray_cast(intArray *self){
 SWIGINTERN intArray *intArray_frompointer(int *t){
     return static_cast< intArray * >(t);
   }
-
-#include "STAT_FrontEnd.h"
-
 
 SWIGINTERN int
 SWIG_AsVal_unsigned_SS_int (PyObject * obj, unsigned int *val)

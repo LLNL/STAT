@@ -19,6 +19,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #ifndef __STAT_FRONTEND_H
 #define __STAT_FRONTEND_H
 
+
 #include <string>
 #include <list>
 #include <set>
@@ -33,8 +34,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <stdlib.h>
 #include <libgen.h>
 #include <pwd.h>
-#include "arpa/inet.h"
 #include <sys/resource.h>
+#include "arpa/inet.h"
 
 #include "mrnet/MRNet.h"
 #include "xplat/NetUtils.h"
@@ -46,10 +47,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define STAT_MAX_FILENAME_ID 8192
 #define STAT_MAX_FANOUT 64
 
-extern "C" {
-
-using namespace std;
-using namespace MRN;
 
 //! An enum for STAT launch vs attach
 typedef enum {
@@ -68,8 +65,8 @@ typedef enum {
 //! A struct that contains MRNet connection information to send to the daemons
 typedef struct
 {
-    NetworkTopology *networkTopology;
-    multiset<string> daemons;
+    MRN::NetworkTopology *networkTopology;
+    std::multiset<std::string> daemons;
 } LeafInfo_t;
 
 //! A struct to help determine ranks lists for each daemon
@@ -124,7 +121,7 @@ StatError_t increaseSysLimits();
 
     Records the number of MRNet BE connection events.
 */
-void beConnectCb(Event *event, void *dummy);
+void beConnectCb(MRN::Event *event, void *dummy);
 #endif
 
 //! The STAT FrontEnd object is used to Launch STAT daemons and gather and merge stack traces
@@ -696,7 +693,7 @@ class STAT_FrontEnd
         
             Recursively builds the rank tree based on the MRNet topology.
         */
-        RemapNode_t *buildRemapTree(NetworkTopology::Node *node, map<int, RemapNode_t *> rankToNode);
+        RemapNode_t *buildRemapTree(MRN::NetworkTopology::Node *node, std::map<int, RemapNode_t *> rankToNode);
 
         //! Recursively generate the ranks list
         /*!
@@ -707,6 +704,13 @@ class STAT_FrontEnd
             highest rank.
         */
         StatError_t buildRanksList(RemapNode_t *node);
+
+        //! Recursively free up the allocated remap tree
+        /*!
+            \param node - the current node
+            \return STAT_OK on success
+        */
+        StatError_t freeRemapTree(RemapNode_t *node);
 
         //! Check if the user has access to the specified node
         /*!
@@ -725,6 +729,7 @@ class STAT_FrontEnd
         unsigned int nApplProcs_;                           /*!< the number of application processes */
         unsigned int procsPerNode_;                         /*!< the number of CPs to launcher per node*/
         unsigned int launcherArgc_;                         /*!< the number of job launch arguments*/
+        unsigned int topologySize_;                         /*!< TODO: remove this variable, a hack to work with MRNet 2.2beta */
         int jobId_;                                         /*!< the batch job ID */
         int lmonSession_;                                   /*!< the LaunchMON session ID */
         char **launcherArgv_;                               /*!< the job launch arguments */
@@ -744,23 +749,22 @@ class STAT_FrontEnd
         bool isAttached_;                                   /*!< whether the STAT daemons are attached to the application */
         bool isRunning_;                                    /*!< whether the application processes are currently running */
         bool isPendingAck_;                                 /*!< whether there are any pending acknowledgements */
-        list<int> remapRanksList_;                          /*!< the order of bit vectors in the incoming packets */
-        list<string> communicationNodeList_;                /*!< the list of nodes to use for MRNet CPs */
-        multiset<string> applicationNodeSet_;               /*!< the set of application nodes */
-        map<int, string> hostToRank_;                       /*!< a rank to hostname used for bit vector reordering */
-        map<string, IntList_t *> hostRanksMap_;             /*!< a map of hostname to ranks list used for bit vector reordering */
-        vector<pair<string, double> > performanceData_;     /*!< the accumulated performance data to be dumped upon completion */
+        std::list<int> remapRanksList_;                     /*!< the order of bit vectors in the incoming packets */
+        std::list<std::string> communicationNodeList_;      /*!< the list of nodes to use for MRNet CPs */
+        std::multiset<std::string> applicationNodeSet_;     /*!< the set of application nodes */
+        std::map<int, std::string> hostToRank_;             /*!< a rank to hostname used for bit vector reordering */
+        std::map<std::string, IntList_t *> hostRanksMap_;   /*!< a map of hostname to ranks list used for bit vector reordering */
+        std::vector<std::pair<std::string, double> > performanceData_;     /*!< the accumulated performance data to be dumped upon completion */
         LeafInfo_t leafInfo_;                               /*!< the MRNet leaf info */
         StatProt_t pendingAckTag_;                          /*!< the expected tag of the pending acknowledgement */
         StatError_t (STAT_FrontEnd::*pendingAckCb_)();      /*!< the function to call after acknowledgement received from daemons */
         StatVerbose_t verbose_;                             /*!< the verbosity level */
         StatLog_t logging_;                                 /*!< the logging level */
         MPIR_PROCDESC_EXT *proctab_;                        /*!< the process table */
-        Network *network_;                                  /*!< the MRNet Network object */
-        Communicator *broadcastCommunicator_;               /*!< the broadcast communicator*/
-        Stream *broadcastStream_;                           /*!< the broadcast stream for sending commands and receiving ack */
-        Stream *mergeStream_;                               /*!< the merge stream that uses the STAT filter */
+        MRN::Network *network_;                             /*!< the MRNet Network object */
+        MRN::Communicator *broadcastCommunicator_;          /*!< the broadcast communicator*/
+        MRN::Stream *broadcastStream_;                      /*!< the broadcast stream for sending commands and receiving ack */
+        MRN::Stream *mergeStream_;                          /*!< the merge stream that uses the STAT filter */
 };
 
-} /*extern "C" */
 #endif /* #define __STAT_FRONTEND_H */

@@ -17,10 +17,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 
+#include "config.h"
 #include "STAT.h"
 #include "STAT_BackEnd.h"
 
-using namespace MRN;
 
 //! The STATBench daemon main
 int main(int argc, char **argv)

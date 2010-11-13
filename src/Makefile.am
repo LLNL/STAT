@@ -25,8 +25,8 @@ STATbin_LDADD = libstatfe.la @FELIBS@
 STATD_LDFLAGS = 
 STATD_LDADD = libstatbe.la @BELIBS@ 
 
-libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h
-libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h
+libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C
+libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C
 
 pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
 pkglibdir = $(libdir)
@@ -35,15 +35,18 @@ STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version
 STAT_FilterDefinitions_la_LIBADD = @MWLIBS@
 
 if ENABLE_GUI
-BUILT_SOURCES = $(srcdir)/STAT_wrap.C
+BUILT_SOURCES = STAT_wrap.C
 SWIG_SOURCES = STAT.i
 pyexec_LTLIBRARIES = _STAT.la
 python_PYTHON = STAT.py
-_STAT_la_SOURCES = $(srcdir)/STAT_wrap.C $(SWIG_SOURCES)
+_STAT_la_SOURCES = STAT_wrap.C $(SWIG_SOURCES)
 _STAT_la_CPPFLAGS = -I./
 _STAT_la_LDFLAGS = -module -avoid-version
 _STAT_la_LIBADD = libstatfe.la @FELIBS@ 
 
-$(srcdir)/STAT_wrap.C:$(SWIG_SOURCES) Makefile
+STAT_wrap.C:$(SWIG_SOURCES) Makefile
 	$(SWIG) -c++ -python -o $@ $<
 endif    
+
+clean-local:
+	-rm -rf STAT_wrap.C STAT.py

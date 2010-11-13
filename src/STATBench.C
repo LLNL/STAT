@@ -26,8 +26,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 *********************************************************/
 
 
+#include "config.h"
+
 #include <getopt.h>
 #include "STAT_FrontEnd.h"
+
+using namespace MRN;
+using namespace std;
 
 int maxDepth;                           /*!< the max trace depth */
 int nTasks;                             /*!< the number of tasks per daemon */
@@ -38,8 +43,6 @@ int nEqClasses;                         /*!< the number of equivalence classes *
 char topologySpecification[BUFSIZE];    /*!< the topology specification */
 char *nodeList = NULL;                  /*!< the list of nodes for CPs */
 StatTopology_t topologyType;            /*!< the topology specification type */
-
-using namespace MRN;
 
 //! Prints the usage directions
 void STAT_PrintUsage(int argc, char **argv);

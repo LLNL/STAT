@@ -68,7 +68,23 @@ Here is a list of options:
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term># Retries = <replaceable class="parameter">count</replaceable></term>
+    <term>Num Traces = <replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Gather <replaceable class="parameter">count</replaceable> stack trace when sampling multiple.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Trace Frequency (ms) = <replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Let the process run <replaceable class="parameter">count</replaceable> milliseconds between multiple samples.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Num Retries = <replaceable class="parameter">count</replaceable></term>
     <listitem>
         <para>
         Attempt <replaceable class="parameter">count</replaceable> retries to try to obtain a complete stack trace.

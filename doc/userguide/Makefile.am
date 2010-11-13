@@ -1,2 +1,2 @@
 docdir = $(prefix)/doc
-doc_DATA = stat_userguide.pdf
+dist_doc_DATA = stat_userguide.pdf

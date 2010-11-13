@@ -1,5 +1,5 @@
 <para>
-Several environment variables influence STAT and its dependent packages.
+Several environment variables influence STAT and its dependent packages.  Note that dependent package environment variables are prefixed with "STAT_" to avoid conflict with other tools using that package.  The STAT process will then set the appropriate (i.e., without "STAT_") environment variable to pass the value to the dependent package.  
 </para>
 <variablelist>
 <varlistentry>
@@ -43,6 +43,14 @@ Several environment variables influence STAT and its dependent packages.
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>STAT_MRNET_DEBUG_LOG_DIRECTORY=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Write MRNet debug log files to <replaceable class="parameter">path</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>STAT_OUTPUT_REDIRECT_DIR=<replaceable class="parameter">directory</replaceable></term>
     <listitem>
         <para>
@@ -67,6 +75,14 @@ Several environment variables influence STAT and its dependent packages.
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>STAT_XPLAT_RSH=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the remote shell <replaceable class="parameter">path</replaceable> for launching mrnet_commnode processes.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>STAT_PROCS_PER_NODE=<replaceable class="parameter">count</replaceable></term>
     <listitem>
         <para>
@@ -79,6 +95,14 @@ Several environment variables influence STAT and its dependent packages.
     <listitem>
         <para>
         Use the launchmon binary in <replaceable class="parameter">path</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_LMON_REMOTE_LOGIN=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the remote shell <replaceable class="parameter">path</replaceable> for LaunchMON remote debugging.
         </para>
     </listitem>
 </varlistentry>

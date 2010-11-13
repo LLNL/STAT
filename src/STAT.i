@@ -22,12 +22,17 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 namespace std{
     %template(IntVector) vector<int>;
 };*/
-%include "carrays.i"
-%array_class(int, intArray)
+
+%{
+#include "config.h"
+%}
 
 %{
 #include "STAT_FrontEnd.h"
 %}
+
+%include "carrays.i"
+%array_class(int, intArray)
 
 #define STAT_UNKNOWN -1
 

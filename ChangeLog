@@ -1,3 +1,22 @@
+2010-11-12 Gregory L. Lee <lee218@llnl.gov>
+	* : tag version 1.0.0
+	* src/STAT_FrontEnd.[h,C] : added freeRemapTree function to clear allocated memory
+	* src/STAT_timer.[h,C] : removed implementation from .h and placed in new .C file
+	* src/STAT_FrontEnd.C, src/STAT_BackEnd.C, scripts/STAT.in, scripts/STATGUI.in : added 
+		STAT_MRNET_DEBUG_LOG_DIRECTORY, STAT_XPLAT_RSH, and STAT_LMON_REMOTE_LOGIN environment variables
+	* src/STAT_FrontEnd.[h,C] : added topologySize_ member for MRNet 2.2 backwards compatibility
+
+2010-11-11 Gregory L. Lee <lee218@llnl.gov>
+	* : moved #include config.h to source files instead of STAT.h
+	* : moved namespace usage out of header files into source files
+	* Makefile.am : modified (add dist_ prefix + clean swig files) to get `make distcheck` to work
+	* config/x_ac_mrnet.m4 : check $PATH for mrnet_commnode
+	* config/x_ac_launchmon.m4 : check $PATH for launchmon
+
+2010-11-10 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.h : removed extern C
+	* src/STAT_BackEnd.h : removed extern C
+
 2010-11-02 Gregory L. Lee <lee218@llnl.gov>
 	* cleaned Python doxygen implementation (description in docstring, params + return in comments)
 

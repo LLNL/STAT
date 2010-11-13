@@ -16,6 +16,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "config.h"
 #include "mrnet/Packet.h"
 #include "graphlib.h"
 #include "STAT.h"
@@ -32,6 +33,7 @@ const char *STAT_Merge_format_string = "%ac %d %d";
 //! The MRNet format string for the STAT version check
 const char *STAT_checkVersion_format_string = "%d %d %d %d %d";
 
+#if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
 //! Increases nofile and nproc limits to maximum
 /*!
     \return STAT_OK on success
@@ -59,15 +61,16 @@ StatError_t increaseCoreLimit()
     }
     return statError;
 }
+#endif
 
 //! A message to check the version of various components
 /*!
     \param inputPackets - the vector of input packets
     \param outputPackets - the vector of output packets
 */
-void STAT_checkVersion(std::vector < PacketPtr >&inputPackets,
-                std::vector < PacketPtr >&outputPackets,
-                void ** /* client data */)
+void STAT_checkVersion(vector<PacketPtr> &inputPackets,
+                       vector<PacketPtr> &outputPackets,
+                       void **)
 {
     PacketPtr currentPacket;
     int major, minor, revision, i;
@@ -106,8 +109,8 @@ void STAT_checkVersion(std::vector < PacketPtr >&inputPackets,
     \param inputPackets - the vector of input packets
     \param outputPackets - the vector of output packets
 */
-void STAT_Merge(std::vector < PacketPtr >&inputPackets,
-                std::vector < PacketPtr >&outputPackets,
+void STAT_Merge(vector<PacketPtr> &inputPackets,
+                vector<PacketPtr> &outputPackets,
                 void ** /* client data */)
 {
     static int totalWidth;
@@ -122,15 +125,17 @@ void STAT_Merge(std::vector < PacketPtr >&inputPackets,
        tries to send it.  They are safe to free up on the next invocation of 
        this filter function */
     static char *outputByteArray;
-    static int init = 0;
     DataType type;
     unsigned int byteArrayLen, i, j;
     char *byteArray;
     int child;
 
+#if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
+//    static int init = 0;
 //    if (init == 0)
 //        increaseCoreLimit();
 //    init++;
+#endif
 
     PacketPtr currentPacket;
 

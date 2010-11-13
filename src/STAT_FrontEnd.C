@@ -16,8 +16,11 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-
+#include "config.h"
 #include "STAT_FrontEnd.h"
+
+using namespace std;
+using namespace MRN;
 
 static int lmonState = 0;
 STAT_timer totalStart, totalEnd, startTime, endTime;
@@ -31,6 +34,17 @@ STAT_FrontEnd::STAT_FrontEnd()
     envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
     if (envValue != NULL)
         set_OutputLevel(atoi(envValue));
+    envValue = getenv("STAT_MRNET_DEBUG_LOG_DIRECTORY");
+    if (envValue != NULL)
+        setenv("MRNET_DEBUG_LOG_DIRECTORY", envValue, 1);
+    
+    /* Set MRNet and LMON rsh command */
+    envValue = getenv("STAT_LMON_REMOTE_LOGIN");
+    if (envValue != NULL)
+        setenv("LMON_REMOTE_LOGIN", envValue, 1);
+    envValue = getenv("STAT_XPLAT_RSH");
+    if (envValue != NULL)
+        setenv("XPLAT_RSH", envValue, 1);
 
     /* Set the launchmon and mrnet_commnode paths based on STAT env vars */
     envValue = getenv("STAT_LMON_LAUNCHMON_ENGINE_PATH");
@@ -474,7 +488,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 {
     bool cbRet = true;
     int statMergeFilterId, connectTimeout, i;
-    unsigned int nLeaves, topologySize;
+    unsigned int nLeaves;
     char topologyFileName[BUFSIZE], *connectTimeoutString, name[BUFSIZE];
     NetworkTopology *networkTopology;
     StatError_t statError;
@@ -490,7 +504,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     startTime.setTime();
 
     /* Create a topology file */
-    printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Creating MRNet topology file %s...\n", topologyFileName);
+    printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Creating MRNet topology file\n");
     statError = createTopology(topologyFileName, topologyType, topologySpecification, nodeList);
     if (statError != STAT_OK)
     {
@@ -499,7 +513,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     }
     endTime.setTime();
     addPerfData("\tCreate Topology File Time", (endTime - startTime).getDoubleTime());
-    printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tMRNet topology created\n");
+    printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tMRNet topology %s created\n", topologyFileName);
    
     /* Now that we have the topology configured, launch away */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tInitializing MRNet...\n");
@@ -532,6 +546,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 
 #ifdef MRNET3
     /* Register the BE connect callback function with MRNet */
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering topology event callback with MRNet\n");
     nCallbacks = 0;
     cbRet = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_ADD_BE, beConnectCb, NULL);
     if (cbRet == false) 
@@ -549,7 +564,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Network topology gather failure\n");
         return STAT_MRNET_ERROR;
     }
-    topologySize = networkTopology->get_NumNodes();
+    topologySize_ = networkTopology->get_NumNodes();
 
     /* Send MRNet connection info to daemons */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tConnecting to daemons...\n");
@@ -610,7 +625,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
 {
     static int connectTimeout = -1, i = 0;
     int statMergeFilterId;
-    unsigned int nLeaves, topologySize;
+    unsigned int nLeaves;
     char *connectTimeoutString;
     NetworkTopology *networkTopology;
     StatError_t statError;
@@ -649,7 +664,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
 #ifdef MRNET3        
             if (nCallbacks < nApplNodes_)
 #else
-            if (networkTopology->get_NumNodes() < topologySize + nApplNodes_)
+            if (networkTopology->get_NumNodes() < topologySize_ + nApplNodes_)
 #endif
             {
                 usleep(10000);
@@ -670,7 +685,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
             if (nCallbacks == nApplNodes_)
                 break;
 #else
-            if (networkTopology->get_NumNodes() >= topologySize + nApplNodes_)
+            if (networkTopology->get_NumNodes() >= topologySize_ + nApplNodes_)
                 break;
 #endif
             usleep(10000);
@@ -690,15 +705,15 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
             printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.  Continuing with available subset.\n", i, connectTimeout, nCallbacks, nApplNodes_);
     }
 #else
-    if (i >= connectTimeout * 100 || networkTopology->get_NumNodes() < topologySize + nApplNodes_)
+    if (i >= connectTimeout * 100 || networkTopology->get_NumNodes() < topologySize_ + nApplNodes_)
     {
-        if (networkTopology->get_NumNodes() <= topologySize)
+        if (networkTopology->get_NumNodes() <= topologySize_)
         {
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.\n", i/100, connectTimeout, networkTopology->get_NumNodes() - topologySize, nApplNodes_);
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.\n", i/100, connectTimeout, networkTopology->get_NumNodes() - topologySize_, nApplNodes_);
             return STAT_DAEMON_ERROR;
         }
         else
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.  Continuing with available subset.\n", i, connectTimeout, networkTopology->get_NumNodes() - topologySize, nApplNodes_);
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.  Continuing with available subset.\n", i, connectTimeout, networkTopology->get_NumNodes() - topologySize_, nApplNodes_);
     }
 #endif
 
@@ -1476,6 +1491,8 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     }
     
     fclose(file);
+    if (topology != NULL)
+        free(topology);
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "MRNet topology file created\n");
     return STAT_OK;
 }
@@ -2597,6 +2614,8 @@ StatError_t STAT_FrontEnd::setNodeListFromConfigFile(char **nodeList)
     {
         while (fscanf(f, "%s", input) != EOF)
         {
+            if (input[0] == '#')
+                continue;
             if (count != 0)
                 nodes += ",";
             nodes += input;
@@ -2856,6 +2875,7 @@ StatError_t STAT_FrontEnd::setRanksList()
             }
             currentNode->lowRank = hostRanksMap_[*daemonIter]->list[0];
             currentNode->numChildren = 0;
+            currentNode->children = NULL;
             if (j == 0)
                 rankToNode[rank]->lowRank = currentNode->lowRank;
             else if (currentNode->lowRank < rankToNode[rank]->lowRank)
@@ -2887,6 +2907,7 @@ StatError_t STAT_FrontEnd::setRanksList()
     ret = buildRanksList(root);
     if (ret != STAT_OK)
     {
+        freeRemapTree(root);
         printMsg(ret, __FILE__, __LINE__, "Failed to build ranks list\n");
         return ret;
     }
@@ -2895,6 +2916,8 @@ StatError_t STAT_FrontEnd::setRanksList()
     for (remapRanksListIter = remapRanksList_.begin(); remapRanksListIter != remapRanksList_.end(); remapRanksListIter++)
         printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%d, ", *remapRanksListIter);
     printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");
+    
+    freeRemapTree(root);
 
     return STAT_OK;
 }
@@ -2981,6 +3004,30 @@ StatError_t STAT_FrontEnd::buildRanksList(RemapNode_t *node)
     {
         /* This is a daemon so add its low rank to the remap ranks list */
         remapRanksList_.push_back(node->lowRank);
+    }
+
+    return STAT_OK;
+}
+
+StatError_t STAT_FrontEnd::freeRemapTree(RemapNode_t *node)
+{
+    int i;
+
+    if (node->numChildren != 0)
+    {
+        /* Not a daemon so traverse children in rank order */
+        for (i = 0; i < node->numChildren; i++)
+            freeRemapTree(node->children[i]);
+        if (node->children != NULL)
+            free(node->children);
+        if (node != NULL)
+            free(node);
+    }
+    else
+    {
+        /* This is a daemon so just free it up */
+        if (node != NULL)
+            free(node);
     }
 
     return STAT_OK;

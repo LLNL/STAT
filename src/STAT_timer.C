@@ -17,26 +17,45 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 
-#ifndef __TIMER_H
-#define __TIMER_H 1
+#include "STAT_timer.h"
 
-#include <sys/time.h>
-#include <stdlib.h>
-#include <stdio.h>
-
-class STAT_timer
+void STAT_timer::setDoubleTimeFromTimeVal()
 {
-    private:
-        struct timeval tv_;
-        double doubleTime_;
-        void setDoubleTimeFromTimeVal();
+    doubleTime_ = (double(tv_.tv_sec)) + ((double)tv_.tv_usec) / 1000000.0;
+}
 
-    public:
-        STAT_timer();
-        void setTime();
-        void setTime(double doubleTime);
-        double getDoubleTime();
-        STAT_timer operator-(STAT_timer& statTimer);
-};
+STAT_timer::STAT_timer() :doubleTime_(-1.0)
+{
+    tv_.tv_sec = -1;
+    tv_.tv_usec = 0;
+}
 
-#endif /* __TIMER_H */
+void STAT_timer::setTime()
+{
+    while(gettimeofday(&tv_, NULL) == -1) ;
+    doubleTime_ = -1.0;
+}
+
+void STAT_timer::setTime(double doubleTime)
+{
+    doubleTime_ = doubleTime;
+    tv_.tv_sec = -1;  /*only set on demand for efficiency */
+}
+
+double STAT_timer::getDoubleTime()
+{
+    if ((long)doubleTime_ == -1)
+    {
+        setDoubleTimeFromTimeVal();
+    }
+    return doubleTime_;
+}
+
+STAT_timer STAT_timer::operator-(STAT_timer& statTimer)
+{
+    STAT_timer retval;
+    double doubleTime = getDoubleTime() - statTimer.getDoubleTime();
+    retval.setTime(doubleTime);
+    return retval;
+}
+

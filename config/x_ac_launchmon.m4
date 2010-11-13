@@ -8,7 +8,7 @@ AC_DEFUN([X_AC_LAUNCHMON], [
        LDFLAGS="$LDFLAGS -L${withval}/lib -Wl,-rpath=${withval}/lib"
     ],
     [CXXFLAGS="$CXXFLAGS"
-      LAUNCHMONPREFIX="/usr/local"
+      LAUNCHMONPREFIX=""
     ]
   )
   AC_LANG_PUSH(C++)
@@ -35,7 +35,7 @@ AC_DEFUN([X_AC_LAUNCHMON], [
     AC_MSG_ERROR([libmonbeapi is required.  Specify libmonbeapi prefix with --with-launchmon])
   fi
   AC_LANG_POP(C++)
-  AC_PATH_PROG([LAUNCHMONBIN], [launchmon], [no], [$LAUNCHMONPREFIX/bin])
+  AC_PATH_PROG([LAUNCHMONBIN], [launchmon], [no], [$LAUNCHMONPREFIX/bin$PATH_SEPARATOR$PATH])
   if test $LAUNCHMONBIN = no; then
     AC_MSG_ERROR([the launchmon executable is required.  Specify launchmon prefix with --with-launchmon])
   fi

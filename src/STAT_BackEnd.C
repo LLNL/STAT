@@ -16,9 +16,17 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "config.h"
 #include "STAT_BackEnd.h"
 
+using namespace std;
 using namespace MRN;
+
+#ifdef STACKWALKER
+    using namespace Dyninst;
+    using namespace Dyninst::Stackwalker;
+    using namespace Dyninst::SymtabAPI;
+#endif
 
 StatError_t statInit(int *argc, char ***argv)
 {
@@ -52,7 +60,7 @@ StatError_t statFinalize()
 
 STAT_BackEnd::STAT_BackEnd()
 {
-    char abuf[INET_ADDRSTRLEN], fileName[BUFSIZE], *outputRedirectDir, *swDebugLogDir, *mrnetOutputLevel; 
+    char abuf[INET_ADDRSTRLEN], fileName[BUFSIZE], *envValue; 
     FILE *f;
     struct sockaddr_in addr, *sinp = NULL;
     struct addrinfo *addinf = NULL;
@@ -74,26 +82,29 @@ STAT_BackEnd::STAT_BackEnd()
 #endif
     
     /* Enable MRNet logging */
-    mrnetOutputLevel = getenv("STAT_MRNET_OUTPUT_LEVEL");
-    if (mrnetOutputLevel != NULL)
-        set_OutputLevel(atoi(mrnetOutputLevel));
+    envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
+    if (envValue != NULL)
+        set_OutputLevel(atoi(envValue));
+    envValue = getenv("STAT_MRNET_DEBUG_LOG_DIRECTORY");
+    if (envValue != NULL)
+        setenv("MRNET_DEBUG_LOG_DIRECTORY", envValue, 1);
 
     /* Code to redirect output to a file */
-    outputRedirectDir = getenv("STAT_OUTPUT_REDIRECT_DIR");
-    if (outputRedirectDir != NULL)
+    envValue = getenv("STAT_OUTPUT_REDIRECT_DIR");
+    if (envValue != NULL)
     {
-        snprintf(fileName, BUFSIZE, "%s/%s.stdout.txt", outputRedirectDir, localHostName_);
+        snprintf(fileName, BUFSIZE, "%s/%s.stdout.txt", envValue, localHostName_);
         freopen(fileName, "w", stdout);
-        snprintf(fileName, BUFSIZE, "%s/%s.stderr.txt", outputRedirectDir, localHostName_);
+        snprintf(fileName, BUFSIZE, "%s/%s.stderr.txt", envValue, localHostName_);
         freopen(fileName, "w", stderr);
     }
 
 #ifdef STACKWALKER
     /* Code to setup StackWalker debug logging */
-    swDebugLogDir = getenv("STAT_SW_DEBUG_LOG_DIR");
-    if (swDebugLogDir != NULL)
+    envValue = getenv("STAT_SW_DEBUG_LOG_DIR");
+    if (envValue != NULL)
     {
-        snprintf(fileName, BUFSIZE, "%s/%s.sw.txt", swDebugLogDir, localHostName_);
+        snprintf(fileName, BUFSIZE, "%s/%s.sw.txt", envValue, localHostName_);
         f = fopen(fileName, "w");
         Dyninst::Stackwalker::setDebug(true);
         Dyninst::Stackwalker::setDebugChannel(f); 

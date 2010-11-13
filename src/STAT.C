@@ -17,9 +17,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 
+#include "config.h"
 
 #include <getopt.h>
 #include "STAT_FrontEnd.h"
+
+using namespace std;
+using namespace MRN;
 
 //! Prints the usage directions
 void printUsage(int argc, char **argv);
@@ -494,10 +498,10 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         {
             remoteHost = remotePid.substr(0, colonPos);
             remoteNode = strdup(remoteHost.c_str());
-            if (statError != STAT_OK)
+            if (remoteNode == NULL)
             {
-                STAT->printMsg(statError, __FILE__, __LINE__, "Failed to set remote node\n");
-                return statError;
+                STAT->printMsg(statError, __FILE__, __LINE__, "Failed to set remote node from %s\n", remotePid.c_str());
+                return STAT_ALLOCATE_ERROR;
             }
             pid = atoi((remotePid.substr(colonPos + 1, remotePid.length())).c_str());
         }

@@ -2,12 +2,12 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(STAT, 0.9.4, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
+AC_INIT(STAT, 1.0.0, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
 AC_COPYRIGHT([Copyright (c) 2007-2008, Lawrence Livermore National Security, LLC.])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADER([config.h])
-AM_INIT_AUTOMAKE(STAT, 0.9.4)
+AM_INIT_AUTOMAKE(STAT, 1.0.0)
 AC_CANONICAL_HOST
 
 # Checks for programs.
@@ -20,12 +20,12 @@ X_AC_MPICC
 X_AC_RSH
 
 # Checks for libraries.
-X_AC_MRNET
 X_AC_GUI
 X_AC_ARCH
 X_AC_DEBUGLIBS
-X_AC_LAUNCHMON
 X_AC_GRAPHLIB
+X_AC_LAUNCHMON
+X_AC_MRNET
 
 # Checks for header files.
 AC_HEADER_STDC

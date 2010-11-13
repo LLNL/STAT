@@ -81,17 +81,17 @@ am_STAT_FilterDefinitions_la_OBJECTS = STAT_FilterDefinitions.lo
 STAT_FilterDefinitions_la_OBJECTS =  \
 	$(am_STAT_FilterDefinitions_la_OBJECTS)
 @ENABLE_GUI_TRUE@_STAT_la_DEPENDENCIES = libstatfe.la
-am___STAT_la_SOURCES_DIST = $(srcdir)/STAT_wrap.C STAT.i
+am___STAT_la_SOURCES_DIST = STAT_wrap.C STAT.i
 am__objects_1 =
 @ENABLE_GUI_TRUE@am__STAT_la_OBJECTS = _STAT_la-STAT_wrap.lo \
 @ENABLE_GUI_TRUE@	$(am__objects_1)
 _STAT_la_OBJECTS = $(am__STAT_la_OBJECTS)
 @ENABLE_GUI_TRUE@am__STAT_la_rpath = -rpath $(pyexecdir)
 libstatbe_la_LIBADD =
-am_libstatbe_la_OBJECTS = STAT_BackEnd.lo
+am_libstatbe_la_OBJECTS = STAT_BackEnd.lo STAT_timer.lo
 libstatbe_la_OBJECTS = $(am_libstatbe_la_OBJECTS)
 libstatfe_la_LIBADD =
-am_libstatfe_la_OBJECTS = STAT_FrontEnd.lo
+am_libstatfe_la_OBJECTS = STAT_FrontEnd.lo STAT_timer.lo
 libstatfe_la_OBJECTS = $(am_libstatfe_la_OBJECTS)
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
@@ -291,17 +291,17 @@ STATbin_LDFLAGS =
 STATbin_LDADD = libstatfe.la @FELIBS@ 
 STATD_LDFLAGS = 
 STATD_LDADD = libstatbe.la @BELIBS@ 
-libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h
-libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h
+libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C
+libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C
 pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
 STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C
 STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version
 STAT_FilterDefinitions_la_LIBADD = @MWLIBS@
-@ENABLE_GUI_TRUE@BUILT_SOURCES = $(srcdir)/STAT_wrap.C
+@ENABLE_GUI_TRUE@BUILT_SOURCES = STAT_wrap.C
 @ENABLE_GUI_TRUE@SWIG_SOURCES = STAT.i
 @ENABLE_GUI_TRUE@pyexec_LTLIBRARIES = _STAT.la
 @ENABLE_GUI_TRUE@python_PYTHON = STAT.py
-@ENABLE_GUI_TRUE@_STAT_la_SOURCES = $(srcdir)/STAT_wrap.C $(SWIG_SOURCES)
+@ENABLE_GUI_TRUE@_STAT_la_SOURCES = STAT_wrap.C $(SWIG_SOURCES)
 @ENABLE_GUI_TRUE@_STAT_la_CPPFLAGS = -I./
 @ENABLE_GUI_TRUE@_STAT_la_LDFLAGS = -module -avoid-version
 @ENABLE_GUI_TRUE@_STAT_la_LIBADD = libstatfe.la @FELIBS@ 
@@ -482,6 +482,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_BackEnd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FrontEnd.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_timer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STAT_la-STAT_wrap.Plo@am__quote@
 
 .C.o:
@@ -505,12 +506,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
 
-_STAT_la-STAT_wrap.lo: $(srcdir)/STAT_wrap.C
-@am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STAT_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT _STAT_la-STAT_wrap.lo -MD -MP -MF "$(DEPDIR)/_STAT_la-STAT_wrap.Tpo" -c -o _STAT_la-STAT_wrap.lo `test -f '$(srcdir)/STAT_wrap.C' || echo '$(srcdir)/'`$(srcdir)/STAT_wrap.C; \
+_STAT_la-STAT_wrap.lo: STAT_wrap.C
+@am__fastdepCXX_TRUE@	if $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STAT_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT _STAT_la-STAT_wrap.lo -MD -MP -MF "$(DEPDIR)/_STAT_la-STAT_wrap.Tpo" -c -o _STAT_la-STAT_wrap.lo `test -f 'STAT_wrap.C' || echo '$(srcdir)/'`STAT_wrap.C; \
 @am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/_STAT_la-STAT_wrap.Tpo" "$(DEPDIR)/_STAT_la-STAT_wrap.Plo"; else rm -f "$(DEPDIR)/_STAT_la-STAT_wrap.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(srcdir)/STAT_wrap.C' object='_STAT_la-STAT_wrap.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STAT_wrap.C' object='_STAT_la-STAT_wrap.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STAT_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o _STAT_la-STAT_wrap.lo `test -f '$(srcdir)/STAT_wrap.C' || echo '$(srcdir)/'`$(srcdir)/STAT_wrap.C
+@am__fastdepCXX_FALSE@	$(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STAT_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o _STAT_la-STAT_wrap.lo `test -f 'STAT_wrap.C' || echo '$(srcdir)/'`STAT_wrap.C
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -681,8 +682,8 @@ maintainer-clean-generic:
 clean: clean-am
 
 clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
-	clean-libtool clean-pkglibLTLIBRARIES clean-pyexecLTLIBRARIES \
-	mostlyclean-am
+	clean-libtool clean-local clean-pkglibLTLIBRARIES \
+	clean-pyexecLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -735,7 +736,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-includeHEADERS \
 	uninstall-pythonPYTHON
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean clean-binPROGRAMS \
-	clean-generic clean-libLTLIBRARIES clean-libtool \
+	clean-generic clean-libLTLIBRARIES clean-libtool clean-local \
 	clean-pkglibLTLIBRARIES clean-pyexecLTLIBRARIES ctags \
 	distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags distdir dvi dvi-am html \
@@ -753,8 +754,11 @@ uninstall-am: uninstall-binPROGRAMS uninstall-includeHEADERS \
 	uninstall-pyexecLTLIBRARIES uninstall-pythonPYTHON
 
 
-@ENABLE_GUI_TRUE@$(srcdir)/STAT_wrap.C:$(SWIG_SOURCES) Makefile
+@ENABLE_GUI_TRUE@STAT_wrap.C:$(SWIG_SOURCES) Makefile
 @ENABLE_GUI_TRUE@	$(SWIG) -c++ -python -o $@ $<
+
+clean-local:
+	-rm -rf STAT_wrap.C STAT.py
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

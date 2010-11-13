@@ -36,7 +36,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 subdir = man
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = $(dist_man_MANS) $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
@@ -60,7 +61,7 @@ DIST_SOURCES =
 man1dir = $(mandir)/man1
 am__installdirs = "$(DESTDIR)$(man1dir)"
 NROFF = nroff
-MANS = $(man_MANS)
+MANS = $(dist_man_MANS)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMDEP_FALSE = @AMDEP_FALSE@
@@ -186,7 +187,7 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-man_MANS = STAT.1 STATBench.1 STATGUI.1 STATview.1
+dist_man_MANS = STAT.1 STATBench.1 STATGUI.1 STATview.1
 all: all-am
 
 .SUFFIXES:

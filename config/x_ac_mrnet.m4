@@ -9,7 +9,7 @@ AC_DEFUN([X_AC_MRNET], [
       LDFLAGS="$LDFLAGS -L${withval}/lib -Wl,-rpath=${withval}/lib"
     ],
     [CXXFLAGS="$CXXFLAGS"
-      MRNETPREFIX="/usr/local"
+      MRNETPREFIX=""
     ]
   )
   AC_CHECK_HEADER(mrnet/MRNet.h,
@@ -73,7 +73,7 @@ AC_DEFUN([X_AC_MRNET], [
     AC_MSG_ERROR([libmrnet is required.  Specify libmrnet prefix with --with-mrnet])
   fi
   AC_LANG_POP(C++)
-  AC_PATH_PROG([MRNETCOMMNODEBIN], [mrnet_commnode], [no], [$MRNETPREFIX/bin])
+  AC_PATH_PROG([MRNETCOMMNODEBIN], [mrnet_commnode], [no], [$MRNETPREFIX/bin$PATH_SEPARATOR$PATH])
   if test $MRNETCOMMNODEBIN = no; then
     AC_MSG_ERROR([the mrnet_commnode executable is required.  Specify mrnet prefix with --with-mrnet])
   fi
