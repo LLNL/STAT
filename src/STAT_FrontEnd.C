@@ -52,7 +52,16 @@ STAT_FrontEnd::STAT_FrontEnd()
         setenv("LMON_LAUNCHMON_ENGINE_PATH", envValue, 1);
     envValue = getenv("STAT_MRN_COMM_PATH");
     if (envValue != NULL)
-        setenv("MRN_COMM_PATH", envValue, 1);
+    {
+        setenv("MRN_COMM_PATH", envValue, 1); // for MRNet < 3.0.1
+        setenv("MRNET_COMM_PATH", envValue, 1);
+    }
+    envValue = getenv("STAT_MRNET_COMM_PATH");
+    if (envValue != NULL)
+    {
+        setenv("MRN_COMM_PATH", envValue, 1); // for MRNet < 3.0.1
+        setenv("MRNET_COMM_PATH", envValue, 1);
+    }
 
     /* Set the daemon path and filter paths to the environment variable 
        specification if applicable.  Otherwise, set to default install 

@@ -70,6 +70,14 @@ Several environment variables influence STAT and its dependent packages.  Note t
     <term>STAT_MRN_COMM_PATH=<replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
+        Use the mrnet_commnode binary in <replaceable class="parameter">path</replaceable>.  (Deprecated along with MRNet's MRN_COMM_PATH)
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_MRNET_COMM_PATH=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
         Use the mrnet_commnode binary in <replaceable class="parameter">path</replaceable>.
         </para>
     </listitem>

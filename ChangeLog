@@ -1,3 +1,10 @@
+2010-12-21 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C doc/src/stat_environment_variables.sgml scripts/STATGUI.in scripts/STAT.in script/STATBench.in : added STAT_MRNET_COMM_PATH in addition to STAT_MRN_COMM_PATH to match MRNet naming.  Sets both MRNET_COMM_PATH and MRN_COMM_PATH for backwards compatibility.
+
+2010-12-15 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/xdot.py : changed bb coordinates from int to float
+	* scripts/STATview.py : dump traceback to terminal along with error dialog
+
 2010-11-12 Gregory L. Lee <lee218@llnl.gov>
 	* : tag version 1.0.0
 	* src/STAT_FrontEnd.[h,C] : added freeRemapTree function to clear allocated memory

@@ -642,6 +642,12 @@ stat_wait_dialog = STAT_wait_dialog()
 #  \n
 def show_error_dialog(text, parent=None):
     """Display an error dialog."""
+
+    # print traceback information to the terminal
+    import traceback
+    traceback.print_exc()
+
+    # create error dialog with error message
     try:
         if parent == None:
             parent = window
@@ -2764,7 +2770,7 @@ class STATDotWindow(DotWindow):
         """The constructor."""
         gtk.Window.__init__(self)
         self.set_title('STATview')
-        self.set_default_size(1010, 600)
+        self.set_default_size(1048, 600)
         uimanager = gtk.UIManager()
         accelgroup = uimanager.get_accel_group()
         self.add_accel_group(accelgroup)

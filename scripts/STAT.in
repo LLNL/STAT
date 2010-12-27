@@ -3,8 +3,8 @@
 export prefix=@prefix@
 export STAT_LMON_REMOTE_LOGIN=@rshcmd@
 export STAT_XPLAT_RSH=@rshcmd@
-if test -z $STAT_MRN_COMM_PATH; then
-    export STAT_MRN_COMM_PATH=@MRNETCOMMNODEBIN@
+if test -z $STAT_MRNET_COMM_PATH; then
+    export STAT_MRNET_COMM_PATH=@MRNETCOMMNODEBIN@
 fi
 if test -z $STAT_LMON_LAUNCHMON_ENGINE_PATH; then
     export STAT_LMON_LAUNCHMON_ENGINE_PATH=@LAUNCHMONBIN@
