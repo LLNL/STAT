@@ -1,5 +1,5 @@
 <para>
-A good way to run STAT is at the end of a batch script.  For example, if an application is estimated to take 10 hours to run and 12 hours are allocated, then you may consider your application hung if its still running up to the 12th hour.  In such a situation, one may choose to run STAT in the last 10 minutes of the allocation to get diagnostic information about the job. 
+A good way to run STAT is at the end of a batch script.  For example, if an application is estimated to take 10 hours to run and 12 hours are allocated, then you may consider your application hung if it is still running up to the 12th hour.  In such a situation, one may choose to run STAT in the last 10 minutes of the allocation to get diagnostic information about the job. 
 </para>
 <para>
 The following example script demonstrates how one might setup STAT to catch a hung job in a batch script.

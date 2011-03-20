@@ -1,3 +1,28 @@
+2011-03-09 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added some ability to handle edge labels with just count + 1 representative
+
+2011-02-28 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : added STAT_LMON_DEBUG_BES env var
+	* scripts/STATGUI.py : advanced option in GUI to enable LMON_DEBUG_BES
+
+2011-02-18 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : fix remap tree calculation for STATBench.  Needed snapshot of MRNet topology before BEs connect
+	* src/STAT_BackEnd.C : STATBench needs to include parent rank in connection info passed via fifo
+
+2011-02-03 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : don't set member variables to getenv(...), instead do a strdup, otherwise it will seg fault when freeing the member var.
+
+2011-02-01 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : new feature to reset the layout based on the current visible graph (i.e., save current .dot file and open in new tab)
+
+2011-01-21 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C, src/STAT_BackEnd.C : use strerror within pringMsg instead of perror
+	* scripts/STATview.py : resize text view Window instead of TextView + set_default_size to allow shrinking below default size.
+
+2011-01-21 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : fixed flat topology specification when no nodes specified
+	* src/STAT_BackEnd.C : send executable path to StackWalker
+
 2010-12-21 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C doc/src/stat_environment_variables.sgml scripts/STATGUI.in scripts/STAT.in script/STATBench.in : added STAT_MRNET_COMM_PATH in addition to STAT_MRN_COMM_PATH to match MRNet naming.  Sets both MRNET_COMM_PATH and MRN_COMM_PATH for backwards compatibility.
 

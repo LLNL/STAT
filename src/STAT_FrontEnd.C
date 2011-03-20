@@ -46,6 +46,11 @@ STAT_FrontEnd::STAT_FrontEnd()
     if (envValue != NULL)
         setenv("XPLAT_RSH", envValue, 1);
 
+    /* Set LMON_DEBUG_BES */
+    envValue = getenv("STAT_LMON_DEBUG_BES");
+    if (envValue != NULL)
+        setenv("LMON_DEBUG_BES", envValue, 1);
+
     /* Set the launchmon and mrnet_commnode paths based on STAT env vars */
     envValue = getenv("STAT_LMON_LAUNCHMON_ENGINE_PATH");
     if (envValue != NULL)
@@ -66,8 +71,11 @@ STAT_FrontEnd::STAT_FrontEnd()
     /* Set the daemon path and filter paths to the environment variable 
        specification if applicable.  Otherwise, set to default install 
        directory */
-    toolDaemonExe_ = getenv("STAT_DAEMON_PATH");
-    if (toolDaemonExe_ == NULL)
+    
+    envValue = getenv("STAT_DAEMON_PATH");
+    if (envValue != NULL)
+        toolDaemonExe_ = strdup(envValue);
+    else
     {
         if (strlen(getInstallPrefix()) > 1)
             snprintf(tmp, BUFSIZE, "%s/bin/STATD", getInstallPrefix());
@@ -76,13 +84,15 @@ STAT_FrontEnd::STAT_FrontEnd()
         toolDaemonExe_ = strdup(tmp);
         if (toolDaemonExe_ == NULL)
         {
-            perror("Failed on call to set tool daemon exe with strdup()\n");
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed on call to set tool daemon exe with strdup()\n", strerror(errno));
             exit(-1);
         }
     }
  
-    filterPath_ = getenv("STAT_FILTER_PATH");
-    if (filterPath_ == NULL)
+    envValue = getenv("STAT_FILTER_PATH");
+    if (envValue != NULL)
+        filterPath_ = strdup(envValue);
+    else
     {
         if (strlen(getInstallPrefix()) > 1)
             snprintf(tmp, BUFSIZE, "%s/lib/STAT_FilterDefinitions.so", getInstallPrefix());
@@ -91,7 +101,7 @@ STAT_FrontEnd::STAT_FrontEnd()
         filterPath_ = strdup(tmp);
         if (filterPath_ == NULL)
         {
-            perror("Failed on call to set filter path with strdup()\n");
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed on call to set filter path with strdup()\n", strerror(errno));
             exit(-1);
         }
     }
@@ -327,7 +337,7 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
         daemonArgv = (char **)malloc(2 * sizeof(char *));
         if (daemonArgv == NULL)
         {
-            perror("malloc failed to allocate for daemon argv\n");
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
         daemonArgv[0] = logOutDir_;
@@ -580,6 +590,13 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     startTime.setTime();
     leafInfo_.networkTopology = networkTopology;
     leafInfo_.daemons = applicationNodeSet_;
+
+//    std::vector<NetworkTopology::Node *> leaves;
+//    networkTopology->get_Leaves(leaves);
+    networkTopology->get_Leaves(leafInfo_.leafCps);
+    for (i = 0; i < leafInfo_.leafCps.size(); i++)
+        leafInfo_.leafCpRanks.insert(leafInfo_.leafCps[i]->get_Rank());
+
     statError = sendDaemonInfo();
     if (statError != STAT_OK)
     {
@@ -635,7 +652,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     static int connectTimeout = -1, i = 0;
     int statMergeFilterId;
     unsigned int nLeaves;
-    char *connectTimeoutString;
+    char *connectTimeoutString, fullTopologyFile[BUFSIZE];
     NetworkTopology *networkTopology;
     StatError_t statError;
 
@@ -729,7 +746,11 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     endTime.setTime();
     addPerfData("\tConnect to Daemons Time", (endTime - startTime).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tDaemons connected\n");
- 
+
+    snprintf(fullTopologyFile, BUFSIZE, "%s/%s.fulltop", outDir_, filePrefix_);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Outputting full MRNet topology file to %s\n", fullTopologyFile);
+    networkTopology->print_TopologyFile(fullTopologyFile); 
+
     /* Get MRNet Broadcast Communicator and create a new stream */
     startTime.setTime();
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tConfiguring MRNet connection...\n");
@@ -835,8 +856,7 @@ StatError_t STAT_FrontEnd::dumpProctable()
     f = fopen(fileName, "w");
     if (f == NULL)
     {
-        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to create ptab file %s\n", fileName);
-        perror("fopen failed to create ptab file");
+        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to create ptab file %s\n", strerror(errno), fileName);
         return STAT_FILE_ERROR;
     }
 
@@ -873,8 +893,7 @@ StatError_t STAT_FrontEnd::startLog(StatLog_t logType, char *logOutDir)
     ret = mkdir(logOutDir_, S_IRUSR | S_IWUSR | S_IXUSR); 
     if (ret == -1 && errno != EEXIST)
     {
-        perror("mkdir failed to create log directory");
-        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "mkidr failed to create log directory %s\n", logOutDir);
+        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: mkdir failed to create log directory %s\n", strerror(errno), logOutDir);
         return STAT_FILE_ERROR;
     }
 
@@ -883,10 +902,9 @@ StatError_t STAT_FrontEnd::startLog(StatLog_t logType, char *logOutDir)
     {
         snprintf(fileName, BUFSIZE, "%s/%s.STAT.log", logOutDir_, hostname_);
         logOutFp_ = fopen(fileName, "w");
-        if (fileName == NULL)
+        if (logOutFp_ == NULL)
         {
-            perror("fopen failed to open FE log file");
-            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "fopen failed to open file %s\n", fileName);
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open FE log file %s\n", strerror(errno), fileName);
             return STAT_FILE_ERROR;
         }
     }
@@ -1021,14 +1039,14 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
         daemonRanks = (IntList_t *)malloc(sizeof(IntList_t));
         if (daemonRanks == NULL)
         {
-            perror("malloc failed to allocate for daemonRanks\n");
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for daemonRanks\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
         daemonRanks->size = (iter->second).size();
         daemonRanks->list = (int *)malloc(daemonRanks->size * sizeof(int));
         if (daemonRanks->list == NULL)
         {
-            perror("malloc failed to allocate for daemonRanks->list\n");
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for daemonRanks->list\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
         daemonRanks->count = 0;
@@ -1105,7 +1123,7 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
             nodeRange = strdup(nodes.substr(openBracketPos + 1, closeBracketPos - (openBracketPos + 1)).c_str());
             if (nodeRange == NULL)
             {
-                perror("Failed on call to set node range with strdup()\n");
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed on call to set node range with strdup()\n", strerror(errno));
                 return STAT_ARG_ERROR;
             }
 
@@ -1199,8 +1217,7 @@ StatError_t STAT_FrontEnd::createOutputDir()
     /* Look for the STAT_results directory and create if it doesn't exist */
     if (getcwd(cwd, BUFSIZE) == NULL)
     {
-        perror("getcwd failed");
-        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get current working directory.\n");
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: getcwd failed\n", strerror(errno));
         return STAT_SYSTEM_ERROR;
     }        
     snprintf(resultsDirectory, BUFSIZE, "%s/STAT_results", cwd);
@@ -1245,8 +1262,7 @@ StatError_t STAT_FrontEnd::createOutputDir()
             break;
         else if (ret == -1 && errno != EEXIST)
         {
-            perror("mkdir failed to create run specific directory");
-            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "Failed to create run directory %s\n", outDir_);
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: mkdir failed to create run specific directory %s\n", strerror(errno), outDir_);
             return STAT_FILE_ERROR;
         }
     }
@@ -1359,7 +1375,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
             topology = (char *)malloc(BUFSIZE);
             if (topology == NULL)
             {
-                perror("malloc failed to allocate for topology\n");
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for topology\n", strerror(errno));
                 return STAT_ALLOCATE_ERROR;
             }
             snprintf(topology, BUFSIZE, "%d", communicationNodeList_.size() * procsPerNode_);
@@ -1391,7 +1407,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
             topology = (char *)malloc(BUFSIZE);
             if (topology == NULL)
             {
-                perror("malloc failed to allocate for topology\n");
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for topology\n", strerror(errno));
                 return STAT_ALLOCATE_ERROR;
             }
             snprintf(topology, BUFSIZE, "%d", communicationNodeList_.size() * procsPerNode_);
@@ -1437,8 +1453,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     file = fopen(topologyFileName, "w");
     if (file == NULL)
     {
-        perror("fopen failed to create topology file");
-        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "Failed to create topology file %s\n", topologyFileName);
+        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to create topology file %s\n", strerror(errno), topologyFileName);
         return STAT_FILE_ERROR;
     }
    
@@ -1446,6 +1461,8 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     parentIter = 0;
     childIter = 1;
     if (topology == NULL) /* Flat topology */
+        fprintf(file, "%s;\n", treeList[0].c_str());
+    else if (strcmp(topology, "0") == 0) /* Flat topology */
         fprintf(file, "%s;\n", treeList[0].c_str());
     else
     {
@@ -2258,7 +2275,7 @@ StatError_t STAT_FrontEnd::dumpPerf()
     perfFile = fopen(perfFileName, "a");
     if (perfFile ==NULL)
     {
-        perror("fopen failed to create performance results file");
+        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to create performance results file\n", strerror(errno));
         return STAT_FILE_ERROR;
     }
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Dumping performance info to %s\n", perfFileName);
@@ -2324,7 +2341,7 @@ StatError_t STAT_FrontEnd::dumpPerf()
     perfFile = fopen(usageLogFile, "a");
     if (perfFile == NULL)
     {
-        perror("fopen failed to open usage log file");
+        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open usage log file %s\n", strerror(errno), usageLogFile);
         return STAT_FILE_ERROR;
     }
     gettimeofday(&timeStamp, NULL);
@@ -2499,7 +2516,7 @@ void STAT_FrontEnd::printMsg(StatError_t statError, const char *sourceFile, int 
     }
    
     /* Print the message to the log */
-    if (logging_ == STAT_LOG_FE || logging_ == STAT_LOG_ALL)
+    if (logging_ == STAT_LOG_FE || logging_ == STAT_LOG_ALL && logOutFp_ != NULL)
     {
         if (sourceLine != -1 && sourceFile != NULL)
             fprintf(logOutFp_, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
@@ -2679,8 +2696,7 @@ StatError_t STAT_FrontEnd::setToolDaemonExe(const char *toolDaemonExe)
     toolDaemonExe_ = strdup(toolDaemonExe);
     if (toolDaemonExe_ == NULL)
     {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Failed to set tool daemon path with strdup to %s\n", toolDaemonExe);
-        perror("Failed to set tool daemon path with strdup()");
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to set tool daemon path with strdup() to %s\n", strerror(errno), toolDaemonExe);
         return STAT_ALLOCATE_ERROR;
     }
     return STAT_OK;
@@ -2731,8 +2747,7 @@ StatError_t STAT_FrontEnd::setFilterPath(const char *filterPath)
     filterPath_ = strdup(filterPath);
     if (filterPath_ == NULL)
     {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Failed to set filter path with strdup to %s\n", filterPath);
-        perror("Failed to set filter path with strdup()");
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to set filter path with strdup() to %s\n", strerror(errno), filterPath_);
         return STAT_ALLOCATE_ERROR;
     }
     return STAT_OK;
@@ -2748,21 +2763,19 @@ const char *STAT_FrontEnd::getRemoteNode()
     return remoteNode_;
 }
 
-StatError_t STAT_FrontEnd::addLauncherArgv(const char *_launcher_arg)
+StatError_t STAT_FrontEnd::addLauncherArgv(const char *launcherArg)
 {
     launcherArgc_++;
     launcherArgv_ = (char **)realloc(launcherArgv_, launcherArgc_ * sizeof(char *));
     if (launcherArgv_ == NULL)
     {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Failed to realloc launcherArgv_ to %d\n", launcherArgc_);
-        perror("Failed to realloc launcherArgv_\n");
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to realloc launcherArgv_ to %d\n", strerror(errno), launcherArgc_);
         return STAT_ALLOCATE_ERROR;
     }
-    launcherArgv_[launcherArgc_ - 2] = strdup(_launcher_arg);
+    launcherArgv_[launcherArgc_ - 2] = strdup(launcherArg);
     if (launcherArgv_[launcherArgc_ - 2] == NULL)
     {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Failed to add launcher arg %s with strdup\n", _launcher_arg);
-        perror("Failed to copy arg to launcherArgv_\n");
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to copy arg to launcherArgv_ with strdup() to %s\n", strerror(errno), launcherArg);
         return STAT_ALLOCATE_ERROR;
     }
 
@@ -2799,7 +2812,7 @@ StatError_t increaseSysLimits()
 
     if (getrlimit(RLIMIT_NOFILE, rlim) < 0) 
     {
-        perror("getrlimit failed:");
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: getrlimit failed\n", strerror(errno));
         return STAT_SYSTEM_ERROR;
     }
     else if (rlim->rlim_cur < rlim->rlim_max) 
@@ -2807,14 +2820,14 @@ StatError_t increaseSysLimits()
         rlim->rlim_cur = rlim->rlim_max;
         if (setrlimit (RLIMIT_NOFILE, rlim) < 0)
         {
-            perror("Unable to increase max no. files:");
+            printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: Unable to increase max no. files\n", strerror(errno));
             return STAT_SYSTEM_ERROR;
         }    
     }
 
     if (getrlimit(RLIMIT_NPROC, rlim) < 0) 
     {
-        perror("getrlimit failed:");
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: getrlimit failed\n", strerror(errno));
         return STAT_SYSTEM_ERROR;
     }
     else if (rlim->rlim_cur < rlim->rlim_max) 
@@ -2822,7 +2835,7 @@ StatError_t increaseSysLimits()
         rlim->rlim_cur = rlim->rlim_max;
         if (setrlimit (RLIMIT_NPROC, rlim) < 0)
         {
-            perror("Unable to increase max no. files:");
+            printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: Unable to increase max no. files\n", strerror(errno));
             return STAT_SYSTEM_ERROR;
         }
     }
@@ -2840,7 +2853,6 @@ StatError_t STAT_FrontEnd::setRanksList()
     map<int, RemapNode_t*>::iterator childOrderIter;
     list<int>::iterator remapRanksListIter;
     RemapNode_t *root, *currentNode;
-    vector<NetworkTopology::Node *> leaves;
     StatError_t ret;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating the merge order ranks list\n");
@@ -2848,20 +2860,20 @@ StatError_t STAT_FrontEnd::setRanksList()
     /* First we need to generate the nodes for the MRNet leaf communication 
        processes and the STAT BE daemons */
 //    network_->get_NetworkTopology()->get_Leaves(leaves);
-    leafInfo_.networkTopology->get_Leaves(leaves);
-    nLeaves = leaves.size();
+//    leafInfo_.networkTopology->get_Leaves(leaves);
+    nLeaves = leafInfo_.leafCps.size();
     daemonCount = 0;
     daemonIter = leafInfo_.daemons.begin();
 
     /* Create a node for each MRNet leaf communication process */
     for (i = 0; i < nLeaves; i++)
     {
-        rank = leaves[i]->get_Rank();
+        rank = leafInfo_.leafCps[i]->get_Rank();
+printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating the node for CP rank %d of %d\n", rank, nLeaves);
         currentNode = (RemapNode_t *)malloc(sizeof(RemapNode_t));
         if (currentNode == NULL)
         {
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "malloc failed to allocate remap node\n");
-            perror("malloc failed to allocate for currentNode\n");
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for currentNode\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
         currentNode->numChildren = 0;
@@ -2869,7 +2881,7 @@ StatError_t STAT_FrontEnd::setRanksList()
         rankToNode[rank] = currentNode;
         childOrder.clear();
 
-        /* Create a node for each daemons connected to this MRNet leaf CP */
+        /* Create a node for each daemon connected to this MRNet leaf CP */
         /* Note: this must be in the same order as the pack function */
         for (j = 0; j < (leafInfo_.daemons.size() / nLeaves) + (leafInfo_.daemons.size() % nLeaves > i ? 1 : 0); j++)
         {
@@ -2878,8 +2890,7 @@ StatError_t STAT_FrontEnd::setRanksList()
             currentNode = (RemapNode_t *)malloc(sizeof(RemapNode_t));
             if (currentNode == NULL)
             {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "malloc failed to allocate remap node\n");
-                perror("malloc failed to allocate for currentNode\n");
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for currentNode\n", strerror(errno));
                 return STAT_ALLOCATE_ERROR;
             }
             currentNode->lowRank = hostRanksMap_[*daemonIter]->list[0];
@@ -2890,6 +2901,7 @@ StatError_t STAT_FrontEnd::setRanksList()
             else if (currentNode->lowRank < rankToNode[rank]->lowRank)
                 rankToNode[rank]->lowRank = currentNode->lowRank;
             childOrder[currentNode->lowRank] = currentNode;
+printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating the node for BE %d, low rank %d\n", j, currentNode->lowRank);
             daemonIter++;
         }
 
@@ -2940,14 +2952,15 @@ RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node, map<int,
     map<int, RemapNode_t *>::iterator childOrderIter;
     RemapNode_t *ret, *child;
    
-    if (node->get_NumChildren() != 0)
+    //if (node->get_NumChildren() != 0)
+    //if (leafInfo_.leafCps.find(node->get_Rank()) != leafInfo_.leafCps.end())
+    if (leafInfo_.leafCpRanks.find(node->get_Rank()) == leafInfo_.leafCpRanks.end())
     {
         /* Generate the return node */
         ret = (RemapNode_t *)malloc(sizeof(RemapNode_t));
         if (ret == NULL)
         {
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "malloc failed to allocate remap node\n");
-            perror("malloc failed to allocate remap node\n");
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate remap node\n", strerror(errno));
             return NULL;
         }
         ret->numChildren = 0;
@@ -2977,8 +2990,7 @@ RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node, map<int,
         ret->children = (RemapNode_t **)malloc(ret->numChildren * sizeof(RemapNode_t));
         if (ret->children == NULL)
         {
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "malloc failed to allocate children\n");
-            perror("malloc failed to allocate for ret->children\n");
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for ret->children\n", strerror(errno));
             return NULL;
         }
         i = -1;
@@ -2987,15 +2999,20 @@ RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node, map<int,
             i++;
             ret->children[i] = childOrderIter->second;
         }
+        if (ret == NULL)
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: ret is NULL\n");
         return ret;
     }
     else
     {
         /* This is a MRNet leaf CP, so just return the generated rank node */
+        if (rankToNode[node->get_Rank()] == NULL)
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "rankToNode returned NULL for rank %d\n", node->get_Rank());
         return rankToNode[node->get_Rank()];
     }
 
     /* We should never end up here */
+    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Something went wrong!\n");
     return NULL;
 }
 
@@ -3052,7 +3069,6 @@ int pack(void *data, void *buf, int bufMax, int *bufLen)
     LeafInfo_t *leafInfo_ = (LeafInfo_t *)data;
     NetworkTopology *networkTopology = leafInfo_->networkTopology;
     NetworkTopology::Node *node;
-    vector<NetworkTopology::Node *> leaves;
     set<string>::iterator daemonIter;
     set<NetworkTopology::Node *>::iterator iter;
     string currentHost;
@@ -3066,8 +3082,7 @@ int pack(void *data, void *buf, int bufMax, int *bufLen)
     total += sizeof(int);
   
     /* pack up the number of parent nodes */
-    networkTopology->get_Leaves(leaves);
-    nLeaves = leaves.size();
+    nLeaves = leafInfo_->leafCps.size();
     memcpy(ptr, (void *)&nLeaves, sizeof(int));
     ptr += sizeof(int);
     total += sizeof(int);
@@ -3078,7 +3093,7 @@ int pack(void *data, void *buf, int bufMax, int *bufLen)
     for (i = 0; i < nLeaves; i++)
     {
         /* get the parent info */
-        node = leaves[i];
+        node = leafInfo_->leafCps[i];
         port = node->get_Port();
         currentHost = node->get_HostName();
         rank = node->get_Rank();
@@ -3238,7 +3253,7 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
     proctab_ = (MPIR_PROCDESC_EXT *)malloc(nApplNodes_ * nTasks * sizeof(MPIR_PROCDESC_EXT));
     if (proctab_ == NULL)
     {
-        perror("Failed to create proctable\n");
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to create proctable\n", strerror(errno));
         return STAT_ALLOCATE_ERROR;
     }
     for (i = 0; i < nApplNodes_; i++)

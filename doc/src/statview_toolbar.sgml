@@ -54,6 +54,14 @@ The toolbar operations are defined as follows:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term><GUIbutton>Layout</GUIbutton></term>
+    <listitem>
+        <para>
+        Reset the layout of the current graph and open in a new tab.  This is useful for compacting wide trees after performing some pruning operations.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>[Cut] MPI</GUIbutton></term>
     <listitem>
         <para>

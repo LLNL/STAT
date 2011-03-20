@@ -71,10 +71,11 @@ class STATGUI(STATDotWindow):
 
         Initializes all instance varaibles and creates the GUI window.
         """
-        try:
-            os.mkdir('%s/.STAT' %os.environ['HOME'])
-        except:
-            pass
+        if not os.path.exists('%s/.STAT' %os.environ['HOME']):
+            try:
+                os.mkdir('%s/.STAT' %os.environ['HOME'])
+            except:
+                pass
         self.STAT = STAT_FrontEnd()
         self.properties_window = None
         self.proctabfile = None
@@ -103,6 +104,10 @@ class STATGUI(STATDotWindow):
         self.options['Log Dir'] = os.environ['HOME']
         self.options['Log Frontend'] = False
         self.options['Log Backend'] = False
+        if 'STAT_LMON_DEBUG_BES' in os.environ:
+            self.options['Debug Backends'] = True
+        else:
+            self.options['Debug Backends'] = False
         self.options['Verbosity Type'] = 'error'
         self.options['Communication Nodes'] = ''
         self.options['Communication Processes per Node'] = 8
@@ -662,6 +667,7 @@ class STATGUI(STATDotWindow):
         frame = gtk.Frame('Misc')
         vbox2 = gtk.VBox()
         self.pack_combo_box(vbox2, 'Verbosity Type')
+        self.pack_check_button(vbox2, 'Debug Backends')
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 5)
         hbox = gtk.HBox()
@@ -723,6 +729,11 @@ class STATGUI(STATDotWindow):
             self.STAT.setVerbose(STAT_VERBOSE_STDOUT)
         elif self.options['Verbosity Type'] == 'full':
             self.STAT.setVerbose(STAT_VERBOSE_FULL)
+        if self.options['Debug Backends']:
+            os.environ['LMON_DEBUG_BES'] = "1"
+        else:
+            if 'LMON_DEBUG_BES' in os.environ:
+                del os.environ['LMON_DEBUG_BES']
         self.STAT.setProcsPerNode(self.options['Communication Processes per Node'])
         stat_wait_dialog.update_progress_bar(0.05)
 
@@ -736,6 +747,8 @@ class STATGUI(STATDotWindow):
                 ret = self.STAT.launchAndSpawnDaemons(self.options['Remote Host'])
             else:
                 ret = self.STAT.launchAndSpawnDaemons()
+        if 'LMON_DEBUG_BES' in os.environ:
+            del os.environ['LMON_DEBUG_BES']
         if ret != STAT_OK:
             show_error_dialog('Failed to Launch Daemons:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -754,7 +767,7 @@ class STATGUI(STATDotWindow):
         if self.options['Communication Nodes'] != '':
             ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], self.options['Communication Nodes'], False)
         else:
-            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], None, False)
+            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], '', False)
         if ret != STAT_OK:
             show_error_dialog('Failed to Launch MRNet Tree:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -1154,6 +1167,8 @@ class STATGUI(STATDotWindow):
             in_range = False
             task_count = 0
             task_list, fill_color_string, font_color_string = eq_class
+            if task_list == []:
+                continue
             for num in task_list:
                 task_count += 1
                 if num == prev + 1:
@@ -1390,6 +1405,9 @@ class STATGUI(STATDotWindow):
             for rank in subset_list:
                 str_list += '%s ' %(rank)
             arg_list.append('-default_parallel_attach_subset=%s' %(str_list))
+            # "-e g" added for BlueGene work around
+            arg_list.append('-e')
+            arg_list.append('g')
             arg_list.append(self.options['Launcher Exe'])
         elif debugger == 'DDT':
             filepath = self.options['DDT Path']
@@ -1421,7 +1439,7 @@ class STATGUI(STATDotWindow):
 #            arg_list.append(executable_path)
 #            for pid in pids:
 #                arg_list.append(pid)
-        print 'fork exec %s' %debugger, arg_list
+        sys.stdout.write('fork exec %s %s\n' %(debugger, arg_list))
         # First Detach STAT!!!
         if self.STAT != None:
             stop_list = intArray(len(subset_list))

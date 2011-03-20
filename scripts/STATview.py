@@ -259,10 +259,21 @@ next_label_id = -1
 #  \n
 def get_task_list(label):
     """Get an integer list of tasks from an edge label."""
-    if label.find('label') != -1:
-        label = label[9:-3]
-    elif label.find('[') != -1:
-        label = label[1:-1]
+    #print 'get tl', label, 
+    colon_pos = label.find(':')
+    if colon_pos != -1:
+        # this is just a count and representative
+        if label.find('label') != -1:
+            label = label[colon_pos + 2:-3]
+        elif label.find('[') != -1:
+            label = label[colon_pos + 2:-1]
+    else:
+        # this is a full node list
+        if label.find('label') != -1:
+            label = label[9:-3]
+        elif label.find('[') != -1:
+            label = label[1:-1]
+    #print label
     task_list = []
     if label == '':
         return task_list
@@ -273,7 +284,10 @@ def get_task_list(label):
             end = int(element[dash_index + 1:])
             task_list += range(start, end+1)
         else:
-            task_list.append(int(element))
+            try:
+                task_list.append(int(element))
+            except:
+                pass
     return task_list
 
 
@@ -283,7 +297,19 @@ def get_task_list(label):
 #  \n
 def get_num_tasks(label):
     """Get the number of tasks in an edge label."""
-    return len(get_task_list(label))
+    colon_pos = label.find(':')
+    if colon_pos != -1:
+        # this is just a count and representative
+        #print 'task count of ', label, ' = ',
+        if label.find('label') != -1:
+            label = label[8:colon_pos]
+        elif label.find('[') != -1:
+            label = label[0:colon_pos]
+        #print label
+        return int(label)
+    else:
+        # this is a full node list
+        return len(get_task_list(label))
 
 
 ## \param node - the node
@@ -298,12 +324,18 @@ def get_node_task_list(node):
     global next_label_id
     if node.edge_label_id in task_label_id_to_list.keys(): 
         return task_label_id_to_list[node.edge_label_id]
-    if node.edge_label.find('label') != -1:
-        key = node.edge_label[9:-3]
-    elif node.edge_label.find('[') != -1:
-        key = node.edge_label[1:-1]
-    else:
+    colon_pos = node.edge_label.find(':')
+    if colon_pos != -1:
+        # this is just a count and representative
         key = node.edge_label
+    else:
+        # this is a full node list
+        if node.edge_label.find('label') != -1:
+            key = node.edge_label[9:-3]
+        elif node.edge_label.find('[') != -1:
+            key = node.edge_label[1:-1]
+        else:
+            key = node.edge_label
     if key in task_label_to_list.keys():
         task_list = task_label_to_list[key]
     else:
@@ -380,7 +412,20 @@ def get_leaf_tasks(node):
 #  \n
 def get_leaf_num_tasks(node):
     """Get the number of tasks that ended on this node."""
-    return len(get_leaf_tasks(node))
+    colon_pos = node.edge_label.find(':')
+    if colon_pos != -1:
+        # this is just a count and representative
+        out_sum = 0
+        for edge in node.out_edges:
+            out_sum += get_num_tasks(edge.label)
+        if out_sum < get_num_tasks(node.edge_label):
+            return get_num_tasks(node.edge_label) - out_sum
+        else:
+            return 0
+    else:
+        # this is a full node list
+        return len(get_leaf_tasks(node))
+    return 0 # should not get here
 
 
 ## \param dot_filename - the input .dot file
@@ -444,25 +489,34 @@ def create_temp(dot_filename):
             label = tokens[3]
             max_size = 18
             num_tasks = get_num_tasks(label)
-            if len(label) > max_size and label.find('...') == -1:
-                # truncate long edge labels
-                new_label = label[0:max_size]
-                char = 'x'
-                i = max_size-1
-                while char != ',' and i+1 < len(label) and char != ']' and\
-                      char != '"':
-                    i += 1
-                    char = label[i]
-                    new_label += char
-                if char == ']' and i+1 < len(label):
-                    new_label += '"]'
-                elif char == '"':
-                    new_label += ']'
-                elif i+1 < len(label):
-                    new_label += '...]"]'
-                label = new_label
-            label = label[0:8] + str(num_tasks) + ':' + label[8:]
-            label = label
+            if label.find(':') != -1:
+                # this is just a count and representative
+                representative = get_task_list(label)[0]
+                if num_tasks == 1:
+                    label = label[0:8] + str(num_tasks) + ':[' +  str(representative) + ']"]'
+                else:
+                    label = label[0:8] + str(num_tasks) + ':[' +  str(representative) + ',...]"]'
+                #print 'new label = ', label
+            else:
+                # this is a full node list
+                if len(label) > max_size and label.find('...') == -1:
+                    # truncate long edge labels
+                    new_label = label[0:max_size]
+                    char = 'x'
+                    i = max_size-1
+                    while char != ',' and i+1 < len(label) and char != ']' and\
+                          char != '"':
+                        i += 1
+                        char = label[i]
+                        new_label += char
+                    if char == ']' and i+1 < len(label):
+                        new_label += '"]'
+                    elif char == '"':
+                        new_label += ']'
+                    elif i+1 < len(label):
+                        new_label += '...]"]'
+                    label = new_label
+                label = label[0:8] + str(num_tasks) + ':' + label[8:]
             line = '\t' + str(source) + ' -> ' + str(sink) + ' ' + label + '\n'
             temp_dot_file.write('%s' %line)
     temp_dot_file.write('}\n')
@@ -1232,6 +1286,7 @@ class STATGraph(Graph):
         # create the source view window
         if self.source_view_window == None:
             self.source_view_window = gtk.Window()
+            self.source_view_window.set_default_size(800, 600)
             self.source_view_window.set_title('Source View %s' %source)
             self.source_view_window.connect('destroy', self.on_source_view_destroy)
         if self.source_view_notebook == None:
@@ -1239,8 +1294,6 @@ class STATGraph(Graph):
             self.source_view_window.add(self.source_view_notebook)
         frame = gtk.Frame("")
         source_view = gtk.TextView()
-
-        source_view.set_size_request(800, 800)
         source_view.set_wrap_mode(False)
         source_view.set_editable(False)
         source_view.set_cursor_visible(False)
@@ -1829,7 +1882,7 @@ class STATGraph(Graph):
                 r, g, b, p = shape.pen.fillcolor
                 shape.pen.fillcolor = (0.0, 0.0, 0.0, p)
         return modified
-
+    
     def hide_mpi(self):
         """Hide the MPI implementation frames."""
         modified = False
@@ -2322,6 +2375,7 @@ class STATGraph(Graph):
 
     def node_is_visual_eq_leaf(self, node):
         """Determine if the node is an eq class leaf of the visible tree."""
+        #TODO-count-rep: using task list not sufficient if we just have count + representative
         if node.hide == True or node.node_name == '0':
             return False
         task_list = []
@@ -2725,6 +2779,7 @@ class STATDotWindow(DotWindow):
     ui += '            <menuitem action="SearchPath"/>\n'
     ui += '            <separator/>\n'
     ui += '            <menuitem action="NewTab"/>\n'
+    ui += '            <menuitem action="ResetLayout"/>\n'
     ui += '            <menuitem action="CloseTab"/>\n'
     ui += '            <separator/>\n'
     ui += '            <menuitem action="Quit"/>\n'
@@ -2751,6 +2806,7 @@ class STATDotWindow(DotWindow):
     ui += '        <toolitem action="Undo"/>\n'
     ui += '        <toolitem action="Redo"/>\n'
     ui += '        <toolitem action="OriginalGraph"/>\n'
+    ui += '        <toolitem action="ResetLayout"/>\n'
     ui += '        <toolitem action="HideMPI"/>\n'
     ui += '        <toolitem action="TraverseGraph"/>\n'
     ui += '        <toolitem action="ShortestPath"/>\n'
@@ -2789,6 +2845,7 @@ class STATDotWindow(DotWindow):
         actions.append(('Undo', gtk.STOCK_UNDO, '_Undo', '<control>Z', 'Undo operation', lambda a: self.on_toolbar_action(a, None, self.get_current_graph().undo, ())))
         actions.append(('Redo', gtk.STOCK_REDO, '_Redo', '<control>R', 'Redo operation', lambda a: self.on_toolbar_action(a, None, self.get_current_graph().redo, (self.get_current_widget(), ))))
         actions.append(('OriginalGraph', gtk.STOCK_HOME, 'Reset', None, 'Revert to original graph', lambda a: self.on_toolbar_action(a, 'Original Graph', self.get_current_graph().on_original_graph, (self.get_current_widget(), ))))
+        actions.append(('ResetLayout', gtk.STOCK_REFRESH, 'Layout', None, 'Reset the layout of the current graph and open in a new tab', lambda a: self.on_reset_layout()))
         actions.append(('HideMPI', gtk.STOCK_CUT, 'MPI', None, 'Hide the MPI implementation', lambda a: self.on_toolbar_action(a, 'Hide MPI', self.get_current_graph().hide_mpi, ())))
         actions.append(('TraverseGraph', gtk.STOCK_GO_DOWN, 'Eq C', None, 'Traverse the graphs equivalence classes', self.on_traverse_graph))
         if have_tomod:
@@ -2825,14 +2882,13 @@ class STATDotWindow(DotWindow):
         self.vbox.pack_start(menubar, False)
         hbox = gtk.HBox()
         hbox.pack_start(toolbar, True)
-        image = gtk.Image()
-        image_OK = True
-        try:
-            pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
-            image.set_from_pixbuf(pixbuf)
-            hbox.pack_start(image, False)
-        except gobject.GError, error:
-            pass
+#        image = gtk.Image()
+#        try:
+#            pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
+#            image.set_from_pixbuf(pixbuf)
+#            hbox.pack_start(image, False)
+#        except gobject.GError, error:
+#            pass
         self.vbox.pack_start(hbox, False)
         self.tabs = []
         self.notebook = gtk.Notebook()
@@ -3105,6 +3161,27 @@ class STATDotWindow(DotWindow):
         else:
             self.chooser.destroy()
 
+    def on_reset_layout(self):
+        temp_dot_filename = 'redraw.dot'
+        try:
+            temp_dot_file = open(temp_dot_filename, 'w')
+        except:
+            home_dir = os.environ.get("HOME")
+            temp_dot_filename = '%s/redraw.dot' %home_dir
+            try:
+                temp_dot_file = open(temp_dot_filename, 'w')
+            except:
+                show_error_dialog('Failed to open temp dot file %s for writing' %temp_dot_filename)
+                return False
+        temp_dot_file.close()
+        self.get_current_graph().save_dot(temp_dot_filename)
+        page = self.notebook.get_current_page()
+        self.create_new_tab(page + 1)
+        self.notebook.set_current_page(page + 1)
+        self.open_file(temp_dot_filename)
+        os.remove(temp_dot_filename)
+        return True
+
     def on_modify_search_paths(self, action):
         """Callback to generate dialog to modify search paths."""
         search_dialog = gtk.Dialog('add file search path', self)
@@ -3298,6 +3375,7 @@ class STATDotWindow(DotWindow):
 
     def on_focus_task(self, action):
         """Callback to handle pressing of focus task button."""
+        #TODO-count-rep: does not work if we just have count + 1 representative
         if self.get_current_graph().cur_filename == '':
             return False
         self.task_dialog = gtk.Dialog('focus on task', self)
@@ -3549,51 +3627,52 @@ class STATDotWindow(DotWindow):
             text_view_buffer.insert_with_tags_by_name(iter, function, fore_color_tag, back_color_tag, "monospace")
             sw.add(text_view)
             my_frame.add(sw)
-            #TODO: make frames resizable
             vpaned1.add1(my_frame)
-            leaf_tasks = get_leaf_tasks(node)
-            num_leaf_tasks = len(leaf_tasks)
-            num_tasks = get_num_tasks(tasks)
-            if num_leaf_tasks != 0:
-                vpaned2 = gtk.VPaned()
-                if num_leaf_tasks == 1:
-                    my_frame = gtk.Frame("%d Leaf Task:" %(num_leaf_tasks))
-                else:
-                    my_frame = gtk.Frame("%d Leaf Tasks:" %(num_leaf_tasks))
-                sw = gtk.ScrolledWindow()
-                sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-                task_view = gtk.TextView()
-                task_view.set_editable(False)
-                task_view.set_cursor_visible(False)
-                task_view_buffer = task_view.get_buffer()
-                task_view.set_wrap_mode(gtk.WRAP_WORD)
-                task_view_buffer.set_text(list_to_string(leaf_tasks))
-                sw.add(task_view)
-                my_frame.add(sw)
+            #TODO: make frames resizable
+            if tasks.find(':') == -1:
+                leaf_tasks = get_leaf_tasks(node)
+                num_leaf_tasks = len(leaf_tasks)
+                num_tasks = get_num_tasks(tasks)
+                if num_leaf_tasks != 0:
+                    vpaned2 = gtk.VPaned()
+                    if num_leaf_tasks == 1:
+                        my_frame = gtk.Frame("%d Leaf Task:" %(num_leaf_tasks))
+                    else:
+                        my_frame = gtk.Frame("%d Leaf Tasks:" %(num_leaf_tasks))
+                    sw = gtk.ScrolledWindow()
+                    sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+                    task_view = gtk.TextView()
+                    task_view.set_editable(False)
+                    task_view.set_cursor_visible(False)
+                    task_view_buffer = task_view.get_buffer()
+                    task_view.set_wrap_mode(gtk.WRAP_WORD)
+                    task_view_buffer.set_text(list_to_string(leaf_tasks))
+                    sw.add(task_view)
+                    my_frame.add(sw)
+                    if num_tasks != num_leaf_tasks:
+                        vpaned2.add1(my_frame)
+                    else:
+                        vpaned1.add2(my_frame)
                 if num_tasks != num_leaf_tasks:
-                    vpaned2.add1(my_frame)
-                else:
-                    vpaned1.add2(my_frame)
-            if num_tasks != num_leaf_tasks:
-                if num_tasks == 1:
-                    my_frame = gtk.Frame("%d Total Task:" %(num_tasks))
-                else:
-                    my_frame = gtk.Frame("%d Total Tasks:" %(num_tasks))
-                sw = gtk.ScrolledWindow()
-                sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-                task_view = gtk.TextView()
-                task_view.set_editable(False)
-                task_view.set_cursor_visible(False)
-                task_view_buffer = task_view.get_buffer()
-                task_view.set_wrap_mode(gtk.WRAP_WORD)
-                task_view_buffer.set_text(tasks.replace(",", ", ").strip('[').strip(']'))
-                sw.add(task_view)
-                my_frame.add(sw)
-                try:
-                    vpaned2.add2(my_frame)
-                    vpaned1.add2(vpaned2)
-                except:
-                    vpaned1.add2(my_frame)
+                    if num_tasks == 1:
+                        my_frame = gtk.Frame("%d Total Task:" %(num_tasks))
+                    else:
+                        my_frame = gtk.Frame("%d Total Tasks:" %(num_tasks))
+                    sw = gtk.ScrolledWindow()
+                    sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+                    task_view = gtk.TextView()
+                    task_view.set_editable(False)
+                    task_view.set_cursor_visible(False)
+                    task_view_buffer = task_view.get_buffer()
+                    task_view.set_wrap_mode(gtk.WRAP_WORD)
+                    task_view_buffer.set_text(tasks.replace(",", ", ").strip('[').strip(']'))
+                    sw.add(task_view)
+                    my_frame.add(sw)
+                    try:
+                        vpaned2.add2(my_frame)
+                        vpaned1.add2(vpaned2)
+                    except:
+                        vpaned1.add2(my_frame)
             self.my_dialog.vbox.pack_start(vpaned1, True, True, 5)
             self.separator = gtk.HSeparator()
             self.my_dialog.vbox.pack_start(self.separator, False, True, 5)

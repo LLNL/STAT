@@ -102,6 +102,7 @@ STAT_BackEnd::STAT_BackEnd()
 #ifdef STACKWALKER
     /* Code to setup StackWalker debug logging */
     envValue = getenv("STAT_SW_DEBUG_LOG_DIR");
+//    envValue = "/usr/global/tools/stat/logs";
     if (envValue != NULL)
     {
         snprintf(fileName, BUFSIZE, "%s/%s.sw.txt", envValue, localHostName_);
@@ -399,8 +400,7 @@ StatError_t STAT_BackEnd::mainLoop()
             retval = select(max_fd, &readfds, &writefds, &exceptfds, NULL);
             if (retval < 0 && errno != EINTR)
             {
-                perror("select");
-                printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Select failed\n");
+                printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: select failed\n", strerror(errno));
                 return STAT_SYSTEM_ERROR;
             }
             if (FD_ISSET(mrnNotificationFd, &readfds))
@@ -769,7 +769,7 @@ StatError_t STAT_BackEnd::Attach()
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
 #ifdef STACKWALKER
-        proc = Walker::newWalker(proctab_[i].pd.pid);
+        proc = Walker::newWalker(proctab_[i].pd.pid, proctab_[i].pd.executable_name);
         if (proc == NULL)
         {
             printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, getLastErrorMsg());
@@ -2140,8 +2140,7 @@ StatError_t STAT_BackEnd::startLog(char *logOutDir)
     logOutFp_ = fopen(fileName, "w");
     if (logOutFp_ == NULL)
     {
-        perror("fopen");
-        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "File %s\n", fileName);
+        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
         return STAT_FILE_ERROR;
     }
     return STAT_OK;
@@ -2285,14 +2284,13 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
             fd = open(fileName, O_WRONLY);
             if (fd == -1)
             {
-                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "failed to open fifo %s\n", fileName);
-                perror("open()");
+                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: open() failed for %s\n", strerror(errno), fileName);
                 remove(fileName);
                 return STAT_FILE_ERROR;
             }
 
             /* Write the MRNet connection information to the fifo */
-            snprintf(data, BUFSIZE, "%s %d %d %d", leafInfoArray.leaves[i].parentHostName, leafInfoArray.leaves[i].parentPort, leafInfoArray.leaves[i].rank, proctab_[count].mpirank);
+            snprintf(data, BUFSIZE, "%s %d %d %d %d", leafInfoArray.leaves[i].parentHostName, leafInfoArray.leaves[i].parentPort, leafInfoArray.leaves[i].parentRank, leafInfoArray.leaves[i].rank, proctab_[count].mpirank);
             bytesWritten = 0;
             while (bytesWritten < strlen(data))
             {
@@ -2300,8 +2298,7 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
                 ret = write(fd, ptr, strlen(ptr));
                 if (ret == -1)
                 {
-                    printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "failed to write to fifo %s\n", fileName);
-                    perror("write()");
+                    printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: write() to fifo %s failed\n", strerror(errno), fileName);
                     remove(fileName);
                     return STAT_FILE_ERROR;
                 }
@@ -2312,8 +2309,7 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
             ret = close(fd);
             if (ret != 0)
             {
-                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "failed to close the fifo fd\n");
-                perror("close()");
+                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: close() failed for fifo %s, fd %d\n", strerror(errno), fileName, fd);
                 remove(fileName);
                 return STAT_FILE_ERROR;
             }
@@ -2327,8 +2323,7 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
         ret = remove(fileName);
         if (ret != 0)// && errno != ENOENT)
         {
-            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "Failed to remove fifo %s\n", fileName);
-            perror("remove()");
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: remove() failed for fifo %s\n", strerror(errno), fileName);
             return STAT_FILE_ERROR;
         }
     }
@@ -2342,7 +2337,7 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
 
 StatError_t STAT_BackEnd::statBenchConnect()
 {
-    int i, ret, fd, bytesRead = 0, inPort, inRank, mpiRank;
+    int i, ret, fd, bytesRead = 0, inPort, inParentRank, inRank, mpiRank;
     char fileName[BUFSIZE], inHostName[BUFSIZE], data[BUFSIZE], *ptr;
 
     for (i = 0; i < 8192; i++)
@@ -2358,8 +2353,7 @@ StatError_t STAT_BackEnd::statBenchConnect()
                 continue;
             else
             {
-                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "failed to create fifo %s\n", fileName);
-                perror("mkfifo()");
+                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: mkfifo() failed for %s\n", strerror(errno), fileName);
                 return STAT_FILE_ERROR;
             }
         }
@@ -2370,8 +2364,7 @@ StatError_t STAT_BackEnd::statBenchConnect()
     fd = open(fileName, O_RDONLY);
     if (fd == -1)
     {
-        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "Failed to open fifo %s\n", fileName);
-        perror("open()");
+        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: open() failed for fifo %s\n", strerror(errno), fileName);
         remove(fileName);
         return STAT_FILE_ERROR;
     }
@@ -2385,8 +2378,7 @@ StatError_t STAT_BackEnd::statBenchConnect()
         ret = read(fd, ptr, BUFSIZE-bytesRead);
         if (ret == -1)
         {
-            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "Failed to read from fifo\n");
-            perror("read()");
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: read() from fifo %s fd %d failed\n", strerror(errno), fileName, fd);
             remove(fileName);
             return STAT_FILE_ERROR;
         }
@@ -2394,23 +2386,22 @@ StatError_t STAT_BackEnd::statBenchConnect()
     } while (ret > 0);
 
     /* Extract the information from the received string */
-    if (sscanf(data, "%s %d %d %d", inHostName, &inPort, &inRank, &mpiRank) == -1)
+    if (sscanf(data, "%s %d %d %d %d", inHostName, &inPort, &inParentRank, &inRank, &mpiRank) == -1)
     {
-        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to find MRNet connection info\n");
-        perror("sscanf()");
+        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: sscanf() failed to find MRNet connection info\n", strerror(errno));
         remove(fileName);
         return STAT_MRNET_ERROR;
     }
     parentHostName_ = strdup(inHostName);
     parentPort_ = inPort;
+    parentRank_ = inParentRank;
     myRank_ = inRank;
 
     /* Close the fifo fd */
     ret = close(fd);
     if (ret == -1)
     {
-        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "Failed to close fifo fd\n");
-        perror("close()");
+        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: close() failed for fifo %s, fd %d\n", strerror(errno), fileName, fd);
         remove(fileName);
         return STAT_FILE_ERROR;
     }

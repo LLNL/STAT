@@ -67,6 +67,8 @@ typedef struct
 {
     MRN::NetworkTopology *networkTopology;
     std::multiset<std::string> daemons;
+    std::vector<MRN::NetworkTopology::Node *> leafCps;
+    std::set<int> leafCpRanks;
 } LeafInfo_t;
 
 //! A struct to help determine ranks lists for each daemon

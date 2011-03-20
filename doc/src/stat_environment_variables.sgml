@@ -114,5 +114,13 @@ Several environment variables influence STAT and its dependent packages.  Note t
         </para>
     </listitem>
 </varlistentry>
+<varlistentry>
+    <term>STAT_LMON_DEBUG_BES=<replaceable class="parameter">value</replaceable></term>
+    <listitem>
+        <para>
+        Launch the backends under a debugger's control if <replaceable class="parameter">value</replaceable> is set (must be enabled in LaunchMON configuration).
+        </para>
+    </listitem>
+</varlistentry>
 </variablelist>
 
