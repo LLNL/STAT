@@ -302,7 +302,7 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
 
     /* Register STAT's pack function */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering pack function with LaunchMON\n");
-    rc = LMON_fe_regPackForFeToBe(lmonSession_, pack);
+    rc = LMON_fe_regPackForFeToBe(lmonSession_, STATpack);
     if (rc != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to register pack function\n");
@@ -2395,6 +2395,7 @@ StatError_t STAT_FrontEnd::detachApplication(bool blocking)
     return detachApplication(NULL, 0, blocking);
 }
 
+// TODO: this stop list obviously won't scale, but most subsets should be small anyway
 StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bool blocking)
 {
     int tag, retval, i;
@@ -2411,6 +2412,16 @@ StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bo
     {
         printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
         return STAT_NOT_CONNECTED_ERROR;
+    }
+    if (WIFKILLED(lmonState))
+    {
+        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
+        return STAT_APPLICATION_EXITED;
+    }
+    if (!WIFBESPAWNED(lmonState))
+    {
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
+        return STAT_DAEMON_ERROR;
     }
 
     /* Check for pending acks */
@@ -3059,7 +3070,7 @@ StatError_t STAT_FrontEnd::freeRemapTree(RemapNode_t *node)
     return STAT_OK;
 }
 
-int pack(void *data, void *buf, int bufMax, int *bufLen)
+int STATpack(void *data, void *buf, int bufMax, int *bufLen)
 {
     int i, j, total = 0, nLeaves, len, len2, port, rank, parentPort, daemonCount, daemonRank;
     char *ptr = (char *)buf, *daemonCountPtr, *childCountPtr;

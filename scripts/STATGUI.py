@@ -857,8 +857,6 @@ class STATGUI(STATDotWindow):
         """Callback to pause the job."""
         self.set_action_sensitivity('paused')
         ret = self.STAT.pause()
-        #if ret == STAT_APPLICATION_EXITED:
-        #    show_error_dialog('Application has exited, ignoring request to pause application\n', self)
         if ret != STAT_OK:
             show_error_dialog('Failed to pause application:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -879,8 +877,6 @@ class STATGUI(STATDotWindow):
         """Callback to resume the job."""
         self.set_action_sensitivity('running')
         ret = self.STAT.resume()
-        #if ret == STAT_APPLICATION_EXITED:
-        #    show_error_dialog('Application has exited, ignoring request to pause application\n', self)
         if ret != STAT_OK:
             show_error_dialog('Failed to resume application:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -965,9 +961,8 @@ class STATGUI(STATDotWindow):
         ret = self.STAT.pause()
         stat_wait_dialog.update_progress_bar(0.35)
         self.set_action_sensitivity('paused')
-        if ret == STAT_APPLICATION_EXITED:
-            ret_val = ret
-        elif ret != STAT_OK:
+        if ret != STAT_OK:
+            show_error_dialog('Failed to pause application during sample stack trace operation:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
             return ret
         sample_type = STAT_FUNCTION_NAME_ONLY
@@ -1035,13 +1030,14 @@ class STATGUI(STATDotWindow):
             if i == 1:
                 self.options['Clear On Sample'] = False
             ret = self.STAT.pause()
-            self.set_action_sensitivity('paused')
             if ret == STAT_APPLICATION_EXITED:
                 ret_val = STAT_APPLICATION_EXITED
-            elif ret != STAT_OK:
-                show_error_dialog('Failed to pause application:\n%s' %self.STAT.getLastErrorMessage(), self)
+                break
+            if ret != STAT_OK:
+                show_error_dialog('Failed to pause application during sample multiple operation:\n%s' %self.STAT.getLastErrorMessage(), self)
                 self.on_fatal_error()
                 return ret
+            self.set_action_sensitivity('paused')
 
             sample_type = STAT_FUNCTION_NAME_ONLY
             if self.options['Sample Type'] == 'function and pc':
@@ -1051,6 +1047,7 @@ class STATGUI(STATDotWindow):
             ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 0, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
             if ret != STAT_OK:
                 if ret == STAT_APPLICATION_EXITED:
+                    ret_val = STAT_APPLICATION_EXITED
                     break
                 show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
                 self.on_fatal_error()
@@ -1059,20 +1056,24 @@ class STATGUI(STATDotWindow):
                 if gtk.events_pending():
                     gtk.main_iteration()
                 ret = self.STAT.receiveAck(False)
-                if ret == STAT_OK or ret == STAT_APPLICATION_EXITED:
+                if ret == STAT_OK:
+                    break
+                elif ret == STAT_APPLICATION_EXITED:
+                    ret_val = STAT_APPLICATION_EXITED
                     break
                 elif ret != STAT_PENDING_ACK:
-                    show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
+                    show_error_dialog('Failed to receive ack from sample operation:\n%s' %self.STAT.getLastErrorMessage(), self)
                     self.on_fatal_error()
                     return ret
             if ret == STAT_APPLICATION_EXITED:
+                ret_val = STAT_APPLICATION_EXITED
                 break
                     
 
             if self.options['Gather Individual Samples'] == True:
                 ret = self.STAT.gatherLastTrace(False)
                 if ret != STAT_OK:
-                    show_error_dialog('Failed to gather stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
+                    show_error_dialog('Failed to gather last stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
                     self.on_fatal_error()
                     return ret
                 while 1:
@@ -1082,7 +1083,7 @@ class STATGUI(STATDotWindow):
                     if ret == STAT_OK:
                         break
                     elif ret != STAT_PENDING_ACK:
-                        show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
+                        show_error_dialog('Failed to receive last stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
                         self.on_fatal_error()
                         return ret
                 filename = self.STAT.getLastDotFilename()
@@ -1107,6 +1108,7 @@ class STATGUI(STATDotWindow):
                     break
                 elif ret != STAT_OK:
                     return ret
+                self.set_action_sensitivity('running')
                 for i in range(int(self.options['Trace Frequency (ms)'] / 10)):
                     time.sleep(.01)
                     if gtk.events_pending():
@@ -1145,6 +1147,7 @@ class STATGUI(STATDotWindow):
         if ret_val != STAT_OK:
             show_error_dialog('An error was detected:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
+            
         return ret_val
     
     def on_identify_num_eq_classes(self, action):

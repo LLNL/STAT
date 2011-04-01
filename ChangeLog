@@ -1,3 +1,11 @@
+2011-03-29 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : Renamed STAT's pack funtion to avoid collisions
+	* scripts/STATGUI.py : Improved handling of application exit on sample multiple
+
+2011-03-28 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : moved StackWalker exit check (mistakenly put in if handleDebugEvent == false branch)
+	* src/STAT_FrontEnd.C : check LMON state in detach ack
+
 2011-03-09 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATview.py : added some ability to handle edge labels with just count + 1 representative
 

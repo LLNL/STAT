@@ -102,7 +102,6 @@ STAT_BackEnd::STAT_BackEnd()
 #ifdef STACKWALKER
     /* Code to setup StackWalker debug logging */
     envValue = getenv("STAT_SW_DEBUG_LOG_DIR");
-//    envValue = "/usr/global/tools/stat/logs";
     if (envValue != NULL)
     {
         snprintf(fileName, BUFSIZE, "%s/%s.sw.txt", envValue, localHostName_);
@@ -164,8 +163,10 @@ STAT_BackEnd::~STAT_BackEnd()
     if (network_ != NULL)
     {
 #ifdef MRNET3
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waiting for shutdown\n");
         network_->waitfor_ShutDown();
 #endif
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "deleting network\n");
         delete network_;
     }
 }
@@ -401,6 +402,7 @@ StatError_t STAT_BackEnd::mainLoop()
             if (retval < 0 && errno != EINTR)
             {
                 printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: select failed\n", strerror(errno));
+                //TODO: do we really want to exit?
                 return STAT_SYSTEM_ERROR;
             }
             if (FD_ISSET(mrnNotificationFd, &readfds))
@@ -421,23 +423,25 @@ StatError_t STAT_BackEnd::mainLoop()
                 if (result == false)
                 {
                     printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Error handling debug events: %s\n", getLastErrorMsg());
-                    return STAT_STACKWALKER_ERROR;
+                    //TODO: do we really want to exit?
+                    //return STAT_STACKWALKER_ERROR;
+                }
                 
-                    /* Check is target processes exited, if so, set Walker to NULL */
-                    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+                /* Check is target processes exited, if so, set Walker to NULL */
+                for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+                {
+                    if (iter->second == NULL)
+                        continue;
+                    ProcDebug *pdebug = dynamic_cast<ProcDebug *>(iter->second->getProcessState());
+                    if (pdebug)
                     {
-                        if (iter->second == NULL)
-                            continue;
-                        ProcDebug *pdebug = dynamic_cast<ProcDebug *>(iter->second->getProcessState());
-                        if (pdebug)
+                        if (pdebug->isTerminated())
                         {
-                            if (pdebug->isTerminated())
-                            {
-                                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Task %d has exited\n", iter->first);
-                                delete iter->second;
-                                processMapNonNull_ = processMapNonNull_ - 1;
-                                iter->second = NULL;
-                            }
+                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Task %d has exited\n", iter->first);
+                            delete iter->second;
+                            processMapNonNull_ = processMapNonNull_ - 1;
+                            iter->second = NULL;
+                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Process map now contains %d processes, non-null count = %d\n", processMap_.size(), processMapNonNull_);
                         }
                     }
                 }
@@ -1984,6 +1988,7 @@ StatError_t STAT_BackEnd::Detach(unsigned int *stopArray, int stopArrayLen)
         if (iter->second != NULL)
         {
             ProcDebug *pdebug = dynamic_cast<ProcDebug *>(iter->second->getProcessState());
+#ifndef BGL            
             for (i = 0; i < stopArrayLen; i++)
             {
                 if (stopArray[i] == iter->first)
@@ -1992,6 +1997,7 @@ StatError_t STAT_BackEnd::Detach(unsigned int *stopArray, int stopArrayLen)
                     break;
                 }
             }            
+#endif            
             pdebug->detach(leaveStopped);
             delete iter->second;
         }

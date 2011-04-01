@@ -87,7 +87,7 @@ typedef struct _remap_node
     struct _remap_node **children;
 } RemapNode_t;
 
-//! The pack function registered to LMON to send data to the daemons
+//! The STATpack function registered to LMON to send data to the daemons
 /*!
     \param data - the input data
     \param[out] buf - the output buffer
@@ -98,7 +98,7 @@ typedef struct _remap_node
     Parses "data" containing MRNet connection information to produce a buffer 
     "buf" suitable for sending to the daemons.
 */
-int pack(void *data, void *buf, int bufMax, int *bufLen);
+int STATpack(void *data, void *buf, int bufMax, int *bufLen);
 
 //! A callback function to detect daemon exit
 /*!

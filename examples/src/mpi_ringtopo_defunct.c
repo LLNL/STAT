@@ -44,13 +44,22 @@ int main (int argc, char *argv[])
 
 void do_SendOrStall(int to, int tag, int rank, int* buf, MPI_Request* req, int n)
 {
+    int i;
     if (rank == 1)
     {
     	fprintf(stderr, "MPI task 1 of %d stalling\n", n);
         while(1) ;
     }	
     if (rank == 2)
+    {
+        for (i = 10; i > 0; i = i - 1)
+        {
+        	fprintf(stderr, "MPI task 2 exiting in %d seconds\n", i);
+            sleep(1);
+        }
+    	fprintf(stderr, "MPI task 2 exiting\n");
         exit(0);
+    }
 
     MPI_Isend(buf, 1, MPI_INT, to, tag, MPI_COMM_WORLD, req);
 }

@@ -2882,13 +2882,13 @@ class STATDotWindow(DotWindow):
         self.vbox.pack_start(menubar, False)
         hbox = gtk.HBox()
         hbox.pack_start(toolbar, True)
-#        image = gtk.Image()
-#        try:
-#            pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
-#            image.set_from_pixbuf(pixbuf)
-#            hbox.pack_start(image, False)
-#        except gobject.GError, error:
-#            pass
+        image = gtk.Image()
+        try:
+            pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
+            image.set_from_pixbuf(pixbuf)
+            hbox.pack_start(image, False)
+        except gobject.GError, error:
+            pass
         self.vbox.pack_start(hbox, False)
         self.tabs = []
         self.notebook = gtk.Notebook()

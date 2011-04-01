@@ -3,7 +3,7 @@
 .\" <http://shell.ipoline.com/~elmert/comp/docbook2X/> 
 .\" Please send any bug reports, improvements, comments, patches, 
 .\" etc. to Steve Cheng <steve@ggi-project.org>.
-.TH "STATview" "1" "12 November 2010" "" ""
+.TH "STATview" "1" "01 April 2011" "" ""
 
 .SH NAME
 STATview \- invoke the Stack Trace Analysis Tool viewer.
@@ -76,6 +76,9 @@ Redo the undone operation
 .TP
 \fBReset\fR
 Revert to the original graph
+.TP
+\fBLayout\fR
+Reset the layout of the current graph and open in a new tab.  This is useful for compacting wide trees after performing some pruning operations.
 .TP
 \fB[Cut] MPI\fR
 Collapse the MPI implementation frames below the MPI function call
