@@ -1,3 +1,10 @@
+2011-04-05 Gregory L. Lee <lee218@llnl.gov>
+	* src/Makefile.am : added -Wl,-E to LDFLAGS
+	* : code clean up
+
+2011-04-01 Gregory L. Lee <lee218@llnl.gov>
+	* : Updated documentation screenshots
+
 2011-03-29 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : Renamed STAT's pack funtion to avoid collisions
 	* scripts/STATGUI.py : Improved handling of application exit on sample multiple

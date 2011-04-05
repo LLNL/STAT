@@ -591,8 +591,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     leafInfo_.networkTopology = networkTopology;
     leafInfo_.daemons = applicationNodeSet_;
 
-//    std::vector<NetworkTopology::Node *> leaves;
-//    networkTopology->get_Leaves(leaves);
     networkTopology->get_Leaves(leafInfo_.leafCps);
     for (i = 0; i < leafInfo_.leafCps.size(); i++)
         leafInfo_.leafCpRanks.insert(leafInfo_.leafCps[i]->get_Rank());
@@ -2482,7 +2480,6 @@ StatError_t STAT_FrontEnd::shutdownMrnetTree()
         return STAT_MRNET_ERROR;
     }
 
-    //network_->set_TerminateBackEndsOnShutdown(false);
 #ifndef MRNET22
     network_->shutdown_Network();
 #endif
@@ -2870,8 +2867,6 @@ StatError_t STAT_FrontEnd::setRanksList()
 
     /* First we need to generate the nodes for the MRNet leaf communication 
        processes and the STAT BE daemons */
-//    network_->get_NetworkTopology()->get_Leaves(leaves);
-//    leafInfo_.networkTopology->get_Leaves(leaves);
     nLeaves = leafInfo_.leafCps.size();
     daemonCount = 0;
     daemonIter = leafInfo_.daemons.begin();
@@ -2880,7 +2875,6 @@ StatError_t STAT_FrontEnd::setRanksList()
     for (i = 0; i < nLeaves; i++)
     {
         rank = leafInfo_.leafCps[i]->get_Rank();
-printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating the node for CP rank %d of %d\n", rank, nLeaves);
         currentNode = (RemapNode_t *)malloc(sizeof(RemapNode_t));
         if (currentNode == NULL)
         {
@@ -2912,7 +2906,6 @@ printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating the node for CP rank %d
             else if (currentNode->lowRank < rankToNode[rank]->lowRank)
                 rankToNode[rank]->lowRank = currentNode->lowRank;
             childOrder[currentNode->lowRank] = currentNode;
-printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating the node for BE %d, low rank %d\n", j, currentNode->lowRank);
             daemonIter++;
         }
 
@@ -2963,8 +2956,6 @@ RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node, map<int,
     map<int, RemapNode_t *>::iterator childOrderIter;
     RemapNode_t *ret, *child;
    
-    //if (node->get_NumChildren() != 0)
-    //if (leafInfo_.leafCps.find(node->get_Rank()) != leafInfo_.leafCps.end())
     if (leafInfo_.leafCpRanks.find(node->get_Rank()) == leafInfo_.leafCpRanks.end())
     {
         /* Generate the return node */

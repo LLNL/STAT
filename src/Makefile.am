@@ -9,8 +9,8 @@ if ENABLE_STATBENCH
 bin_PROGRAMS = STATbin STATD STATBenchbin STATBenchD
 STATBenchbin_SOURCES = STATBench.C
 STATBenchD_SOURCES = STATBenchD.C
-STATBenchbin_LDFLAGS =
-STATBenchD_LDFLAGS =
+STATBenchbin_LDFLAGS = -Wl,-E
+STATBenchD_LDFLAGS = -Wl,-E
 STATBenchbin_LDADD = libstatfe.la @FELIBS@ 
 STATBenchD_LDADD = libstatbe.la @BELIBS@ 
 else
@@ -19,10 +19,10 @@ endif
 lib_LTLIBRARIES = libstatfe.la libstatbe.la 
 STATbin_SOURCES = STAT.C STAT.h STAT_FrontEnd.h
 STATD_SOURCES = STATD.C STAT.h STAT_BackEnd.h
-STATbin_LDFLAGS = 
+STATbin_LDFLAGS = -Wl,-E
 STATbin_LDADD = libstatfe.la @FELIBS@ 
 
-STATD_LDFLAGS = 
+STATD_LDFLAGS = -Wl,-E
 STATD_LDADD = libstatbe.la @BELIBS@ 
 
 libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C

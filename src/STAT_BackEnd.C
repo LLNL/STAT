@@ -2107,17 +2107,9 @@ int Unpack_STAT_BE_info(void *buf, int bufLen, void *data)
             (leafInfoArray->leaves)[j].parentRank = currentParentRank;
             (leafInfoArray->leaves)[j].parentPort = currentParentPort;
 
-            /* Get the daemon host name (not fully qualified) */
+            /* Get the daemon host name */
             strncpy((leafInfoArray->leaves)[j].hostName, ptr, STAT_MAX_BUF_LEN);
             ptr += strlen((leafInfoArray->leaves)[j].hostName) + 1;
-//            for (unsigned int l = 0; l < strlen((leafInfoArray->leaves)[j].hostName); l++)
-//            {
-//                if ((leafInfoArray->leaves)[j].hostName[l] == '.')
-//                {
-//                    (leafInfoArray->leaves)[j].hostName[l] = '\0';
-//                    break;
-//                }
-//            } /*for l */
 
             /* Get the daemon rank */
             memcpy(&((leafInfoArray->leaves)[j].rank), ptr, sizeof(int));

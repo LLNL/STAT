@@ -259,7 +259,6 @@ next_label_id = -1
 #  \n
 def get_task_list(label):
     """Get an integer list of tasks from an edge label."""
-    #print 'get tl', label, 
     colon_pos = label.find(':')
     if colon_pos != -1:
         # this is just a count and representative
@@ -273,7 +272,6 @@ def get_task_list(label):
             label = label[9:-3]
         elif label.find('[') != -1:
             label = label[1:-1]
-    #print label
     task_list = []
     if label == '':
         return task_list
@@ -300,12 +298,10 @@ def get_num_tasks(label):
     colon_pos = label.find(':')
     if colon_pos != -1:
         # this is just a count and representative
-        #print 'task count of ', label, ' = ',
         if label.find('label') != -1:
             label = label[8:colon_pos]
         elif label.find('[') != -1:
             label = label[0:colon_pos]
-        #print label
         return int(label)
     else:
         # this is a full node list
@@ -496,7 +492,6 @@ def create_temp(dot_filename):
                     label = label[0:8] + str(num_tasks) + ':[' +  str(representative) + ']"]'
                 else:
                     label = label[0:8] + str(num_tasks) + ':[' +  str(representative) + ',...]"]'
-                #print 'new label = ', label
             else:
                 # this is a full node list
                 if len(label) > max_size and label.find('...') == -1:
@@ -1598,18 +1593,12 @@ class STATGraph(Graph):
             skip_node_rename_list = []
             for to_input_tuple, node in source_map[key]:
                 function_name, sourceLine, iter_string = decompose_node(node.label)
-                #print 'yo', node.label, node.lex_string
                 if node.lex_string.find('$') != -1 or node.label.find('$') != -1:
-                    #print 'searching', node.label, node.lex_string, self.to_var_visit_list
-                #if iter_string != '':
                     # check if this is the first time visiting this variable
                     if node not in self.to_var_visit_list:
-                        #print 'found', node.label, node.lex_string
                         if node.label.find('=') != -1:
-                            #print 'variable', node.label, node.lex_string
                             found = True
                         else:
-                            #print 'no variable', node.label, node.lex_string
                             temp = node.lex_string[node.lex_string.find('$') + 1:]
                             var = temp[:temp.find('(')]
                             if var != 'iter#':
@@ -1622,7 +1611,6 @@ class STATGraph(Graph):
                     node.lex_string = None
                 return False
             for to_input_tuple, node in source_map[key]:
-                #if node.lex_string.find('$') != -1 and node.lex_string.find('=') == -1:
                 if node in skip_node_rename_list:
                     continue
                 temporal_string = tomod.get_temporal_string(to_input_tuple)
@@ -1632,7 +1620,6 @@ class STATGraph(Graph):
                     parent_temporal_string = self.get_to_string(parent)
                 function_name, sourceLine, iter_string = decompose_node(node.label)
                 node.temporally_ordered = True
-                #print 'TOed', node.label, node.lex_string
                 if parent_temporal_string == '':
                     node.set_text(function_name + "@T" + temporal_string)
                 else:
@@ -1973,9 +1960,7 @@ class STATGraph(Graph):
         """Generic implementation for traversal by progress."""
         node.hide = False
         node.in_edge.hide = False
-        #print 'visiting node', node.label
         if node.out_edges == None or node.out_edges == []:
-            #print 'no children, returning false'
             return False
         if len(node.out_edges) == 0:
             return True
@@ -1986,27 +1971,21 @@ class STATGraph(Graph):
                 edge.dst.hide = False
                 found_lex_string = True
         if found_lex_string == False:
-            #print 'no lex', node.label, node.out_edges[0].dst.temporally_ordered
             function_name, sourceLine, iter_string = decompose_node(node.label)
             if is_MPI(function_name):
                 return False
             # we want to TO this node's children
-            #ret = stat_wait_dialog.show_wait_dialog_and_run(self.get_children_temporal_order, (node,), [], None)
             ret = self.get_children_temporal_order(node)
             if ret == False:
-                #print 'returned false'
                 return ret
             if len(node.out_edges) == 1:
                 if node.out_edges[0].dst.lex_string.find('$') != -1:
-                    #print 'no need to follow'
                     return True
-                #print 'traversing children'
                 self._traverse_progress(node.out_edges[0].dst, least_or_most)
             else:
                 #print 'multiple children => done'
                 return True
         else:
-            #print 'found lex', node.label
             # we need to traverse down the tree further
             if len(node.out_edges) == 1:
                 #print 'one child, keep going'
@@ -2025,7 +2004,6 @@ class STATGraph(Graph):
                 if least_or_most == 'most':
                     to_leaves.reverse()
                 for temporal_string, temp_node in to_leaves:
-                    #print 'chose', temporal_string, 'from', temporal_string_list
                     ret = self._traverse_progress(temp_node, least_or_most)
                     if ret == True:
                         return ret
@@ -2674,13 +2652,11 @@ class STATDotWidget(DotWidget):
                 float(rect.width)/float(self.graph.visible_width),
                 float(rect.height)/float(self.graph.visible_height)
             )
-            #print 'wh', rect.width, rect.height, self.graph.width, self.graph.visible_width, self.graph.height, self.graph.visible_height
             if self.graph.width == self.graph.visible_width and self.graph.height == self.graph.visible_height:
                 self.zoom_image(zoom_ratio, center=True)
             else:
                 x = zoom_ratio * (self.graph.maxx - self.graph.visible_width / 2)
                 y = zoom_ratio * (self.graph.maxy - self.graph.visible_height / 2)
-                #print 'zf', x, y
                 self.zoom_image(zoom_ratio, False, (x, y))
             self.zoom_to_fit_on_resize = True
         else:
@@ -2703,25 +2679,20 @@ class STATDotWidget(DotWidget):
                 vspan = allocation[3]
                 vcenter = old_vadj_value + vspan / 2 - self.ZOOM_TO_FIT_MARGIN
                 pos = (hcenter, vcenter)
-                #print 'zoom', hcenter, vcenter, hspan, vspan
             if center == True:
-                #print 'center'
                 self.x = self.graph.visible_width/2
                 self.y = self.graph.visible_height/2
             elif pos != None:
                 x, y = pos
-                #allocation = self.dotsw.get_allocation()
                 allocation = self.viewport.get_allocation()
                 
                 rect = self.get_allocation()
                 hspan = allocation[2]
                 vspan = allocation[3]
-                #print 'dims', rect.width, rect.height, allocation.width, allocation.height, hspan, vspan, self.viewport.get_allocation().width, self.viewport.get_allocation().height
                 hpos = x * adj_zoom_ratio - hspan / 2.0 + self.ZOOM_TO_FIT_MARGIN
                 self.dotsw.get_hscrollbar().get_adjustment().set_value(hpos)
                 vpos = y * adj_zoom_ratio - vspan / 2.0 + self.ZOOM_TO_FIT_MARGIN
                 self.dotsw.get_vscrollbar().get_adjustment().set_value(vpos)
-                #print 'pos', x, y, hpos, vpos, rect.width, rect.height
         else:
             return DotWidget.zoom_image(self, zoom_ratio, center, pos)
 
