@@ -121,6 +121,7 @@ class STATGUI(STATDotWindow):
         self.options['Run Time Before Sample (sec)'] = 0
         self.options['Sample Type'] = 'function only'
         self.options['DDT Path'] = STATview._which('ddt')
+        self.options['DDT LaunchMON Prefix'] = '/usr/local'
         self.options['TotalView Path'] = STATview._which('totalview')
         # Check for site default options then for user default options
         site_options_path = '%s/etc/STAT/STAT.conf' %self.STAT.getInstallPrefix()
@@ -1285,6 +1286,7 @@ class STATGUI(STATDotWindow):
         frame = gtk.Frame('Options')
         vbox = gtk.VBox()
         self.pack_string_option(vbox, 'DDT Path', dialog)
+        self.pack_string_option(vbox, 'DDT LaunchMON Prefix', dialog)
         self.pack_string_option(vbox, 'TotalView Path', dialog)
         frame.add(vbox)
         dialog.vbox.pack_start(frame, True, True, 0)
@@ -1418,30 +1420,36 @@ class STATGUI(STATDotWindow):
                 show_error_dialog('Failed to locate executable ddt\ndefault: %s\n' %filepath, self)
                 return
     
-            # DDT 2.5+ with LaunchMON
-            arg_list.append("env")
-            #TODO: LLNL hardcoded paths to get the launchMON port working
-            arg_list.append("LD_LIBRARY_PATH=/usr/global/tools/launchmon/chaos_4_x86_64_ib/launchmon-0.7X/lib")
-            arg_list.append("LMON_LAUNCHMON_ENGINE_PATH=/usr/global/tools/launchmon/chaos_4_x86_64_ib/launchmon-0.7X/bin/launchmon")
-            arg_list.append(filepath)
-            arg_list.append("-attach-mpi")
-            arg_list.append(launcher[launcher.find(':')+1:])
-            arg_list.append("-subset")
-            rank_list_arg = ''
-            for rank in subset_list:
-                if rank == subset_list[0]:
-                    rank_list_arg += '%d' %rank
-                else:
-                    rank_list_arg += ',%d' %rank
-            arg_list.append(rank_list_arg)
-            arg_list.append(executable_path)
+            # Look for LaunchMON installation for DDT 2.5+
+            ddt_lmon_prefix = self.options['DDT LaunchMON Prefix']
+            ddt_lmon_lib = '%s/lib' %(ddt_lmon_prefix)
+            ddt_lmon_launchmon = '%s/bin/launchmon' %(ddt_lmon_prefix)
+            if not ddt_lmon_launchmon or not os.access(ddt_lmon_launchmon, os.X_OK) or not ddt_lmon_lib:
+                # DDT 2.4 / DDT 2.5+ w/o LanchMON
+                print ddt_lmon_launchmon, ddt_lmon_lib, os.access(ddt_lmon_launchmon, os.X_OK)
+                arg_list.append(filepath)
+                arg_list.append('-attach')
+                arg_list.append(executable_path)
+                for pid in pids:
+                    arg_list.append(pid)
+            else:
+                # DDT 2.5+ with LaunchMON
+                arg_list.append("env")
+                arg_list.append("LD_LIBRARY_PATH=%s" %(ddt_lmon_lib))
+                arg_list.append("LMON_LAUNCHMON_ENGINE_PATH=%s" %(ddt_lmon_launchmon))
+                arg_list.append(filepath)
+                arg_list.append("-attach-mpi")
+                arg_list.append(launcher[launcher.find(':')+1:])
+                arg_list.append("-subset")
+                rank_list_arg = ''
+                for rank in subset_list:
+                    if rank == subset_list[0]:
+                        rank_list_arg += '%d' %rank
+                    else:
+                        rank_list_arg += ',%d' %rank
+                arg_list.append(rank_list_arg)
+                arg_list.append(executable_path)
 
-            # DDT 2.4 / DDT 2.5+ w/o LanchMON
-#            arg_list.append(filepath)
-#            arg_list.append('-attach')
-#            arg_list.append(executable_path)
-#            for pid in pids:
-#                arg_list.append(pid)
         sys.stdout.write('fork exec %s %s\n' %(debugger, arg_list))
         # First Detach STAT!!!
         if self.STAT != None:

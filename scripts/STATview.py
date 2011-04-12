@@ -662,7 +662,9 @@ class STAT_wait_dialog:
         self.task_progress_bars[self.current_task].set_fraction(1.0)
         self.current_task += 1
         self.progress_bar.set_fraction(fraction)
-        while gtk.events_pending():
+        #TODO: while hangs on jaguar (Cray XT)
+        #while gtk.events_pending():
+        if gtk.events_pending():
             gtk.main_iteration()
     
     ## \param self - the instance
@@ -672,7 +674,9 @@ class STAT_wait_dialog:
     def update_progress_bar(self, fraction):
         """Update the fraction of the progress bar."""
         self.progress_bar.set_fraction(fraction)
-        while gtk.events_pending():
+        #TODO: while hangs on jaguar (Cray XT)
+        #while gtk.events_pending():
+        if gtk.events_pending():
             gtk.main_iteration()
     
     def update_active_bar(self):

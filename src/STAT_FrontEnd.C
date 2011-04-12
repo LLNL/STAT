@@ -541,11 +541,11 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 #ifdef CRAYXT
 // the attrs is to allow CPs to collocate with the app
 // this hasn't worked yet.
-//    map<string, string> attrs;
-//    char pidString[BUFSIZE];
-//    snprintf(pidString, BUFSIZE, "%d", launcherPid_);
-//    attrs["apid"] = pidString;
-//    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
+    map<string, string> attrs;
+    char pidString[BUFSIZE];
+    snprintf(pidString, BUFSIZE, "%d", launcherPid_);
+    attrs["apid"] = pidString;
+    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
 #else
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);

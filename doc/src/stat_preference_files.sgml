@@ -124,6 +124,14 @@ Here is a list of options:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>DDT LaunchMON Prefix = <replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the LaunchMON installation in <replaceable class="parameter">path</replaceable> for improved DDT subset attaching, otherwise attach via hostname:PID pairs.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>TotalView Path = <replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
