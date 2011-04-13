@@ -1,5 +1,5 @@
 2011-04-13 Gregory L. Lee <lee218@llnl.gov>
-	* src/STAT_FrontEnd.C : Renamed STAT's pack funtion to avoid collisions
+	* src/STAT_FrontEnd.C : Added attrs argument to CreateNetworkFE call for Cray XT and MRNet 3.1.  Allows co-location of mrnet_commnodes.
 
 2011-04-11 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : added "DDT LaunchMON Prefix" option + improved handling of DDT launching
