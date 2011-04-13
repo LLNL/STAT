@@ -538,21 +538,24 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tInitializing MRNet...\n");
     startTime.setTime();
 #ifdef MRNET22
-#ifdef CRAYXT
-// the attrs is to allow CPs to collocate with the app
-// this hasn't worked yet.
+ #ifdef CRAYXT
+  #ifdef MRNET31
+    // the attrs is to allow CPs to collocate with the app
+    // this requires MRNET > 3.0.1 (3.0.1 doesn't work)
     map<string, string> attrs;
     char pidString[BUFSIZE];
     snprintf(pidString, BUFSIZE, "%d", launcherPid_);
     attrs["apid"] = pidString;
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
+  #else /* MRNET31 */
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
-#else
+  #endif /* MRNET31 */
+ #else /* CRAYXT */
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
-#endif
-#else
+ #endif /* CRAYXT */
+#else /* MRNET22 */
     network_ = new Network(topologyFileName, NULL, NULL);
-#endif
+#endif /* MRNET22 */ 
     if (network_ == NULL)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Network initialization failure\n");
