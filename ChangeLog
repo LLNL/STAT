@@ -1,4 +1,6 @@
 2011-04-11 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : Renamed STAT's pack funtion to avoid collisions
+2011-04-11 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : added "DDT LaunchMON Prefix" option + improved handling of DDT launching
 	* scripts/STATview.py : while gtk.events_pending() -> if gtk.events_pending() b/c of hang on jaguar
 
