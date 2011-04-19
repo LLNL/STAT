@@ -503,7 +503,7 @@ void beConnectCb(Event *event, void *dummy)
 }
 #endif
 
-StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, bool isStatBench)
+StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, bool shareAppNodes, bool isStatBench)
 {
     bool cbRet = true;
     int statMergeFilterId, connectTimeout, i;
@@ -524,7 +524,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 
     /* Create a topology file */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Creating MRNet topology file\n");
-    statError = createTopology(topologyFileName, topologyType, topologySpecification, nodeList);
+    statError = createTopology(topologyFileName, topologyType, topologySpecification, nodeList, shareAppNodes);
     if (statError != STAT_OK)
     {
         printMsg(statError, __FILE__, __LINE__, "Failed to create topology file\n");
@@ -540,22 +540,38 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 #ifdef MRNET22
  #ifdef CRAYXT
   #ifdef MRNET31
-    // the attrs is to allow CPs to collocate with the app
-    // this requires MRNET > 3.0.1 (3.0.1 doesn't work)
     map<string, string> attrs;
-    char pidString[BUFSIZE];
-    snprintf(pidString, BUFSIZE, "%d", launcherPid_);
-    attrs["apid"] = pidString;
+    char apidString[BUFSIZE];
+    snprintf(apidString, BUFSIZE, "%d", launcherPid_);
+    attrs["aprun pid"] = apidString; // as of MRNet 3.0.1, must use "apid" key. The "aprun pid" key is not yet implemented (as of MRNet 3.0.1).
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-  #else /* MRNET31 */
+  #else /* ifdef MRNET31 */
+    map<string, string> attrs;
+    char apidString[BUFSIZE], *emsg;
+    int nid;
+    uint64_t apid;
+    emsg = alpsGetMyNid(&nid);
+    if (emsg)
+    {
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get nid\n");
+        return STAT_SYSTEM_ERROR;
+    }
+    apid = alps_get_apid(nid, launcherPid_);
+    if (apid <= 0)
+    {
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get apid\n");
+        return STAT_SYSTEM_ERROR;
+    }
+    snprintf(apidString, BUFSIZE, "%d", apid);
+    attrs["apid"] = apidString;
+    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
+  #endif /* ifdef MRNET31 */
+ #else /* ifdef CRAYXT */
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
-  #endif /* MRNET31 */
- #else /* CRAYXT */
-    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
- #endif /* CRAYXT */
-#else /* MRNET22 */
+ #endif /* ifdef CRAYXT */
+#else /* ifdef MRNET22 */
     network_ = new Network(topologyFileName, NULL, NULL);
-#endif /* MRNET22 */ 
+#endif /* ifdef MRNET22 */ 
     if (network_ == NULL)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Network initialization failure\n");
@@ -1279,7 +1295,7 @@ StatError_t STAT_FrontEnd::createOutputDir()
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList)
+StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool shareAppNodes)
 {
     FILE *file;
     char tmp[BUFSIZE], *topology = NULL;
@@ -1324,6 +1340,17 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
             printMsg(statError, __FILE__, __LINE__, "Failed to set the global node list\n");
             return statError;
         }
+    }
+
+    /* Add application nodes to list if requested */
+    if (shareAppNodes == true)
+    {
+#ifdef BGL
+        printMsg(STAT_WARNING, __FILE__, __LINE__, "Sharing of application nodes not supported on BlueGene systems\n");
+#else
+        for(applicationNodeSetIter = applicationNodeSet_.begin(); applicationNodeSetIter != applicationNodeSet_.end(); applicationNodeSetIter++) 
+            communicationNodeList_.push_back(*applicationNodeSetIter);
+#endif
     }
 
     /* Set the requested topology and check if there are enough CPs specified */
@@ -1372,7 +1399,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
             /* There aren't enough CPs, so make a 2-deep tree with as many CPs as we have */
             printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Not enough processes for specified topology.  %d processes needed for depth of %d and fanout of %d.  Reverting to tree with one layer of %d communication processes\n", procsNeeded, desiredDepth, fanout, communicationNodeList_.size() * procsPerNode_);
             if (topologyType != STAT_TOPOLOGY_AUTO)
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology depth %d, fanout %d: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs.\n", desiredDepth, fanout, procsNeeded, communicationNodeList_.size() * procsPerNode_, communicationNodeList_.size() * procsPerNode_);
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology depth %d, fanout %d: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs or request the use of application nodes with --appnodes.\n", desiredDepth, fanout, procsNeeded, communicationNodeList_.size() * procsPerNode_, communicationNodeList_.size() * procsPerNode_);
             topology = (char *)malloc(BUFSIZE);
             if (topology == NULL)
             {

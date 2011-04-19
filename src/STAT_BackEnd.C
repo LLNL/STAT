@@ -292,10 +292,10 @@ StatError_t STAT_BackEnd::Connect()
     found = false;
     for (i = 0; i < leafInfoArray.size; i++)
     {
-        string prettyHost;
-        XPlat::NetUtils::GetHostName( localHostName_, prettyHost );
-
-        if ( strcmp( leafInfoArray.leaves[i].hostName, prettyHost.c_str() ) == 0 || strcmp(leafInfoArray.leaves[i].hostName, localIp_) == 0 )
+        string prettyHost, leafPrettyHost;
+        XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
+    	XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
+        if (prettyHost == leafPrettyHost)
         {
             found = true;
             parentHostName_ = strdup(leafInfoArray.leaves[i].parentHostName);
@@ -2256,9 +2256,10 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
     count = -1;
     for (i = 0; i < leafInfoArray.size; i++)
     {
-        string prettyHost;
-        XPlat::NetUtils::GetHostName( localHostName_, prettyHost );
-        if ( strcmp( leafInfoArray.leaves[i].hostName, prettyHost.c_str() ) == 0 )
+        string prettyHost, leafPrettyHost;
+        XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
+        XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
+        if (prettyHost == leafPrettyHost)
         {
             /* Increment the find count and make sure it's not too large */
             count++;

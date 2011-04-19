@@ -1,5 +1,9 @@
-2011-04-13 Gregory L. Lee <lee218@llnl.gov>
-	* src/STAT_FrontEnd.C : Added attrs argument to CreateNetworkFE call for Cray XT and MRNet 3.1.  Allows co-location of mrnet_commnodes.
+2011-04-19 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : patch from Nathan Hjelm for BackEnd hostname matching
+
+2011-04-14 Gregory L. Lee <lee218@llnl.gov>
+	* : added option to enable use of application nodes for communication processes
+	* src/STAT_FrontEnd.C, src/STAT_FrontEnd.h : Added query to alps to get apid on Cray XT, which can be passed to MRNet via "apid" attrs argument to CreateNetworkFE.  Also prototype for "aprun pid" attrs argument, which isn't supported yet (as of MRNet 3.0.1)
 
 2011-04-11 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : added "DDT LaunchMON Prefix" option + improved handling of DDT launching

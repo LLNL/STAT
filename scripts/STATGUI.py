@@ -98,6 +98,7 @@ class STATGUI(STATDotWindow):
         self.options['Launcher Exe'] = ''
         self.options['Topology Type'] = 'automatic'
         self.options['Topology'] = '1'
+        self.options['Share App Nodes'] = False
         self.options['Tool Daemon Path'] = self.STAT.getToolDaemonExe()
         self.options['Filter Path'] = self.STAT.getFilterPath()
         self.options['Job Launcher'] = 'mpirun'
@@ -640,6 +641,7 @@ class STATGUI(STATDotWindow):
         self.pack_combo_box(vbox2, 'Topology Type')
         self.pack_string_option(vbox2, 'Topology', attach_dialog)
         self.pack_string_option(vbox2, 'Communication Nodes', attach_dialog)
+        self.pack_check_button(vbox2, 'Share App Nodes')
         self.pack_spinbutton(vbox2, 'Communication Processes per Node')
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 0)
@@ -766,9 +768,9 @@ class STATGUI(STATDotWindow):
         elif self.options['Topology Type'] == 'custom':
             topology_type = STAT_TOPOLOGY_USER
         if self.options['Communication Nodes'] != '':
-            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], self.options['Communication Nodes'], False)
+            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], self.options['Communication Nodes'], False, self.options['Share App Nodes'])
         else:
-            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], '', False)
+            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], '', False, self.options['Share App Nodes'])
         if ret != STAT_OK:
             show_error_dialog('Failed to Launch MRNet Tree:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()

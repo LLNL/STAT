@@ -42,6 +42,7 @@ int iters;                              /*!< the number of merge iterations */
 int nEqClasses;                         /*!< the number of equivalence classes */
 char topologySpecification[BUFSIZE];    /*!< the topology specification */
 char *nodeList = NULL;                  /*!< the list of nodes for CPs */
+bool shareAppNodes = false;             /*!< whether to use the application nodes to run communication processes */
 StatTopology_t topologyType;            /*!< the topology specification type */
 
 //! Prints the usage directions
@@ -114,7 +115,7 @@ int main(int argc, char **argv)
     }
 
     /* Launch the MRNet Tree */
-    statError = STAT->launchMrnetTree(topologyType, topologySpecification, nodeList, true, true);
+    statError = STAT->launchMrnetTree(topologyType, topologySpecification, nodeList, shareAppNodes, true, true);
     if (statError != STAT_OK)
     {
         STAT->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
@@ -183,6 +184,7 @@ void STAT_PrintUsage(int argc, char **argv)
     fprintf(stderr, "  -f, --fanout <width>\t\tmaximum tree topology fanout\n");
     fprintf(stderr, "  -u, --usertopology <topology>\tspecify the number of communication nodes per\n\t\t\t\tlayer in the tree topology, separated by dashes\n");
     fprintf(stderr, "  -n, --nodes <nodelist>\tlist of nodes for communication processes\n");
+    fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication processes\n");
     fprintf(stderr, "\t\t\t\tExample node lists:\thost1\n\t\t\t\t\t\t\thost1,host2\n\t\t\t\t\t\t\thost[1,5-7,9]\n");
     fprintf(stderr, "  -p, --procs <processes>\tthe maximum number of communication processes\n\t\t\t\tper node\n");
     fprintf(stderr, "\nMiscellaneous options:\n");
@@ -206,6 +208,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
         {"version", no_argument, 0, 'V'},
         {"verbose", no_argument, 0, 'v'},
         {"autotopo", no_argument, 0, 'a'},
+        {"appnodes", no_argument, 0, 'A'}, 
         {"fanout", required_argument, 0, 'f'},
         {"nodes", required_argument, 0, 'n'},
         {"procs", required_argument, 0, 'p'},
@@ -228,7 +231,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvaf:n:p:t:m:b:e:D:F:l:L:u:d:N:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvaAf:n:p:t:m:b:e:D:F:l:L:u:d:N:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         switch(opt)
@@ -253,6 +256,9 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'n':
             nodeList = strdup(optarg);
+            break;
+        case 'A':
+            shareAppNodes = true;
             break;
         case 'p':
             STAT->setProcsPerNode(atoi(optarg));

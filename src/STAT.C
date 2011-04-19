@@ -53,6 +53,7 @@ bool individualSamples = false;         /*!< whether to gather individual sample
 bool comprehensive = false;             /*!< whether to gather a comprehensive set of samples */
 bool withThreads = false;               /*!< whether to gather samples from helper threads */
 bool clearOnSample = true;              /*!< whether to clear accumulated traces when sampling */
+bool shareAppNodes = false;             /*!< whether to use the application nodes to run communication processes */
 StatLaunch_t applicationOption;         /*!< attach or launch case */
 StatSample_t sampleType;                /*!< the sample level of detail */
 StatTopology_t topologyType;            /*!< the topology specification type */
@@ -102,7 +103,7 @@ int main(int argc, char **argv)
     }
 
     /* Launch the MRNet Tree */
-    statError = STAT->launchMrnetTree(topologyType, topologySpecification, nodeList);
+    statError = STAT->launchMrnetTree(topologyType, topologySpecification, nodeList, true, shareAppNodes);
     if (statError != STAT_OK)
     {
         STAT->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
@@ -288,6 +289,7 @@ void printUsage(int argc, char **argv)
     fprintf(stderr, "  -f, --fanout <width>\t\tmaximum tree topology fanout\n");
     fprintf(stderr, "  -u, --usertopology <topology>\tspecify the number of communication nodes per\n\t\t\t\tlayer in the tree topology, separated by dashes\n");
     fprintf(stderr, "  -n, --nodes <nodelist>\tlist of nodes for communication processes\n");
+    fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication processes\n");
     fprintf(stderr, "\t\t\t\tExample node lists:\thost1\n\t\t\t\t\t\t\thost1,host2\n\t\t\t\t\t\t\thost[1,5-7,9]\n");
     fprintf(stderr, "  -p, --procs <processes>\tthe maximum number of communication processes\n\t\t\t\tper node\n");
     fprintf(stderr, "\nMiscellaneous options:\n");
@@ -323,6 +325,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         {"withthreads", no_argument, 0, 'w'},
         {"autotopo", no_argument, 0, 'a'},
         {"create", no_argument, 0, 'C'}, 
+        {"appnodes", no_argument, 0, 'A'}, 
         {"sampleindividual", no_argument, 0, 'S'}, 
         {"fanout", required_argument, 0, 'f'},
         {"nodes", required_argument, 0, 'n'},
@@ -353,7 +356,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvPicwaCSf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPicwaCSAf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'C')
@@ -403,6 +406,9 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'S':
             individualSamples = true;
+            break;
+        case 'A':
+            shareAppNodes = true;
             break;
         case 'n':
             nodeList = strdup(optarg);

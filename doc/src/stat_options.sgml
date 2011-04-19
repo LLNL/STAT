@@ -40,6 +40,14 @@
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>-A, --appnodes</term>
+    <listitem>
+        <para>
+        Allow tool communication processes to be co-located on nodes running application processes.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>-p, --procs <replaceable class="parameter">processes</replaceable></term>
     <listitem>
         <para>

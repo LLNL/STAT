@@ -44,6 +44,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "lmon_api/lmon_fe.h"
 #include "STAT.h"
 
+#ifdef CRAYXT
+extern "C"
+{
+    extern char *alpsGetMyNid(int32_t *);
+    extern uint64_t alps_get_apid(int, int);
+}
+#endif
 #define STAT_MAX_FILENAME_ID 8192
 #define STAT_MAX_FANOUT 64
 
@@ -174,7 +181,7 @@ class STAT_FrontEnd
             Creates the topology file, calls the Network constructor, and sends connection
             info to the daemons.  Waits for all daemons to connect if blocking set to true.
         */
-        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool isStatBench = false);
+        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false, bool isStatBench = false);
 
         //! Connect the MRNet tree
         /*!
@@ -616,7 +623,7 @@ class STAT_FrontEnd
             topologies specify the number of communication processes per layer of the
             tree separated by dashes, for example: 4, 4-16, 5-20-75
         */
-        StatError_t createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList);
+        StatError_t createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool shareAppNodes);
 
         //! Set the list of application nodes from the process table
         /*!

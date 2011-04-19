@@ -107,7 +107,7 @@ class STAT_FrontEnd
 
         StatError_t attachAndSpawnDaemons(unsigned int pid, char *remoteNode = NULL);
         StatError_t launchAndSpawnDaemons(char *remoteNode = NULL, bool isStatBench = false);
-        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool isStatBench = false);
+        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false, bool isStatBench = false);
         StatError_t connectMrnetTree(bool blocking = true, bool isStatBench = false);
         StatError_t attachApplication(bool blocking = true);
         StatError_t pause(bool blocking = true);

@@ -60,6 +60,14 @@ Here is a list of options:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>Share App Nodes = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to allow communication processes to be co-located on nodes running application processes.  Not supported on BlueGene systems.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>Communication Processes per Node = <replaceable class="parameter">count</replaceable></term>
     <listitem>
         <para>

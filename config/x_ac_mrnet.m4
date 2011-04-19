@@ -54,7 +54,7 @@ AC_DEFUN([X_AC_MRNET], [
   TMP_LDFLAGS=$LDFLAGS
   AC_ARG_WITH(cray-xt,
     [],
-    [mrnet_libs="-lmrnet -lxplat -lpthread -ldl -lalps -lxmlrpc"],
+    [mrnet_libs="-lmrnet -lxplat -lpthread -ldl -lalps -lxmlrpc -lalpsutil"],
     [mrnet_libs="-lmrnet -lxplat -lpthread -ldl"]
   )  
   LDFLAGS="$LDFLAGS $mrnet_libs"
