@@ -608,7 +608,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tConnecting to daemons...\n");
     startTime.setTime();
     leafInfo_.networkTopology = networkTopology;
-    leafInfo_.daemons = applicationNodeSet_;
+    leafInfo_.daemons = applicationNodeMultiSet_;
 
     networkTopology->get_Leaves(leafInfo_.leafCps);
     for (i = 0; i < leafInfo_.leafCps.size(); i++)
@@ -626,14 +626,14 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     if (isStatBench == true)
     {
         /* Now that we've sent the connection info, rename the app nodes for bit vector reordering */
-        applicationNodeSet_.clear();
+        applicationNodeMultiSet_.clear();
         for (i = 0; i < nApplProcs_; i++)
         {
             snprintf(name, BUFSIZE, "a%d", i);
-            applicationNodeSet_.insert(name);
+            applicationNodeMultiSet_.insert(name);
         }
 
-        leafInfo_.daemons = applicationNodeSet_;
+        leafInfo_.daemons = applicationNodeMultiSet_;
     }
     else
     {    
@@ -1018,15 +1018,15 @@ StatError_t STAT_FrontEnd::setAppNodeList()
     for (i = 0; i < nApplProcs_; i++)
     {
         currentNode = proctab_[i].pd.host_name;
-        if (applicationNodeSet_.find(currentNode) == applicationNodeSet_.end())
+        if (applicationNodeMultiSet_.find(currentNode) == applicationNodeMultiSet_.end())
         {
-            applicationNodeSet_.insert(currentNode);
+            applicationNodeMultiSet_.insert(currentNode);
             printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%s, ", currentNode);
         }
     }        
     printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Application node list created\n");
-    nApplNodes_ = applicationNodeSet_.size();
+    nApplNodes_ = applicationNodeMultiSet_.size();
 
     return STAT_OK;
 }
@@ -1128,7 +1128,7 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
             if (checkNodeAccess(nodeName))
             {
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
-                communicationNodeList_.push_back(nodeName);
+                communicationNodeSet_.insert(nodeName);
             }
             else
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
@@ -1182,7 +1182,7 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
                         if (checkNodeAccess(nodeName))
                         {
                             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
-                            communicationNodeList_.push_back(nodeName);
+                            communicationNodeSet_.insert(nodeName);
                         }
                         else
                             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
@@ -1203,7 +1203,7 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
                     if (checkNodeAccess(nodeName))
                     {
                         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
-                        communicationNodeList_.push_back(nodeName);
+                        communicationNodeSet_.insert(nodeName);
                     }
                     else
                         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
@@ -1220,7 +1220,7 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
             list = list.substr(finalPos + 1, list.length() - 1);
     }
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Communication node list created with %d nodes\n", communicationNodeList_.size());
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Communication node list created with %d nodes\n", communicationNodeSet_.size());
     return STAT_OK;
 }
 
@@ -1303,8 +1303,10 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     unsigned int i, j, counter, layer, parentIter, childIter;
     unsigned int depth = 0, fanout = 0;
     vector<string> treeList;
-    list<string>::iterator communicationNodeListIter;
-    multiset<string>::iterator applicationNodeSetIter;
+    set<string>::iterator communicationNodeSetIter;
+    multiset<string>::iterator applicationNodeMultiSetIter;
+//    set<string> applicationNodeSet;
+//    set<string>::iterator applicationNodeSetIter;
     string topoIter, current;
     string::size_type dashPos, lastPos;
     StatError_t statError;
@@ -1348,8 +1350,10 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
 #ifdef BGL
         printMsg(STAT_WARNING, __FILE__, __LINE__, "Sharing of application nodes not supported on BlueGene systems\n");
 #else
-        for(applicationNodeSetIter = applicationNodeSet_.begin(); applicationNodeSetIter != applicationNodeSet_.end(); applicationNodeSetIter++) 
-            communicationNodeList_.push_back(*applicationNodeSetIter);
+        for(applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++) 
+//            applicationNodeSet.insert(*applicationNodeMultiSetIter);
+//        for (applicationNodeSetIter = applicationNodeSet.begin(); applicationNodeSetIter != applicationNodeSet.end(); applicationNodeSetIter++)
+            communicationNodeSet_.insert(*applicationNodeMultiSetIter);
 #endif
     }
 
@@ -1388,7 +1392,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
             }
             procsNeeded += (int)ceil(pow((float)fanout, (float)i));
         }
-        if (procsNeeded <= communicationNodeList_.size() * procsPerNode_)
+        if (procsNeeded <= communicationNodeSet_.size() * procsPerNode_)
         {
             /* We have enough CPs, so we can have our desired depth */
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Requested topology set with depth %d, fanout %d\n", desiredDepth, fanout);
@@ -1397,16 +1401,16 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         else
         {
             /* There aren't enough CPs, so make a 2-deep tree with as many CPs as we have */
-            printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Not enough processes for specified topology.  %d processes needed for depth of %d and fanout of %d.  Reverting to tree with one layer of %d communication processes\n", procsNeeded, desiredDepth, fanout, communicationNodeList_.size() * procsPerNode_);
+            printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Not enough processes for specified topology.  %d processes needed for depth of %d and fanout of %d.  Reverting to tree with one layer of %d communication processes\n", procsNeeded, desiredDepth, fanout, communicationNodeSet_.size() * procsPerNode_);
             if (topologyType != STAT_TOPOLOGY_AUTO)
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology depth %d, fanout %d: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs or request the use of application nodes with --appnodes.\n", desiredDepth, fanout, procsNeeded, communicationNodeList_.size() * procsPerNode_, communicationNodeList_.size() * procsPerNode_);
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology depth %d, fanout %d: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs or request the use of application nodes with --appnodes.\n", desiredDepth, fanout, procsNeeded, communicationNodeSet_.size() * procsPerNode_, communicationNodeSet_.size() * procsPerNode_);
             topology = (char *)malloc(BUFSIZE);
             if (topology == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for topology\n", strerror(errno));
                 return STAT_ALLOCATE_ERROR;
             }
-            snprintf(topology, BUFSIZE, "%d", communicationNodeList_.size() * procsPerNode_);
+            snprintf(topology, BUFSIZE, "%d", communicationNodeSet_.size() * procsPerNode_);
         }
     }
     else
@@ -1427,9 +1431,9 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 break;
             topoIter = topoIter.substr(lastPos + 1);
         }
-        if (procsNeeded > communicationNodeList_.size() * procsPerNode_)
+        if (procsNeeded > communicationNodeSet_.size() * procsPerNode_)
         {
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology %s: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs.\n", topology, procsNeeded, communicationNodeList_.size() * procsPerNode_, communicationNodeList_.size() * procsPerNode_);
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology %s: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs.\n", topology, procsNeeded, communicationNodeSet_.size() * procsPerNode_, communicationNodeSet_.size() * procsPerNode_);
             if (topology != NULL)
                 free(topology);
             topology = (char *)malloc(BUFSIZE);
@@ -1438,7 +1442,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for topology\n", strerror(errno));
                 return STAT_ALLOCATE_ERROR;
             }
-            snprintf(topology, BUFSIZE, "%d", communicationNodeList_.size() * procsPerNode_);
+            snprintf(topology, BUFSIZE, "%d", communicationNodeSet_.size() * procsPerNode_);
         }
     }
 
@@ -1465,13 +1469,13 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     counter = 0;
     for (i = 0; i < procsPerNode_; i++)
     {
-        for (communicationNodeListIter = communicationNodeList_.begin(); communicationNodeListIter != communicationNodeList_.end(); communicationNodeListIter++)
+        for (communicationNodeSetIter = communicationNodeSet_.begin(); communicationNodeSetIter != communicationNodeSet_.end(); communicationNodeSetIter++)
         {
             counter++;
-            if ((*communicationNodeListIter) == hostname_)
-                snprintf(tmp, BUFSIZE, "%s:%d", (*communicationNodeListIter).c_str(), i + 1);
+            if ((*communicationNodeSetIter) == hostname_)
+                snprintf(tmp, BUFSIZE, "%s:%d", (*communicationNodeSetIter).c_str(), i + 1);
             else
-                snprintf(tmp, BUFSIZE, "%s:%d", (*communicationNodeListIter).c_str(), i);
+                snprintf(tmp, BUFSIZE, "%s:%d", (*communicationNodeSetIter).c_str(), i);
             treeList.push_back(tmp);
         }
     }    
@@ -2646,10 +2650,10 @@ StatError_t STAT_FrontEnd::postTerminateApplication()
 
 void STAT_FrontEnd::printCommunicationNodeList()
 {
-    list<string>::iterator iter;
+    set<string>::iterator iter;
 
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "\tCommunication Node List: ");
-    for (iter = communicationNodeList_.begin(); iter != communicationNodeList_.end(); iter++) 
+    for (iter = communicationNodeSet_.begin(); iter != communicationNodeSet_.end(); iter++) 
         printMsg(STAT_STDOUT, __FILE__, __LINE__, "%s, ", iter->c_str());
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "\n");
 }
@@ -2659,7 +2663,7 @@ void STAT_FrontEnd::printApplicationNodeList()
     multiset<string>::iterator iter;
 
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "\tApplication Node List: ");
-    for(iter = applicationNodeSet_.begin(); iter != applicationNodeSet_.end(); iter++) 
+    for(iter = applicationNodeMultiSet_.begin(); iter != applicationNodeMultiSet_.end(); iter++) 
         printMsg(STAT_STDOUT, __FILE__, __LINE__, "%s, ", iter->c_str());
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "\n");
 }
@@ -3248,7 +3252,7 @@ StatError_t STAT_FrontEnd::STATBench_setAppNodeList()
     for (i = 0; i < nApplProcs_; i++)
     {
         currentNode = proctab_[i].pd.host_name;
-        applicationNodeSet_.insert(currentNode);
+        applicationNodeMultiSet_.insert(currentNode);
     }
 
     for (i = 0; i < proctabSize_; i++)
@@ -3260,7 +3264,7 @@ StatError_t STAT_FrontEnd::STATBench_setAppNodeList()
     }
     free(proctab_);
     proctab_ = NULL;
-    nApplNodes_ = applicationNodeSet_.size();
+    nApplNodes_ = applicationNodeMultiSet_.size();
 
     return STAT_OK;
 }

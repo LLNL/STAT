@@ -759,8 +759,8 @@ class STAT_FrontEnd
         bool isRunning_;                                    /*!< whether the application processes are currently running */
         bool isPendingAck_;                                 /*!< whether there are any pending acknowledgements */
         std::list<int> remapRanksList_;                     /*!< the order of bit vectors in the incoming packets */
-        std::list<std::string> communicationNodeList_;      /*!< the list of nodes to use for MRNet CPs */
-        std::multiset<std::string> applicationNodeSet_;     /*!< the set of application nodes */
+        std::set<std::string> communicationNodeSet_;      /*!< the list of nodes to use for MRNet CPs */
+        std::multiset<std::string> applicationNodeMultiSet_;    /*!< the set of application nodes */
         std::map<int, std::string> hostToRank_;             /*!< a rank to hostname used for bit vector reordering */
         std::map<std::string, IntList_t *> hostRanksMap_;   /*!< a map of hostname to ranks list used for bit vector reordering */
         std::vector<std::pair<std::string, double> > performanceData_;     /*!< the accumulated performance data to be dumped upon completion */

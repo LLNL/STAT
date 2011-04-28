@@ -115,7 +115,7 @@ int main(int argc, char **argv)
     }
 
     /* Launch the MRNet Tree */
-    statError = STAT->launchMrnetTree(topologyType, topologySpecification, nodeList, shareAppNodes, true, true);
+    statError = STAT->launchMrnetTree(topologyType, topologySpecification, nodeList, true, shareAppNodes, true);
     if (statError != STAT_OK)
     {
         STAT->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
