@@ -1,3 +1,6 @@
+2011-05-01 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C, scripts/STATGUI.py : Query LMON for RM PID in launch case + GUI get launcher exe from launch command
+
 2011-04-22 Gregory L. Lee <lee218@llnl.gov>
 	* src/STATBench.C : Fixed arg list in call to launchMrnetTree
 	* src/STAT_FrontEnd.[h, C] : applicationNodeSet_ renamed to applicationNodeMultiSet_.  communicationNodeList_ changed from list to set and renamed to communicationNodeSet_ to avoid duplicate entries.

@@ -263,6 +263,7 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
     char **daemonArgv = NULL;
     static bool firstRun = true;
     lmon_rc_e rc;
+    lmon_rm_info_t rmInfo;
     StatError_t statError;
 
     /* Initialize performance timer */
@@ -381,6 +382,13 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
             printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to launch job and spawn daemons\n");
             return STAT_LMON_ERROR;
         }
+        rc = LMON_fe_getRMInfo(lmonSession_, &rmInfo);
+        if (rc != LMON_OK)
+        {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get resource manager info\n");
+            return STAT_LMON_ERROR;
+        }
+        launcherPid_ = rmInfo.rm_launcher_pid;
     }
 
     /* Gather the process table */

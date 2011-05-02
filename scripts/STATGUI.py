@@ -691,12 +691,13 @@ class STATGUI(STATDotWindow):
         """Callback to launch an application under STAT's control."""
         args = entry.get_text()
         args = args.split()
+        self.options['Launcher Exe'] = args[0]
         for arg in args:
             self.STAT.addLauncherArgv(arg)
         self.attach_cb(widget, attach_dialog, True)
 
     def attach_cb(self, widget, attach_dialog, launch=False):
-        """Callback to attach to a job and gathers a stack trace."""
+        """Callback to attach to a job and gather a stack trace."""
         stat_wait_dialog.update_progress_bar(0.01)
         if attach_dialog != None:
             attach_dialog.destroy()
