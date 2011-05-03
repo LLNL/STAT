@@ -1315,8 +1315,6 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     vector<string> treeList;
     set<string>::iterator communicationNodeSetIter;
     multiset<string>::iterator applicationNodeMultiSetIter;
-//    set<string> applicationNodeSet;
-//    set<string>::iterator applicationNodeSetIter;
     string topoIter, current;
     string::size_type dashPos, lastPos;
     StatError_t statError;
@@ -1346,6 +1344,15 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
             if (statError != STAT_OK)
                 printMsg(statError, __FILE__, __LINE__, "Failed to get node list from config file\n");
         }
+        else
+        {
+            if (strcmp(nodeList, "") == 0)
+            {
+                statError = setNodeListFromConfigFile(&nodeList);
+                if (statError != STAT_OK)
+                    printMsg(statError, __FILE__, __LINE__, "Failed to get node list from config file\n");
+            }
+        }
         statError = setCommNodeList(nodeList);
         if (statError != STAT_OK)
         {
@@ -1361,8 +1368,6 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         printMsg(STAT_WARNING, __FILE__, __LINE__, "Sharing of application nodes not supported on BlueGene systems\n");
 #else
         for(applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++) 
-//            applicationNodeSet.insert(*applicationNodeMultiSetIter);
-//        for (applicationNodeSetIter = applicationNodeSet.begin(); applicationNodeSetIter != applicationNodeSet.end(); applicationNodeSetIter++)
             communicationNodeSet_.insert(*applicationNodeMultiSetIter);
 #endif
     }
