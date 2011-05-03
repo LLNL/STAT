@@ -1,4 +1,8 @@
-2011-05-01 Gregory L. Lee <lee218@llnl.gov>
+2011-05-03 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : Create new STAT if == None for about dialog
+	* scripts/STATGUI.in : Add exec_prefix variable to point to prefix
+
+2011-05-02 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : Fix nodeList handling for when to read nodes.txt
 	* src/STAT_FrontEnd.C, scripts/STATGUI.py : Query LMON for RM PID in launch case + GUI get launcher exe from launch command
 

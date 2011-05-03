@@ -221,6 +221,8 @@ class STATGUI(STATDotWindow):
         about_dialog.set_license(__license__)
         about_dialog.set_wrap_license(80)
         version = intArray(3)
+        if self.STAT == None:
+            self.STAT = STAT_FrontEnd()
         self.STAT.getVersion(version)
         about_dialog.set_version('%d.%d.%d' %(version[0], version[1], version[2]))
         try:
