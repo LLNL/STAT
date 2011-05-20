@@ -68,7 +68,7 @@ dist_binSCRIPT_INSTALL = $(INSTALL_SCRIPT)
 SCRIPTS = $(bin_SCRIPTS) $(dist_bin_SCRIPTS)
 SOURCES =
 DIST_SOURCES =
-am__python_PYTHON_DIST = STATGUI.py STATview.py xdot.py
+am__python_PYTHON_DIST = STATGUI.py STATview.py xdot.py STAThelper.py
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -204,7 +204,7 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 dist_bin_SCRIPTS = run_one_sec
 bin_SCRIPTS = STAT $(am__append_1) $(am__append_2)
-@ENABLE_GUI_TRUE@python_PYTHON = STATGUI.py STATview.py xdot.py
+@ENABLE_GUI_TRUE@python_PYTHON = STATGUI.py STATview.py xdot.py STAThelper.py
 all: all-am
 
 .SUFFIXES:

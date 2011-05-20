@@ -27,6 +27,6 @@ At larger scales, you may want to employ a more scalable tree topology.  For exa
 </para>
 <informalexample>
     <screen>
-  % STATBench --fanout 32 atlas[1-4] --procs 8
+  % STATBench --fanout 32 --nodes atlas[1-4] --procs 8
     </screen>
 </informalexample>

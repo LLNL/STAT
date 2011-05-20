@@ -351,7 +351,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
     nRetries = 0;
     retryFrequency = 100;
     sampleType = STAT_FUNCTION_NAME_ONLY;
-    topologyType = STAT_TOPOLOGY_DEPTH;
+    topologyType = STAT_TOPOLOGY_AUTO;
     snprintf(topologySpecification, BUFSIZE, "0");
 
     while (1)

@@ -1,7 +1,7 @@
 dist_bin_SCRIPTS = run_one_sec
 bin_SCRIPTS = STAT
 if ENABLE_GUI
-python_PYTHON = STATGUI.py STATview.py xdot.py
+python_PYTHON = STATGUI.py STATview.py xdot.py STAThelper.py
 bin_SCRIPTS += STATGUI STATview
 endif
 if ENABLE_STATBENCH

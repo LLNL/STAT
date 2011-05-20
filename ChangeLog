@@ -1,3 +1,15 @@
+2011-05-20 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py, scripts/STATGUI.py : moved helper functions to STAThelper.py
+
+2011-05-12 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.C : make STAT_TOPOLOGY_AUTO the default if none specified
+
+2011-05-06 Gregory L. Lee <lee218@llnl.gov>
+	* doc/src/statbench_example.sgml doc/src/statbench_options.sgml : updated STATBench documentation
+
+2011-05-04 Gregory L. Lee <lee218@llnl.gov>
+	* : tag version 1.1.0
+
 2011-05-03 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : Create new STAT if == None for about dialog
 	* scripts/STATGUI.in : Add exec_prefix variable to point to prefix

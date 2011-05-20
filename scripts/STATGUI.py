@@ -20,8 +20,10 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
+import STAThelper
+from STAThelper import *
 import STATview
 from STATview import *
 import sys, DLFCN
@@ -31,21 +33,6 @@ import commands
 import shelve
 import time
 import string
-
-
-## \param var_spec - the variable specificaiton (location and name)
-#  \return a string representation of the variable specificaiton
-#
-#  \n
-def var_spec_to_string(var_spec):
-    """Translates a variable specificaiton list into a string."""
-    if var_spec == []:  
-        return 'NULL'
-    ret = '%d#' %len(var_spec)
-    for file, line, depth, var in var_spec:
-        ret += '%s:%d.%d$%s,' %(file, line, depth, var)
-    ret = ret[:len(ret) - 1]
-    return ret
 
 
 ## The STATGUI window adds STAT operations to the STATview window.
@@ -121,9 +108,9 @@ class STATGUI(STATDotWindow):
         self.options['Gather Individual Samples'] = False
         self.options['Run Time Before Sample (sec)'] = 0
         self.options['Sample Type'] = 'function only'
-        self.options['DDT Path'] = STATview._which('ddt')
+        self.options['DDT Path'] = STAThelper._which('ddt')
         self.options['DDT LaunchMON Prefix'] = '/usr/local'
-        self.options['TotalView Path'] = STATview._which('totalview')
+        self.options['TotalView Path'] = STAThelper._which('totalview')
         # Check for site default options then for user default options
         site_options_path = '%s/etc/STAT/STAT.conf' %self.STAT.getInstallPrefix()
         user_options_path = '%s/.STATrc' %(os.environ.get('HOME'))
@@ -157,12 +144,12 @@ class STATGUI(STATDotWindow):
                         self.options[option] = value
                     elif option == 'Source Search Path':
                         if os.path.exists(value):
-                            STATview.search_paths['source'].append(value)
+                            search_paths['source'].append(value)
                         else:
                             sys.stderr.write('search path %s specified in %s is not accessible\n' %(value, path))
                     elif option == 'Include Search Path':
                         if os.path.exists(value):
-                            STATview.search_paths['include'].append(value)
+                            search_paths['include'].append(value)
                         else:
                             sys.stderr.write('search path %s specified in %s is not accessible\n' %(value, path))
                     else:
@@ -761,7 +748,7 @@ class STATGUI(STATDotWindow):
             return False
         stat_wait_dialog.update(0.10)
 
-        topology_type = STAT_TOPOLOGY_DEPTH
+        topology_type = STAT_TOPOLOGY_AUTO
         if self.options['Topology Type'] == 'automatic':
             topology_type = STAT_TOPOLOGY_AUTO
         elif self.options['Topology Type'] == 'depth':
@@ -874,7 +861,7 @@ class STATGUI(STATDotWindow):
             if ret == STAT_OK:
                 break
             elif ret != STAT_PENDING_ACK:
-                show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
+                show_error_dialog('Failed to pause application:\n%s' %self.STAT.getLastErrorMessage(), self)
                 self.on_fatal_error()
                 return ret
         return ret
@@ -894,7 +881,7 @@ class STATGUI(STATDotWindow):
             if ret == STAT_OK:
                 break
             elif ret != STAT_PENDING_ACK:
-                show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
+                show_error_dialog('Failed to resume application:\n%s' %self.STAT.getLastErrorMessage(), self)
                 self.on_fatal_error()
                 return ret
         return ret
@@ -1122,7 +1109,7 @@ class STATGUI(STATDotWindow):
         stat_wait_dialog.update(0.91)
         ret = self.STAT.gatherTraces(False)
         if ret != STAT_OK:
-            show_error_dialog('Failed to gather stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
+            show_error_dialog('Failed to gather stack traces:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
             return ret
         while 1:
@@ -1132,7 +1119,7 @@ class STATGUI(STATDotWindow):
             if ret == STAT_OK:
                 break
             elif ret != STAT_PENDING_ACK:
-                show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
+                show_error_dialog('Failed to gather stack traces:\n%s' %self.STAT.getLastErrorMessage(), self)
                 self.on_fatal_error()
                 return ret
         stat_wait_dialog.update(0.95)
