@@ -71,7 +71,6 @@ STAT_FrontEnd::STAT_FrontEnd()
     /* Set the daemon path and filter paths to the environment variable 
        specification if applicable.  Otherwise, set to default install 
        directory */
-    
     envValue = getenv("STAT_DAEMON_PATH");
     if (envValue != NULL)
         toolDaemonExe_ = strdup(envValue);
@@ -195,17 +194,6 @@ STAT_FrontEnd::~STAT_FrontEnd()
     }    
     isAttached_ = false;
     isConnected_ = false;
-
-    /* Free up the hostRanksMap_ lists */
-    for (iter = hostRanksMap_.begin(); iter != hostRanksMap_.end(); iter++)
-    {
-        if ((*iter).second != NULL)
-        {
-            if ((*iter).second->list != NULL)
-                free((*iter).second->list);
-            free((*iter).second);
-        }
-    }
     graphlib_Finish();
 }
 
@@ -303,7 +291,7 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
 
     /* Register STAT's pack function */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering pack function with LaunchMON\n");
-    rc = LMON_fe_regPackForFeToBe(lmonSession_, STATpack);
+    rc = LMON_fe_regPackForFeToBe(lmonSession_, statPack);
     if (rc != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to register pack function\n");
@@ -315,7 +303,7 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
     if (isStatBench == false)
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering status CB function with LaunchMON\n");
-        rc = LMON_fe_regStatusCB(lmonSession_, lmonStatusCB);
+        rc = LMON_fe_regStatusCB(lmonSession_, lmonStatusCb);
         if (rc != LMON_OK)
         {
             printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to register status CB function\n");
@@ -425,17 +413,6 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
         return STAT_ALLOCATE_ERROR;
     }
     nApplProcs_ = proctabSize;
-
-    /* Output the process table */
-    if (verbose_ == STAT_VERBOSE_FULL || logging_ == STAT_LOG_FE || logging_ == STAT_LOG_ALL)
-    {
-        printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Process Table:\n");
-        for (i = 0; i < proctabSize; i++)
-        {
-            printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "%s: %s, pid: %d, MPI rank: %d\n", proctab_[i].pd.host_name, proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
-        }
-    }
-
     isLaunched_ = true;
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemons successfully launched\n");
 
@@ -455,7 +432,7 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
     }
 
     /* Dump the proctable to a file */
-    statError = dumpProctable();
+    statError = dumpProctab();
     if (statError != STAT_OK)
     {
         printMsg(statError, __FILE__, __LINE__, "Failed to dump process table to a file\n");
@@ -487,17 +464,10 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
         }
         endTime.setTime();
         addPerfData("\tApp Node List Creation Time", (endTime - startTime).getDoubleTime());
-
-        startTime.setTime();
-        statError = createDaemonRankMap();
-        if (statError != STAT_OK)
-        {
-            printMsg(statError, __FILE__, __LINE__, "Failed to create daemon rank map\n");
-            return statError;
-        }
-        endTime.setTime();
-        addPerfData("\tDaemon Rank Map Creation Time", (endTime - startTime).getDoubleTime());
     }
+
+    if (daemonArgv != NULL)
+        free(daemonArgv);
 
     return STAT_OK;
 }
@@ -511,15 +481,37 @@ void beConnectCb(Event *event, void *dummy)
     if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_ADD_BE))
         nCallbacks++;
 }
+
+void nodeRemovedCb(Event *event, void *dummy)
+{
+    StatError_t statError;
+    if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_REMOVE_NODE))
+    {
+        ((STAT_FrontEnd *)dummy)->printMsg(STAT_WARNING, __FILE__, __LINE__, "MRNet detected a tool process exit.  Recovering with available resources.\n");
+        statError = ((STAT_FrontEnd *)dummy)->setRanksList();
+        if (statError != STAT_OK)
+            ((STAT_FrontEnd *)dummy)->printMsg(statError, __FILE__, __LINE__, "An error occurred when trying to recover from node removal\n");
+    }
+}
+
+void topologyChangeCb(Event *event, void *dummy)
+{
+    StatError_t statError;
+    if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_CHANGE_PARENT))
+    {
+        ((STAT_FrontEnd *)dummy)->printMsg(STAT_WARNING, __FILE__, __LINE__, "MRNet detected a topology change.  Updating bit vector map.\n");
+        statError = ((STAT_FrontEnd *)dummy)->setRanksList();
+        if (statError != STAT_OK)
+            ((STAT_FrontEnd *)dummy)->printMsg(statError, __FILE__, __LINE__, "An error occurred when trying to adjust to topology change\n");
+    }
+}
 #endif
 
 StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, bool shareAppNodes, bool isStatBench)
 {
-    bool cbRet = true;
-    int statMergeFilterId, connectTimeout, i;
-    unsigned int nLeaves;
+    bool ret = true;
+    int statMergeFilterId;
     char topologyFileName[BUFSIZE], *connectTimeoutString, name[BUFSIZE];
-    NetworkTopology *networkTopology;
     StatError_t statError;
 
     /* Make sure daemons are launched */
@@ -596,33 +588,59 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     /* Register the BE connect callback function with MRNet */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering topology event callback with MRNet\n");
     nCallbacks = 0;
-    cbRet = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_ADD_BE, beConnectCb, NULL);
-    if (cbRet == false) 
+    ret = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_ADD_BE, beConnectCb, NULL);
+    if (ret == false) 
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to register MRNet BE connect event callback\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    /* Register the node removed callback function with MRNet */
+    ret = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_REMOVE_NODE, nodeRemovedCb, (void *)this);
+    if (ret == false) 
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to register MRNet node removed callback\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    /* Register the topology change callback function with MRNet */
+    ret = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_CHANGE_PARENT, topologyChangeCb, (void *)this);
+    if (ret == false) 
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to register MRNet topology change callback\n");
         return STAT_MRNET_ERROR;
     }
 #endif
 
     /* Get the topology information from the Network */
-    networkTopology = network_->get_NetworkTopology();
-    if (networkTopology == NULL)
+    leafInfo_.networkTopology = network_->get_NetworkTopology();
+    if (leafInfo_.networkTopology == NULL)
     {
         network_->print_error("Failed to get MRNet Network Topology");
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Network topology gather failure\n");
         return STAT_MRNET_ERROR;
     }
-    topologySize_ = networkTopology->get_NumNodes();
+    topologySize_ = leafInfo_.networkTopology->get_NumNodes();
+    leafInfo_.daemons = applicationNodeMultiSet_;
 
     /* Send MRNet connection info to daemons */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tConnecting to daemons...\n");
     startTime.setTime();
-    leafInfo_.networkTopology = networkTopology;
-    leafInfo_.daemons = applicationNodeMultiSet_;
+    if (isStatBench == false)
+    {
+        /* for STATbench we do this when creating traces since the proctab is modified */
+        startTime.setTime();
+        statError = createDaemonRankMap();
+        if (statError != STAT_OK)
+        {
+            printMsg(statError, __FILE__, __LINE__, "Failed to create daemon rank map\n");
+            return statError;
+        }
+        endTime.setTime();
+        addPerfData("\tCreate Daemon Rank Map Time", (endTime - startTime).getDoubleTime());
+    }
 
-    networkTopology->get_Leaves(leafInfo_.leafCps);
-    for (i = 0; i < leafInfo_.leafCps.size(); i++)
-        leafInfo_.leafCpRanks.insert(leafInfo_.leafCps[i]->get_Rank());
+    leafInfo_.networkTopology->get_Leaves(leafInfo_.leafCps);
 
     statError = sendDaemonInfo();
     if (statError != STAT_OK)
@@ -632,33 +650,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     }
     endTime.setTime();
     addPerfData("\tLaunchmon Send Time", (endTime - startTime).getDoubleTime());
-
-    if (isStatBench == true)
-    {
-        /* Now that we've sent the connection info, rename the app nodes for bit vector reordering */
-        applicationNodeMultiSet_.clear();
-        for (i = 0; i < nApplProcs_; i++)
-        {
-            snprintf(name, BUFSIZE, "a%d", i);
-            applicationNodeMultiSet_.insert(name);
-        }
-
-        leafInfo_.daemons = applicationNodeMultiSet_;
-    }
-    else
-    {    
-        /* Generate the ranks list */
-        /* With STATBench we will do this just prior generating traces (for modified proctable) */
-        startTime.setTime();
-        statError = setRanksList();
-        if (statError != STAT_OK)
-        {
-            printMsg(statError, __FILE__, __LINE__, "Failed to set ranks list\n");
-            return statError;
-        }
-        endTime.setTime();
-        addPerfData("\tRanks List Creation Time", (endTime - startTime).getDoubleTime());
-    }
 
     /* If we're blocking, wait for all BEs to connect to MRNet tree */
     if (blocking == true)
@@ -678,9 +669,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
 {
     static int connectTimeout = -1, i = 0;
     int statMergeFilterId;
-    unsigned int nLeaves;
     char *connectTimeoutString, fullTopologyFile[BUFSIZE];
-    NetworkTopology *networkTopology;
     StatError_t statError;
 
     /* Make sure the Network object has been created */
@@ -703,7 +692,6 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     }
 
     /* Check for BE connections */
-    networkTopology = network_->get_NetworkTopology();
     if (blocking == false)
     {
         i = i + 1;
@@ -717,7 +705,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
 #ifdef MRNET3        
             if (nCallbacks < nApplNodes_)
 #else
-            if (networkTopology->get_NumNodes() < topologySize_ + nApplNodes_)
+            if (leafInfo_.networkTopology->get_NumNodes() < topologySize_ + nApplNodes_)
 #endif
             {
                 usleep(10000);
@@ -738,7 +726,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
             if (nCallbacks == nApplNodes_)
                 break;
 #else
-            if (networkTopology->get_NumNodes() >= topologySize_ + nApplNodes_)
+            if (leafInfo_.networkTopology->get_NumNodes() >= topologySize_ + nApplNodes_)
                 break;
 #endif
             usleep(10000);
@@ -749,24 +737,19 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
 #ifdef MRNET3        
     if (i >= connectTimeout * 100 || nCallbacks < nApplNodes_)
     {
-        if (nCallbacks == 0)
-        {
             printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.\n", i/100, connectTimeout, nCallbacks, nApplNodes_);
+        if (nCallbacks == 0)
             return STAT_DAEMON_ERROR;
-        }
-        else
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.  Continuing with available subset.\n", i, connectTimeout, nCallbacks, nApplNodes_);
+        printMsg(STAT_WARNING, __FILE__, __LINE__, "Continuing with available subset.\n");
+        // TODO: update daemon list
     }
 #else
-    if (i >= connectTimeout * 100 || networkTopology->get_NumNodes() < topologySize_ + nApplNodes_)
+    if (i >= connectTimeout * 100 || leafInfo_.networkTopology->get_NumNodes() < topologySize_ + nApplNodes_)
     {
-        if (networkTopology->get_NumNodes() <= topologySize_)
-        {
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.\n", i/100, connectTimeout, networkTopology->get_NumNodes() - topologySize_, nApplNodes_);
+        printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.\n", i/100, connectTimeout, leafInfo_.networkTopology->get_NumNodes() - topologySize_, nApplNodes_);
+        if (leafInfo_.networkTopology->get_NumNodes() <= topologySize_)
             return STAT_DAEMON_ERROR;
-        }
-        else
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.  Continuing with available subset.\n", i, connectTimeout, networkTopology->get_NumNodes() - topologySize_, nApplNodes_);
+        printMsg(STAT_WARNING, __FILE__, __LINE__, "Continuing with available subset.\n");
     }
 #endif
 
@@ -774,9 +757,18 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     addPerfData("\tConnect to Daemons Time", (endTime - startTime).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tDaemons connected\n");
 
+    /* Now that we're fully connected, determine the BE merge order */
+    statError = setRanksList();
+    if (statError != STAT_OK)
+    {
+        printMsg(statError, __FILE__, __LINE__, "Failed to set ranks list\n");
+        return statError;
+    }
+
+    /* Dump the fully connected topology to a file */
     snprintf(fullTopologyFile, BUFSIZE, "%s/%s.fulltop", outDir_, filePrefix_);
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Outputting full MRNet topology file to %s\n", fullTopologyFile);
-    networkTopology->print_TopologyFile(fullTopologyFile); 
+    leafInfo_.networkTopology->print_TopologyFile(fullTopologyFile); 
 
     /* Get MRNet Broadcast Communicator and create a new stream */
     startTime.setTime();
@@ -872,7 +864,7 @@ void STAT_FrontEnd::getVersion(int *version)
     version[2] = STAT_REVISION_VERSION;
 }
 
-StatError_t STAT_FrontEnd::dumpProctable()
+StatError_t STAT_FrontEnd::dumpProctab()
 {
     int i;
     FILE *f;
@@ -894,8 +886,14 @@ StatError_t STAT_FrontEnd::dumpProctable()
         fprintf(f, "%s:%d\n", hostname_, launcherPid_);
 
     /* Write out the MPI ranks */
+    if (verbose_ == STAT_VERBOSE_FULL || logging_ == STAT_LOG_FE || logging_ == STAT_LOG_ALL)
+        printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Process Table:\n");
     for (i = 0; i < nApplProcs_; i++)
+    {
         fprintf(f, "%d %s:%d %s\n", proctab_[i].mpirank, proctab_[i].pd.host_name, proctab_[i].pd.pid, proctab_[i].pd.executable_name);
+        if (verbose_ == STAT_VERBOSE_FULL || logging_ == STAT_LOG_FE || logging_ == STAT_LOG_ALL)
+            printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "%s: %s, pid: %d, MPI rank: %d\n", proctab_[i].pd.host_name, proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+    }
 
     fclose(f);
     return STAT_OK;
@@ -1018,6 +1016,28 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
     return STAT_OK;
 }
 
+StatError_t STAT_FrontEnd::setDaemonNodes()
+{
+    set<MRN::NetworkTopology::Node *> nodes;
+    set<MRN::NetworkTopology::Node *>::iterator nodeIter;
+    string prettyHost;
+
+    /* Set the application node list */
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating daemon node list: ");
+    leafInfo_.networkTopology->get_BackEndNodes(nodes);
+    leafInfo_.daemons.clear();
+    for (nodeIter = nodes.begin(); nodeIter != nodes.end(); nodeIter++)
+    {
+        XPlat::NetUtils::GetHostName((*nodeIter)->get_HostName(), prettyHost);
+        leafInfo_.daemons.insert(prettyHost);
+        printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%s, ", prettyHost.c_str());
+    }        
+    printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemon node list created\n");
+
+    return STAT_OK;
+}
+
 StatError_t STAT_FrontEnd::setAppNodeList()
 {
     unsigned int i;
@@ -1025,6 +1045,7 @@ StatError_t STAT_FrontEnd::setAppNodeList()
 
     /* Set the application node list */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating application node list: ");
+    applicationNodeMultiSet_.clear();
     for (i = 0; i < nApplProcs_; i++)
     {
         currentNode = proctab_[i].pd.host_name;
@@ -1043,7 +1064,7 @@ StatError_t STAT_FrontEnd::setAppNodeList()
 
 StatError_t STAT_FrontEnd::createDaemonRankMap()
 {
-    unsigned int i;
+    unsigned int i, j;
     char *currentNode;
     IntList_t *daemonRanks;
     map<string, vector<int> > tempMap;
@@ -1059,6 +1080,7 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
     }
 
     /* Next sort each daemon's rank list and store it in the IntList_t ranks map */
+    j = 0;
     for (iter = tempMap.begin(); iter != tempMap.end(); iter++)
     {   
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemon %s, ranks:", iter->first.c_str());
@@ -1069,23 +1091,21 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for daemonRanks\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
-        daemonRanks->size = (iter->second).size();
-        daemonRanks->list = (int *)malloc(daemonRanks->size * sizeof(int));
+        daemonRanks->count = (iter->second).size();
+        daemonRanks->list = (int *)malloc(daemonRanks->count * sizeof(int));
         if (daemonRanks->list == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for daemonRanks->list\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
-        daemonRanks->count = 0;
         for (i = 0; i < (iter->second).size(); i++)
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%d, ", (iter->second)[i]);
             daemonRanks->list[i] = (iter->second)[i];
-            daemonRanks->count++;
         }
-        hostRanksMap_[iter->first] = daemonRanks;
-        hostToRank_[daemonRanks->list[0]] = iter->first;
+        mrnetRankToMPIRanksMap_[topologySize_ + j] = daemonRanks;
         printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");
+        j++;
     }
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemon rank map created\n");
@@ -1098,7 +1118,7 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
     unsigned int num1 = 0, num2, startPos, endPos, i, j;
     bool isRange = false;
     string baseNodeName, nodes, list;
-    string::size_type openBracketPos, closeBracketPos, commaPos, currentPos, finalPos;
+    string::size_type openBracketPos, closeBracketPos, commaPos, finalPos;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating communication node list\n");
 
@@ -1113,7 +1133,6 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
     }
    
     list = nodeList;
-    currentPos = 0;
     while (1)
     {
         openBracketPos = list.find_first_of("[");
@@ -1367,7 +1386,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
 #ifdef BGL
         printMsg(STAT_WARNING, __FILE__, __LINE__, "Sharing of application nodes not supported on BlueGene systems\n");
 #else
-        for(applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++) 
+        for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++) 
             communicationNodeSet_.insert(*applicationNodeMultiSetIter);
 #endif
     }
@@ -1570,26 +1589,9 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::sendDaemonInfo()
-{
-    lmon_rc_e rc;
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending MRNet connection info to daemons\n");
-    rc = LMON_fe_sendUsrDataBe(lmonSession_, (void *)&leafInfo_);
-    if (rc != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to send data to BE\n");
-        return STAT_LMON_ERROR;
-    }
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "MRNet connection info successfully sent to daemons\n");
-
-    return STAT_OK;
-}
-
 StatError_t STAT_FrontEnd::checkVersion()
 {
-    char *byteArray;
-    unsigned int byteArrayLen;
-    int filterId, tag, ranksSize, daemonCount, filterCount, retval;
+    int filterId, tag, daemonCount, filterCount, retval;
     int major, minor, revision;
     Stream *stream;
     PacketPtr packet;
@@ -2107,7 +2109,6 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray;
     double totalMergeTime = 0.0;
     list<int>::iterator ranksIter;
-    string host;
     graphlib_graph_p stackTraces, sortedStackTraces;
     graphlib_error_t gl_err;
     IntList_t *hostRanks;
@@ -2210,17 +2211,8 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Filling in edges\n");
     for (ranksIter = remapRanksList_.begin(); ranksIter != remapRanksList_.end(); ranksIter++)
     {
-        /* Search the proctable for the hostname corresponding to the current rank */
-        /* and grab that host's rank list */
-        host = hostToRank_[*ranksIter];
-        if (host == "")
-        {
-            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to find host with rank %d\n", *ranksIter);
-            return STAT_ATTACH_ERROR;
-        }
-        hostRanks = hostRanksMap_[host];
-        
         /* Fill edge labels for this daemon */
+        hostRanks = mrnetRankToMPIRanksMap_[*ranksIter];
         gl_err = graphlib_mergeGraphsFillEdges(sortedStackTraces, stackTraces, hostRanks->list, hostRanks->count, offset);
         if (GRL_IS_FATALERROR(gl_err))
         {
@@ -2442,10 +2434,10 @@ StatError_t STAT_FrontEnd::detachApplication(bool blocking)
     return detachApplication(NULL, 0, blocking);
 }
 
-// TODO: this stop list obviously won't scale, but most subsets should be small anyway
+// TODO: the stop list obviously won't scale, but most subsets should be small anyway
 StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bool blocking)
 {
-    int tag, retval, i;
+    int tag, retval;
     StatError_t ret;
     PacketPtr packet;
 
@@ -2678,7 +2670,7 @@ void STAT_FrontEnd::printApplicationNodeList()
     multiset<string>::iterator iter;
 
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "\tApplication Node List: ");
-    for(iter = applicationNodeMultiSet_.begin(); iter != applicationNodeMultiSet_.end(); iter++) 
+    for (iter = applicationNodeMultiSet_.begin(); iter != applicationNodeMultiSet_.end(); iter++) 
         printMsg(STAT_STDOUT, __FILE__, __LINE__, "%s, ", iter->c_str());
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "\n");
 }
@@ -2903,9 +2895,7 @@ StatError_t increaseSysLimits()
 
 StatError_t STAT_FrontEnd::setRanksList()
 {
-    int nLeaves, i, j, daemonCount, rank;
-    set<string>::iterator daemonIter;
-    map<int, RemapNode_t*> rankToNode;
+    int i, j, rank;
     map<int, RemapNode_t*> childOrder;
     map<int, RemapNode_t*>::iterator childOrderIter;
     list<int>::iterator remapRanksListIter;
@@ -2914,70 +2904,26 @@ StatError_t STAT_FrontEnd::setRanksList()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating the merge order ranks list\n");
 
-    /* First we need to generate the nodes for the MRNet leaf communication 
-       processes and the STAT BE daemons */
-    nLeaves = leafInfo_.leafCps.size();
-    daemonCount = 0;
-    daemonIter = leafInfo_.daemons.begin();
-
-    /* Create a node for each MRNet leaf communication process */
-    for (i = 0; i < nLeaves; i++)
+    /* First we need to generate the list of STAT BE daemons */
+    ret = setDaemonNodes();
+    if (ret != STAT_OK)
     {
-        rank = leafInfo_.leafCps[i]->get_Rank();
-        currentNode = (RemapNode_t *)malloc(sizeof(RemapNode_t));
-        if (currentNode == NULL)
-        {
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for currentNode\n", strerror(errno));
-            return STAT_ALLOCATE_ERROR;
-        }
-        currentNode->numChildren = 0;
-        currentNode->children = NULL;
-        rankToNode[rank] = currentNode;
-        childOrder.clear();
-
-        /* Create a node for each daemon connected to this MRNet leaf CP */
-        /* Note: this must be in the same order as the pack function */
-        for (j = 0; j < (leafInfo_.daemons.size() / nLeaves) + (leafInfo_.daemons.size() % nLeaves > i ? 1 : 0); j++)
-        {
-            if (daemonIter == leafInfo_.daemons.end())
-                break;
-            currentNode = (RemapNode_t *)malloc(sizeof(RemapNode_t));
-            if (currentNode == NULL)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for currentNode\n", strerror(errno));
-                return STAT_ALLOCATE_ERROR;
-            }
-            currentNode->lowRank = hostRanksMap_[*daemonIter]->list[0];
-            currentNode->numChildren = 0;
-            currentNode->children = NULL;
-            if (j == 0)
-                rankToNode[rank]->lowRank = currentNode->lowRank;
-            else if (currentNode->lowRank < rankToNode[rank]->lowRank)
-                rankToNode[rank]->lowRank = currentNode->lowRank;
-            childOrder[currentNode->lowRank] = currentNode;
-            daemonIter++;
-        }
-
-        /* Add the BEs for this leaf CP, ordered by lowest MPI rank */
-        for (childOrderIter = childOrder.begin(); childOrderIter != childOrder.end(); childOrderIter++) 
-        {
-            rankToNode[rank]->numChildren++;
-            rankToNode[rank]->children = (RemapNode_t **)realloc(rankToNode[rank]->children, rankToNode[rank]->numChildren * sizeof(RemapNode_t));
-            rankToNode[rank]->children[rankToNode[rank]->numChildren - 1] = childOrderIter->second;
-        }
+        printMsg(ret, __FILE__, __LINE__, "Failed to set daemon nodes\n");
+        return ret;
     }
-    
-    /* Generate the full rank tree */
+
+    /* Generate the rank tree */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Building the MRNet topology rank tree\n");
-    root = buildRemapTree(leafInfo_.networkTopology->get_Root(), rankToNode);
+    root = buildRemapTree(leafInfo_.networkTopology->get_Root());
     if (root == NULL)
     {
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to Build Remap Tree\n");
         return STAT_ALLOCATE_ERROR;
     }
 
-    /* Build the ranks list based on the full tree */
+    /* Build the ordered ranks list based on the rank tree */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating the ranks list based on the rank tree\n");
+    remapRanksList_.clear();
     ret = buildRanksList(root);
     if (ret != STAT_OK)
     {
@@ -2996,7 +2942,7 @@ StatError_t STAT_FrontEnd::setRanksList()
     return STAT_OK;
 }
 
-RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node, map<int, RemapNode_t *> rankToNode)
+RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node)
 {
     int i;
     set<NetworkTopology::Node *>::iterator iter;
@@ -3005,25 +2951,25 @@ RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node, map<int,
     map<int, RemapNode_t *>::iterator childOrderIter;
     RemapNode_t *ret, *child;
    
-    if (leafInfo_.leafCpRanks.find(node->get_Rank()) == leafInfo_.leafCpRanks.end())
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Remap tree MRNet rank %d\n", node->get_Rank());
+    ret = (RemapNode_t *)malloc(sizeof(RemapNode_t));
+    ret->numChildren = 0;
+    ret->children = NULL;
+    ret->lowRank = -1;
+    if (mrnetRankToMPIRanksMap_.find(node->get_Rank()) != mrnetRankToMPIRanksMap_.end())
     {
-        /* Generate the return node */
-        ret = (RemapNode_t *)malloc(sizeof(RemapNode_t));
-        if (ret == NULL)
-        {
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate remap node\n", strerror(errno));
-            return NULL;
-        }
-        ret->numChildren = 0;
-        ret->children = NULL;
-
-        /* Find the lowest MPI rank among this node's children */
+        /* This is a BE so return its rank */
+        ret->lowRank = node->get_Rank();
+    }
+    else
+    {
+        /* This is not a BE so find the lowest rank among this node's children */
         children = node->get_Children();
         i = -1;
         for (iter = children.begin(); iter != children.end(); iter++)
         {
             i++;
-            child = buildRemapTree(*iter, rankToNode);
+            child = buildRemapTree(*iter);
             if (child == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to Build Remap Tree\n");
@@ -3036,35 +2982,26 @@ RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node, map<int,
             childOrder[child->lowRank] = child;
         }
 
-        /* Add the children for this node, ordered by lowest MPI rank */
+        /* Add the children for this node, ordered by lowest rank */
         ret->numChildren = childOrder.size();
-        ret->children = (RemapNode_t **)malloc(ret->numChildren * sizeof(RemapNode_t));
-        if (ret->children == NULL)
+        if (ret->numChildren != 0)
         {
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for ret->children\n", strerror(errno));
-            return NULL;
+            ret->children = (RemapNode_t **)malloc(ret->numChildren * sizeof(RemapNode_t));
+            if (ret->children == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for ret->children\n", strerror(errno));
+                return NULL;
+            }
+            i = -1;
+            for (childOrderIter = childOrder.begin(); childOrderIter != childOrder.end(); childOrderIter++)
+            {
+                i++;
+                ret->children[i] = childOrderIter->second;
+            }
         }
-        i = -1;
-        for (childOrderIter = childOrder.begin(); childOrderIter != childOrder.end(); childOrderIter++)
-        {
-            i++;
-            ret->children[i] = childOrderIter->second;
-        }
-        if (ret == NULL)
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: ret is NULL\n");
-        return ret;
     }
-    else
-    {
-        /* This is a MRNet leaf CP, so just return the generated rank node */
-        if (rankToNode[node->get_Rank()] == NULL)
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "rankToNode returned NULL for rank %d\n", node->get_Rank());
-        return rankToNode[node->get_Rank()];
-    }
-
-    /* We should never end up here */
-    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Something went wrong!\n");
-    return NULL;
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Remap tree MRNet rank %d with %d children and low rank %d\n", node->get_Rank(), ret->numChildren, ret->lowRank);
+    return ret;
 }
 
 StatError_t STAT_FrontEnd::buildRanksList(RemapNode_t *node)
@@ -3079,8 +3016,9 @@ StatError_t STAT_FrontEnd::buildRanksList(RemapNode_t *node)
     }
     else
     {
-        /* This is a daemon so add its low rank to the remap ranks list */
-        remapRanksList_.push_back(node->lowRank);
+        /* If this is a daemon then add its rank to the remap ranks list */
+        if (mrnetRankToMPIRanksMap_.find(node->lowRank) != mrnetRankToMPIRanksMap_.end())
+            remapRanksList_.push_back(node->lowRank);
     }
 
     return STAT_OK;
@@ -3110,15 +3048,30 @@ StatError_t STAT_FrontEnd::freeRemapTree(RemapNode_t *node)
     return STAT_OK;
 }
 
-int STATpack(void *data, void *buf, int bufMax, int *bufLen)
+StatError_t STAT_FrontEnd::sendDaemonInfo()
+{
+    lmon_rc_e rc;
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending MRNet connection info to daemons\n");
+    rc = LMON_fe_sendUsrDataBe(lmonSession_, (void *)&leafInfo_);
+    if (rc != LMON_OK)
+    {
+        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to send data to BE\n");
+        return STAT_LMON_ERROR;
+    }
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "MRNet connection info successfully sent to daemons\n");
+
+    return STAT_OK;
+}
+
+int statPack(void *data, void *buf, int bufMax, int *bufLen)
 {
     int i, j, total = 0, nLeaves, len, len2, port, rank, parentPort, daemonCount, daemonRank;
     char *ptr = (char *)buf, *daemonCountPtr, *childCountPtr;
     unsigned int nNodes, depth, minFanout;
     unsigned maxFanout;
     double averageFanout, stdDevFanout;
-    LeafInfo_t *leafInfo_ = (LeafInfo_t *)data;
-    NetworkTopology *networkTopology = leafInfo_->networkTopology;
+    LeafInfo_t *leafInfo = (LeafInfo_t *)data;
+    NetworkTopology *networkTopology = leafInfo->networkTopology;
     NetworkTopology::Node *node;
     set<string>::iterator daemonIter;
     set<NetworkTopology::Node *>::iterator iter;
@@ -3133,18 +3086,18 @@ int STATpack(void *data, void *buf, int bufMax, int *bufLen)
     total += sizeof(int);
   
     /* pack up the number of parent nodes */
-    nLeaves = leafInfo_->leafCps.size();
+    nLeaves = leafInfo->leafCps.size();
     memcpy(ptr, (void *)&nLeaves, sizeof(int));
     ptr += sizeof(int);
     total += sizeof(int);
 
     /* write the data one parent at a time */
     daemonCount = 0;
-    daemonIter = leafInfo_->daemons.begin();
+    daemonIter = leafInfo->daemons.begin();
     for (i = 0; i < nLeaves; i++)
     {
         /* get the parent info */
-        node = leafInfo_->leafCps[i];
+        node = leafInfo->leafCps[i];
         port = node->get_Port();
         currentHost = node->get_HostName();
         rank = node->get_Rank();
@@ -3168,9 +3121,9 @@ int STATpack(void *data, void *buf, int bufMax, int *bufLen)
         childCountPtr = ptr;
         ptr += sizeof(int);
 
-        for (j = 0; j < (leafInfo_->daemons.size() / nLeaves) + (leafInfo_->daemons.size() % nLeaves > i ? 1 : 0); j++)
+        for (j = 0; j < (leafInfo->daemons.size() / nLeaves) + (leafInfo->daemons.size() % nLeaves > i ? 1 : 0); j++)
         {
-            if (daemonIter == leafInfo_->daemons.end())
+            if (daemonIter == leafInfo->daemons.end())
                 break;
             len = strlen(daemonIter->c_str()) + 1;
             total += sizeof(int) + len;
@@ -3203,7 +3156,7 @@ int STATpack(void *data, void *buf, int bufMax, int *bufLen)
 }
 
 
-int lmonStatusCB(int *status)
+int lmonStatusCb(int *status)
 {
     lmonState = *status;
     return 0;
@@ -3263,23 +3216,14 @@ StatError_t STAT_FrontEnd::STATBench_setAppNodeList()
     set<string>::iterator iter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating application node list\n");
+    applicationNodeMultiSet_.clear();
 
     for (i = 0; i < nApplProcs_; i++)
     {
         currentNode = proctab_[i].pd.host_name;
         applicationNodeMultiSet_.insert(currentNode);
     }
-
-    for (i = 0; i < proctabSize_; i++)
-    {
-        if (proctab_[i].pd.executable_name != NULL)
-            free(proctab_[i].pd.executable_name);
-        if (proctab_[i].pd.host_name != NULL)
-            free(proctab_[i].pd.host_name);
-    }
-    free(proctab_);
-    proctab_ = NULL;
-    nApplNodes_ = applicationNodeMultiSet_.size();
+    nApplNodes_ = nApplProcs_;
 
     return STAT_OK;
 }
@@ -3298,7 +3242,17 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
 
     /* Rework the proc table to represent the STATBench emulated application */
     startTime.setTime();
-    nApplNodes_ = nApplProcs_;
+
+    for (i = 0; i < proctabSize_; i++)
+    {
+        if (proctab_[i].pd.executable_name != NULL)
+            free(proctab_[i].pd.executable_name);
+        if (proctab_[i].pd.host_name != NULL)
+            free(proctab_[i].pd.host_name);
+    }
+    free(proctab_);
+    proctab_ = NULL;
+
     nApplProcs_ = nApplNodes_ * nTasks;
     proctabSize_ = nApplProcs_;
     proctab_ = (MPIR_PROCDESC_EXT *)malloc(nApplNodes_ * nTasks * sizeof(MPIR_PROCDESC_EXT));
@@ -3353,7 +3307,7 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
         return STAT_NOT_CONNECTED_ERROR;
     }
 
-    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Generating traces...");
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Generating traces with parameters %d %d %d %d %d...\n", maxDepth, nTasks, nTraces, functionFanout, nEqClasses);
 
     /* Send request to daemons to gather stack traces and wait for confirmation */
     if (broadcastStream_->send(PROT_STATBENCH_CREATE_TRACES, "%ud %ud %ud %ud %d", maxDepth, nTasks, nTraces, functionFanout, nEqClasses) == -1) 

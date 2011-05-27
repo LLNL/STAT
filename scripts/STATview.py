@@ -1312,11 +1312,10 @@ class STATGraph(Graph):
             # pad with leading zeros if necessary
             for i in range(len(to_leaves)):
                 temporal_string, node = to_leaves[i]
-                temporal_string = temporal_string.split('.')
                 new_temporal_string = ''
-                for num_string in temporal_string:
+                for num_string in temporal_string.split('.'):
                     new_temporal_string += '%0*d' %(max_len, int(num_string))
-                to_leaves[i] = node, new_temporal_string
+                to_leaves[i] = new_temporal_string, node
                 temporal_string_list[temporal_string_list.index(temporal_string)] = new_temporal_string
         to_leaves.sort()
         temporal_string_list.sort()

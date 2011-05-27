@@ -12,6 +12,7 @@
 
 void do_SendOrStall(int to, int tag, int rank, int* buf, MPI_Request* req, int n);
 void do_Receive(int from, int tag, int* buf, MPI_Request* req);
+void recurse(int count);
 
 char hostname[256];
 int sleeptime = -1;
@@ -46,29 +47,27 @@ int main (int argc, char *argv[])
     return 0;
 }
 
+void recurse(int count)
+{
+    if (count == 0)
+    {
+        if (sleeptime == -1)
+            while(1);
+        else
+            sleep(sleeptime);
+    }
+    else
+        recurse(count -1);
+}
+
 void do_SendOrStall(int to, int tag, int rank, int* buf, MPI_Request* req, int n)
 {
     int i;
-    if (rank == 1)
+    for (i = 0; i < 99999999; i++)
     {
-        if (sleeptime == -1)
-        {
-        	printf("%s, MPI task %d of %d stalling\n", hostname, rank, n);
-            fflush(stdout);
-            while(1) ;
-        }
-        else
-        {
-	        for (i = sleeptime/10; i > 0; i = i - 1)
-	        {
-        	    printf("%s, MPI task %d of %d stalling for %d of %d seconds\n", hostname, rank, n, i*10, sleeptime);
-	            fflush(stdout);
-	            sleep(10);
-	        }
-        	printf("%s, MPI task %d of %d proceeding\n", hostname, rank, n);
-            fflush(stdout);
-        }
-    }	
+        if (i == rank)
+            recurse(rank % 10);
+    }
 
     MPI_Isend(buf, 1, MPI_INT, to, tag, MPI_COMM_WORLD, req);
 }

@@ -37,7 +37,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 examples_PROGRAMS = hw$(EXEEXT) mpi_ringtopo$(EXEEXT) \
-	mpi_ringtopo_defunct$(EXEEXT) to_test$(EXEEXT)
+	mpi_ringtopo_defunct$(EXEEXT) to_test$(EXEEXT) \
+	rank_test$(EXEEXT)
 subdir = examples/src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -70,6 +71,9 @@ mpi_ringtopo_LDADD = $(LDADD)
 am_mpi_ringtopo_defunct_OBJECTS = mpi_ringtopo_defunct.$(OBJEXT)
 mpi_ringtopo_defunct_OBJECTS = $(am_mpi_ringtopo_defunct_OBJECTS)
 mpi_ringtopo_defunct_LDADD = $(LDADD)
+am_rank_test_OBJECTS = rank_test.$(OBJEXT)
+rank_test_OBJECTS = $(am_rank_test_OBJECTS)
+rank_test_LDADD = $(LDADD)
 am_to_test_OBJECTS = to_test.$(OBJEXT)
 to_test_OBJECTS = $(am_to_test_OBJECTS)
 to_test_LDADD = $(LDADD)
@@ -93,9 +97,11 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(hw_SOURCES) $(mpi_ringtopo_SOURCES) \
-	$(mpi_ringtopo_defunct_SOURCES) $(to_test_SOURCES)
+	$(mpi_ringtopo_defunct_SOURCES) $(rank_test_SOURCES) \
+	$(to_test_SOURCES)
 DIST_SOURCES = $(hw_SOURCES) $(mpi_ringtopo_SOURCES) \
-	$(mpi_ringtopo_defunct_SOURCES) $(to_test_SOURCES)
+	$(mpi_ringtopo_defunct_SOURCES) $(rank_test_SOURCES) \
+	$(to_test_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -226,6 +232,7 @@ target_alias = @target_alias@
 examplesdir = $(pkgdatadir)/examples/bin
 hw_SOURCES = hw.F
 mpi_ringtopo_SOURCES = mpi_ringtopo.c
+rank_test_SOURCES = rank_test.c
 mpi_ringtopo_defunct_SOURCES = mpi_ringtopo_defunct.c
 to_test_SOURCES = to_test.c
 all: all-am
@@ -298,6 +305,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpi_ringtopo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpi_ringtopo_defunct.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rank_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/to_test.Po@am__quote@
 
 .F.o:
@@ -516,6 +524,8 @@ uninstall-am: uninstall-examplesPROGRAMS uninstall-info-am
 hw: hw.F Makefile
 	$(MPIF77) -g -o $@ $<
 mpi_ringtopo: mpi_ringtopo.c Makefile
+	$(MPICC) -g -o $@ $<
+rank_test: rank_test.c Makefile
 	$(MPICC) -g -o $@ $<
 mpi_ringtopo_defunct: mpi_ringtopo_defunct.c Makefile
 	$(MPICC) -g -o $@ $<

@@ -75,13 +75,11 @@ typedef struct
     MRN::NetworkTopology *networkTopology;
     std::multiset<std::string> daemons;
     std::vector<MRN::NetworkTopology::Node *> leafCps;
-    std::set<int> leafCpRanks;
 } LeafInfo_t;
 
 //! A struct to help determine ranks lists for each daemon
 typedef struct
 {
-    int size;
     int count;
     int *list;
 } IntList_t;
@@ -94,7 +92,7 @@ typedef struct _remap_node
     struct _remap_node **children;
 } RemapNode_t;
 
-//! The STATpack function registered to LMON to send data to the daemons
+//! The statPack function registered to LMON to send data to the daemons
 /*!
     \param data - the input data
     \param[out] buf - the output buffer
@@ -105,7 +103,7 @@ typedef struct _remap_node
     Parses "data" containing MRNet connection information to produce a buffer 
     "buf" suitable for sending to the daemons.
 */
-int STATpack(void *data, void *buf, int bufMax, int *bufLen);
+int statPack(void *data, void *buf, int bufMax, int *bufLen);
 
 //! A callback function to detect daemon exit
 /*!
@@ -115,7 +113,7 @@ int STATpack(void *data, void *buf, int bufMax, int *bufLen);
     Determine if STAT is still connected to the resource manager 
     and if the application is still running.
 */
-int lmonStatusCB(int *status);
+int lmonStatusCb(int *status);
 
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
 //! Increase nofile and nproc limits to maximum 
@@ -131,6 +129,24 @@ StatError_t increaseSysLimits();
     Records the number of MRNet BE connection events.
 */
 void beConnectCb(MRN::Event *event, void *dummy);
+
+//! Callback for daemon exit
+/*!
+    \param event - the event type
+    \param dummy - a dummy argument
+
+    Handle the exiting of a node in the tree, reconfigure the topology
+*/
+void nodeRemovedCb(MRN::Event *event, void *dummy);
+
+//! Callback for topology modification
+/*!
+    \param event - the event type
+    \param dummy - a dummy argument
+
+    Handle the exiting of a node in the tree, reconfigure the topology
+*/
+void topologyChangeCb(MRN::Event *event, void *dummy);
 #endif
 
 //! The STAT FrontEnd object is used to Launch STAT daemons and gather and merge stack traces
@@ -333,6 +349,18 @@ class STAT_FrontEnd
             \return STAT_OK on success
         */
         StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
+
+        //! Creates the ranks list
+        /*!
+            \return STAT_OK on success
+        
+            Parses the MRNet topology to determine the merging order and generates
+            the correspondingly ordered ranks list.  This requires generating a tree
+            based on the MRNet tree that maintains the lowest ranked MPI process
+            beneath each node in the tree.  Alternatively, we could derrive this list
+            by creating a new MRNet filter function.
+        */
+        StatError_t setRanksList();
 
         /**********************************************/
         /* Function to access and set class variables */
@@ -567,7 +595,7 @@ class STAT_FrontEnd
         /*!
             \return STAT_OK on success
         */
-        StatError_t dumpProctable();
+        StatError_t dumpProctab();
 
         //! The actual gather implementation
         /*!
@@ -631,6 +659,14 @@ class STAT_FrontEnd
 
             Also prepares the ranks map required to reorder the bit vectors
         */
+        StatError_t setDaemonNodes();
+
+        //! Set the list of daemon nodes from the MRNet topology
+        /*!
+            \return STAT_OK on success
+
+            Also prepares the ranks map required to reorder the bit vectors
+        */
         StatError_t setAppNodeList();
 
         //! Set the ranks list for each daemon and place into the ranks map 
@@ -682,18 +718,6 @@ class STAT_FrontEnd
         */
         StatError_t setNodeListFromConfigFile(char **nodeList);
 
-        //! Creates the ranks list
-        /*!
-            \return STAT_OK on success
-        
-            Parses the MRNet topology to determine the merging order and generates
-            the correspondingly ordered ranks list.  This requires generating a tree
-            based on the MRNet tree that maintains the lowest ranked MPI process
-            beneath each node in the tree.  Alternatively, we could derrive this list
-            by creating a new MRNet filter function.
-        */
-        StatError_t setRanksList();
-
         //! Recursively build the rank tree
         /*!
             \param node - the corresponding MRNet topology node
@@ -702,7 +726,8 @@ class STAT_FrontEnd
         
             Recursively builds the rank tree based on the MRNet topology.
         */
-        RemapNode_t *buildRemapTree(MRN::NetworkTopology::Node *node, std::map<int, RemapNode_t *> rankToNode);
+        //RemapNode_t *buildRemapTree(MRN::NetworkTopology::Node *node, std::map<int, RemapNode_t *> rankToNode);
+        RemapNode_t *buildRemapTree(MRN::NetworkTopology::Node *node);
 
         //! Recursively generate the ranks list
         /*!
@@ -738,7 +763,7 @@ class STAT_FrontEnd
         unsigned int nApplProcs_;                           /*!< the number of application processes */
         unsigned int procsPerNode_;                         /*!< the number of CPs to launcher per node*/
         unsigned int launcherArgc_;                         /*!< the number of job launch arguments*/
-        unsigned int topologySize_;                         /*!< TODO: remove this variable, a hack to work with MRNet 2.2beta */
+        unsigned int topologySize_;                         /*!< the size of the MRNet topology */
         int jobId_;                                         /*!< the batch job ID */
         int lmonSession_;                                   /*!< the LaunchMON session ID */
         char **launcherArgv_;                               /*!< the job launch arguments */
@@ -759,10 +784,9 @@ class STAT_FrontEnd
         bool isRunning_;                                    /*!< whether the application processes are currently running */
         bool isPendingAck_;                                 /*!< whether there are any pending acknowledgements */
         std::list<int> remapRanksList_;                     /*!< the order of bit vectors in the incoming packets */
-        std::set<std::string> communicationNodeSet_;      /*!< the list of nodes to use for MRNet CPs */
+        std::set<std::string> communicationNodeSet_;        /*!< the list of nodes to use for MRNet CPs */
         std::multiset<std::string> applicationNodeMultiSet_;    /*!< the set of application nodes */
-        std::map<int, std::string> hostToRank_;             /*!< a rank to hostname used for bit vector reordering */
-        std::map<std::string, IntList_t *> hostRanksMap_;   /*!< a map of hostname to ranks list used for bit vector reordering */
+        std::map<int, IntList_t *> mrnetRankToMPIRanksMap_; /*!< a map of MRNet ranks to ranks list used for bit vector reordering */
         std::vector<std::pair<std::string, double> > performanceData_;     /*!< the accumulated performance data to be dumped upon completion */
         LeafInfo_t leafInfo_;                               /*!< the MRNet leaf info */
         StatProt_t pendingAckTag_;                          /*!< the expected tag of the pending acknowledgement */

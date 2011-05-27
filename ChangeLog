@@ -1,4 +1,13 @@
+2011-05-26 Gregory L. Lee <lee218@llnl.gov>
+	* examples/src/mpi_ringtopo.c : added option to sleep instead of hang
+	* scripts/STATview.py : fixed temporal ordering handling of more than 10 comparisons (zero padding of TO strings)
+
+2011-05-25 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : Bit remapRanksList now calculated from connected MRNet NetworkTopology object.  Added topologyChangeCb.  Now properly handles CP exit.
+	* examples/src/rank_test.c : added new rank test
+
 2011-05-20 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : adding recovery for BE exit with nodeRemovedCb, which recaculates remapRanksList.
 	* scripts/STATview.py, scripts/STATGUI.py : moved helper functions to STAThelper.py
 
 2011-05-12 Gregory L. Lee <lee218@llnl.gov>

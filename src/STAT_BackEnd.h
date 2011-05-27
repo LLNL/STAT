@@ -427,18 +427,18 @@ class STAT_BackEnd
         bool initialized_;                      /*!< whether LauncMON has been initialized */
         bool connected_;                        /*!< whether this daemon has been conected to MRNet */
         bool isRunning_;                        /*!< whether the target processes are running */
-        MRN::Network *network_;                      /*!< the MRNet Network object */
-        MRN::Rank myRank_;                           /*!< this daemon's MRNet rank */
-        MRN::Rank parentRank_;                       /*!< the MRNet parent's rank */
-        MRN::Port parentPort_;                       /*!< the MRNet parent's port */
+        MRN::Network *network_;                 /*!< the MRNet Network object */
+        MRN::Rank myRank_;                      /*!< this daemon's MRNet rank */
+        MRN::Rank parentRank_;                  /*!< the MRNet parent's rank */
+        MRN::Port parentPort_;                  /*!< the MRNet parent's port */
         graphlib_graph_p prefixTree3d_;         /*!< the 3D prefix tree */
         graphlib_graph_p prefixTree2d_;         /*!< the 2D prefix tree */
         MPIR_PROCDESC_EXT *proctab_;            /*!< the process table */
 #ifdef STACKWALKER
-        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;        /*!< the debug process objects */
+        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;  /*!< the debug process objects */
 #else
         BPatch bpatch_;                         /*!< the application bpatch object */
-        ap<int, BPatch_process*> processMap_;  /*!< the debug process objects */
+        std::map<int, BPatch_process*> processMap_; /*!< the debug process objects */
 #endif
 };
 
