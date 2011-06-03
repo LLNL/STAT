@@ -61,7 +61,7 @@ AC_FUNC_REALLOC
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS([getcwd gethostname gettimeofday mkdir mkfifo pow select strdup])
+AC_CHECK_FUNCS([getcwd gethostname gettimeofday mkdir mkfifo pow select strdup getrlimit setrlimit])
 
 AC_SUBST(CXX)
 AC_SUBST(CXXFLAGS)

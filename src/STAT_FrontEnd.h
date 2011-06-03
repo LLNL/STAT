@@ -130,12 +130,12 @@ StatError_t increaseSysLimits();
 */
 void beConnectCb(MRN::Event *event, void *dummy);
 
-//! Callback for daemon exit
+//! Callback for daemon or CP exit
 /*!
     \param event - the event type
     \param dummy - a dummy argument
 
-    Handle the exiting of a node in the tree, reconfigure the topology
+    Handle the exiting of a node in the tree, reconfigure the bit vectors
 */
 void nodeRemovedCb(MRN::Event *event, void *dummy);
 
@@ -144,7 +144,7 @@ void nodeRemovedCb(MRN::Event *event, void *dummy);
     \param event - the event type
     \param dummy - a dummy argument
 
-    Handle the exiting of a node in the tree, reconfigure the topology
+    Handle the change of the tree topology, reconfigure the bit vectors
 */
 void topologyChangeCb(MRN::Event *event, void *dummy);
 #endif

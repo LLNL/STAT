@@ -1,3 +1,10 @@
+2011-06-02 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STAT.in, scripts/STATGUI.in : set LMON_FE_ENGINE_TIMEOUT 
+	* configure.ac : added getrlimit and setrlimit tests
+
+2011-06-01 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py, scripts/STATGUI.py : added ability to search by hosts. Consolodated search by hosts, ranks, text into one button.
+
 2011-05-26 Gregory L. Lee <lee218@llnl.gov>
 	* examples/src/mpi_ringtopo.c : added option to sleep instead of hang
 	* scripts/STATview.py : fixed temporal ordering handling of more than 10 comparisons (zero padding of TO strings)

@@ -741,7 +741,6 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
         if (nCallbacks == 0)
             return STAT_DAEMON_ERROR;
         printMsg(STAT_WARNING, __FILE__, __LINE__, "Continuing with available subset.\n");
-        // TODO: update daemon list
     }
 #else
     if (i >= connectTimeout * 100 || leafInfo_.networkTopology->get_NumNodes() < topologySize_ + nApplNodes_)
@@ -1435,9 +1434,15 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         else
         {
             /* There aren't enough CPs, so make a 2-deep tree with as many CPs as we have */
-            printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Not enough processes for specified topology.  %d processes needed for depth of %d and fanout of %d.  Reverting to tree with one layer of %d communication processes\n", procsNeeded, desiredDepth, fanout, communicationNodeSet_.size() * procsPerNode_);
-            if (topologyType != STAT_TOPOLOGY_AUTO)
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology depth %d, fanout %d: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs or request the use of application nodes with --appnodes.\n", desiredDepth, fanout, procsNeeded, communicationNodeSet_.size() * procsPerNode_, communicationNodeSet_.size() * procsPerNode_);
+            if (communicationNodeSet_.size() == 0)
+                printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Not enough processes for specified topology.  %d processes needed for depth of %d and fanout of %d.  Reverting to flat topology\n", procsNeeded, desiredDepth, fanout);
+            else
+            {
+                if (topologyType == STAT_TOPOLOGY_AUTO)
+                    printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Not enough processes for automatic topology.  %d processes needed for depth of %d and fanout of %d.  Reverting to tree with one layer of %d communication processes\n", procsNeeded, desiredDepth, fanout, communicationNodeSet_.size() * procsPerNode_);
+                else
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology depth %d, fanout %d: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs or request the use of application nodes with --appnodes.\n", desiredDepth, fanout, procsNeeded, communicationNodeSet_.size() * procsPerNode_, communicationNodeSet_.size() * procsPerNode_);
+            }
             topology = (char *)malloc(BUFSIZE);
             if (topology == NULL)
             {
@@ -2861,7 +2866,7 @@ StatError_t increaseSysLimits()
 
     if (getrlimit(RLIMIT_NOFILE, rlim) < 0) 
     {
-        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: getrlimit failed\n", strerror(errno));
+        fprintf(stderr, "%s: getrlimit failed\n", strerror(errno));
         return STAT_SYSTEM_ERROR;
     }
     else if (rlim->rlim_cur < rlim->rlim_max) 
@@ -2869,14 +2874,14 @@ StatError_t increaseSysLimits()
         rlim->rlim_cur = rlim->rlim_max;
         if (setrlimit (RLIMIT_NOFILE, rlim) < 0)
         {
-            printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: Unable to increase max no. files\n", strerror(errno));
+            fprintf(stderr, "%s: Unable to increase max no. files\n", strerror(errno));
             return STAT_SYSTEM_ERROR;
         }    
     }
 
     if (getrlimit(RLIMIT_NPROC, rlim) < 0) 
     {
-        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: getrlimit failed\n", strerror(errno));
+        fprintf(stderr, "%s: getrlimit failed\n", strerror(errno));
         return STAT_SYSTEM_ERROR;
     }
     else if (rlim->rlim_cur < rlim->rlim_max) 
@@ -2884,7 +2889,7 @@ StatError_t increaseSysLimits()
         rlim->rlim_cur = rlim->rlim_max;
         if (setrlimit (RLIMIT_NPROC, rlim) < 0)
         {
-            printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: Unable to increase max no. files\n", strerror(errno));
+            fprintf(stderr, "%s: Unable to increase max no. files\n", strerror(errno));
             return STAT_SYSTEM_ERROR;
         }
     }

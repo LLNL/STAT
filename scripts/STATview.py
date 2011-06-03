@@ -1615,7 +1615,7 @@ class STATGraph(Graph):
                 return False
         return True
 
-    def focus_task(self, task):
+    def focus_tasks(self, task):
         """Hide all call paths that are not taken by the specified tasks."""
         task = task.strip(' ')
         task = '[' + task + ']'
@@ -2392,8 +2392,7 @@ class STATDotWindow(DotWindow):
     if have_tomod:
         ui += '        <toolitem action="TOTraverseLeastProgress"/>\n'
         ui += '        <toolitem action="TOTraverseMostProgress"/>\n'
-    ui += '        <toolitem action="FocusTask"/>\n'
-    ui += '        <toolitem action="SearchText"/>\n'
+    ui += '        <toolitem action="Search"/>\n'
     ui += '        <toolitem action="IdentifyEqClasses"/>\n'
     ui += '    </toolbar>\n'
     ui += '</ui>\n'
@@ -2429,8 +2428,7 @@ class STATDotWindow(DotWindow):
             actions.append(('TOTraverseLeastProgress', gtk.STOCK_MEDIA_PREVIOUS, 'TO', None, 'Traverse the graph based on the least progressed temporal ordering', self.on_to_traverse_least_progress))
         actions.append(('ShortestPath', gtk.STOCK_GOTO_TOP, 'Path', None, 'Traverse the [next] shortest path', self.on_shortest_path))
         actions.append(('LongestPath', gtk.STOCK_GOTO_BOTTOM, 'Path', None, 'Traverse the [next] longest path', self.on_longest_path))
-        actions.append(('FocusTask', gtk.STOCK_FIND, 'Task', None, 'Focus on a set of tasks', self.on_focus_task))
-        actions.append(('SearchText', gtk.STOCK_FIND, '_Text', '<control>F', 'Search for call paths with specified text', self.on_search_text))
+        actions.append(('Search', gtk.STOCK_FIND, 'Search', None, 'Search for callpaths by text, tasks, or hosts', self.on_search))
         actions.append(('LeastTasks', gtk.STOCK_GOTO_FIRST, 'Tasks', None, 'Traverse the path with the [next] least tasks visited', self.on_least_tasks))
         actions.append(('MostTasks', gtk.STOCK_GOTO_LAST, 'Tasks', None, 'Traverse the path with the [next] most tasks visited', self.on_most_tasks))
         actions.append(('IdentifyEqClasses', gtk.STOCK_SELECT_COLOR, 'Eq C', None, 'Identify the equivalence classes of the current graph', self.on_identify_num_eq_classes))
@@ -2480,6 +2478,15 @@ class STATDotWindow(DotWindow):
         if have_tomod == True:
             for path in search_paths['include']:
                 tomod.add_include_path(path)
+        self.search_types = []
+        help_string = """Search for a specified task, range 
+of tasks, or comma-separated list 
+of tasks.  Example task lists:
+0
+0-10
+0-10,12,15-20"""
+        self.search_types.append(('tasks', self.search_tasks, help_string))
+        self.search_types.append(('text', self.search_text, 'Search for callpaths containing the\nspecified text'))
         self.show_all()
 
     def on_destroy(self, action):
@@ -2563,7 +2570,7 @@ class STATDotWindow(DotWindow):
         """Display info about STAT"""
         about_dialog = gtk.AboutDialog()
         about_dialog.set_name('STATview')
-        about_dialog.set_authors('__author__')
+        about_dialog.set_authors(__author__)
         about_dialog.set_copyright(__copyright__)
         about_dialog.set_license(__license__)
         about_dialog.set_wrap_license(80)
@@ -2937,45 +2944,10 @@ class STATDotWindow(DotWindow):
         self.get_current_widget().zoom_to_fit()
         return ret
 
-    def on_focus_task_enter_cb(self, widget, entry):
-        """Callback to handle activation of focus task text entry."""
-        task = entry.get_text()
-        self.get_current_graph().set_undo_list()
-        self.get_current_graph().action_history.append('Focus Task %s' %task)
-        self.update_history()
-        self.get_current_graph().focus_task(task)
-        self.get_current_graph().adjust_dims()
-        self.get_current_widget().zoom_to_fit()
-        self.task_dialog.destroy()
-        return True
+    def search_tasks(self, text, dummy = None):
+        self.get_current_graph().focus_tasks(text)
 
-    def on_focus_task(self, action):
-        """Callback to handle pressing of focus task button."""
-        #TODO-count-rep: does not work if we just have count + 1 representative
-        if self.get_current_graph().cur_filename == '':
-            return False
-        self.task_dialog = gtk.Dialog('focus on task', self)
-        entry = gtk.Entry()
-        entry.set_max_length(65536)
-        entry.connect("activate", self.on_focus_task_enter_cb, entry)
-        self.task_dialog.vbox.pack_start(entry, False, False, 0)
-        hbox = gtk.HButtonBox()
-        button = gtk.Button(stock=gtk.STOCK_CANCEL)
-        button.connect("clicked", lambda w: self.task_dialog.destroy())
-        hbox.pack_start(button, False, False, 0)
-        button = gtk.Button(stock=gtk.STOCK_OK)
-        button.connect("clicked", self.on_focus_task_enter_cb, entry)
-        hbox.pack_start(button, False, False, 0)
-        self.task_dialog.vbox.pack_end(hbox, False, False, 0)
-        self.task_dialog.show_all()
-        return True
-
-    def on_search_text_enter_cb(self, widget, entry, match_case_check_box):
-        """Callback to handle activation of search text entry."""
-        text = entry.get_text()
-        self.get_current_graph().set_undo_list()
-        self.get_current_graph().action_history.append('Search Text %s' %text)
-        self.update_history()
+    def search_text(self, text, match_case_check_box):
         self.get_current_graph().focus_text(text, match_case_check_box.get_active())
         highlight_list = []
         search_text = text
@@ -2988,34 +2960,66 @@ class STATDotWindow(DotWindow):
             if node_text.find(search_text) != -1 and node.hide == False:
                 highlight_list.append(node)
         self.tabs[self.notebook.get_current_page()].widget.set_highlight(highlight_list)
+
+    def on_search_enter_cb(self, widget, arg):
+        """Callback to handle activation of focus task text entry."""
+        entry, combo_box, match_case_check_box = arg
+        text = entry.get_text()
+        type, search_cb, search_help = self.search_types[combo_box.get_active()]
+        self.get_current_graph().set_undo_list()
+        self.get_current_graph().action_history.append('Search for %s: %s' %(type, text))
+        self.update_history()
+        search_cb(text, match_case_check_box)
         self.get_current_graph().adjust_dims()
         self.get_current_widget().zoom_to_fit()
         self.task_dialog.destroy()
         return True
 
-    def on_search_text(self, action):
-        """Callback to handle pressing of search text button."""
+    def on_search_type_toggled(self, combo_box, label):
+        type, search_cb, search_help = self.search_types[combo_box.get_active()]
+        label.set_text(search_help)
+
+    def on_search(self, action):
+        """Callback to handle pressing of focus task button."""
+        #TODO-count-rep: does not work if we just have count + 1 representative
         if self.get_current_graph().cur_filename == '':
             return False
-        self.task_dialog = gtk.Dialog('search for text', self)
-        entry = gtk.Entry()
-        entry.set_max_length(65536)
+        self.task_dialog = gtk.Dialog('Search', self)
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label("Search for:"), False, False, 0)
+        label = gtk.Label()
+        combo_box = gtk.combo_box_new_text()
+        for search_type in self.search_types:
+            type, search_cb, search_help = search_type
+            combo_box.append_text(type)
+        combo_box.set_active(0)
+        combo_box.connect('changed', lambda w: self.on_search_type_toggled(w, label))
+        hbox.pack_start(combo_box, False, False, 10)    
+        self.task_dialog.vbox.pack_start(hbox, False, False, 0)
         match_case_check_box = gtk.CheckButton("Match Case")
         match_case_check_box.set_active(True)
         match_case_check_box.connect('toggled', lambda x: x)
-        entry.connect("activate", lambda w: self.on_search_text_enter_cb(w, entry, match_case_check_box))
+        entry = gtk.Entry()
+        entry.set_max_length(65536)
+        entry.connect("activate", self.on_search_enter_cb, (entry, combo_box, match_case_check_box))
         self.task_dialog.vbox.pack_start(entry, False, False, 0)
         self.task_dialog.vbox.pack_start(match_case_check_box, False, False, 0)
+        separator = gtk.HSeparator()
+        self.task_dialog.vbox.pack_start(separator, False, False, 0)
+        type, search_cb, search_help = self.search_types[combo_box.get_active()]
+        label.set_text(search_help)
+        self.task_dialog.vbox.pack_start(label, True, True, 0)
         hbox = gtk.HButtonBox()
         button = gtk.Button(stock=gtk.STOCK_CANCEL)
         button.connect("clicked", lambda w: self.task_dialog.destroy())
         hbox.pack_start(button, False, False, 0)
         button = gtk.Button(stock=gtk.STOCK_OK)
-        button.connect("clicked", lambda w: self.on_search_text_enter_cb(w, entry, match_case_check_box))
+        button.connect("clicked", self.on_search_enter_cb, (entry, combo_box, match_case_check_box))
         hbox.pack_start(button, False, False, 0)
         self.task_dialog.vbox.pack_end(hbox, False, False, 0)
         self.task_dialog.show_all()
         return True
+
 
     def on_longest_path(self, action):
         """Callback to handle pressing of longest path button."""

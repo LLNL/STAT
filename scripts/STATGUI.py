@@ -65,7 +65,7 @@ class STATGUI(STATDotWindow):
                 pass
         self.STAT = STAT_FrontEnd()
         self.properties_window = None
-        self.proctabfile = None
+        self.proctab_file = None
         self.attached = False
         self.reattach = False
         self.combo_boxes = {}
@@ -111,6 +111,7 @@ class STATGUI(STATDotWindow):
         self.options['DDT Path'] = STAThelper._which('ddt')
         self.options['DDT LaunchMON Prefix'] = '/usr/local'
         self.options['TotalView Path'] = STAThelper._which('totalview')
+
         # Check for site default options then for user default options
         site_options_path = '%s/etc/STAT/STAT.conf' %self.STAT.getInstallPrefix()
         user_options_path = '%s/.STATrc' %(os.environ.get('HOME'))
@@ -197,7 +198,58 @@ class STATGUI(STATDotWindow):
         menu_actions.append(('About', gtk.STOCK_ABOUT, None, None, None, self.on_about))
         STATDotWindow.__init__(self, menu_actions)
         self.set_title('STAT')
+        help_text = """Search for processes on a
+specified host, range of hosts, or
+semi-colon separated list of hosts.
+Example specifications:
+host1
+host1;host2
+host[1-10]
+host[1-10,12,15-20]
+host[1-10,12,15-20];otherhost[30]
+"""
+        self.search_types.append(('hosts', self.search_hosts, help_text))
         self.on_attach(None)
+
+    def search_hosts(self, text, match_case_check_box):
+        """Callback to handle activation of focus task text entry."""
+        if match_case_check_box.get_active() == False:
+            text = text.lower()
+        temp_host_list = text.replace(' ', '').split(';')
+        host_list = []
+        for host in temp_host_list:
+            if host.find('[') != -1:
+                prefix = host[0:host.find('[')]
+                range = host[host.find('['):host.find(']') + 1]
+                node_list = get_task_list(range)
+                for node in node_list:
+                    node_name = '%s%d' %(prefix, node)
+                    host_list.append(node_name)
+            else:
+                host_list.append(host)
+        tasks = ''
+        ret = self.set_proctab_file()
+        if ret == False:
+            return False
+        try:
+            f = open(self.proctab_file, 'r')
+        except:
+            show_error_dialog('failed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %self.proctab_file, self)
+            return False
+        lines = f.readlines()
+        lines = lines[1:]
+        for line in lines:
+            line = line.split()
+            host_pid = line[1]
+            host = host_pid.split(':')[0]
+            if match_case_check_box.get_active() == False:
+                host = host.lower()
+            if host in host_list:
+                tasks += line[0] + ','
+        tasks = tasks[0:-1]
+        self.get_current_graph().focus_tasks(tasks)
+        return True
+
 
     def on_about(self, action):
         """Display info about STAT."""
@@ -303,11 +355,9 @@ class STATGUI(STATDotWindow):
         num_nodes = self.STAT.getNumApplNodes()
         num_procs = self.STAT.getNumApplProcs()
         appl_exe = self.STAT.getApplExe()
-        out_dir = self.STAT.getOutDir()
-        file_prefix = self.STAT.getFilePrefix()
-        ptab_file = out_dir + '/' + file_prefix + '.ptab'
+        self.set_proctab_file()
         try:
-            f = open(ptab_file, 'r')
+            f = open(self.proctab_file, 'r')
             lines = f.readlines()
             # resort by MPI rank (instead of hostname)
             process_table = lines[0] 
@@ -1307,6 +1357,27 @@ class STATGUI(STATDotWindow):
             self.eq_state[type].set_active(True)
         self.dont_recurse = False
         return True
+        
+    def set_proctab_file(self):
+        if self.proctab_file == None:
+            self.proctab_file = ''
+            try:
+                out_dir = self.STAT.getOutDir()
+                file_prefix = self.STAT.getFilePrefix()
+                self.proctab_file = out_dir + '/' + file_prefix + '.ptab'
+            except:
+                pass
+            if not os.path.exists(self.proctab_file):
+                directory = os.path.dirname(os.path.abspath(self.get_current_graph().cur_filename))
+                self.proctab_file = ''
+                for file in os.listdir(directory):
+                    if file.find('.ptab') != -1:
+                        self.proctab_file = directory + '/' + file
+                        break
+            if self.proctab_file == '':
+                show_error_dialog('Failed to find process table .ptab file.', self)
+                return False
+        
 
     def launch_debugger_cb(self, widget, args):
         """Callback to launch full-featured debugger on a subset of tasks."""
@@ -1322,28 +1393,13 @@ class STATGUI(STATDotWindow):
         task_list_set = set(get_task_list(additional_tasks) + subset_list)
         subset_list = list(task_list_set)
         # use current STAT session to determine job launcher PID
-        if self.proctabfile == None:
-            try:
-                out_dir = self.STAT.getOutDir()
-                file_prefix = self.STAT.getFilePrefix()
-                self.proctabfile = out_dir + '/' + file_prefix + '.ptab'
-            except:
-                self.proctabfile = ''
-                pass
-            if not os.path.exists(self.proctabfile):
-                directory = os.path.dirname(os.path.abspath(self.get_current_graph().cur_filename))
-                self.proctabfile = ''
-                for file in os.listdir(directory):
-                    if file.find('.ptab') != -1:
-                        self.proctabfile = directory + '/' + file
-                        break
-            if self.proctabfile == '':
-                show_error_dialog('Failed to find process table.ptab file for this call tree.', self)
-                return False
+        ret = self.set_proctab_file()
+        if ret == False:
+            return False
         try:
-            f = open(self.proctabfile, 'r')
+            f = open(self.proctab_file, 'r')
         except:
-            show_error_dialog('failed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %self.proctabfile, self)
+            show_error_dialog('failed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %self.proctab_file, self)
             return False
         lines = f.readlines()
         launcher = lines[0].strip('\n')

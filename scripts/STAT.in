@@ -13,6 +13,9 @@ if test -z $STAT_MRNET_DEBUG_LOG_DIRECTORY; then
     export STAT_MRNET_DEBUG_LOG_DIRECTORY=/dev/null
 fi
 if test -z $STAT_CONNECT_TIMEOUT; then
-    export STAT_CONNECT_TIMEOUT=120
+    export STAT_CONNECT_TIMEOUT=600
+fi
+if test -z $LMON_FE_ENGINE_TIMEOUT; then
+    export LMON_FE_ENGINE_TIMEOUT=600
 fi
 exec @prefix@/bin/STATbin -r 5 $@
