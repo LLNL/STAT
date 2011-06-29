@@ -3,10 +3,10 @@ Several environment variables influence STAT and its dependent packages.  Note t
 </para>
 <variablelist>
 <varlistentry>
-    <term>STAT_PREFIX=<replaceable class="parameter">path</replaceable></term>
+    <term>STAT_PREFIX=<replaceable class="parameter">directory</replaceable></term>
     <listitem>
         <para>
-        Use <replaceable class="parameter">prefix</replaceable> as the installation prefix instead of the compile-time STAT_PREFIX macro when looking for STAT components and configuration files.
+        Use <replaceable class="parameter">directory</replaceable> as the installation prefix instead of the compile-time STAT_PREFIX macro when looking for STAT components and configuration files.
         </para>
     </listitem>
 </varlistentry>
@@ -22,7 +22,7 @@ Several environment variables influence STAT and its dependent packages.  Note t
     <term>STAT_DAEMON_PATH=<replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
-        Use the STAT daemon located at <replaceable class="parameter">path</replaceable> instead of the default.
+        Use the STAT daemon executable <replaceable class="parameter">path</replaceable> instead of the default.  <replaceable class="parameter">path</replaceable> must be set to the full path of the STATD executable.
         </para>
     </listitem>
 </varlistentry>
@@ -30,7 +30,7 @@ Several environment variables influence STAT and its dependent packages.  Note t
     <term>STAT_FILTER_PATH=<replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
-        Use the STAT filter shared object located at <replaceable class="parameter">path</replaceable> instead of the default.
+        Use the STAT filter shared object <replaceable class="parameter">path</replaceable> instead of the default.  <replaceable class="parameter">path</replaceable> must be set to the full path of the STAT_FilterDefinitions.so shared object file.
         </para>
     </listitem>
 </varlistentry>
@@ -43,10 +43,10 @@ Several environment variables influence STAT and its dependent packages.  Note t
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term>STAT_MRNET_DEBUG_LOG_DIRECTORY=<replaceable class="parameter">path</replaceable></term>
+    <term>STAT_MRNET_DEBUG_LOG_DIRECTORY=<replaceable class="parameter">directory</replaceable></term>
     <listitem>
         <para>
-        Write MRNet debug log files to <replaceable class="parameter">path</replaceable>.
+        Write MRNet debug log files to <replaceable class="parameter">directory</replaceable>.
         </para>
     </listitem>
 </varlistentry>
@@ -70,7 +70,7 @@ Several environment variables influence STAT and its dependent packages.  Note t
     <term>STAT_MRN_COMM_PATH=<replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
-        Use the mrnet_commnode binary in <replaceable class="parameter">path</replaceable>.  (Deprecated along with MRNet's MRN_COMM_PATH)
+        Use the mrnet_commnode executable <replaceable class="parameter">path</replaceable>.  <replaceable class="parameter">path</replaceable> must be set to the full path of the mrnet_commnode executable.  (Deprecated along with MRNet's MRN_COMM_PATH)
         </para>
     </listitem>
 </varlistentry>
@@ -78,7 +78,7 @@ Several environment variables influence STAT and its dependent packages.  Note t
     <term>STAT_MRNET_COMM_PATH=<replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
-        Use the mrnet_commnode binary in <replaceable class="parameter">path</replaceable>.
+        Use the mrnet_commnode executable <replaceable class="parameter">path</replaceable>.  <replaceable class="parameter">path</replaceable> must be set to the full path of the mrnet_commnode executable.
         </para>
     </listitem>
 </varlistentry>
@@ -102,15 +102,15 @@ Several environment variables influence STAT and its dependent packages.  Note t
     <term>STAT_LMON_LAUNCHMON_ENGINE_PATH=<replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
-        Use the launchmon binary in <replaceable class="parameter">path</replaceable>.
+        Use the launchmon executable <replaceable class="parameter">path</replaceable>.  <replaceable class="parameter">path</replaceable> must be set to the full path of the launchmon executable.
         </para>
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term>STAT_LMON_REMOTE_LOGIN=<replaceable class="parameter">path</replaceable></term>
+    <term>STAT_LMON_REMOTE_LOGIN=<replaceable class="parameter">command</replaceable></term>
     <listitem>
         <para>
-        Use the remote shell <replaceable class="parameter">path</replaceable> for LaunchMON remote debugging.
+        Use the remote shell <replaceable class="parameter">command</replaceable> for LaunchMON remote debugging.
         </para>
     </listitem>
 </varlistentry>

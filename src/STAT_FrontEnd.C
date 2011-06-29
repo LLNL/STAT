@@ -510,8 +510,7 @@ void topologyChangeCb(Event *event, void *dummy)
 StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, bool shareAppNodes, bool isStatBench)
 {
     bool ret = true;
-    int statMergeFilterId;
-    char topologyFileName[BUFSIZE], *connectTimeoutString, name[BUFSIZE];
+    char topologyFileName[BUFSIZE];
     StatError_t statError;
 
     /* Make sure daemons are launched */
@@ -542,31 +541,33 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 #ifdef MRNET22
  #ifdef CRAYXT
 //  #ifdef MRNET31 //TODO: not implemented in MRNet yet, just here as prototype
-//    map<string, string> attrs;
-//    char apidString[BUFSIZE];
-//    snprintf(apidString, BUFSIZE, "%d", launcherPid_);
-//    attrs["aprun pid"] = apidString; // as of MRNet 3.0.1, must use "apid" key. The "aprun pid" key is not yet implemented (as of MRNet 3.0.1) and may need to be renamed.
-//    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-//  #else /* ifdef MRNET31 */
     map<string, string> attrs;
-    char apidString[BUFSIZE], *emsg;
-    int nid;
-    uint64_t apid;
-    emsg = alpsGetMyNid(&nid);
-    if (emsg)
-    {
-        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get nid\n");
-        return STAT_SYSTEM_ERROR;
-    }
-    apid = alps_get_apid(nid, launcherPid_);
-    if (apid <= 0)
-    {
-        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get apid from aprun PID %d\n", launcherPid_);
-        return STAT_SYSTEM_ERROR;
-    }
-    snprintf(apidString, BUFSIZE, "%d", apid);
-    attrs["apid"] = apidString;
+    char apidString[BUFSIZE];
+    snprintf(apidString, BUFSIZE, "%d", launcherPid_);
+    attrs.insert(make_pair("CRAY_ALPS_APID", apidString));
+    attrs.insert(make_pair("CRAY_ALPS_STAGE_FILES", filterPath_));
+//    attrs["aprun pid"] = apidString; // as of MRNet 3.0.1, must use "apid" key. The "aprun pid" key is not yet implemented (as of MRNet 3.0.1) and may need to be renamed.
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
+//  #else /* ifdef MRNET31 */
+//    map<string, string> attrs;
+//    char apidString[BUFSIZE], *emsg;
+//    int nid;
+//    uint64_t apid;
+//    emsg = alpsGetMyNid(&nid);
+//    if (emsg)
+//    {
+//        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get nid\n");
+//        return STAT_SYSTEM_ERROR;
+//    }
+//    apid = alps_get_apid(nid, launcherPid_);
+//    if (apid <= 0)
+//    {
+//        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get apid from aprun PID %d\n", launcherPid_);
+//        return STAT_SYSTEM_ERROR;
+//    }
+//    snprintf(apidString, BUFSIZE, "%d", apid);
+//    attrs["apid"] = apidString;
+//    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
 //  #endif /* ifdef MRNET31 */
  #else /* ifdef CRAYXT */
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
@@ -577,6 +578,11 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     if (network_ == NULL)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Network initialization failure\n");
+        return STAT_MRNET_ERROR;
+    }
+    if (network_->has_Error() == true)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "MRNet reported a Network error with message: %s\n", network_->get_ErrorStr(network_->get_Error()));
         return STAT_MRNET_ERROR;
     }
 

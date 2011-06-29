@@ -3,7 +3,7 @@
 .\" <http://shell.ipoline.com/~elmert/comp/docbook2X/> 
 .\" Please send any bug reports, improvements, comments, patches, 
 .\" etc. to Steve Cheng <steve@ggi-project.org>.
-.TH "STATBench" "1" "14 April 2011" "" ""
+.TH "STATBench" "1" "21 June 2011" "" ""
 
 .SH NAME
 STATBench \- invoke the Stack Trace Analysis Tool Benchmark.
@@ -42,6 +42,9 @@ Specify the number of communication nodes per layer in the tree topology, separa
 .TP
 \fB-n, --nodes \fInodelist\fB\fR
 Use the specified nodes in \fInodelist\fR\&.  To be used with \fB--fanout\fR, \fB--depth\fR, or \fB--usertopology\fR options.  Example nodes lists: host1; host1,host2; host[1,5-7,9].
+.TP
+\fB-A, --appnodes\fR
+Allow tool communication processes to be co-located on nodes running application processes.
 .TP
 \fB-p, --procs \fIprocesses\fB\fR
 Sets the maximum number of communication processes to be spawned per node to \fIprocesses\fR\&.  This should typically be set to the number of CPUs per node.
@@ -105,7 +108,7 @@ At larger scales, you may want to employ a more scalable tree topology.  For exa
 .PP
 
 .nf
-  % STATBench --fanout 32 atlas[1-4] --procs 8
+  % STATBench --fanout 32 --nodes atlas[1-4] --procs 8
     
 .fi
 .SH "AUTHOR"

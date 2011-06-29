@@ -1,3 +1,9 @@
+2011-06-21 Gregory L. Lee <lee218@llnl.gov>
+	* doc/src/stat_environment_variables.sbml : Clarified various paths to be full paths to files, not the containing directories
+
+2011-06-17 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : use new Cray attributes in MRNet 3.1
+
 2011-06-02 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STAT.in, scripts/STATGUI.in : set LMON_FE_ENGINE_TIMEOUT 
 	* configure.ac : added getrlimit and setrlimit tests
