@@ -45,11 +45,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "STAT.h"
 
 #ifdef CRAYXT
+  #ifndef MRNET31
 extern "C"
 {
     extern char *alpsGetMyNid(int32_t *);
     extern uint64_t alps_get_apid(int, int);
 }
+  #endif
 #endif
 #define STAT_MAX_FILENAME_ID 8192
 #define STAT_MAX_FANOUT 64

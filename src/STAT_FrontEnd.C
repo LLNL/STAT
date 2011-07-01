@@ -540,35 +540,34 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     startTime.setTime();
 #ifdef MRNET22
  #ifdef CRAYXT
-//  #ifdef MRNET31 //TODO: not implemented in MRNet yet, just here as prototype
+  #ifdef MRNET31 
     map<string, string> attrs;
     char apidString[BUFSIZE];
     snprintf(apidString, BUFSIZE, "%d", launcherPid_);
     attrs.insert(make_pair("CRAY_ALPS_APID", apidString));
     attrs.insert(make_pair("CRAY_ALPS_STAGE_FILES", filterPath_));
-//    attrs["aprun pid"] = apidString; // as of MRNet 3.0.1, must use "apid" key. The "aprun pid" key is not yet implemented (as of MRNet 3.0.1) and may need to be renamed.
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-//  #else /* ifdef MRNET31 */
-//    map<string, string> attrs;
-//    char apidString[BUFSIZE], *emsg;
-//    int nid;
-//    uint64_t apid;
-//    emsg = alpsGetMyNid(&nid);
-//    if (emsg)
-//    {
-//        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get nid\n");
-//        return STAT_SYSTEM_ERROR;
-//    }
-//    apid = alps_get_apid(nid, launcherPid_);
-//    if (apid <= 0)
-//    {
-//        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get apid from aprun PID %d\n", launcherPid_);
-//        return STAT_SYSTEM_ERROR;
-//    }
-//    snprintf(apidString, BUFSIZE, "%d", apid);
-//    attrs["apid"] = apidString;
-//    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-//  #endif /* ifdef MRNET31 */
+  #else /* ifdef MRNET31 */
+    map<string, string> attrs;
+    char apidString[BUFSIZE], *emsg;
+    int nid;
+    uint64_t apid;
+    emsg = alpsGetMyNid(&nid);
+    if (emsg)
+    {
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get nid\n");
+        return STAT_SYSTEM_ERROR;
+    }
+    apid = alps_get_apid(nid, launcherPid_);
+    if (apid <= 0)
+    {
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get apid from aprun PID %d\n", launcherPid_);
+        return STAT_SYSTEM_ERROR;
+    }
+    snprintf(apidString, BUFSIZE, "%d", apid);
+    attrs["apid"] = apidString;
+    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
+  #endif /* ifdef MRNET31 */
  #else /* ifdef CRAYXT */
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
  #endif /* ifdef CRAYXT */
