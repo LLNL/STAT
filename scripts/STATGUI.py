@@ -85,7 +85,7 @@ class STATGUI(STATDotWindow):
         self.options['Launcher Exe'] = ''
         self.options['Topology Type'] = 'automatic'
         self.options['Topology'] = '1'
-        self.options['Share App Nodes'] = False
+        self.options['Share App Nodes'] = True
         self.options['Tool Daemon Path'] = self.STAT.getToolDaemonExe()
         self.options['Filter Path'] = self.STAT.getFilterPath()
         self.options['Job Launcher'] = 'mpirun'

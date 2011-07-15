@@ -1,5 +1,11 @@
+2011-07-13 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : When -A specified, don't use nodes.txt config file
+	* scripts/STAT.in : set -A by default
+	* scripts/STATGUI.py : set "Share App Nodes" to true by default
+	* doc/src/stat_preferences.sgml : Updated note about nodes.txt
+
 2011-06-21 Gregory L. Lee <lee218@llnl.gov>
-	* doc/src/stat_environment_variables.sbml : Clarified various paths to be full paths to files, not the containing directories
+	* doc/src/stat_environment_variables.sgml : Clarified various paths to be full paths to files, not the containing directories
 
 2011-06-17 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : use new Cray attributes in MRNet 3.1

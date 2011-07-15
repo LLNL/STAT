@@ -1361,39 +1361,56 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting communication node list\n");
     if ((desiredMaxFanout < nApplProcs_ && desiredMaxFanout > 0) || topology != NULL || desiredDepth != 0)
     {
-        if (nodeList == NULL)
+        /* Add application nodes to list if requested */
+        if (shareAppNodes == true)
         {
-            statError = setNodeListFromConfigFile(&nodeList);
+#ifdef BGL
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "Sharing of application nodes not supported on BlueGene systems\n");
+#else
+            char appNodes[BUFSIZE];
+            sprintf(appNodes, "");
+            for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++) 
+            {
+                strncat(appNodes, (*applicationNodeMultiSetIter).c_str(), BUFSIZE);
+                strncat(appNodes, ",", BUFSIZE);
+            }
+            appNodes[strlen(appNodes) - 1] = '\0';
+            fprintf(stderr, "GLL:%s:\n", appNodes);
+            statError = setCommNodeList(appNodes);
             if (statError != STAT_OK)
-                printMsg(statError, __FILE__, __LINE__, "Failed to get node list from config file\n");
+            {
+                printMsg(statError, __FILE__, __LINE__, "Failed to set the global node list\n");
+                return statError;
+            }
+#endif
         }
-        else
+        if (communicationNodeSet_.size() == 0)
         {
-            if (strcmp(nodeList, "") == 0)
+            if (nodeList == NULL)
             {
                 statError = setNodeListFromConfigFile(&nodeList);
                 if (statError != STAT_OK)
                     printMsg(statError, __FILE__, __LINE__, "Failed to get node list from config file\n");
             }
-        }
-        statError = setCommNodeList(nodeList);
-        if (statError != STAT_OK)
-        {
-            printMsg(statError, __FILE__, __LINE__, "Failed to set the global node list\n");
-            return statError;
+            else
+            {
+                if (strcmp(nodeList, "") == 0)
+                {
+                    statError = setNodeListFromConfigFile(&nodeList);
+                    if (statError != STAT_OK)
+                        printMsg(statError, __FILE__, __LINE__, "Failed to get node list from config file\n");
+                }
+            }
+    
+            statError = setCommNodeList(nodeList);
+            if (statError != STAT_OK)
+            {
+                printMsg(statError, __FILE__, __LINE__, "Failed to set the global node list\n");
+                return statError;
+            }
         }
     }
 
-    /* Add application nodes to list if requested */
-    if (shareAppNodes == true)
-    {
-#ifdef BGL
-        printMsg(STAT_WARNING, __FILE__, __LINE__, "Sharing of application nodes not supported on BlueGene systems\n");
-#else
-        for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++) 
-            communicationNodeSet_.insert(*applicationNodeMultiSetIter);
-#endif
-    }
 
     /* Set the requested topology and check if there are enough CPs specified */
     if (topology == NULL)
@@ -2700,7 +2717,15 @@ StatError_t STAT_FrontEnd::setNodeListFromConfigFile(char **nodeList)
         while (fscanf(f, "%s", input) != EOF)
         {
             if (input[0] == '#')
+            {
+                while (1)
+                {
+                    int ch = fgetc(f);
+                    if ((char)ch == '\n' || ch == EOF)
+                        break;
+                }
                 continue;
+            }
             if (count != 0)
                 nodes += ",";
             nodes += input;
