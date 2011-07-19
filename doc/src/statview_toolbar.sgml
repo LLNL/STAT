@@ -126,18 +126,10 @@ The toolbar operations are defined as follows:
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term><GUIbutton>[Focus] Task</GUIbutton></term>
+    <term><GUIbutton>Search</GUIbutton></term>
     <listitem>
         <para>
-        Only display call paths taken by the specified task
-        </para>
-    </listitem>
-</varlistentry>
-<varlistentry>
-    <term><GUIbutton>[Focus] Text</GUIbutton></term>
-    <listitem>
-        <para>
-        Only display call paths containing the specified text
+        Search for call paths containing specified text, taken by specified tasks, or from specified hosts
         </para>
     </listitem>
 </varlistentry>

@@ -1650,7 +1650,7 @@ class STATGraph(Graph):
         if case_sensitive == False:
             search_text = string.lower(text)
             node_text = string.lower(node.label)
-        if node_text.find(search_text) != -1:
+        if re.search(search_text, node_text) != None:
             ret = True
         if ret == False and node.node_name != '0':
             node.hide = True

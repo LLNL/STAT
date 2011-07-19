@@ -3,7 +3,7 @@
 .\" <http://shell.ipoline.com/~elmert/comp/docbook2X/> 
 .\" Please send any bug reports, improvements, comments, patches, 
 .\" etc. to Steve Cheng <steve@ggi-project.org>.
-.TH "STATview" "1" "15 July 2011" "" ""
+.TH "STATview" "1" "19 July 2011" "" ""
 
 .SH NAME
 STATview \- invoke the Stack Trace Analysis Tool viewer.
@@ -104,11 +104,8 @@ Temporal Order traversal focus on the path(s) that have made the least execution
 \fB[Traverse Most] TO\fR
 Temporal Order traversal focus on the path(s) that have made the most execution progress in the application.  The first click will focus on the path that has made the most progress.
 .TP
-\fB[Focus] Task\fR
-Only display call paths taken by the specified task
-.TP
-\fB[Focus] Text\fR
-Only display call paths containing the specified text
+\fBSearch\fR
+Search for call paths containing specified text, taken by specified tasks, or from specified hosts
 .TP
 \fB[Identify] Eq C\fR
 Identify the equivalence classes of the visible graph.  After clicking on this button, a window will pop up showing the complete list of equivalence classes.

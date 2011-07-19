@@ -1,3 +1,7 @@
+2011-07-19 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py scripts/STATGUI.py : use re to search for node text and to filter RM
+	* doc/src/* : updated figures and documentation
+
 2011-07-13 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : When -A specified, don't use nodes.txt config file
 	* scripts/STAT.in : set -A by default

@@ -28,10 +28,10 @@ Here is a list of options:
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term>Job Launcher = <replaceable class="parameter">exe</replaceable></term>
+    <term>Job Launcher = <replaceable class="parameter">regex</replaceable></term>
     <listitem>
         <para>
-        Sets the default job launcher for filtering the process listing to <replaceable class="parameter">exe</replaceable> (i.e., mpirun or srun).
+        Sets the default regular expression to <replaceable class="parameter">regex</replaceable> (i.e., "mpirun|srun") for filtering the process listing for the job launcher process.
         </para>
     </listitem>
 </varlistentry>

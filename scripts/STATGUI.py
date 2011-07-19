@@ -88,7 +88,7 @@ class STATGUI(STATDotWindow):
         self.options['Share App Nodes'] = True
         self.options['Tool Daemon Path'] = self.STAT.getToolDaemonExe()
         self.options['Filter Path'] = self.STAT.getFilterPath()
-        self.options['Job Launcher'] = 'mpirun'
+        self.options['Job Launcher'] = 'mpirun|srun|orterun'
         self.options['Log Dir'] = os.environ['HOME']
         self.options['Log Frontend'] = False
         self.options['Log Backend'] = False
@@ -467,7 +467,7 @@ host[1-10,12,15-20];otherhost[30]
                 text += ' %s' %token
             if filter != None:
                 if filter.get_text() != '':
-                    if text.find(filter.get_text()) == -1:
+                    if re.search(filter.get_text(), text) == None:
                         continue
             if counter == 0:
                 radio_button = gtk.RadioButton(None, text)
