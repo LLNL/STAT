@@ -461,13 +461,14 @@ host[1-10,12,15-20];otherhost[30]
                 command_index = counter
             counter += 1
         counter = 0
+        filter_compiled_re = re.compile(filter.get_text())
         for line in output[1:]:
             text = '% 5d ' %int(line.split()[pid_index])
             for token in line.split()[command_index:]:
                 text += ' %s' %token
             if filter != None:
                 if filter.get_text() != '':
-                    if re.search(filter.get_text(), text) == None:
+                    if filter_compiled_re.search(text) == None:
                         continue
             if counter == 0:
                 radio_button = gtk.RadioButton(None, text)

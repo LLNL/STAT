@@ -599,7 +599,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 }
 
                 /* Send */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending graphts to FE\n");
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending graphs to FE\n");
                 if (stream->send(PROT_SEND_TRACES_RESP, "%ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send() failure\n");

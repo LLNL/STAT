@@ -1,3 +1,6 @@
+2011-08-02 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_mrnet : added test for MRNet 3.1
+
 2011-07-19 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATview.py scripts/STATGUI.py : use re to search for node text and to filter RM
 	* doc/src/* : updated figures and documentation

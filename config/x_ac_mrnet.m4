@@ -21,17 +21,36 @@ AC_DEFUN([X_AC_MRNET], [
   mrnet_vers=-1
   AC_COMPILE_IFELSE([#include "mrnet/MRNet.h"
     using namespace MRN;
+    using namespace std;
     int main()
     {
       Network *net;
-      net->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_ADD_BE, NULL, NULL);
+      vector<const char *> f;
+      vector<int> fid;
+      net->load_FilterFuncs(NULL, f, fid);
     }],
-    [AC_DEFINE([MRNET3], [], [MRNet 3.X])
+    [AC_DEFINE([MRNET31], [], [MRNet 3.1])
+      AC_DEFINE([MRNET3], [], [MRNet 3.X]) 
       AC_DEFINE([MRNET22], [], [MRNet 2.2]) 
       AC_DEFINE([MRNET2], [], [MRNet 2.X])
-      mrnet_vers=3.X
+      mrnet_vers=3.1
     ]
   )
+  if test $mrnet_vers = -1; then
+    AC_COMPILE_IFELSE([#include "mrnet/MRNet.h"
+      using namespace MRN;
+      int main()
+      {
+        Network *net;
+        net->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_ADD_BE, NULL, NULL);
+      }],
+      [AC_DEFINE([MRNET3], [], [MRNet 3.X])
+        AC_DEFINE([MRNET22], [], [MRNet 2.2]) 
+        AC_DEFINE([MRNET2], [], [MRNet 2.X])
+        mrnet_vers=3.X
+      ]
+    )
+  fi
   if test $mrnet_vers = -1; then
     AC_COMPILE_IFELSE([#include "mrnet/MRNet.h"
       using namespace MRN;

@@ -2486,7 +2486,10 @@ of tasks.  Example task lists:
 0-10
 0-10,12,15-20"""
         self.search_types.append(('tasks', self.search_tasks, help_string))
-        self.search_types.append(('text', self.search_text, 'Search for callpaths containing the\nspecified text'))
+        help_string = """Search for callpaths containing the
+specified text, which may be
+entered as a regular expression"""
+        self.search_types.append(('text', self.search_text, 'Search for callpaths containing the\nspecified text, which may be\nentered as a regular expression'))
         self.show_all()
 
     def on_destroy(self, action):

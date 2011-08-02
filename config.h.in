@@ -122,6 +122,9 @@
 /* MRNet 3.X */
 #undef MRNET3
 
+/* MRNet 3.1 */
+#undef MRNET31
+
 /* Name of package */
 #undef PACKAGE
 
