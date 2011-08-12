@@ -544,7 +544,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     map<string, string> attrs;
     char apidString[BUFSIZE];
     snprintf(apidString, BUFSIZE, "%d", launcherPid_);
-    attrs.insert(make_pair("CRAY_ALPS_APID", apidString));
+    attrs.insert(make_pair("CRAY_ALPS_APRUN_PID", apidString));
     attrs.insert(make_pair("CRAY_ALPS_STAGE_FILES", filterPath_));
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
   #else /* ifdef MRNET31 */
@@ -1375,7 +1375,6 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 strncat(appNodes, ",", BUFSIZE);
             }
             appNodes[strlen(appNodes) - 1] = '\0';
-            fprintf(stderr, "GLL:%s:\n", appNodes);
             statError = setCommNodeList(appNodes);
             if (statError != STAT_OK)
             {
