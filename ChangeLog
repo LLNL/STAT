@@ -1,3 +1,21 @@
+2011-10-24 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : fixed handling of '<' and '>' in save_dot + additional arg to keep full node label
+
+2011-10-21 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : added mutex for MRNet callbacks
+
+2011-10-07 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : process listing fix to handle unexpected output
+
+2011-09-26 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.[C,h] : Assume shared app nodes are accessible (don't call checkNodeAccess)
+
+2011-09-23 Gregory L. Lee <lee218@llnl.gov>
+	* : fixed errors reported by Intel's Static Security Checker tool
+
+2011-08-19 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : disable failure recovery for CRAYXT
+
 2011-08-02 Gregory L. Lee <lee218@llnl.gov>
 	* config/x_ac_mrnet : added test for MRNet 3.1
 

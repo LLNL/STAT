@@ -684,7 +684,7 @@ class STAT_FrontEnd
             \param nodeList - the list of nodes
             \return STAT_OK on success
         */
-        StatError_t setCommNodeList(char *nodeList);
+        StatError_t setCommNodeList(char *nodeList, bool checkAccess);
 
         //! Create the run specific output directory
         /*!

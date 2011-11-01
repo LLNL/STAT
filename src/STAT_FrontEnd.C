@@ -540,6 +540,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     startTime.setTime();
 #ifdef MRNET22
  #ifdef CRAYXT
+    set_FailureRecovery(False);
   #ifdef MRNET31 
     map<string, string> attrs;
     char apidString[BUFSIZE];
@@ -1116,7 +1117,7 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
+StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList, bool checkAccess = true)
 {
     char numString[BUFSIZE], nodeName[BUFSIZE], *nodeRange;
     unsigned int num1 = 0, num2, startPos, endPos, i, j;
@@ -1158,13 +1159,18 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
         {
             /* This is a single node */
             strncpy(nodeName, nodes.c_str(), BUFSIZE);
-            if (checkNodeAccess(nodeName))
+            if (checkAccess == true)
             {
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
-                communicationNodeSet_.insert(nodeName);
+                if (checkNodeAccess(nodeName))
+                {
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
+                    communicationNodeSet_.insert(nodeName);
+                }
+                else
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
             }
             else
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
+                communicationNodeSet_.insert(nodeName);
         }
         else 
         {
@@ -1212,13 +1218,18 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
                     for (j = num1; j <= num2; j++)
                     {
                         snprintf(nodeName, BUFSIZE, "%s%u", baseNodeName.c_str(), j);
+                        if (checkAccess == true)
+                        {
                         if (checkNodeAccess(nodeName))
                         {
-                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
-                            communicationNodeSet_.insert(nodeName);
-                        }
+                                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
+                                communicationNodeSet_.insert(nodeName);
+                            }
+                            else
+                                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
+                            }
                         else
-                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
+                            communicationNodeSet_.insert(nodeName);
                     }
                 }
                 else
@@ -1233,13 +1244,18 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
                         }
                     }
                     snprintf(nodeName, BUFSIZE, "%s%u", baseNodeName.c_str(), num1);
-                    if (checkNodeAccess(nodeName))
+                    if (checkAccess == true)
                     {
-                        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
-                        communicationNodeSet_.insert(nodeName);
+                        if (checkNodeAccess(nodeName))
+                        {
+                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
+                            communicationNodeSet_.insert(nodeName);
+                        }
+                        else
+                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
                     }
                     else
-                        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
+                        communicationNodeSet_.insert(nodeName);
                 }
                 i = i - 1;
             }
@@ -1375,7 +1391,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 strncat(appNodes, ",", BUFSIZE);
             }
             appNodes[strlen(appNodes) - 1] = '\0';
-            statError = setCommNodeList(appNodes);
+            statError = setCommNodeList(appNodes, false);
             if (statError != STAT_OK)
             {
                 printMsg(statError, __FILE__, __LINE__, "Failed to set the global node list\n");
