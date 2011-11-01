@@ -2580,8 +2580,9 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
 graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int functionFanout, int nEqClasses, unsigned int iter)
 {
     int depth, i, nodeId, prevId;
-    char path[8192], temp[8192];
+    char temp[8192];
     static vector<graphlib_graph_p> generated_graphs;
+    string path;
     graphlib_graph_p retGraph;
     graphlib_error_t gl_err;
 #ifdef GRL_DYNAMIC_NODE_NAME
@@ -2634,7 +2635,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     gl_err = graphlib_newGraph(&retGraph);
     if (GRL_IS_FATALERROR(gl_err))
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o create new graph\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
         return NULL;
     }
 
@@ -2644,7 +2645,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #else
     sprintf(nodeattr.name, "/");
 #endif
-    snprintf(path, 8192, "%s", nodeattr.name);
+    path = nodeattr.name;
     nodeId = 0;
     gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
 #ifdef GRL_DYNAMIC_NODE_NAME
@@ -2652,7 +2653,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #endif
     if (GRL_IS_FATALERROR(gl_err))
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o add node\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
         return NULL;
     }
     prevId = nodeId;
@@ -2663,21 +2664,21 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #else
     sprintf(nodeattr.name, "__libc_start_main");
 #endif
-    snprintf(path, 8192, "%s%s", path, nodeattr.name);
-    nodeId = string_hash(path);
+    path += nodeattr.name;
+    nodeId = string_hash(path.c_str());
     gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
 #ifdef GRL_DYNAMIC_NODE_NAME
     free(nodeattr.name);
 #endif
     if (GRL_IS_FATALERROR(gl_err))
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o add node\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
         return NULL;
     }
     gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
     if (GRL_IS_FATALERROR(gl_err))
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o add edge\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
         return NULL;
     }
     prevId = nodeId;
@@ -2688,21 +2689,21 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #else
     sprintf(nodeattr.name, "main");
 #endif
-    snprintf(path, 8192, "%s%s", path, nodeattr.name);
-    nodeId = string_hash(path);
+    path += nodeattr.name;
+    nodeId = string_hash(path.c_str());
     gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
 #ifdef GRL_DYNAMIC_NODE_NAME
     free(nodeattr.name);
 #endif
     if (GRL_IS_FATALERROR(gl_err))
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o add node\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
         return NULL;
     }
     gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
     if (GRL_IS_FATALERROR(gl_err))
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o add edge\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
         return NULL;
     }
     prevId = nodeId;
@@ -2723,21 +2724,21 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #else
         sprintf(nodeattr.name, "depth%dfun%d", i, rand() % functionFanout);
 #endif
-        snprintf(path, 8192, "%s%s", path, nodeattr.name);
-        nodeId = string_hash(path);
+        path += nodeattr.name;
+        nodeId = string_hash(path.c_str());
         gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
 #ifdef GRL_DYNAMIC_NODE_NAME
-    free(nodeattr.name);
+        free(nodeattr.name);
 #endif
         if (GRL_IS_FATALERROR(gl_err))
         {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o add node\n");
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
             return NULL;
         }
         gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
         if (GRL_IS_FATALERROR(gl_err))
         {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o add edge\n");
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
             return NULL;
         }
         prevId = nodeId;

@@ -1461,7 +1461,7 @@ class STATGraph(Graph):
         """Restore the call prefix tree to its original state."""
         modified = False
         for node in self.nodes:
-            node.set_text(node.label)
+            #node.set_text(node.label) # TODO, this was needed to restore TO'ed labels
             node.lex_string = None
             node.temporally_ordered = False
             if node.hide == True:

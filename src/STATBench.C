@@ -223,6 +223,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
         {"usertopology", required_argument, 0, 'u'},
         {"depth", required_argument, 0, 'd'},
         {"numtasks", required_argument, 0, 'N'},
+        {"iters", required_argument, 0, 'i'},
         {0, 0, 0, 0}
     };
 
@@ -231,7 +232,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvaAf:n:p:t:m:b:e:D:F:l:L:u:d:N:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvaAf:n:p:t:m:b:e:D:F:l:L:u:d:N:i:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         switch(opt)
@@ -335,6 +336,9 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'N':
             nTasks = atoi(optarg);
+            break;
+        case 'i':
+            iters = atoi(optarg);
             break;
         case '?':
             STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
