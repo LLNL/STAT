@@ -34,6 +34,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <stdlib.h>
 #include <libgen.h>
 #include <pwd.h>
+#include <pthread.h>
 #include <sys/resource.h>
 #include "arpa/inet.h"
 
@@ -364,6 +365,14 @@ class STAT_FrontEnd
         */
         StatError_t setRanksList();
 
+        //! Set the flag to indicate a fatal error
+        /*!
+            \param hasFatalError - whether a fatal error has been detected
+
+            Indicate to the STAT FrontEnd that a fatal error has occurred.
+        */
+        void setHasFatalError(bool hasFatalError);
+
         /**********************************************/
         /* Function to access and set class variables */
         /**********************************************/
@@ -540,7 +549,6 @@ class STAT_FrontEnd
             \param[out] version - the version 3-tuple (caller must allocate int [3])
         */
         void getVersion(int *version);
-
 
     private:
         //! Perform operations required after attach acknowledgement
@@ -785,6 +793,7 @@ class STAT_FrontEnd
         bool isAttached_;                                   /*!< whether the STAT daemons are attached to the application */
         bool isRunning_;                                    /*!< whether the application processes are currently running */
         bool isPendingAck_;                                 /*!< whether there are any pending acknowledgements */
+        bool hasFatalError_;                                /*!< whether a fatal error has been detected outside of the STAT object */
         std::list<int> remapRanksList_;                     /*!< the order of bit vectors in the incoming packets */
         std::set<std::string> communicationNodeSet_;        /*!< the list of nodes to use for MRNet CPs */
         std::multiset<std::string> applicationNodeMultiSet_;    /*!< the set of application nodes */

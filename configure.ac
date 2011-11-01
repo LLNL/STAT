@@ -43,6 +43,11 @@ AC_ARG_ENABLE(statbench,
   [WITH_STATBENCH=$enableval],
   [WITH_STATBENCH=no]
 )  
+AC_ARG_ENABLE(to,
+  [AS_HELP_STRING([--enable-to],[Enable the use of temporal ordering])],
+  [CXXFLAGS="-DPROTOTYPE $CXXFLAGS"],
+  [CXXFLAGS="$CXXFLAGS"]
+)  
 AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
 AC_ARG_WITH(procspernode,
   [AS_HELP_STRING([--with-procspernode=num],[Set the maximum number of communication processes per node equal to num, defaults to 1 if not specified])],

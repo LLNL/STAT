@@ -62,28 +62,33 @@ StatTopology_t topologyType;            /*!< the topology specification type */
 int main(int argc, char **argv)
 {
     int i, j, samples = 1, traces;
-    STAT_FrontEnd *STAT = new STAT_FrontEnd();
+    STAT_FrontEnd *STAT;
     StatError_t statError, retval;
-    char invocationString[BUFSIZE];
+    string invocationString; 
 
     /* Parse arguments and fill in class variables */
+    STAT = new STAT_FrontEnd();
     statError = parseArgs(STAT, argc, argv);
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to parse arguments\n");
+        if (statError != STAT_WARNING)
+            STAT->printMsg(statError, __FILE__, __LINE__, "Failed to parse arguments\n");
         delete STAT;
-        return -1;
+        if (statError != STAT_WARNING)
+            return -1;
+        else
+            return 0;
     }
 
     /* Push the arguments into the output file */
-    snprintf(invocationString, BUFSIZE, "STAT invoked with: ");
+    invocationString = "STAT invoked with: ";
     for (i = 0; i < argc; i++)
     {
-        strncat(invocationString, argv[i], BUFSIZE);
-        strncat(invocationString, " ", BUFSIZE);
+        invocationString.append(argv[i]);
+        invocationString.append(" ");
     }
-    strncat(invocationString, "\n", BUFSIZE);
-    STAT->addPerfData(invocationString, -1.0);
+    invocationString.append("\n");
+    STAT->addPerfData(invocationString.c_str(), -1.0);
 
     /* If we're just attaching, sleep here */
     if (applicationOption == STAT_ATTACH)
@@ -142,7 +147,11 @@ int main(int argc, char **argv)
 
     clearOnSample = true;
     retval = STAT_OK;
-    traces = nTraces;
+    if (nTraces <= 0)
+        traces = 1;
+    else
+        traces = nTraces;
+        
     if (comprehensive)
         samples = 4;
     for (i = 0; i < samples; i++)
@@ -259,11 +268,7 @@ int main(int argc, char **argv)
     printf("\nResults written to %s\n\n", STAT->getOutDir());
 
     delete STAT;
-    if (statError == STAT_OK)
-        return 0;
-    else
-        return -1;
-
+    return 0;
 }
 
 void printUsage(int argc, char **argv)
@@ -312,7 +317,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
     int nProcs;
     bool createJob = false;
     char *logOutDir = NULL;
-    StatLog_t logType;
+    StatLog_t logType = STAT_LOG_NONE;
 
     struct option longOptions[] =
     {
@@ -368,11 +373,11 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         {
         case 'h':
             printUsage(argc, argv);
-            exit(0);
+            return STAT_WARNING;
             break;
         case 'V':
             printf("STAT-%d.%d.%d\n", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
-            exit(0);
+            return STAT_WARNING;
             break;
         case 'v':
             STAT->setVerbose(STAT_VERBOSE_FULL);
@@ -506,7 +511,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             remoteNode = strdup(remoteHost.c_str());
             if (remoteNode == NULL)
             {
-                STAT->printMsg(statError, __FILE__, __LINE__, "Failed to set remote node from %s\n", remotePid.c_str());
+                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to set remote node from %s\n", remotePid.c_str());
                 return STAT_ALLOCATE_ERROR;
             }
             pid = atoi((remotePid.substr(colonPos + 1, remotePid.length())).c_str());
@@ -536,8 +541,13 @@ void mySleep()
     if (sleepTime > 0)
     {
         time_t currentTime;
+        struct tm *localTime;
         currentTime = time(NULL);
-        printf("%s STAT Sleeping for %d seconds... ", asctime(localtime(&currentTime)), sleepTime);
+        localTime = localtime(&currentTime);
+        if (localTime == NULL)
+            printf("STAT Sleeping for %d seconds... ", sleepTime);
+        else
+            printf("%s STAT Sleeping for %d seconds... ", asctime(localTime), sleepTime);
         fflush(stdout);
         sleep(sleepTime);
         printf("STAT has awoken\n");

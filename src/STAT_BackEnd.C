@@ -121,6 +121,7 @@ STAT_BackEnd::STAT_BackEnd()
     parentHostName_ = NULL;
     prefixTree3d_ = NULL;
     prefixTree2d_ = NULL;
+    broadcastStream_ = NULL;
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -294,7 +295,7 @@ StatError_t STAT_BackEnd::Connect()
     {
         string prettyHost, leafPrettyHost;
         XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
-    	XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
+        XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
         if (prettyHost == leafPrettyHost)
         {
             found = true;
@@ -352,7 +353,7 @@ StatError_t STAT_BackEnd::Connect()
 
 StatError_t STAT_BackEnd::mainLoop()
 {
-    int tag, retval, nEqClasses, swNotificationFd = -1, mrnNotificationFd = -1, max_fd;
+    int tag = 0, retval, nEqClasses, swNotificationFd, mrnNotificationFd, max_fd;
     unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, sampleType, withThreads, clearOnSample, obyteArrayLen;
     char *obyteArray = NULL, *variableSpecification;
     Stream *stream;
@@ -734,6 +735,12 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 break;
 
+            case PROT_SEND_BROADCAST_STREAM:
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received broadcast stream\n");
+                broadcastStream_ = stream;
+                //GLL TODO: send an ack?
+                break;
+
             case PROT_EXIT:
                 /* Exit */
                 break;
@@ -838,6 +845,11 @@ StatError_t STAT_BackEnd::pauseImpl(Walker *walker)
     if (walker != NULL)
     {
         ProcDebug *pdebug = dynamic_cast<ProcDebug *>(walker->getProcessState());
+        if (pdebug == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to dynamic_cast ProcDebug pointer\n");
+            return STAT_STACKWALKER_ERROR;
+        }
         if (pdebug->isTerminated())
             return STAT_OK;
         ret = pdebug->pause();
@@ -854,6 +866,11 @@ StatError_t STAT_BackEnd::resumeImpl(Walker *walker)
     if (walker != NULL)
     {
         ProcDebug *pdebug = dynamic_cast<ProcDebug *>(walker->getProcessState());
+        if (pdebug == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to dynamic_cast ProcDebug pointer\n");
+            return STAT_STACKWALKER_ERROR;
+        }
         if (pdebug->isTerminated())
             return STAT_OK;
         ret = pdebug->resume();
@@ -918,9 +935,15 @@ StatError_t STAT_BackEnd::parseVariableSpecification(char *variableSpecification
     delimPos = spec.find_first_of("#");
     temp = spec.substr(0, delimPos);
     nElements = atoi(temp.c_str());
+    if (nElements < 0)
+        nElements = 0;
     *nVariables = nElements;
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d elements in variable specification\n", nElements);
     (*outBuf) = (statVariable_t *)malloc(nElements * sizeof(statVariable_t));
+    if ((*outBuf) == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d elements\n", nElements);
+    }
     cur = spec.substr(delimPos + 1, spec.length());
 
     /* Get each element */
@@ -971,13 +994,14 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
     
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting source line info for address %lx\n", addr);
 
+    *lineNum = 0;
     if (proc == NULL)
     {
         printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Walker object == NULL\n");
+        snprintf(outBuf, BUFSIZE, "?");
         return STAT_STACKWALKER_ERROR;
     }
 
-    *lineNum = 0;
     libState = proc->getProcessState()->getLibraryTracker();
     if (!libState)
     {
@@ -1147,7 +1171,7 @@ StatError_t STAT_BackEnd::getVariable(BPatch_process *proc, char *functionName, 
 
 StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification)
 {
-    int j, retval, nVariables;
+    int j, retval, nVariables = 0;
     unsigned int i;
     bool wasRunning = isRunning_;
     graphlib_graph_p currentGraph = NULL;
@@ -1245,7 +1269,14 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
 
     /* Parse the variable specification */
     if (strcmp(variableSpecification, "NULL") != 0)
+    {
         ret = parseVariableSpecification(variableSpecification, &extractVariables, &nVariables);
+        if (ret != STAT_OK)
+        {
+            printMsg(ret, __FILE__, __LINE__, "Failed to parse variable specification\n");
+            return ret;
+        }
+    }
 
     /* Gather stack traces and merge */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering and merging %d traces from each task\n", nTraces);
@@ -1988,6 +2019,11 @@ StatError_t STAT_BackEnd::Detach(unsigned int *stopArray, int stopArrayLen)
         if (iter->second != NULL)
         {
             ProcDebug *pdebug = dynamic_cast<ProcDebug *>(iter->second->getProcessState());
+            if (pdebug == NULL)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to dynamic_cast ProcDebug pointer\n");
+                return STAT_STACKWALKER_ERROR;
+            }
 #ifndef BGL            
             for (i = 0; i < stopArrayLen; i++)
             {
@@ -2150,15 +2186,19 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     char timeString[BUFSIZE];
     const char *timeFormat = "%b %d %T";
     time_t currentTime;
+    struct tm *localTime;
 
     /* If this is a log message and we're not logging, then return */
     if (statError == STAT_LOG_MESSAGE && logOutFp_ == NULL)
         return;
 
     /* Get the time */
-    time(&currentTime);
-    strftime(timeString, BUFSIZE, timeFormat, localtime(&currentTime));
-
+    currentTime = time(NULL);
+    localTime = localtime(&currentTime);
+    if (localTime == NULL)
+        snprintf(timeString, BUFSIZE, "NULL");
+    else
+        strftime(timeString, BUFSIZE, timeFormat, localTime);
 
     if (statError != STAT_LOG_MESSAGE && statError != STAT_WARNING)
     {
@@ -2205,7 +2245,7 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
 
 StatError_t STAT_BackEnd::statBenchConnectInfoDump()
 {
-    int i, count = -1, ret, fd;
+    int i, count, ret, fd;
     unsigned int bytesWritten = 0;
     char fileName[BUFSIZE], data[BUFSIZE], *ptr;
     struct stat buf;
@@ -2370,11 +2410,10 @@ StatError_t STAT_BackEnd::statBenchConnect()
 
     /* Read in my MRNet connection info */
     bytesRead = 0;
-    ptr = data;
     do
     {
         ptr = data + bytesRead;
-        ret = read(fd, ptr, BUFSIZE-bytesRead);
+        ret = read(fd, ptr, BUFSIZE - bytesRead);
         if (ret == -1)
         {
             printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: read() from fifo %s fd %d failed\n", strerror(errno), fileName, fd);
@@ -2605,7 +2644,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #else
     sprintf(nodeattr.name, "/");
 #endif
-    sprintf(path, "%s", nodeattr.name);
+    snprintf(path, 8192, "%s", nodeattr.name);
     nodeId = 0;
     gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
 #ifdef GRL_DYNAMIC_NODE_NAME
@@ -2624,7 +2663,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #else
     sprintf(nodeattr.name, "__libc_start_main");
 #endif
-    sprintf(path, "%s%s", path, nodeattr.name);
+    snprintf(path, 8192, "%s%s", path, nodeattr.name);
     nodeId = string_hash(path);
     gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
 #ifdef GRL_DYNAMIC_NODE_NAME
@@ -2649,7 +2688,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #else
     sprintf(nodeattr.name, "main");
 #endif
-    sprintf(path, "%s%s", path, nodeattr.name);
+    snprintf(path, 8192, "%s%s", path, nodeattr.name);
     nodeId = string_hash(path);
     gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
 #ifdef GRL_DYNAMIC_NODE_NAME
@@ -2684,7 +2723,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #else
         sprintf(nodeattr.name, "depth%dfun%d", i, rand() % functionFanout);
 #endif
-        sprintf(path, "%s%s", path, nodeattr.name);
+        snprintf(path, 8192, "%s%s", path, nodeattr.name);
         nodeId = string_hash(path);
         gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
 #ifdef GRL_DYNAMIC_NODE_NAME

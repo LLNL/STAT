@@ -58,6 +58,7 @@ typedef enum {
                PROT_RESUME_APPLICATION,
                PROT_RESUME_APPLICATION_RESP,
                PROT_SEND_LAST_TRACE,
+               PROT_SEND_BROADCAST_STREAM,
                PROT_SEND_LAST_TRACE_RESP
 } StatProt_t;
 
