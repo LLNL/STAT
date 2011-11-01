@@ -43,6 +43,22 @@ Several environment variables influence STAT and its dependent packages.  Note t
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>STAT_MRNET_PORT_BASE=<replaceable class="parameter">port</replaceable></term>
+    <listitem>
+        <para>
+        Set the MRNet base port number to <replaceable class="parameter">port</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_MRNET_STARTUP_TIMEOUT=<replaceable class="parameter">seconds</replaceable></term>
+    <listitem>
+        <para>
+        Set the MRNet connection timeout to <replaceable class="parameter">seconds</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>STAT_MRNET_DEBUG_LOG_DIRECTORY=<replaceable class="parameter">directory</replaceable></term>
     <listitem>
         <para>

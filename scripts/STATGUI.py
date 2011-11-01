@@ -450,6 +450,12 @@ host[1-10,12,15-20];otherhost[30]
                 show_error_dialog('Failed to get process listing for %s' %self.options['Remote Host'], attach_dialog)
                 return False
         output = output.split('\n')
+        pid_index = 0
+        for line in output:
+            if line.find('PID') != -1:
+                break
+            pid_index += 1
+        output = output[pid_index:]
         line = output[0].split()
         pid_index = 0
         command_index = 0
@@ -463,9 +469,12 @@ host[1-10,12,15-20];otherhost[30]
         counter = 0
         filter_compiled_re = re.compile(filter.get_text())
         for line in output[1:]:
-            text = '% 5d ' %int(line.split()[pid_index])
-            for token in line.split()[command_index:]:
-                text += ' %s' %token
+            try:
+                text = '% 5d ' %int(line.split()[pid_index])
+                for token in line.split()[command_index:]:
+                    text += ' %s' %token
+            except:
+                continue
             if filter != None:
                 if filter.get_text() != '':
                     if filter_compiled_re.search(text) == None:

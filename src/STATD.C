@@ -24,6 +24,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 int main(int argc, char **argv)
 {
     StatError_t statError;
+    STAT_BackEnd *stat_be;
     /* If user querying for version, print it and exit */
     if (argc == 2)
     {
@@ -38,17 +39,12 @@ int main(int argc, char **argv)
     statError = statInit(&argc, &argv);
     if (statError != STAT_OK)
     {
-        fprintf(stderr, __FILE__, __LINE__, "Failed to initialize STAT\n");
+        fprintf(stderr, "Failed to initialize STAT\n");
         return -1;
     }
 
     /* Create the STAT BackEnd object */
-    STAT_BackEnd *stat_be = new STAT_BackEnd();
-    if (stat_be == NULL)
-    {
-        fprintf(stderr, "Failed to create STAT_BackEnd object\n");
-        return -1;
-    }
+    stat_be = new STAT_BackEnd();
 
     /* Check if logging of the daemon is enabled */
     if (argc == 2)

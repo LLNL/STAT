@@ -71,7 +71,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     #include "sbrs_std.h"
 #endif
 
-
 //! A struct that contains MRNet connection information to send to the daemons
 typedef struct
 {
@@ -440,6 +439,8 @@ class STAT_BackEnd
         BPatch bpatch_;                         /*!< the application bpatch object */
         std::map<int, BPatch_process*> processMap_; /*!< the debug process objects */
 #endif
+        MRN::Stream *broadcastStream_;          /*!< the main broadcast/acknowledgement stream */
+
 };
 
 #endif /* __STAT_BACKEND_H */

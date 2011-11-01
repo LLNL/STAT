@@ -25,6 +25,7 @@ using namespace MRN;
 static int lmonState = 0;
 STAT_timer totalStart, totalEnd, startTime, endTime;
 
+
 STAT_FrontEnd::STAT_FrontEnd()
 {
     int ret;
@@ -68,12 +69,27 @@ STAT_FrontEnd::STAT_FrontEnd()
         setenv("MRNET_COMM_PATH", envValue, 1);
     }
 
+    /* Set MRNet configuration parameters */
+    envValue = getenv("STAT_MRNET_STARTUP_TIMEOUT");
+    if (envValue != NULL)
+        setenv("MRNET_STARTUP_TIMEOUT", envValue, 1);
+    envValue = getenv("STAT_MRNET_PORT_BASE");
+    if (envValue != NULL)
+        setenv("MRNET_PORT_BASE", envValue, 1);
+
     /* Set the daemon path and filter paths to the environment variable 
        specification if applicable.  Otherwise, set to default install 
        directory */
     envValue = getenv("STAT_DAEMON_PATH");
     if (envValue != NULL)
+    {
         toolDaemonExe_ = strdup(envValue);
+        if (toolDaemonExe_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed on call to set tool daemon exe with strdup()\n", strerror(errno));
+            exit(-1);
+        }
+    }
     else
     {
         if (strlen(getInstallPrefix()) > 1)
@@ -90,7 +106,14 @@ STAT_FrontEnd::STAT_FrontEnd()
  
     envValue = getenv("STAT_FILTER_PATH");
     if (envValue != NULL)
+    {
         filterPath_ = strdup(envValue);
+        if (filterPath_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed on call to set tool filter path with strdup()\n", strerror(errno));
+            exit(-1);
+        }
+    }
     else
     {
         if (strlen(getInstallPrefix()) > 1)
@@ -122,6 +145,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     isAttached_ = false;
     isConnected_ = false;
     isPendingAck_ = false;
+    hasFatalError_ = false;
     mergeStream_ = NULL;
     broadcastStream_ = NULL;
     broadcastCommunicator_ = NULL;
@@ -392,7 +416,7 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
     proctab_ = (MPIR_PROCDESC_EXT *)malloc(proctabSize_ * sizeof(MPIR_PROCDESC_EXT));
     if (proctab_ == NULL)
     {
-        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate memory for the process table\n");
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
         return STAT_ALLOCATE_ERROR;
     }
     rc = LMON_fe_getProctable(lmonSession_, proctab_, &proctabSize, proctabSize_);
@@ -475,11 +499,16 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
 #ifdef MRNET3
 //! The number of BEs that have connected
 int nCallbacks;
+pthread_mutex_t mrnetCallbackMutex = PTHREAD_MUTEX_INITIALIZER;
 
 void beConnectCb(Event *event, void *dummy)
 {
     if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_ADD_BE))
+    {
+        pthread_mutex_lock(&mrnetCallbackMutex);
         nCallbacks++;
+        pthread_mutex_unlock(&mrnetCallbackMutex);
+    }
 }
 
 void nodeRemovedCb(Event *event, void *dummy)
@@ -487,10 +516,15 @@ void nodeRemovedCb(Event *event, void *dummy)
     StatError_t statError;
     if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_REMOVE_NODE))
     {
+        pthread_mutex_lock(&mrnetCallbackMutex);
         ((STAT_FrontEnd *)dummy)->printMsg(STAT_WARNING, __FILE__, __LINE__, "MRNet detected a tool process exit.  Recovering with available resources.\n");
         statError = ((STAT_FrontEnd *)dummy)->setRanksList();
         if (statError != STAT_OK)
+        {
             ((STAT_FrontEnd *)dummy)->printMsg(statError, __FILE__, __LINE__, "An error occurred when trying to recover from node removal\n");
+            ((STAT_FrontEnd *)dummy)->setHasFatalError(true);
+        }
+        pthread_mutex_unlock(&mrnetCallbackMutex);
     }
 }
 
@@ -499,17 +533,19 @@ void topologyChangeCb(Event *event, void *dummy)
     StatError_t statError;
     if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_CHANGE_PARENT))
     {
+        pthread_mutex_lock(&mrnetCallbackMutex);
         ((STAT_FrontEnd *)dummy)->printMsg(STAT_WARNING, __FILE__, __LINE__, "MRNet detected a topology change.  Updating bit vector map.\n");
         statError = ((STAT_FrontEnd *)dummy)->setRanksList();
         if (statError != STAT_OK)
             ((STAT_FrontEnd *)dummy)->printMsg(statError, __FILE__, __LINE__, "An error occurred when trying to adjust to topology change\n");
+        pthread_mutex_unlock(&mrnetCallbackMutex);
     }
 }
 #endif
 
 StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, bool shareAppNodes, bool isStatBench)
 {
-    bool ret = true;
+    bool ret;
     char topologyFileName[BUFSIZE];
     StatError_t statError;
 
@@ -673,7 +709,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
 {
     static int connectTimeout = -1, i = 0;
-    int statMergeFilterId;
+    int filterId;
     char *connectTimeoutString, fullTopologyFile[BUFSIZE];
     StatError_t statError;
 
@@ -786,9 +822,23 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     broadcastStream_ = network_->new_Stream(broadcastCommunicator_, TFILTER_SUM, SFILTER_WAITFORALL);
     if (broadcastStream_ == NULL)
     {
-        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to get MRNet broadcast stream\n");
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to setup MRNet broadcast stream\n");
         return STAT_MRNET_ERROR;
     }
+
+    /* Send an empty message using the broadcast stream */
+    if (broadcastStream_->send(PROT_SEND_BROADCAST_STREAM, "%auc", "x", 2) == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send on broadcast stream\n");
+        return STAT_MRNET_ERROR;
+    }
+    if (broadcastStream_->flush() == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to flush broadcast stream\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    //GLL TODO: should we get ack?
     
     /* Check for the STAT filter path */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Loading STAT filter into MRNet\n");
@@ -799,26 +849,24 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     }
 
     /* Load the STAT filter into MRNet */
-    statMergeFilterId = network_->load_FilterFunc(filterPath_, "STAT_Merge");
-    if (statMergeFilterId == -1)
+    filterId = network_->load_FilterFunc(filterPath_, "STAT_Merge");
+    if (filterId == -1)
     {
-        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure\n");
+        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure for path %s, function STAT_Merge\n", filterPath_);
         return STAT_FILTERLOAD_ERROR;
     }
     
     /* Setup the STAT merge stream */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating MRNet stream with STAT filter\n");
-    mergeStream_ = network_->new_Stream(broadcastCommunicator_, statMergeFilterId, SFILTER_WAITFORALL);
+    mergeStream_ = network_->new_Stream(broadcastCommunicator_, filterId, SFILTER_WAITFORALL);
     if (mergeStream_ == NULL)
     {
-        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to get STAT merge stream\n");
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to setup STAT merge stream\n");
         return STAT_MRNET_ERROR;
     }
 
     endTime.setTime();
     addPerfData("\tStream Creation and Filter Load Time", (endTime - startTime).getDoubleTime());
-    totalEnd.setTime();
-    addPerfData("\tTotal MRNet Launch Time", (totalEnd - totalStart).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tMRNet connection configured\n");
     isConnected_ = true;
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Tool daemons launched and connected!\n");
@@ -830,6 +878,9 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
         printMsg(statError, __FILE__, __LINE__, "Failed to validate version number with the daemons.  The STAT FrontEnd is at version %d %d %d\n", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
         return statError;
     }
+
+    totalEnd.setTime();
+    addPerfData("\tTotal MRNet Launch Time", (totalEnd - totalStart).getDoubleTime());
 
     /* If we're STATBench, then release the job launcher in case we need to debug */
     if (isStatBench)
@@ -943,7 +994,7 @@ StatError_t STAT_FrontEnd::startLog(StatLog_t logType, char *logOutDir)
 
 StatError_t STAT_FrontEnd::receiveAck(bool blocking)
 {
-    int tag, retval;
+    int tag = 0, retval;
     StatError_t statError;
     PacketPtr packet;
     
@@ -969,6 +1020,12 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
     /* Receive an acknowledgement packet that all daemons have completed */
     do
     {
+        if (hasFatalError_ == true)
+        {
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "A Fatal Error has been detected\n");
+            isPendingAck_ = false;
+            return STAT_DAEMON_ERROR;
+        }
         retval = broadcastStream_->recv(&tag, packet, false);
         if (retval == 0)
         {
@@ -1016,7 +1073,8 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
     }
 
     isPendingAck_ = false;
-    (*this.*pendingAckCb_)();
+    if (pendingAckCb_ != NULL)
+        (*this.*pendingAckCb_)();
     return STAT_OK;
 }
 
@@ -1029,6 +1087,11 @@ StatError_t STAT_FrontEnd::setDaemonNodes()
     /* Set the application node list */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating daemon node list: ");
     leafInfo_.networkTopology->get_BackEndNodes(nodes);
+    if (nodes.size() <= 0)
+    {
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "No daemons are connected\n");
+        return STAT_DAEMON_ERROR;
+    }
     leafInfo_.daemons.clear();
     for (nodeIter = nodes.begin(); nodeIter != nodes.end(); nodeIter++)
     {
@@ -1116,7 +1179,7 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
+StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList, bool checkAccess = true)
 {
     char numString[BUFSIZE], nodeName[BUFSIZE], *nodeRange;
     unsigned int num1 = 0, num2, startPos, endPos, i, j;
@@ -1152,19 +1215,23 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
         nodes = list.substr(0, finalPos);
         openBracketPos = nodes.find_first_of("[");
         closeBracketPos = nodes.find_first_of("]");
-        commaPos = nodes.find_first_of(",");
 
         if (openBracketPos == string::npos && closeBracketPos == string::npos)
         {
             /* This is a single node */
             strncpy(nodeName, nodes.c_str(), BUFSIZE);
-            if (checkNodeAccess(nodeName))
+            if (checkAccess == true)
             {
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
-                communicationNodeSet_.insert(nodeName);
+                if (checkNodeAccess(nodeName))
+                {
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
+                    communicationNodeSet_.insert(nodeName);
+                }
+                else
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
             }
             else
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
+                communicationNodeSet_.insert(nodeName);
         }
         else 
         {
@@ -1199,6 +1266,7 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
                 else
                 {
                     printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Invalid node list %s\nEncountered unexpected character '%c'\n", nodeList, nodeRange[i]);
+                    free(nodeRange);
                     return STAT_ARG_ERROR;
                 }
 
@@ -1212,13 +1280,18 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
                     for (j = num1; j <= num2; j++)
                     {
                         snprintf(nodeName, BUFSIZE, "%s%u", baseNodeName.c_str(), j);
-                        if (checkNodeAccess(nodeName))
+                        if (checkAccess == true)
                         {
-                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
-                            communicationNodeSet_.insert(nodeName);
+                            if (checkNodeAccess(nodeName))
+                            {
+                                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
+                                communicationNodeSet_.insert(nodeName);
+                            }
+                            else
+                                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
                         }
                         else
-                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
+                            communicationNodeSet_.insert(nodeName);
                     }
                 }
                 else
@@ -1233,13 +1306,18 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList)
                         }
                     }
                     snprintf(nodeName, BUFSIZE, "%s%u", baseNodeName.c_str(), num1);
-                    if (checkNodeAccess(nodeName))
+                    if (checkAccess == true)
                     {
-                        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
-                        communicationNodeSet_.insert(nodeName);
-                    }
+                        if (checkNodeAccess(nodeName))
+                        {
+                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s added to communication node list\n", nodeName);
+                            communicationNodeSet_.insert(nodeName);
+                        }
+                        else
+                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
+                        }
                     else
-                        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Node %s not accessable\n", nodeName);
+                        communicationNodeSet_.insert(nodeName);
                 }
                 i = i - 1;
             }
@@ -1367,15 +1445,32 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
 #ifdef BGL
             printMsg(STAT_WARNING, __FILE__, __LINE__, "Sharing of application nodes not supported on BlueGene systems\n");
 #else
-            char appNodes[BUFSIZE];
+            char *appNodes;
+            int size = BUFSIZE;
+            appNodes = (char *)malloc(BUFSIZE);
+            if (appNodes == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to alloc appNodes\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
             sprintf(appNodes, "");
             for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++) 
             {
-                strncat(appNodes, (*applicationNodeMultiSetIter).c_str(), BUFSIZE);
-                strncat(appNodes, ",", BUFSIZE);
+                if (strlen((*applicationNodeMultiSetIter).c_str()) + strlen(appNodes) >= size)
+                {
+                    size += BUFSIZE;
+                    appNodes = (char *)realloc(appNodes, size);
+                    if (appNodes == NULL)
+                    {
+                        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to realloc appNodes to size %d\n", strerror(errno), size);
+                        return STAT_ALLOCATE_ERROR;
+                    }
+                }
+                strncat(appNodes, (*applicationNodeMultiSetIter).c_str(), size - 1);
+                strncat(appNodes, ",", size - 1);
             }
-            appNodes[strlen(appNodes) - 1] = '\0';
-            statError = setCommNodeList(appNodes);
+            appNodes[strlen(appNodes) - 1] = '\0'; /* to remove last comma */
+            statError = setCommNodeList(appNodes, false);
             if (statError != STAT_OK)
             {
                 printMsg(statError, __FILE__, __LINE__, "Failed to set the global node list\n");
@@ -1437,6 +1532,11 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
             if (i == 1)
             {
                 topology = (char *)malloc(BUFSIZE);
+                if (topology == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for topology\n", strerror(errno));
+                    return STAT_ALLOCATE_ERROR;
+                }
                 snprintf(topology, BUFSIZE, "%d", fanout);
             }
             else
@@ -1450,7 +1550,6 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         {
             /* We have enough CPs, so we can have our desired depth */
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Requested topology set with depth %d, fanout %d\n", desiredDepth, fanout);
-            depth = desiredDepth;
         }
         else
         {
@@ -1470,7 +1569,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for topology\n", strerror(errno));
                 return STAT_ALLOCATE_ERROR;
             }
-            snprintf(topology, BUFSIZE, "%d", communicationNodeSet_.size() * procsPerNode_);
+            snprintf(topology, BUFSIZE, "%d", (int)communicationNodeSet_.size() * procsPerNode_);
         }
     }
     else
@@ -1502,7 +1601,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for topology\n", strerror(errno));
                 return STAT_ALLOCATE_ERROR;
             }
-            snprintf(topology, BUFSIZE, "%d", communicationNodeSet_.size() * procsPerNode_);
+            snprintf(topology, BUFSIZE, "%d", (int)communicationNodeSet_.size() * procsPerNode_);
         }
     }
 
@@ -1550,8 +1649,6 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     }
    
     /* Initialized vector iterators */
-    parentIter = 0;
-    childIter = 1;
     if (topology == NULL) /* Flat topology */
         fprintf(file, "%s;\n", treeList[0].c_str());
     else if (strcmp(topology, "0") == 0) /* Flat topology */
@@ -1582,6 +1679,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 if (parentIter >= treeList.size())
                 {
                     printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Not enough resources for specified topology.  Please specify more resources with --nodes and --procs.\n");
+                    fclose(file);
                     return STAT_ARG_ERROR;
                 }
                 fprintf(file, "%s =>", treeList[parentIter].c_str());
@@ -1592,6 +1690,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                     if (childIter >= treeList.size())
                     {
                         printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Not enough resources for specified topology.  Please specify more resources with --nodes and --procs.\n");
+                        fclose(file);
                         return STAT_ARG_ERROR;
                     }
                     fprintf(file, "\n\t%s", treeList[childIter].c_str());
@@ -2133,7 +2232,6 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     int tag, totalWidth, retval, dummyRank, offset, mergeCount;
     unsigned int byteArrayLen;
     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray;
-    double totalMergeTime = 0.0;
     list<int>::iterator ranksIter;
     graphlib_graph_p stackTraces, sortedStackTraces;
     graphlib_error_t gl_err;
@@ -2210,7 +2308,6 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     }
 
     endTime.setTime();
-    totalMergeTime += (endTime - startTime).getDoubleTime();
     addPerfData("\tMerge", (endTime - startTime).getDoubleTime());
 
     /* Translate the graphs into rank ordered bit vector */
@@ -2314,6 +2411,7 @@ StatError_t STAT_FrontEnd::addPerfData(const char *buf, double time)
 {
     pair<string, double> perfData(buf, time);
     performanceData_.push_back(perfData);
+    return STAT_OK;
 }
 
 StatError_t STAT_FrontEnd::dumpPerf()
@@ -2560,14 +2658,19 @@ void STAT_FrontEnd::printMsg(StatError_t statError, const char *sourceFile, int 
     char timeString[BUFSIZE];
     const char *timeFormat = "%b %d %T";
     time_t currentTime;
+    struct tm *localTime;
 
     /* If this is a log message and we're not logging, then return */
     if (statError == STAT_LOG_MESSAGE && logging_ != STAT_LOG_FE && logging_ != STAT_LOG_ALL)
         return;
 
     /* Get the time */
-    time(&currentTime);
-    strftime(timeString, BUFSIZE, timeFormat, localtime(&currentTime));
+    currentTime = time(NULL);
+    localTime = localtime(&currentTime);
+    if (localTime == NULL)
+        snprintf(timeString, BUFSIZE, "NULL");
+    else
+        strftime(timeString, BUFSIZE, timeFormat, localTime);
 
     if (statError != STAT_LOG_MESSAGE && statError != STAT_STDOUT && statError != STAT_VERBOSITY)
     {
@@ -2976,6 +3079,11 @@ StatError_t STAT_FrontEnd::setRanksList()
     return STAT_OK;
 }
 
+void STAT_FrontEnd::setHasFatalError(bool hasFatalError)
+{
+    hasFatalError_ = hasFatalError;
+}
+
 RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node)
 {
     int i;
@@ -2987,6 +3095,11 @@ RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node)
    
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Remap tree MRNet rank %d\n", node->get_Rank());
     ret = (RemapNode_t *)malloc(sizeof(RemapNode_t));
+    if (ret == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for ret\n", strerror(errno));
+        return NULL;
+    }
     ret->numChildren = 0;
     ret->children = NULL;
     ret->lowRank = -1;
@@ -3206,7 +3319,7 @@ bool STAT_FrontEnd::checkNodeAccess(char *node)
     char command[BUFSIZE], testOutput[BUFSIZE], runScript[BUFSIZE], checkHost[BUFSIZE];
     char *rsh;
 
-    /* TODO: this is generally not good... a sanity check for LLNL clusters */
+    /* TODO: this is generally not good... a quick check for clusters where each node has the same hostname prefix */
     /* A first level filter, compare the first 3 letters */
     gethostname(checkHost, BUFSIZE);
     if (strncmp(node, checkHost, 3) != 0)

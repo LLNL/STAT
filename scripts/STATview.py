@@ -1402,10 +1402,11 @@ class STATGraph(Graph):
 
     ## \param self - the instance
     #  \param filename - the output file name
-    #  \param full_label - [optional] whether to save full edge labels, defaults to True
+    #  \param full_edge_label - [optional] whether to save full edge labels, defaults to True
+    #  \param full_edge_label - [optional] whether to save full node labels, defaults to True
     #
     #  \n
-    def save_dot(self, filename, full_label=True):
+    def save_dot(self, filename, full_edge_label=True, full_node_label=True):
         """Save the current graph as a dot file."""
         try:
             f = open(filename, 'w')
@@ -1423,17 +1424,19 @@ class STATGraph(Graph):
                     node_text = shape.t
                 else:
                     fill_color = shape.pen.fillcolor
+            if full_node_label == True:
+                node_text = node.label
             fill_string = ''
             for fval in fill_color[0:3]:
                 fill_string += "%02x" %(int(fval *255))
             font_string = ''
             for fval in font_color[0:3]:
                 font_string += "%02x" %(int(fval *255))
-            f.write('\t%s [pos="0,0", label="%s", fillcolor="#%s",font_color="#%s"];\n' %(node.node_name, node_text, fill_string, font_string))
+            f.write('\t%s [pos="0,0", label="%s", fillcolor="#%s",font_color="#%s"];\n' %(node.node_name, node_text.replace('<', '\\<').replace('>', '\\>'), fill_string, font_string))
         for edge in self.edges:
             if edge.hide:
                 continue
-            if full_label == True:
+            if full_edge_label == True:
                 f.write('\t%s -> %s [label="%s"]\n' %(edge.src.node_name, edge.dst.node_name, edge.dst.edge_label))
             else:
                 f.write('\t%s -> %s [label="%s"]\n' %(edge.src.node_name, edge.dst.node_name, edge.label))
@@ -1447,7 +1450,7 @@ class STATGraph(Graph):
             ret = self.save_dot(filename)
         else:
             temp_dot_filename = os.path.splitext(filename)[0] + '_tmp.dot'
-            ret = self.save_dot(temp_dot_filename, False)
+            ret = self.save_dot(temp_dot_filename, False, False)
             if ret == True:
                 format = '-T' + os.path.splitext(filename)[1][1:]
                 output = subprocess.Popen(["dot", format, temp_dot_filename, "-o", filename], stdout = subprocess.PIPE).communicate()[0]
