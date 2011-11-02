@@ -23,6 +23,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include <sys/resource.h>
 #include <errno.h>
+#include <string.h>
 #include "config.h"
 #include "mrnet/Packet.h"
 #include "graphlib.h"
@@ -107,7 +108,9 @@ void STAT_checkVersion(vector<PacketPtr> &inputPackets,
         /* Prepare the output values */
         if (major != STAT_MAJOR_VERSION || minor != STAT_MINOR_VERSION || revision != STAT_REVISION_VERSION)
         {
+#ifdef MRNET31        
             mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_checkVersion", stderr, "Filter reports version mismatch: FE = %d.%d.%d, Filter = %d.%d.%d\n", major, minor, revision, STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION));
+#endif
             fprintf(stderr, "Filter reports version mismatch: FE = %d.%d.%d, Filter = %d.%d.%d\n", major, minor, revision, STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
             filterCount += 1;
         }
@@ -153,7 +156,9 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
 //    init++;
 #endif
 
+#ifdef MRNET31        
     mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "STAT filter invoked\n"));
+#endif
 
     /* Delete byte arrays from previous iterations */
     if (outputByteArray != NULL)
@@ -174,7 +179,9 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
     edgeLabelWidths = (int *)malloc(nChildren * sizeof(int));
     if (edgeLabelWidths == NULL)
     {
+#ifdef MRNET31        
         mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "%s: Failed to allocate edgeLabelWidths\n", strerror(errno)));
+#endif
         return;
     }
     i = 0;
@@ -188,7 +195,9 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
     free(edgeLabelWidths);
     if (GRL_IS_FATALERROR(gl_err))
     {
+#ifdef MRNET31        
         mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to initialize graphlib\n"));
+#endif
         return;
     }
 
@@ -196,7 +205,9 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
     gl_err = graphlib_newGraph(&returnGraph);
     if (GRL_IS_FATALERROR(gl_err))
     {
+#ifdef MRNET31        
         mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to create new graph\n"));
+#endif
         return;
     }
 
@@ -213,7 +224,9 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
         gl_err = graphlib_deserializeGraphConn(rank, &currentGraph, byteArray, byteArrayLen);
         if (GRL_IS_FATALERROR(gl_err))
         {
+#ifdef MRNET31        
             mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to deserialize graph %d\n", rank));
+#endif
             return;
         }
 
@@ -221,7 +234,9 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
         gl_err = graphlib_mergeGraphsRanked(returnGraph, currentGraph);
         if (GRL_IS_FATALERROR(gl_err))
         {
+#ifdef MRNET31        
             mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to merge graph %d\n", rank));
+#endif
             return;
         }
 
@@ -229,7 +244,9 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
         gl_err = graphlib_delGraph(currentGraph);
         if (GRL_IS_FATALERROR(gl_err))
         {
+#ifdef MRNET31        
             mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to delete graph %d\n", rank));
+#endif
             return;
         }
 
@@ -245,7 +262,9 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
     gl_err = graphlib_serializeGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
     if (GRL_IS_FATALERROR(gl_err))
     {
+#ifdef MRNET31        
         mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to serialize output graph\n"));
+#endif
         return;
     }
     PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), inputPackets[0]->get_Tag(), "%ac %d %d", outputByteArray, outputByteArrayLen, totalWidth, outputRank));
@@ -255,7 +274,9 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
     gl_err = graphlib_delGraph(returnGraph);
     if (GRL_IS_FATALERROR(gl_err))
     {
+#ifdef MRNET31        
         mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to delete output graph\n"));
+#endif
         return;
     }
 }
