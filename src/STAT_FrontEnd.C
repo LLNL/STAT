@@ -22,6 +22,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 using namespace std;
 using namespace MRN;
 
+#ifdef STAT_FGFS
+    using namespace FastGlobalFileStat;
+    using namespace FastGlobalFileStat::MountPointAttribute;
+    using namespace FastGlobalFileStat::CommLayer;
+    using namespace FastGlobalFileStat::MountPointAttribute;
+#endif
+
 static int lmonState = 0;
 STAT_timer totalStart, totalEnd, startTime, endTime;
 
@@ -128,6 +135,24 @@ STAT_FrontEnd::STAT_FrontEnd()
         }
     }
 
+#ifdef STAT_FGFS
+    envValue = getenv("STAT_FGFS_FILTER_PATH");
+    if (envValue != NULL)
+    {
+        fgfsFilterPath_ = strdup(envValue);
+        if (fgfsFilterPath_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed on call to set FGFS filter path with strdup()\n", strerror(errno));
+            exit(-1);
+        }
+    }
+    else
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: STAT_FGFS_FILTER_PATH environment variable not set\n");
+        exit(-1);
+    }
+#endif
+
     /* Get the FE hostname */
 #ifdef CRAYXT
     string temp;
@@ -194,6 +219,10 @@ STAT_FrontEnd::~STAT_FrontEnd()
         free(toolDaemonExe_);
     if (filterPath_ != NULL)
         free(filterPath_);
+#ifdef STAT_FGFS        
+    if (fgfsFilterPath_ != NULL)
+        free(fgfsFilterPath_);
+#endif
     if (applExe_ != NULL)
         free(applExe_);
     if (proctab_ != NULL)
@@ -712,6 +741,10 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     int filterId;
     char *connectTimeoutString, fullTopologyFile[BUFSIZE];
     StatError_t statError;
+#ifdef STAT_FGFS
+    int filterId2;
+    bool ret;
+#endif
 
     /* Make sure the Network object has been created */
     if (network_ == NULL)
@@ -879,6 +912,84 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
         return statError;
     }
 
+#ifdef STAT_FGFS
+    startTime.setTime();
+    /* Check for the FGFS filter path */
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting up FGFS\n");
+    if (fgfsFilterPath_ == NULL) 
+    {
+        printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "FGFS Filter path not set\n");
+        return STAT_ARG_ERROR;
+    }
+
+    /* Load the FGFS upstream filter into MRNet */
+    filterId = network_->load_FilterFunc(fgfsFilterPath_, FGFS_UP_FILTER_FN_NAME);
+    if (filterId == -1)
+    {
+        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure for path %s, function %s\n", fgfsFilterPath_, FGFS_UP_FILTER_FN_NAME);
+        return STAT_FILTERLOAD_ERROR;
+    }
+    
+    /* Load the FGFS downstream filter into MRNet */
+    filterId2 = network_->load_FilterFunc(fgfsFilterPath_, FGFS_DOWN_FILTER_FN_NAME);
+    if (filterId2 == -1)
+    {
+        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure for path %s, function %s\n", fgfsFilterPath_, FGFS_DOWN_FILTER_FN_NAME);
+        return STAT_FILTERLOAD_ERROR;
+    }
+    
+    /* Setup the FGFS stream */
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating MRNet stream with the FGFS filter\n");
+    fgfsStream_ = network_->new_Stream(broadcastCommunicator_, filterId, SFILTER_WAITFORALL, filterId2);
+    if (fgfsStream_ == NULL)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to setup FGFS stream\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    /* Send an empty message using the FGFS stream */
+    if (fgfsStream_->send(PROT_SEND_FGFS_STREAM, "%auc", "x", 2) == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send on fgfs stream\n");
+        return STAT_MRNET_ERROR;
+    }
+    if (fgfsStream_->flush() == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to flush fgfs stream\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    /* Initialize the FGFS Comm Fabric */
+    ret = MRNetCommFabric::initialize((void *)network_, (void *)fgfsStream_);
+    if (ret == false)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize FGFS CommFabric\n");
+        return STAT_MRNET_ERROR;
+    }
+    fgfsCommFabric_ = new MRNetCommFabric();
+    ret = AsyncGlobalFileStat::initialize(fgfsCommFabric_);
+    if (ret == false)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize AsyncGlobalFileStat\n");
+        return STAT_MRNET_ERROR;
+    }
+    
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "FGFS setup complete\n");
+    endTime.setTime();
+    addPerfData("\tFGFS Setup Time", (endTime - startTime).getDoubleTime());
+
+    /* send the file request stream to the BEs */
+    startTime.setTime();
+    statError = sendFileReqStream();
+    if (statError != STAT_OK)
+    {
+        printMsg(statError, __FILE__, __LINE__, "sendFileReqStream reported an error\n");
+        return statError;
+    }
+    endTime.setTime();
+    addPerfData("\tFile Broadcast Setup Time", (endTime - startTime).getDoubleTime());
+#endif
+
     totalEnd.setTime();
     addPerfData("\tTotal MRNet Launch Time", (totalEnd - totalStart).getDoubleTime());
 
@@ -897,6 +1008,236 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     
     return STAT_OK;
 }
+
+#ifdef STAT_FGFS
+StatError_t STAT_FrontEnd::sendFileReqStream()
+{
+    int upstreamFileRequestFilterId, downstreamFileRequestFilterId, retval, tag;
+    PacketPtr packet;
+    StatError_t ret;
+
+    if (isConnected_ == false)
+    {
+        printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
+        return STAT_NOT_CONNECTED_ERROR;
+    }
+    upstreamFileRequestFilterId = network_->load_FilterFunc(filterPath_, "fileRequestUpStream");
+    if (upstreamFileRequestFilterId == -1)
+    {
+        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure\n");
+        return STAT_FILTERLOAD_ERROR;
+    }
+  
+    downstreamFileRequestFilterId = network_->load_FilterFunc(filterPath_, "fileRequestDownStream");
+    if (downstreamFileRequestFilterId == -1)
+    {      
+        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure\n");
+        return STAT_FILTERLOAD_ERROR;
+    }
+  
+    // Create a stream that will use the fileRequestUpStream and fileRequestDownStream filters for file requests
+    fileRequestStream_ = network_->new_Stream(broadcastCommunicator_, upstreamFileRequestFilterId, SFILTER_DONTWAIT, downstreamFileRequestFilterId);
+    if (fileRequestStream_ == NULL)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to get STAT file request stream\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    // Broadcast a message to back-ends regarding the Library File Request Stream
+    if (fileRequestStream_->send(PROT_FILE_REQ, "%auc %s", "X", 2, "X") == -1 )
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send file request stream message\n");
+        return STAT_MRNET_ERROR;
+    }
+    if (fileRequestStream_->flush() == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to flush message\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    /* Receive acks from all BEs */
+    pendingAckTag_ = PROT_FILE_REQ_RESP;
+    isPendingAck_ = true;
+    pendingAckCb_ = NULL;
+    ret = receiveAck(true);
+    if (ret != STAT_OK)
+    {
+        printMsg(ret, __FILE__, __LINE__, "Failed to receive file stream setup ack\n");
+        return ret;
+    }
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Recieved acknowledgements from all BEs\n");
+    return STAT_OK;
+}
+
+// KUMAR ADDED:  This function waits for BEs openSymbolReader messages and replies with its contents of library files
+StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
+                                               int *returnTag,
+                                               PacketPtr &packetPtr,
+                                               int &retval)
+{
+    int tag, size;
+    char *receiveFile;
+    size_t pos;
+    unsigned char *contents;
+    FILE *fp;
+    PacketPtr packet;
+    Stream *stream;
+    string filePath, fileName;
+
+    while (1)
+    {
+        retval = network_->recv(&tag, packet, &stream, false); 
+        if (retval == 0)
+            return STAT_PENDING_ACK;
+        else if (retval < 0)
+        {
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "network::recv() failure\n");
+            return STAT_MRNET_ERROR;
+        }
+                 
+        if (tag != PROT_LIB_REQ)
+        {    
+            *streamId = stream->get_Id();
+            *returnTag = tag;
+            packetPtr = packet;
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waitForFileRequests returing tag %d, stream ID %d\n", tag, streamId);
+            return STAT_OK;
+        }
+        if (packet->unpack("%s", &receiveFile) == -1)
+        {
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "packet::unpack() failure\n");
+            return STAT_MRNET_ERROR;
+        }
+    
+        filePath = receiveFile;
+        pos = filePath.find_last_of("/");
+        fileName = filePath.substr(pos + 1);
+
+//    char objcopy_cache_dir[BUFSIZE];
+//        char* cache_dir = getenv("STAT_OBJCOPY_CACHE_DIR");
+//    if (cache_dir == NULL)
+//    {
+//        char* homeDirectory = getenv("HOME");
+//        if (homeDirectory == NULL)
+//        {
+//        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, 
+//             "STAT_OBJCOPY_CACHE_DIR not set in environment, and failed to get $HOME as an alternative.\n");
+//        return STAT_FILE_ERROR;
+//        }
+//
+//        snprintf(objcopy_cache_dir, BUFSIZE, "%s/STAT_objcopy_cache", homeDirectory);
+//        int ret = mkdir(objcopy_cache_dir, S_IRUSR | S_IWUSR | S_IXUSR); 
+//        if (ret == -1 && errno != EEXIST)
+//        {
+//            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, 
+//             "Failed to create objcopy cache directory at %s\n", objcopy_cache_dir);
+//        return STAT_FILE_ERROR;
+//        }
+//    }
+//    else
+//    {
+//        strncpy(objcopy_cache_dir, cache_dir, BUFSIZE);
+//    }
+//
+//    std::string newfile(objcopy_cache_dir);
+//    newfile.append(fileName);
+//    int cpid = fork();
+//    if (cpid < 0)
+//        {
+//        int err = errno;
+//        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, 
+//             "fork() for running objcopy failed with %s\n", strerror(err));
+//        return STAT_SYSTEM_ERROR;
+//    }
+//    else if (cpid == 0)
+//        {
+//        char* objcopy_exe = "/usr/bin/objcopy";
+//        //char* objcopy_exe = getenv("STAT_OBJCOPY_EXE");
+//        //if (objcopy_exe == NULL)
+//        //{
+//        //    printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, 
+//        //     "Failed to get STAT_OBJCOPY_EXE from environment\n");
+//        //return STAT_FILE_ERROR;
+//        //}
+//
+//        char* ex_args[14];
+//        ex_args[0] = strdup(objcopy_exe);
+//        ex_args[1]= "--only-section";
+//        ex_args[2] = ".interp";
+//        ex_args[3]= "--only-section" ;
+//        ex_args[4]= ".dynamic";
+//        ex_args[5]= "--only-section";
+//        ex_args[6]= ".dynstr";
+//        ex_args[7]= "--only-section";
+//        ex_args[8]= ".dynsym";
+//        ex_args[9]= "--only-section";
+//        ex_args[10]= ".eh_frame";
+//        ex_args[11]= "--only-keep-debug";
+//        ex_args[12]= strdup(receiveFile);
+//        ex_args[13]= strdup(newfile.c_str());
+//        ex_args[14]= (char*) 0;
+//        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, 
+//             "execing objcopy to copy %s to %s\n",
+//             receiveFile, newfile.c_str());
+//        execv(ex_args[0],ex_args);
+//    }
+//    int objc = wait(NULL);
+
+     
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "received request for file %s\n", receiveFile);
+
+//        *fp = fopen(newfile.c_str(),"r");
+        fp = fopen(filePath.c_str(), "r");
+        if (fp == NULL)
+        {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waitForFileRequests: file %s does not exist\n", filePath.c_str());
+            size = 4;        
+            contents = (unsigned char *)malloc(size * sizeof(unsigned char));
+            if (contents == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %d elements for contents\n", strerror(errno), size);
+                return STAT_ALLOCATE_ERROR;
+            }
+            strcpy((char *)contents, "err");
+            tag = PROT_LIB_REQ_ERR;
+        }
+        else
+        {            
+            fseek(fp, 0, SEEK_END);
+            size = ftell(fp);
+            if (size == -1)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: ftell returned -1\n", strerror(errno), size);
+                fclose(fp);
+                return STAT_ALLOCATE_ERROR;
+            }
+            fseek(fp, 0, SEEK_SET);
+            contents = (unsigned char *)malloc(size * sizeof(unsigned char));
+            if (contents == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %d elements for contents\n", strerror(errno), size);
+                fclose(fp);
+                return STAT_ALLOCATE_ERROR;
+            }
+            fread(contents, size, 1, fp);
+            fclose(fp);
+            tag = PROT_LIB_REQ_RESP;
+        }
+        if (stream->send(tag, "%auc %s", contents, size, receiveFile) == -1)
+        {
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send file contents\n");
+            return STAT_MRNET_ERROR;
+        }
+        if (stream->flush() == -1)
+        {
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to flush file contents\n");
+            return STAT_MRNET_ERROR;
+        }
+    }
+}
+
+#endif //STAT_FGFS
 
 char *STAT_FrontEnd::getLastErrorMessage()
 {
@@ -1026,7 +1367,26 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
             isPendingAck_ = false;
             return STAT_DAEMON_ERROR;
         }
+#ifdef STAT_FGFS
+        unsigned int streamId = 0;        
+        statError = waitForFileRequests(&streamId, &tag, packet, retval);
+        if (statError == STAT_PENDING_ACK)
+        {
+            if (blocking == true)
+                usleep(1000);
+            continue;
+        }
+        else if (statError != STAT_OK)
+        {
+            printMsg(statError, __FILE__, __LINE__, "Unable to process file requests\n");
+            return statError;
+        }
+        if (streamId == broadcastStream_->get_Id())
+        {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received message on broadcast stream %d\n", broadcastStream_->get_Id());
+#else
         retval = broadcastStream_->recv(&tag, packet, false);
+#endif
         if (retval == 0)
         {
             if (!WIFBESPAWNED(lmonState))
@@ -1038,6 +1398,9 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
             if (blocking == true)
                 usleep(1000);
         }
+#ifdef STAT_FGFS
+        }
+#endif
     }
     while (retval == 0 && blocking == true);
 

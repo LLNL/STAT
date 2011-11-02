@@ -45,6 +45,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "lmon_api/lmon_fe.h"
 #include "STAT.h"
 
+#ifdef STAT_FGFS
+    #include "Comm/MRNetCommFabric.h"
+    #include "AsyncFastGlobalFileStat.h"
+    #include "MountPointAttr.h"
+    #include <fcntl.h>
+#endif
+
 #ifdef CRAYXT
   #ifndef MRNET31
 extern "C"
@@ -763,6 +770,11 @@ class STAT_FrontEnd
         */
         bool checkNodeAccess(char *node);
 
+#ifdef STAT_FGFS
+        StatError_t sendFileReqStream();
+        StatError_t waitForFileRequests(unsigned int *streamId, int *returnTag, MRN::PacketPtr &packetPtr, int &retval);
+#endif
+
         /****************/
         /* Private data */
         /****************/
@@ -809,6 +821,13 @@ class STAT_FrontEnd
         MRN::Communicator *broadcastCommunicator_;          /*!< the broadcast communicator*/
         MRN::Stream *broadcastStream_;                      /*!< the broadcast stream for sending commands and receiving ack */
         MRN::Stream *mergeStream_;                          /*!< the merge stream that uses the STAT filter */
+#ifdef STAT_FGFS        
+        char *fgfsFilterPath_;
+        MRN::Stream *perfStream_;
+        MRN::Stream *fileRequestStream_;
+        MRN::Stream *fgfsStream_;
+        FastGlobalFileStat::CommLayer::CommFabric *fgfsCommFabric_;
+#endif        
 };
 
 #endif /* #define __STAT_FRONTEND_H */

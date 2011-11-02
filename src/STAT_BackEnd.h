@@ -71,6 +71,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     #include "sbrs_std.h"
 #endif
 
+#ifdef STAT_FGFS
+    #include "Comm/MRNetCommFabric.h"
+    #include "AsyncFastGlobalFileStat.h"
+    #include "MRNetSymbolReader.h"
+#endif
+
 //! A struct that contains MRNet connection information to send to the daemons
 typedef struct
 {
@@ -440,6 +446,9 @@ class STAT_BackEnd
         std::map<int, BPatch_process*> processMap_; /*!< the debug process objects */
 #endif
         MRN::Stream *broadcastStream_;          /*!< the main broadcast/acknowledgement stream */
+#ifdef STAT_FGFS
+        FastGlobalFileStat::CommLayer::CommFabric *fgfsCommFabric_;
+#endif
 
 };
 

@@ -16,6 +16,11 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef STAT_FGFS
+#include <stdint.h> 
+#include <cstring>
+#endif
+
 #include <sys/resource.h>
 #include <errno.h>
 #include "config.h"
@@ -254,5 +259,125 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
         return;
     }
 }
+
+#ifdef STAT_FGFS
+
+/* New Filters for solving the Scalabilty problem of accesing files */
+map<string, pair<unsigned char*, int> > fileNameToContentsMap;
+set<string> visitedFileSet;
+
+const char *fileRequestUpStream_format_string = "%s";
+void fileRequestUpStream(vector<PacketPtr> &packetsIn,
+                         vector<PacketPtr> &packetsOut,
+                         vector<PacketPtr> &packetsOutReverse,
+                         void **filterState,
+                         PacketPtr &params,
+                         const TopologyLocalInfo &topology)
+{
+    char *fileName;
+    unsigned char *fileContents;
+    unsigned int i;
+    PacketPtr currentPacket, newPacket;
+    map<string, pair<unsigned char *, int> >::iterator iter;
+
+    mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "fileRequestUpStream", stderr, "Filter begin.\n"));
+
+    if (packetsIn[0]->get_Tag() == PROT_FILE_REQ_RESP)
+    {
+        newPacket = packetsIn[0];
+        packetsOut.push_back(newPacket);
+    }
+    else
+    {
+        for (i = 0; i < packetsIn.size(); i++)
+        {
+            currentPacket = packetsIn[i];
+            currentPacket->unpack("%s", &fileName);
+            iter = fileNameToContentsMap.find(fileName);
+            if (iter != fileNameToContentsMap.end())
+            {
+                fileContents = (unsigned char *)malloc((iter->second.second) * sizeof(unsigned char));
+                memcpy(fileContents, iter->second.first, iter->second.second);
+                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "fileRequestUpStream", stderr, "Sending cached result for %s in reverse.\n", fileName));
+                PacketPtr newPacketReverse(new Packet(packetsIn[0]->get_StreamId(),
+                                     packetsIn[0]->get_Tag(), "%auc %s", fileContents,
+                                     iter->second.second, fileName));
+                packetsOutReverse.push_back(newPacketReverse);
+            }
+            else
+            {
+                if (visitedFileSet.find(fileName) == visitedFileSet.end())
+                {
+                    visitedFileSet.insert(fileName);
+                    mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "fileRequestUpStream", stderr, "Noting request for %s.\n", fileName));
+                    PacketPtr newPacket(new Packet(packetsIn[0]->get_StreamId(),
+                                        packetsIn[0]->get_Tag(),"%s",fileName));
+                    packetsOut.push_back(newPacket);
+                }
+            }
+        }
+    }
+    mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "fileRequestUpStream", stderr, "Filter end.\n"));
+}
+
+
+
+const char *fileRequestDownStream_format_string = "%auc %s";
+void fileRequestDownStream(vector<PacketPtr> &packetsIn,
+                           vector<PacketPtr> &packetsOut,
+                           vector<PacketPtr> &packetsOutReverse,
+                           void **filterState,
+                           PacketPtr &params,
+                           const TopologyLocalInfo &topology)
+{
+    unsigned char *fileContents;
+    char *fileName;
+    int fileContentsLength;
+    unsigned int i;
+    PacketPtr currentPacket, newPacket;
+    set<string>::iterator iter;
+    map<string,pair<unsigned char*,int> >::iterator iter2;
+
+    mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "fileRequestDownStream", stderr, "Filter begin.\n"));
+
+    if (packetsIn[0]->get_Tag() == PROT_FILE_REQ)
+    {
+        newPacket = packetsIn[0];
+        packetsOut.push_back(newPacket);
+    }
+    else
+    {
+        mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "fileRequestDownStream", stderr, 
+               "PROT_FILE_REQ_RESP\n")); 
+
+        for (i = 0; i < packetsIn.size(); i++)
+        {
+            currentPacket = packetsIn[i];
+            currentPacket->unpack("%auc %s", &fileContents, &fileContentsLength, &fileName);
+
+            if (topology.get_Network()->is_LocalNodeInternal())
+            { 
+                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "fileRequestDownStream", stderr, 
+                        "caching contents of %s at CP\n", fileName)); 
+                iter2 = fileNameToContentsMap.find(fileName);
+                if (iter2 == fileNameToContentsMap.end())
+                    fileNameToContentsMap[fileName] = make_pair(fileContents, fileContentsLength);
+            }
+
+            iter = visitedFileSet.find(fileName);
+            if (iter != visitedFileSet.end())
+            {        
+                visitedFileSet.erase(iter);
+                PacketPtr newPacket(new Packet(packetsIn[0]->get_StreamId(),
+                                    packetsIn[0]->get_Tag(), "%auc %s", 
+                                    fileContents, fileContentsLength, fileName));
+                packetsOut.push_back(newPacket);
+            }
+        }
+    }
+    mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "fileRequestDownStream", stderr, "Filter end.\n"));
+}
+
+#endif 
 
 } /* extern "C" */

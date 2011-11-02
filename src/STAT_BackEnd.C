@@ -28,6 +28,12 @@ using namespace MRN;
     using namespace Dyninst::SymtabAPI;
 #endif
 
+#ifdef STAT_FGFS
+    using namespace FastGlobalFileStat;
+    using namespace FastGlobalFileStat::MountPointAttribute;
+    using namespace FastGlobalFileStat::CommLayer;
+#endif
+
 StatError_t statInit(int *argc, char ***argv)
 {
     lmon_rc_e rc;
@@ -122,6 +128,9 @@ STAT_BackEnd::STAT_BackEnd()
     prefixTree3d_ = NULL;
     prefixTree2d_ = NULL;
     broadcastStream_ = NULL;
+#ifdef STAT_FGFS
+    fgfsCommFabric_ = NULL;
+#endif
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -160,6 +169,10 @@ STAT_BackEnd::~STAT_BackEnd()
         free(proctab_);
     }
 
+#ifdef STAT_FGFS
+    if (fgfsCommFabric_ != NULL)
+        delete fgfsCommFabric_;
+#endif
     /* clean up MRNet */
     if (network_ != NULL)
     {
@@ -740,6 +753,49 @@ StatError_t STAT_BackEnd::mainLoop()
                 broadcastStream_ = stream;
                 //GLL TODO: send an ack?
                 break;
+
+#ifdef STAT_FGFS
+            case PROT_SEND_FGFS_STREAM:
+                bool ret;
+
+                /* Initialize the FGFS Comm Fabric */
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received message to setup FGFS\n");
+                ret = MRNetCommFabric::initialize((void *)network_, (void *)stream);
+                if (ret == false)
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize FGFS CommFabric\n");
+                    return STAT_MRNET_ERROR;
+                }
+                fgfsCommFabric_ = new MRNetCommFabric();
+                ret = AsyncGlobalFileStat::initialize(fgfsCommFabric_);
+                if (ret == false)
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize AsyncGlobalFileStat\n");
+                    return STAT_MRNET_ERROR;
+                }
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "FGFS setup complete\n");
+
+                break;
+
+            case PROT_FILE_REQ:
+                MRNetSymbolReaderFactory *msrf;
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to register file request stream \n");
+        
+                //Save the Stream for sending File requests later
+                msrf = new MRNetSymbolReaderFactory(Walker::getSymbolReader(), network_, stream);
+                Walker::setSymbolReader(msrf);            
+                retval = 0;
+
+                //Send File Request Acknowledgement
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Finished registering file request stream, sending ackowledgement\n");
+                if (sendAck(broadcastStream_, PROT_FILE_REQ_RESP, retval) != STAT_OK)
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_FILE_REQ_RESP) failed\n");
+                    return STAT_MRNET_ERROR;
+                }
+                break;
+
+#endif //FGFS
 
             case PROT_EXIT:
                 /* Exit */

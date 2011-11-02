@@ -59,7 +59,22 @@ typedef enum {
                PROT_RESUME_APPLICATION_RESP,
                PROT_SEND_LAST_TRACE,
                PROT_SEND_BROADCAST_STREAM,
+#ifdef STAT_FGFS
+               PROT_SEND_LAST_TRACE_RESP,
+               PROT_FILE_REQ,
+               PROT_FILE_REQ_RESP,
+               PROT_LIB_REQ,
+               PROT_LIB_REQ_RESP,
+               PROT_COLLECT_PERF,
+               PROT_COLLECT_PERF_RESP,
+               PROT_LIB_REQ_ERR,
+               PROT_ATTACH_PERF,
+               PROT_ATTACH_PERF_RESP,
+               PROT_SEND_FGFS_STREAM,
+               PROT_FGFS_REQUEST
+#else
                PROT_SEND_LAST_TRACE_RESP
+#endif               
 } StatProt_t;
 
 //! An enum for STAT error codes

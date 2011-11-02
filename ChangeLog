@@ -13,6 +13,19 @@
 2011-09-23 Gregory L. Lee <lee218@llnl.gov>
 	* : fixed errors reported by Intel's Static Security Checker tool
 
+2011-09-21 Gregory L. Lee <lee218@llnl.gov>
+	* : send broadcast stream to BE upon creation of broadcast stream
+	* : use broadcast stream (sum filter) for file request stream creation ack
+
+2011-09-20 Gregory L. Lee <lee218@llnl.gov>
+	* : integrated FGFS (Fast Global File Stat)
+
+2011-09-19 Gregory L. Lee <lee218@llnl.gov>
+	* configure.ac : added enable switches for temporal ordering and fgfs
+	* config/x_ac_fgfs.m4 : added check for fgfs header and lib
+	* config/x_ac_enable_debug.m4 : fixed debug flag propagation 
+	* : integrated MRNet-based file broadcast
+
 2011-08-19 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : disable failure recovery for CRAYXT
 

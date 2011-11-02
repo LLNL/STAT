@@ -3,6 +3,9 @@
 export prefix=@prefix@
 export STAT_LMON_REMOTE_LOGIN=@rshcmd@
 export STAT_XPLAT_RSH=@rshcmd@
+if test -z $STAT_FGFS_FILTER_PATH; then
+    export STAT_FGFS_FILTER_PATH=@FGFSFILTERPATH@
+fi
 if test -z $STAT_MRNET_COMM_PATH; then
     export STAT_MRNET_COMM_PATH=@MRNETCOMMNODEBIN@
 fi
