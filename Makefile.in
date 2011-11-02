@@ -39,7 +39,7 @@ host_triplet = @host@
 DIST_COMMON = README $(am__configure_deps) $(dist_image_DATA) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/config.h.in $(top_srcdir)/configure AUTHORS \
-	ChangeLog INSTALL TODO config/config.guess config/config.sub \
+	ChangeLog INSTALL config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/ltmain.sh \
 	config/missing config/py-compile
 subdir = .
