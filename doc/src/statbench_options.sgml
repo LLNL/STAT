@@ -135,4 +135,12 @@
         </para>
     </listitem>
 </varlistentry>
+<varlistentry>
+    <term>-M, --mrnetprintf</term>
+    <listitem>
+        <para>
+        Use MRNet's printf for STAT debug logging.
+        </para>
+    </listitem>
+</varlistentry>
 </variablelist>

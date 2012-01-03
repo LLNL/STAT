@@ -18,7 +18,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 
 #include "config.h"
-
 #include <getopt.h>
 #include "STAT_FrontEnd.h"
 
@@ -301,8 +300,9 @@ void printUsage(int argc, char **argv)
     fprintf(stderr, "  -C, --create [<args>]+\tlaunch the application under STAT's control.\n\t\t\t\tAll args after -C are used to launch the app.\n");
     fprintf(stderr, "  -D, --daemon <path>\t\tthe full path to the STAT daemon\n");
     fprintf(stderr, "  -F, --filter <path>\t\tthe full path to the STAT filter shared object\n");
-    fprintf(stderr, "  -l, --log [FE|BE|ALL]\t\tenable debug logging\n");
+    fprintf(stderr, "  -l, --log [FE|BE|CP]\t\tenable debug logging\n");
     fprintf(stderr, "  -L, --logdir <log_directory>\tlogging output directory\n");
+    fprintf(stderr, "  -M, --mrnetprintf\t\tuse MRNet's print for logging\n");
     fprintf(stderr, "  -j, --jobid <id>\t\tappend <id> to the STAT output directory\n");
     fprintf(stderr, "\n%% man STAT\n  for more information\n\n");
 }
@@ -317,7 +317,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
     int nProcs;
     bool createJob = false;
     char *logOutDir = NULL;
-    StatLog_t logType = STAT_LOG_NONE;
+    unsigned char logType = STAT_LOG_NONE;
 
     struct option longOptions[] =
     {
@@ -332,6 +332,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         {"create", no_argument, 0, 'C'}, 
         {"appnodes", no_argument, 0, 'A'}, 
         {"sampleindividual", no_argument, 0, 'S'}, 
+        {"mrnetprintf", no_argument, 0, 'M'}, 
         {"fanout", required_argument, 0, 'f'},
         {"nodes", required_argument, 0, 'n'},
         {"procs", required_argument, 0, 'p'},
@@ -361,7 +362,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvPicwaCSAf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPicwaCASMf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'C')
@@ -457,37 +458,22 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'l':
             if (strcmp(optarg, "FE") == 0)
-                logType = STAT_LOG_FE;
+                logType |= STAT_LOG_FE;
             else if (strcmp(optarg, "BE") == 0)
-                logType = STAT_LOG_BE;
-            else if (strcmp(optarg, "ALL") == 0)
-                logType = STAT_LOG_ALL;
+                logType |= STAT_LOG_BE;
+            else if (strcmp(optarg, "CP") == 0)
+                logType |= STAT_LOG_CP;
             else
             {
-                STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or ALL, you entered %s\n", optarg);
+                STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or CP, you entered %s\n", optarg);
                 return STAT_ARG_ERROR;
-            }
-            if (logOutDir != NULL)
-            {
-                statError = STAT->startLog(logType, logOutDir);
-                if (statError != STAT_OK)
-                {
-                    STAT->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
-                    return statError;
-                }
             }
             break;
         case 'L':
             logOutDir = strdup(optarg);
-            if (logType != STAT_LOG_NONE)
-            {
-                statError = STAT->startLog(logType, logOutDir);
-                if (statError != STAT_OK)
-                {
-                    STAT->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
-                    return statError;
-                }
-            }
+            break;
+        case 'M':
+            logType |= STAT_LOG_MRN;
             break;
         case '?':
             STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
@@ -497,7 +483,17 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
             printUsage(argc, argv);
             return STAT_ARG_ERROR;
-        };
+        }; // switch(opt)
+    } // while (1)
+
+    if (logOutDir != NULL && logType != STAT_LOG_NONE)
+    {
+        statError = STAT->startLog(logType, logOutDir);
+        if (statError != STAT_OK)
+        {
+            STAT->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
+            return statError;
+        }
     }
 
     if (optind == argc - 1 && createJob == false)

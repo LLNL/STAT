@@ -4,6 +4,7 @@
 #include "SymReader.h"
 #include "mrnet/MRNet.h"
 #include "STAT_timer.h"
+#include "STAT.h"
 #include "Comm/MRNetCommFabric.h"
 #include "AsyncFastGlobalFileStat.h"
 #include "MRNetSymbolReader.h"
@@ -93,86 +94,85 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
     bool localLib = true;
     int tag = PROT_LIB_REQ, fileContentsLength, ret, size;
     char *fileName;
-    unsigned char *fileContents; 
+    char *fileContents; 
     FILE *fp;
     PacketPtr packet;
     MRNetSymbolReader *msr;
     std::map<std::string, MRNetSymbolReader* >::iterator iter;
 
-    mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader", stderr,
+    mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader", statOutFp,
             "Interposed lib functions called openSymbolReader(%s)\n",
             pathName.c_str()));
 
     iter = openReaders_.find(pathName);
     if (iter == openReaders_.end())
     {  
-        mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader", stderr,
+        mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader", statOutFp,
                 "no existing reader for %s\n", pathStr));
 
         AsyncGlobalFileStat myStat(pathStr);
         if (IS_YES(myStat.isUnique()))
         {
-            //fprintf(stderr, "BE: %s is Unique, requesting contents from FE\n", pathStr);
             localLib = false;                
             
-            mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                    stderr, "requesting contents for %s\n", pathStr));
+            mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                    statOutFp, "requesting contents for %s\n", pathStr));
     
             if (stream_->send(tag, "%s", pathStr) == -1)
             {
-                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        stderr, "BE: stream::send() failure\n"));
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "BE: stream::send() failure\n"));
                 return NULL;
             }
             if (stream_->flush() == -1)
             {
-                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        stderr, "BE: stream::flush() failure\n"));
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "BE: stream::flush() failure\n"));
                 return NULL;
             }
                 
             ret = network_->recv(&tag, packet, &stream_);
             if (ret != 1)
             {
-                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        stderr, "BE: network::recv() failure\n"));
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "BE: network::recv() failure\n"));
                 return NULL;
             }
 
             if (tag == PROT_LIB_REQ_ERR)
             {
-                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        stderr, "FE reported error sending contents of %s\n", pathStr));
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "FE reported error sending contents of %s\n", pathStr));
                 localLib = true;
             }
-            else if (packet->unpack("%auc %s", &fileContents, &fileContentsLength, &fileName) == -1)
+            else if (packet->unpack("%ac %s", &fileContents, &fileContentsLength, &fileName) == -1)
             {
-                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        stderr, "Failed to unpack contents of %s\n", pathStr));
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "Failed to unpack contents of %s\n", pathStr));
                 localLib = true;
             }
         }
     
         if (localLib == true)
         {
-            mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                    stderr, "Trying to read %s locally\n", pathStr));
+            mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                    statOutFp, "Trying to read %s locally\n", pathStr));
             fp = fopen(pathStr,"r");
             if (fp == NULL)
             {
-                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        stderr, "File %s does not exist on BE\n", pathStr));
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "File %s does not exist on BE\n", pathStr));
                 return NULL;
             }
 
             fseek(fp, 0, SEEK_END);
             size = ftell(fp);
             fseek(fp, 0, SEEK_SET);
-            fileContents = (unsigned char *)malloc(size * sizeof(unsigned char));
+            fileContents = (char *)malloc(size * sizeof(char));
             if (fileContents == NULL)
             {
-                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        stderr, "Malloc returned NULL for %s\n", pathStr));
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "Malloc returned NULL for %s\n", pathStr));
                 return NULL;
             }
             fread(fileContents, size, 1, fp);
@@ -181,22 +181,22 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
             msr = openSymReader((char *)fileContents, size, pathName);
             if (msr == NULL)
             {
-                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        stderr, "openSymReader returned NULL for %s %d\n", 
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "openSymReader returned NULL for %s %d\n", 
                         pathName.c_str(), size));
                 return NULL;
             }
         }
         else
         {
-            mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                    stderr, "reading contents of %s\n", pathStr));
+            mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                    statOutFp, "reading contents of %s\n", pathStr));
             msr = openSymReader((char *)fileContents, fileContentsLength,
                                 pathName);
             if (msr == NULL)
             {
-                mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        stderr, "openSymReader returned NULL for %s %d\n", 
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "openSymReader returned NULL for %s %d\n", 
                         pathName.c_str(), fileContentsLength));
                 return NULL;
             }
@@ -206,7 +206,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
     }
     else
     {
-        mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymbolReader", stderr,
+        mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader", statOutFp,
                 "Found existing reader for %s\n", pathStr));
         msr = iter->second;
         msr->refCount_++;
@@ -224,7 +224,7 @@ MRNetSymbolReaderFactory::openSymReader(const char *buffer,
                                                                      size);    
     if (handle == NULL)
     {
-        mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymReader", stderr,
+        mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymReader", statOutFp,
                 "openSymbolReader returned NULL for %s %d\n", file.c_str(),
                 size));
         return NULL;
@@ -239,7 +239,7 @@ MRNetSymbolReaderFactory::openSymbolReader(const char *buffer, unsigned long siz
     MRNetSymbolReader *msr = openSymReader(buffer,size);
     if (msr == NULL)
     {
-        mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "openSymReader", stderr,
+        mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymReader", statOutFp,
                 "openSymbolReader returned NULL for %d\n", size));
         return NULL;
     }

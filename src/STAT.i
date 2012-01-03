@@ -36,12 +36,13 @@ namespace std{
 
 #define STAT_UNKNOWN -1
 
-typedef enum {
-               STAT_LOG_FE = 0,
-               STAT_LOG_BE,
-               STAT_LOG_ALL,
-               STAT_LOG_NONE
-} StatLog_t;
+enum StatLogOptions_t {
+               STAT_LOG_NONE = 0x00,
+               STAT_LOG_FE = 0x01,
+               STAT_LOG_BE = 0x02,
+               STAT_LOG_CP = 0x04,
+               STAT_LOG_MRN = 0x08
+} ;
 
 typedef enum {
     STAT_FUNCTION_NAME_ONLY = 0,
@@ -122,7 +123,7 @@ class STAT_FrontEnd
         StatError_t detachApplication(int *stopList, int stopListSize, bool blocking = true);
         StatError_t terminateApplication(bool blocking = true);
         void printMsg(StatError_t statError, const char *sourceFile, int sourceLine, const char *fmt, ...);
-        StatError_t startLog(StatLog_t logType, char *logOutDir);
+        StatError_t startLog(unsigned char logType, char *logOutDir);
         StatError_t receiveAck(bool blocking = true);
         StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
 

@@ -17,14 +17,27 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 #include "config.h"
+#include <getopt.h>
 #include "STAT_BackEnd.h"
 
 
 //! The daemon main 
 int main(int argc, char **argv)
 {
+    int opt, optionIndex = 0, mrnetOutputLevel = 1;
+    char *logOutDir = NULL;
+    bool useMrnetPrintf = false;
     StatError_t statError;
-    STAT_BackEnd *stat_be;
+    STAT_BackEnd *STAT;
+
+    struct option longOptions[] = 
+    {
+        {"mrnetprintf", no_argument, 0, 'm'}, 
+        {"mrnetoutputlevel", required_argument, 0, 'o'}, 
+        {"logdir", required_argument, 0, 'L'},
+        {0, 0, 0, 0}
+    };
+
     /* If user querying for version, print it and exit */
     if (argc == 2)
     {
@@ -44,45 +57,78 @@ int main(int argc, char **argv)
     }
 
     /* Create the STAT BackEnd object */
-    stat_be = new STAT_BackEnd();
+    STAT = new STAT_BackEnd();
+
+    while (1)
+    {
+        opt = getopt_long(argc, argv,"hVmo:L:", longOptions, &optionIndex);
+        if (opt == -1)
+            break;
+        switch(opt)
+        {
+        case 'h':
+            printf("STATD-%d.%d.%d\n", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
+            return 0;
+            break;
+        case 'V':
+            printf("STATD-%d.%d.%d\n", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
+            return 0;
+            break;
+        case 'o':
+            mrnetOutputLevel = atoi(optarg);
+            break;
+        case 'L':
+            logOutDir = strdup(optarg);
+            break;
+        case 'm':
+            useMrnetPrintf = true;
+            break;
+        case '?':
+            STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            return STAT_ARG_ERROR;
+        default:
+            STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            return STAT_ARG_ERROR;
+        }; // switch(opt)
+    } // while(1)
 
     /* Check if logging of the daemon is enabled */
-    if (argc == 2)
+    if (logOutDir != NULL) 
     {
-        statError = stat_be->startLog(argv[1]);
+        statError = STAT->startLog(logOutDir, useMrnetPrintf, mrnetOutputLevel);
         if (statError != STAT_OK)
         {
-            stat_be->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");
-            delete stat_be;
+            STAT->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");
+            delete STAT;
             return -1;
         }
     }
 
     /* Setup Launchmon */
-    statError = stat_be->Init();
+    statError = STAT->Init();
     if (statError != STAT_OK)
     {
-        stat_be->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
-        delete stat_be;
+        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
+        delete STAT;
         return -1;
     }
 
 
     /* Connect to MRNet */
-    statError = stat_be->Connect();
+    statError = STAT->Connect();
     if (statError != STAT_OK)
     {
-        stat_be->printMsg(statError, __FILE__, __LINE__, "Failed to connect BE\n");
-        delete stat_be;
+        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to connect BE\n");
+        delete STAT;
         return -1;
     }
 
     /* Run the main feedback loop */
-    statError = stat_be->mainLoop();
+    statError = STAT->mainLoop();
     if (statError != STAT_OK)
     {
-        stat_be->printMsg(statError, __FILE__, __LINE__, "Failure in STAT BE main loop\n");
-        delete stat_be;
+        STAT->printMsg(statError, __FILE__, __LINE__, "Failure in STAT BE main loop\n");
+        delete STAT;
         return -1;
     }
 
@@ -91,7 +137,7 @@ int main(int argc, char **argv)
     if (statError != STAT_OK)
     {
         fprintf(stderr, "Failed to finalize LMON\n");
-        delete stat_be;
+        delete STAT;
         return -1;
     }
 
@@ -100,7 +146,7 @@ int main(int argc, char **argv)
     sleep(5);
 #endif
 
-    delete stat_be;
+    delete STAT;
     return 0;
 }
 

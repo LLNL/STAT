@@ -28,13 +28,16 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "mrnet/MRNet.h"
 #include "mrnet/Types.h"
 
+FILE *statOutFp = NULL;
+
 //! An enum to determine which messages to log
-typedef enum {
-               STAT_LOG_FE = 0,
-               STAT_LOG_BE,
-               STAT_LOG_ALL,
-               STAT_LOG_NONE
-} StatLog_t;
+enum StatLogOptions_t {
+               STAT_LOG_NONE = 0x00,
+               STAT_LOG_FE = 0x01,
+               STAT_LOG_BE = 0x02,
+               STAT_LOG_CP = 0x04,
+               STAT_LOG_MRN = 0x08
+} ;
 
 //! An enum for MRNet message tags
 typedef enum {
@@ -59,6 +62,7 @@ typedef enum {
                PROT_RESUME_APPLICATION_RESP,
                PROT_SEND_LAST_TRACE,
                PROT_SEND_BROADCAST_STREAM,
+               PROT_SEND_BROADCAST_STREAM_RESP,
 #ifdef STAT_FGFS
                PROT_SEND_LAST_TRACE_RESP,
                PROT_FILE_REQ,

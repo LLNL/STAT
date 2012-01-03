@@ -1,11 +1,10 @@
-
 Installing STAT
-     _________________________________________________________
+     __________________________________________________________
 
    Table of Contents
    Dependent Packages
    Installation
-     _________________________________________________________
+     __________________________________________________________
 
 Dependent Packages
 
@@ -25,43 +24,47 @@ Dependent Packages
    StackWalker Lightweight stack trace sampling
    http://www.paradyn.org/html/downloads.html
 
-   In addition, the STAT GUI requires Python with PyGTK, both of which
-   are commonly preinstalled with many Linux operating systems. The
-   Pygments Python module can optionally be installed to allow the STAT
-   GUI to perform syntax highlighting of source code.
-     _________________________________________________________
+   In addition, the STAT GUI requires Python with PyGTK, both of
+   which are commonly preinstalled with many Linux operating
+   systems. The Pygments Python module can optionally be installed
+   to allow the STAT GUI to perform syntax highlighting of source
+   code.
+     __________________________________________________________
 
 Installation
 
-   First run configure. You will need to use the --with-package options
-   to  specify the install prefix for mrnet, graphlib, launchmon,
-   libdwarf, and stackwalker. These options will add the necessary
-   includes and library search paths to the compile options. Refer to
-   configure --help for exact options. You may also wish to specify the
-   maximum number of communication processes to launch per node with
-   the option --with-procspernode=number, generally set to the number
-   of cores per node.
+   First run configure. You will need to use the --with-package
+   options to specify the install prefix for mrnet, graphlib,
+   launchmon, libdwarf, and stackwalker. These options will add
+   the necessary includes and library search paths to the compile
+   options. Refer to configure --help for exact options. You may
+   also wish to specify the maximum number of communication
+   processes to launch per node with the option
+   --with-procspernode=number, generally set to the number of
+   cores per node.
 
-   STAT creates wrapper scripts for the STAT command line and STATGUI
-   commands. These wrappers set appropriate paths for the launchmon and
-   mrnet_commnode executables, based on the the --with-launchmon and
-   --with-mrnet configure options, thus it is important to specify both
-   of these even if they share a prefix.
+   STAT creates wrapper scripts for the STAT command line and
+   STATGUI commands. These wrappers set appropriate paths for the
+   launchmon and mrnet_commnode executables, based on the the
+   --with-launchmon and --with-mrnet configure options, thus it is
+   important to specify both of these even if they share a prefix.
 
-   STAT will use StackWalker by default. However, it can use Dyninst
-   instead if you specify --with-dyninst to the configure script.
+   STAT will use StackWalker by default. However, it can use
+   Dyninst instead if you specify --with-dyninst to the configure
+   script.
 
-   STAT will try to build the GUI by default. If you need to modify
-   your PYTHONPATH envirnment variable to search for side installed
-   site-packages, you can do this by specifying STAT_PYTHONPATH=path
-   during configure. This will add the appropriate directory to the
-   $PYTHONPATH environment variable within the STATGUI script. To
-   disable the building of the GUI, use the --enable-gui=no configure
-   option.
+   STAT will try to build the GUI by default. If you need to
+   modify your PYTHONPATH envirnment variable to search for side
+   installed site-packages, you can do this by specifying
+   STAT_PYTHONPATH=path during configure. This will add the
+   appropriate directory to the $PYTHONPATH environment variable
+   within the STATGUI script. To disable the building of the GUI,
+   use the --enable-gui=no configure option.
 
-   On BlueGene systems, also be sure to configure --with-bluegene. This
-   will  enable  the BGL macro for BlueGene specific compilation.
-   Similarly, to compile on Cray XT systems, specify --with-cray-xt.
+   On BlueGene systems, also be sure to configure --with-bluegene.
+   This will enable the BGL macro for BlueGene specific
+   compilation. Similarly, to compile on Cray XT systems, specify
+   --with-cray-xt.
 
    An example configure line for Cray XT:
 
@@ -78,11 +81,12 @@ MPICC=cc MPICXX=CC MPIF77=ftn --enable-shared LD=/usr/bin/ld.x
 make
 make install
 
-   Note that STAT hardcodes the paths to its daemon and filter shared
-   object,  assuming that they are in $prefix/bin and $prefix/lib
-   respectively, thus testing should be done in the install prefix
-   after running "make install" and the installation directory should
-   not  be  moved.  The path to these components can, however, be
-   overridden with the --daemon and --filter arguments. Further, the
-   STAT_PREFIX environment variable can be defined to override the
-   hardcoded paths in STAT.
+   Note that STAT hardcodes the paths to its daemon and filter
+   shared object, assuming that they are in $prefix/bin and
+   $prefix/lib respectively, thus testing should be done in the
+   install prefix after running "make install" and the
+   installation directory should not be moved. The path to these
+   components can, however, be overridden with the --daemon and
+   --filter arguments. Further, the STAT_PREFIX environment
+   variable can be defined to override the hardcoded paths in
+   STAT.

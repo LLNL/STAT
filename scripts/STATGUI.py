@@ -92,6 +92,8 @@ class STATGUI(STATDotWindow):
         self.options['Log Dir'] = os.environ['HOME']
         self.options['Log Frontend'] = False
         self.options['Log Backend'] = False
+        self.options['Log CP'] = False
+        self.options['Use MRNet Printf'] = False
         if 'STAT_LMON_DEBUG_BES' in os.environ:
             self.options['Debug Backends'] = True
         else:
@@ -713,7 +715,9 @@ host[1-10,12,15-20];otherhost[30]
         vbox2 = gtk.VBox()
         self.pack_check_button(vbox2, 'Log Frontend')
         self.pack_check_button(vbox2, 'Log Backend')
+        self.pack_check_button(vbox2, 'Log CP')
         self.pack_string_option(vbox2, 'Log Dir', attach_dialog)
+        self.pack_check_button(vbox2, 'Use MRNet Printf')
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 5)
         frame = gtk.Frame('Misc')
@@ -763,14 +767,16 @@ host[1-10,12,15-20];otherhost[30]
 
         self.STAT.setToolDaemonExe(self.options['Tool Daemon Path'])
         self.STAT.setFilterPath(self.options['Filter Path'])
-        logType = STAT_LOG_NONE
-        if self.options['Log Frontend'] and self.options['Log Backend']:
-            logType = STAT_LOG_ALL
-        elif self.options['Log Frontend']:
-            logType = STAT_LOG_FE
-        elif self.options['Log Backend']:
-            logType = STAT_LOG_BE
-        if self.options['Log Frontend'] or self.options['Log Backend']:
+        logType = STAT_LOG_NONE 
+        if self.options['Log Frontend']:
+            logType |= STAT_LOG_FE
+        if self.options['Log Backend']:
+            logType |= STAT_LOG_BE
+        if self.options['Log CP']:
+            logType |= STAT_LOG_CP
+        if self.options['Use MRNet Printf']:
+            logType |= STAT_LOG_MRN
+        if logType != STAT_LOG_NONE:
             ret = self.STAT.startLog(logType, self.options['Log Dir'])
             if ret != STAT_OK:
                 show_error_dialog('Failed to Start Log:\n%s' %self.STAT.getLastErrorMessage(), self)

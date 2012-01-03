@@ -203,9 +203,10 @@ class STAT_BackEnd
         //! Creates the log file
         /*!
             \param logOutDir - the output log directory
+            \param useMrnetPrintf - whether to use MRNet's printf for STAT logging
             \return STAT_OK on success
         */
-        StatError_t startLog(char *logOutDir);
+        StatError_t startLog(char *logOutDir, bool useMrnetPrintf = false, int mrnetOutputLevel = 1);
 
         //! Write MRNet connection information to a named fifo
         /*!
@@ -428,10 +429,10 @@ class STAT_BackEnd
         char localHostName_[BUFSIZE];           /*!< the local hostname */
         char localIp_[BUFSIZE];                 /*!< the local IP address */
         FILE *errOutFp_;                        /*!< the error output file handle */
-        FILE *logOutFp_;                        /*!< the log file handle */
         bool initialized_;                      /*!< whether LauncMON has been initialized */
         bool connected_;                        /*!< whether this daemon has been conected to MRNet */
         bool isRunning_;                        /*!< whether the target processes are running */
+        bool useMrnetPrintf_;                   /*!< whether to use MRNet's printf for logging */
         MRN::Network *network_;                 /*!< the MRNet Network object */
         MRN::Rank myRank_;                      /*!< this daemon's MRNet rank */
         MRN::Rank parentRank_;                  /*!< the MRNet parent's rank */

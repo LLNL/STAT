@@ -192,6 +192,7 @@ void STAT_PrintUsage(int argc, char **argv)
     fprintf(stderr, "  -F, --filter <path>\t\tthe full path to the STAT filter shared object\n");
     fprintf(stderr, "  -l, --log [FE|BE|ALL]\t\tenable debug logging\n");
     fprintf(stderr, "  -L, --logdir <log_directory>\tlogging output directory\n");
+    fprintf(stderr, "  -M, --mrnetprintf\t\tuse MRNet's print for logging\n");
     fprintf(stderr, "\n%% man STATBench\n  for more information\n\n");
 }
 
@@ -199,6 +200,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
 {
     int i, opt, optionIndex = 0;
     char *logOutDir = NULL;
+    bool useMrnetPrintf = false;
     StatError_t statError;
     StatLog_t logType;
 
@@ -209,6 +211,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
         {"verbose", no_argument, 0, 'v'},
         {"autotopo", no_argument, 0, 'a'},
         {"appnodes", no_argument, 0, 'A'}, 
+        {"mrnetprintf", no_argument, 0, 'M'}, 
         {"fanout", required_argument, 0, 'f'},
         {"nodes", required_argument, 0, 'n'},
         {"procs", required_argument, 0, 'p'},
@@ -232,7 +235,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvaAf:n:p:t:m:b:e:D:F:l:L:u:d:N:i:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvaAMf:n:p:t:m:b:e:D:F:l:L:u:d:N:i:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         switch(opt)
@@ -304,27 +307,12 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
                 STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or ALL, you entered %s\n", optarg);
                 return STAT_ARG_ERROR;
             }
-            if (logOutDir != NULL)
-            {
-                statError = STAT->startLog(logType, logOutDir);
-                if (statError != STAT_OK)
-                {
-                    STAT->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
-                    return statError;
-                }
-            }
             break;
         case 'L':
             logOutDir = strdup(optarg);
-            if (logType != STAT_LOG_NONE)
-            {
-                statError = STAT->startLog(logType, logOutDir);
-                if (statError != STAT_OK)
-                {
-                    STAT->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
-                    return statError;
-                }
-            }
+            break;
+        case 'M':
+            useMrnetPrintf = true;
             break;
         case 'u':
             topologyType = STAT_TOPOLOGY_USER;
@@ -349,6 +337,16 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             STAT_PrintUsage(argc, argv);
             return STAT_ARG_ERROR;
         };
+    }
+
+    if (logOutDir != NULL && logType != STAT_LOG_NONE)
+    {
+        statError = STAT->startLog(logType, logOutDir, useMrnetPrintf);
+        if (statError != STAT_OK)
+        {
+            STAT->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
+            return statError;
+        }
     }
 
     if (STAT->getLauncherArgc() == 1)

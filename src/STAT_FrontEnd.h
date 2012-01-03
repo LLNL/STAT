@@ -340,7 +340,7 @@ class STAT_FrontEnd
             \param logOutDir - the output directory for the log files
             \return STAT_OK on success
         */
-        StatError_t startLog(StatLog_t logType, char *logOutDir);
+        StatError_t startLog(unsigned char logType, char *logOutDir);
 
         //! Receive an acknowledgement from the daemons
         /*!
@@ -788,6 +788,7 @@ class STAT_FrontEnd
         unsigned int topologySize_;                         /*!< the size of the MRNet topology */
         int jobId_;                                         /*!< the batch job ID */
         int lmonSession_;                                   /*!< the LaunchMON session ID */
+        int mrnetOutputLevel_;                              /*!< the MRNet output level */
         char **launcherArgv_;                               /*!< the job launch arguments */
         char *toolDaemonExe_;                               /*!< the path to the STATD daemon executable */
         char *applExe_;                                     /*!< the name of the application executable */
@@ -799,7 +800,6 @@ class STAT_FrontEnd
         char filePrefix_[BUFSIZE];                          /*!< the installation prefix for STAT */
         char lastErrorMessage_[BUFSIZE];                    /*!< the last error message */
         char hostname_[BUFSIZE];                            /*!< the FrontEnd hostname*/
-        FILE *logOutFp_;                                    /*!< the FrontEnd log file handle */
         bool isLaunched_;                                   /*!< whether the STAT daemons have been launched */
         bool isConnected_;                                  /*!< whether the STAT daemons are connected to the MRNet tree */
         bool isAttached_;                                   /*!< whether the STAT daemons are attached to the application */
@@ -815,7 +815,7 @@ class STAT_FrontEnd
         StatProt_t pendingAckTag_;                          /*!< the expected tag of the pending acknowledgement */
         StatError_t (STAT_FrontEnd::*pendingAckCb_)();      /*!< the function to call after acknowledgement received from daemons */
         StatVerbose_t verbose_;                             /*!< the verbosity level */
-        StatLog_t logging_;                                 /*!< the logging level */
+        unsigned char logging_;                             /*!< the logging level */
         MPIR_PROCDESC_EXT *proctab_;                        /*!< the process table */
         MRN::Network *network_;                             /*!< the MRNet Network object */
         MRN::Communicator *broadcastCommunicator_;          /*!< the broadcast communicator*/

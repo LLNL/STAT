@@ -87,11 +87,11 @@ STAT_BackEnd::STAT_BackEnd()
     errOutFp_ = stderr;
 #endif
     
-    /* Enable MRNet logging */
-    envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
-    if (envValue != NULL)
-        set_OutputLevel(atoi(envValue));
-    envValue = getenv("STAT_MRNET_DEBUG_LOG_DIRECTORY");
+//    /* Enable MRNet logging */
+//    envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
+//    if (envValue != NULL)
+//        set_OutputLevel(atoi(envValue));
+//    envValue = getenv("STAT_MRNET_DEBUG_LOG_DIRECTORY");
     if (envValue != NULL)
         setenv("MRNET_DEBUG_LOG_DIRECTORY", envValue, 1);
 
@@ -118,7 +118,7 @@ STAT_BackEnd::STAT_BackEnd()
 #endif
 
     processMapNonNull_ = 0;
-    logOutFp_ = NULL;
+    statOutFp = NULL;
     initialized_ = false;
     connected_ = false;
     isRunning_ = false;
@@ -751,7 +751,14 @@ StatError_t STAT_BackEnd::mainLoop()
             case PROT_SEND_BROADCAST_STREAM:
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received broadcast stream\n");
                 broadcastStream_ = stream;
-                //GLL TODO: send an ack?
+
+                /* Send ack */
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Finished creating traces, sending ackowledgement\n");
+                if (sendAck(stream, PROT_SEND_BROADCAST_STREAM_RESP, 0) != STAT_OK)
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_STATBENCH_CREATE_TRACES_RESP) failed\n");
+                    return STAT_MRNET_ERROR;
+                }
                 break;
 
 #ifdef STAT_FGFS
@@ -2223,16 +2230,25 @@ unsigned int string_hash(const char *str)
     return hash;
 }
 
-StatError_t STAT_BackEnd::startLog(char *logOutDir)
+StatError_t STAT_BackEnd::startLog(char *logOutDir, bool useMrnetPrintf, int mrnetOutputLevel)
 {
     char fileName[BUFSIZE];
+
+    useMrnetPrintf_ = useMrnetPrintf;
     snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir, localHostName_);
-    logOutFp_ = fopen(fileName, "w");
-    if (logOutFp_ == NULL)
+    statOutFp = fopen(fileName, "w");
+    if (statOutFp == NULL)
     {
         printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
         return STAT_FILE_ERROR;
     }
+    if (useMrnetPrintf_ == true)
+        mrn_printf_init(statOutFp);
+    set_OutputLevel(mrnetOutputLevel);
+//    {
+//        MRN_DEBUG_LOG_DIRECTORY = NULL;
+//        stderr = statOutFp;
+//    }
     return STAT_OK;
 }
 
@@ -2245,7 +2261,7 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     struct tm *localTime;
 
     /* If this is a log message and we're not logging, then return */
-    if (statError == STAT_LOG_MESSAGE && logOutFp_ == NULL)
+    if (statError == STAT_LOG_MESSAGE && statOutFp == NULL)
         return;
 
     /* Get the time */
@@ -2278,19 +2294,30 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     }
 
     /* Print the message to the log */
-    if (logOutFp_ != NULL)
+    if (statOutFp != NULL)
     {
-        fprintf(logOutFp_, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
-        if (statError != STAT_LOG_MESSAGE && statError != STAT_STDOUT && statError != STAT_VERBOSITY)
+        if (useMrnetPrintf_ == true)
         {
-            fprintf(logOutFp_, "%s: STAT returned error type ", localHostName_);
-            statPrintErrorType(statError, logOutFp_);
-            fprintf(logOutFp_, ": ");
+            char msg[BUFSIZE];
+            va_start(args, fmt);
+            vsnprintf(msg, BUFSIZE, fmt, args);
+            va_end(args);
+            mrn_printf(sourceFile, sourceLine, "", statOutFp, "%s", msg);
         }
-        va_start(args, fmt);
-        vfprintf(logOutFp_, fmt, args);
-        va_end(args);
-        fflush(logOutFp_);
+        else
+        {
+            fprintf(statOutFp, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
+            if (statError != STAT_LOG_MESSAGE && statError != STAT_STDOUT && statError != STAT_VERBOSITY)
+            {
+                fprintf(statOutFp, "%s: STAT returned error type ", localHostName_);
+                statPrintErrorType(statError, statOutFp);
+                fprintf(statOutFp, ": ");
+            }
+            va_start(args, fmt);
+            vfprintf(statOutFp, fmt, args);
+            va_end(args);
+            fflush(statOutFp);
+        }
     }
 }
 

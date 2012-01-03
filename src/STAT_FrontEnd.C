@@ -32,7 +32,6 @@ using namespace MRN;
 static int lmonState = 0;
 STAT_timer totalStart, totalEnd, startTime, endTime;
 
-
 STAT_FrontEnd::STAT_FrontEnd()
 {
     int ret;
@@ -41,7 +40,10 @@ STAT_FrontEnd::STAT_FrontEnd()
     /* Enable MRNet logging if requested */
     envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
     if (envValue != NULL)
-        set_OutputLevel(atoi(envValue));
+    {
+        mrnetOutputLevel_ = atoi(envValue);
+        set_OutputLevel(mrnetOutputLevel_);
+    }
     envValue = getenv("STAT_MRNET_DEBUG_LOG_DIRECTORY");
     if (envValue != NULL)
         setenv("MRNET_DEBUG_LOG_DIRECTORY", envValue, 1);
@@ -72,7 +74,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     envValue = getenv("STAT_MRNET_COMM_PATH");
     if (envValue != NULL)
     {
-        setenv("MRN_COMM_PATH", envValue, 1); // for MRNet < 3.0.1
+        setenv("MRN_COMM_PATH", envValue, 1); // for MRNet > 3.0.1
         setenv("MRNET_COMM_PATH", envValue, 1);
     }
 
@@ -175,7 +177,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     broadcastStream_ = NULL;
     broadcastCommunicator_ = NULL;
     network_ = NULL;
-    logOutFp_ = NULL;
+    statOutFp = NULL;
     launcherPid_ = 0;
     launcherArgv_ = NULL;
     launcherArgc_ = 1;
@@ -374,16 +376,26 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
     }
 
     /* If we're logging the daemons, pass the output directory as a command line arg */
-    if (logging_ == STAT_LOG_BE || logging_ == STAT_LOG_ALL)
+    if (logging_ & STAT_LOG_BE)
     {
-        daemonArgv = (char **)malloc(2 * sizeof(char *));
+        daemonArgv = (char **)malloc(6 * sizeof(char *));
         if (daemonArgv == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
-        daemonArgv[0] = logOutDir_;
-        daemonArgv[1] = NULL;
+        daemonArgv[0] = "-L";
+        daemonArgv[1] = logOutDir_;
+        daemonArgv[2] = "-o";
+        daemonArgv[3] = (char *)malloc(8 * sizeof(char));
+        snprintf(daemonArgv[3], 8, "%d", mrnetOutputLevel_);
+        if (logging_ & STAT_LOG_MRN)
+        {
+            daemonArgv[4] = "-m";
+            daemonArgv[5] = NULL;
+        }
+        else
+            daemonArgv[4] = NULL;
     }        
 
     if (applicationOption == STAT_ATTACH)
@@ -650,6 +662,10 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         return STAT_MRNET_ERROR;
     }
 
+#ifdef STAT_FGFS
+    network_->set_FailureRecovery(false);
+#endif
+
     endTime.setTime();
     addPerfData("\tMRNet Constructor Time", (endTime - startTime).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tMRNet initialized\n");
@@ -665,6 +681,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         return STAT_MRNET_ERROR;
     }
 
+  #ifndef STAT_FGFS
     /* Register the node removed callback function with MRNet */
     ret = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_REMOVE_NODE, nodeRemovedCb, (void *)this);
     if (ret == false) 
@@ -680,6 +697,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to register MRNet topology change callback\n");
         return STAT_MRNET_ERROR;
     }
+  #endif    
 #endif
 
     /* Get the topology information from the Network */
@@ -738,9 +756,10 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
 {
     static int connectTimeout = -1, i = 0;
-    int filterId;
+    int filterId, retval, tag;
     char *connectTimeoutString, fullTopologyFile[BUFSIZE];
     StatError_t statError;
+    PacketPtr packet;
 #ifdef STAT_FGFS
     int filterId2;
     bool ret;
@@ -843,7 +862,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Outputting full MRNet topology file to %s\n", fullTopologyFile);
     leafInfo_.networkTopology->print_TopologyFile(fullTopologyFile); 
 
-    /* Get MRNet Broadcast Communicator and create a new stream */
+    /* Get MRNet Broadcast Communicator */
     startTime.setTime();
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tConfiguring MRNet connection...\n");
     broadcastCommunicator_ = network_->get_BroadcastCommunicator();
@@ -852,7 +871,25 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to get MRNet Communicator\n");
         return STAT_MRNET_ERROR;
     }
-    broadcastStream_ = network_->new_Stream(broadcastCommunicator_, TFILTER_SUM, SFILTER_WAITFORALL);
+
+    /* Check for the STAT filter path */
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Loading STAT filter into MRNet\n");
+    if (filterPath_ == NULL) 
+    {
+        printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Filter path not set\n");
+        return STAT_ARG_ERROR;
+    }
+
+    /* Load the STAT filter into MRNet */
+    filterId = network_->load_FilterFunc(filterPath_, "filterInit");
+    if (filterId == -1)
+    {
+        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure for path %s, function statMerge\n", filterPath_);
+        return STAT_FILTERLOAD_ERROR;
+    }
+    
+    /* Create broadcast stream */
+    broadcastStream_ = network_->new_Stream(broadcastCommunicator_, TFILTER_SUM, SFILTER_WAITFORALL, filterId);
     if (broadcastStream_ == NULL)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to setup MRNet broadcast stream\n");
@@ -860,7 +897,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     }
 
     /* Send an empty message using the broadcast stream */
-    if (broadcastStream_->send(PROT_SEND_BROADCAST_STREAM, "%auc", "x", 2) == -1)
+    if (broadcastStream_->send(PROT_SEND_BROADCAST_STREAM, "%uc %s %d", logging_, logOutDir_, mrnetOutputLevel_) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send on broadcast stream\n");
         return STAT_MRNET_ERROR;
@@ -872,20 +909,28 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     }
 
     //GLL TODO: should we get ack?
-    
-    /* Check for the STAT filter path */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Loading STAT filter into MRNet\n");
-    if (filterPath_ == NULL) 
+    retval = broadcastStream_->recv(&tag, packet, true);
+    if (retval == -1)
     {
-        printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Filter path not set\n");
-        return STAT_ARG_ERROR;
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to receive broadcast stream acks\n");
+        return STAT_MRNET_ERROR;
     }
-
+    if (packet->unpack("%d", &retval) == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to unpack acknowledgement packet\n");
+        return STAT_MRNET_ERROR;
+    }
+    if (retval != 0)
+    {
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "%d daemons reported an error\n", retval);
+        return STAT_DAEMON_ERROR;
+    }
+    
     /* Load the STAT filter into MRNet */
-    filterId = network_->load_FilterFunc(filterPath_, "STAT_Merge");
+    filterId = network_->load_FilterFunc(filterPath_, "statMerge");
     if (filterId == -1)
     {
-        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure for path %s, function STAT_Merge\n", filterPath_);
+        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure for path %s, function statMerge\n", filterPath_);
         return STAT_FILTERLOAD_ERROR;
     }
     
@@ -903,6 +948,8 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tMRNet connection configured\n");
     isConnected_ = true;
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Tool daemons launched and connected!\n");
+
+    /* TODO: can use merge stream to send CP log dir... CPs pick up in filter on ack from BEs */
 
     /* Make sure all daemons have the same version number as the FE */
     statError = checkVersion();
@@ -1079,7 +1126,7 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
     int tag, size;
     char *receiveFile;
     size_t pos;
-    unsigned char *contents;
+    char *contents;
     FILE *fp;
     PacketPtr packet;
     Stream *stream;
@@ -1193,13 +1240,13 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waitForFileRequests: file %s does not exist\n", filePath.c_str());
             size = 4;        
-            contents = (unsigned char *)malloc(size * sizeof(unsigned char));
+            contents = (char *)malloc(size * sizeof(char));
             if (contents == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %d elements for contents\n", strerror(errno), size);
                 return STAT_ALLOCATE_ERROR;
             }
-            strcpy((char *)contents, "err");
+            strcpy(contents, "err");
             tag = PROT_LIB_REQ_ERR;
         }
         else
@@ -1213,7 +1260,7 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
                 return STAT_ALLOCATE_ERROR;
             }
             fseek(fp, 0, SEEK_SET);
-            contents = (unsigned char *)malloc(size * sizeof(unsigned char));
+            contents = (char *)malloc(size * sizeof(char));
             if (contents == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %d elements for contents\n", strerror(errno), size);
@@ -1224,7 +1271,7 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
             fclose(fp);
             tag = PROT_LIB_REQ_RESP;
         }
-        if (stream->send(tag, "%auc %s", contents, size, receiveFile) == -1)
+        if (stream->send(tag, "%ac %s", contents, size, receiveFile) == -1)
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send file contents\n");
             return STAT_MRNET_ERROR;
@@ -1282,12 +1329,12 @@ StatError_t STAT_FrontEnd::dumpProctab()
         fprintf(f, "%s:%d\n", hostname_, launcherPid_);
 
     /* Write out the MPI ranks */
-    if (verbose_ == STAT_VERBOSE_FULL || logging_ == STAT_LOG_FE || logging_ == STAT_LOG_ALL)
+    if (verbose_ == STAT_VERBOSE_FULL || logging_ & STAT_LOG_FE)
         printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Process Table:\n");
     for (i = 0; i < nApplProcs_; i++)
     {
         fprintf(f, "%d %s:%d %s\n", proctab_[i].mpirank, proctab_[i].pd.host_name, proctab_[i].pd.pid, proctab_[i].pd.executable_name);
-        if (verbose_ == STAT_VERBOSE_FULL || logging_ == STAT_LOG_FE || logging_ == STAT_LOG_ALL)
+        if (verbose_ == STAT_VERBOSE_FULL || logging_ & STAT_LOG_FE)
             printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "%s: %s, pid: %d, MPI rank: %d\n", proctab_[i].pd.host_name, proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
     }
 
@@ -1295,7 +1342,7 @@ StatError_t STAT_FrontEnd::dumpProctab()
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::startLog(StatLog_t logType, char *logOutDir)
+StatError_t STAT_FrontEnd::startLog(unsigned char logType, char *logOutDir)
 {
     int ret;
     char fileName[BUFSIZE];
@@ -1319,15 +1366,17 @@ StatError_t STAT_FrontEnd::startLog(StatLog_t logType, char *logOutDir)
     }
 
     /* If we're logging the FE, open the log file */
-    if (logging_ == STAT_LOG_FE || logging_ == STAT_LOG_ALL)
+    if (logging_ & STAT_LOG_FE)
     {
         snprintf(fileName, BUFSIZE, "%s/%s.STAT.log", logOutDir_, hostname_);
-        logOutFp_ = fopen(fileName, "w");
-        if (logOutFp_ == NULL)
+        statOutFp = fopen(fileName, "w");
+        if (statOutFp == NULL)
         {
             printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open FE log file %s\n", strerror(errno), fileName);
             return STAT_FILE_ERROR;
         }
+        if (logging_ & STAT_LOG_MRN)
+            mrn_printf_init(statOutFp);
     }
 
     return STAT_OK;
@@ -2832,7 +2881,7 @@ StatError_t STAT_FrontEnd::dumpPerf()
             fprintf(perfFile, "%s:\n", performanceData_[i].first.c_str());
     }
     fclose(perfFile);
-    if (verbose_ == STAT_VERBOSE_FULL || logging_ == STAT_LOG_FE || logging_ == STAT_LOG_ALL)
+    if (verbose_ == STAT_VERBOSE_FULL || logging_ & STAT_LOG_FE)
     {
         for (i = 0; i < size; i++)
         {
@@ -3024,7 +3073,7 @@ void STAT_FrontEnd::printMsg(StatError_t statError, const char *sourceFile, int 
     struct tm *localTime;
 
     /* If this is a log message and we're not logging, then return */
-    if (statError == STAT_LOG_MESSAGE && logging_ != STAT_LOG_FE && logging_ != STAT_LOG_ALL)
+    if (statError == STAT_LOG_MESSAGE && !(logging_ & STAT_LOG_FE))
         return;
 
     /* Get the time */
@@ -3057,20 +3106,31 @@ void STAT_FrontEnd::printMsg(StatError_t statError, const char *sourceFile, int 
     }
    
     /* Print the message to the log */
-    if (logging_ == STAT_LOG_FE || logging_ == STAT_LOG_ALL && logOutFp_ != NULL)
+    if (logging_ & STAT_LOG_FE && statOutFp != NULL)
     {
-        if (sourceLine != -1 && sourceFile != NULL)
-            fprintf(logOutFp_, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
-        if (statError != STAT_LOG_MESSAGE && statError != STAT_STDOUT && statError != STAT_VERBOSITY)
+        if (logging_ & STAT_LOG_MRN)
         {
-            fprintf(logOutFp_, "STAT returned error type ");
-            statPrintErrorType(statError, logOutFp_);
-            fprintf(logOutFp_, ": ");
-        }    
-        va_start(arg, fmt);
-        vfprintf(logOutFp_, fmt, arg);
-        va_end(arg);
-        fflush(logOutFp_);
+            char msg[BUFSIZE];
+            va_start(arg, fmt);
+            vsnprintf(msg, BUFSIZE, fmt, arg);
+            va_end(arg);
+            mrn_printf(sourceFile, sourceLine, "", statOutFp, "%s", msg);
+        }
+        else
+        {
+            if (sourceLine != -1 && sourceFile != NULL)
+                fprintf(statOutFp, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
+            if (statError != STAT_LOG_MESSAGE && statError != STAT_STDOUT && statError != STAT_VERBOSITY)
+            {
+                fprintf(statOutFp, "STAT returned error type ");
+                statPrintErrorType(statError, statOutFp);
+                fprintf(statOutFp, ": ");
+            }    
+            va_start(arg, fmt);
+            vfprintf(statOutFp, fmt, arg);
+            va_end(arg);
+            fflush(statOutFp);
+        }
     }
 }
 

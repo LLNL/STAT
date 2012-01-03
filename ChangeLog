@@ -1,3 +1,14 @@
+2012-01-02 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT[_FrontEnd|_BackEnd|FilterDefinitions].[C.h] : STAT_MRNET_OUTPUT_LEVEL propagated from FE to CPs and BEs
+
+2011-12-28 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.h : removed STAT_Log_t in favor of StatLogOptions_t bit flags
+	* src/STAT[_FrontEnd|_BackEnd|FilterDefinitions].[C.h] : Allow logging of CPs
+
+2011-12-23 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT[_FrontEnd|_BackEnd].[C.h] : allow optional use of MRNet printf for STAT logging
+	* src/STATD.C] : use getopt for option parsing
+
 2011-11-01 Gregory L. Lee <lee218@llnl.gov>
 	* : tag version 1.2.1
 	* scripts/STATview.py : fixed label handling (don't restore to full path) in "on_original_graph" function
