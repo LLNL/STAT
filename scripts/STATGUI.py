@@ -1474,9 +1474,6 @@ host[1-10,12,15-20];otherhost[30]
             for rank in subset_list:
                 str_list += '%s ' %(rank)
             arg_list.append('-default_parallel_attach_subset=%s' %(str_list))
-            # "-e g" added for BlueGene work around
-            arg_list.append('-e')
-            arg_list.append('g')
             arg_list.append(self.options['Launcher Exe'])
         elif debugger == 'DDT':
             filepath = self.options['DDT Path']

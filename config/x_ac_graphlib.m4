@@ -14,6 +14,21 @@ AC_DEFUN([X_AC_GRAPHLIB], [
     [AC_MSG_ERROR([graphlib.h is required.  Specify graphlib prefix with --with-graphlib])],
     AC_INCLUDES_DEFAULT
   )
+  AC_MSG_CHECKING([Checking Graphlib Version])
+  graphlib_vers=1
+  AC_COMPILE_IFELSE([#include "graphlib.h"
+    #include <stdlib.h>
+    #include <stdio.h>
+    int main()
+    {
+      unsigned long bufLength;
+      graphlib_serializeGraph(NULL, NULL, &bufLength);
+    }],
+    [AC_DEFINE([GRAPHLIB16], [], [Graphlib 1.6])
+      graphlib_vers=1.6
+    ]
+  )
+  AC_MSG_RESULT([$graphlib_vers])
   AC_CHECK_LIB(lnlgraph,graphlib_newGraph,liblnlgraph_found=yes,liblnlgraph_found=no)
   if test "$liblnlgraph_found" = yes; then
     CXXFLAGS="$CXXFLAGS -DSTAT_BITVECTOR -DGRL_DYNAMIC_NODE_NAME"

@@ -53,22 +53,22 @@ void do_SendOrStall(int to, int tag, int rank, int* buf, MPI_Request* req, int n
     {
         if (sleeptime == -1)
         {
-        	printf("%s, MPI task %d of %d stalling\n", hostname, rank, n);
+            printf("%s, MPI task %d of %d stalling\n", hostname, rank, n);
             fflush(stdout);
             while(1) ;
         }
         else
         {
-	        for (i = sleeptime/10; i > 0; i = i - 1)
-	        {
-        	    printf("%s, MPI task %d of %d stalling for %d of %d seconds\n", hostname, rank, n, i*10, sleeptime);
-	            fflush(stdout);
-	            sleep(10);
-	        }
-        	printf("%s, MPI task %d of %d proceeding\n", hostname, rank, n);
+            for (i = sleeptime/10; i > 0; i = i - 1)
+            {
+                printf("%s, MPI task %d of %d stalling for %d of %d seconds\n", hostname, rank, n, i*10, sleeptime);
+                fflush(stdout);
+                sleep(10);
+            }
+            printf("%s, MPI task %d of %d proceeding\n", hostname, rank, n);
             fflush(stdout);
         }
-    }	
+    }    
 
     MPI_Isend(buf, 1, MPI_INT, to, tag, MPI_COMM_WORLD, req);
 }

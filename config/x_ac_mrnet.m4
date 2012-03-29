@@ -24,18 +24,38 @@ AC_DEFUN([X_AC_MRNET], [
     using namespace std;
     int main()
     {
-      Network *net;
-      vector<const char *> f;
-      vector<int> fid;
-      net->load_FilterFuncs(NULL, f, fid);
+      unsigned long bufLength;
+      DataType type;
+      DataElement pkt;
+      pkt.get_array(&type, &bufLength);
     }],
-    [AC_DEFINE([MRNET31], [], [MRNet 3.1])
+    [AC_DEFINE([MRNET40], [], [MRNet 4.0])
+      AC_DEFINE([MRNET31], [], [MRNet 3.1])
       AC_DEFINE([MRNET3], [], [MRNet 3.X]) 
       AC_DEFINE([MRNET22], [], [MRNet 2.2]) 
       AC_DEFINE([MRNET2], [], [MRNet 2.X])
-      mrnet_vers=3.1
+      mrnet_vers=4.0
     ]
   )
+  if test $mrnet_vers = -1; then
+    AC_COMPILE_IFELSE([#include "mrnet/MRNet.h"
+      using namespace MRN;
+      using namespace std;
+      int main()
+      {
+        Network *net;
+        vector<const char *> f;
+        vector<int> fid;
+        net->load_FilterFuncs(NULL, f, fid);
+      }],
+      [AC_DEFINE([MRNET31], [], [MRNet 3.1])
+        AC_DEFINE([MRNET3], [], [MRNet 3.X]) 
+        AC_DEFINE([MRNET22], [], [MRNet 2.2]) 
+        AC_DEFINE([MRNET2], [], [MRNet 2.X])
+        mrnet_vers=3.1
+      ]
+    )
+  fi
   if test $mrnet_vers = -1; then
     AC_COMPILE_IFELSE([#include "mrnet/MRNet.h"
       using namespace MRN;

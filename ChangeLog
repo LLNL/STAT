@@ -1,3 +1,23 @@
+2012-03-28 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_graphlib.m4 : added graphlib 1.6 check
+	* src/STAT_BackEnd.C src/STAT_FilterDefinitions.C : use unsigned long for byte array len with graphlib 1.6
+	* src/STAT[_FrontEnd|_BackEnd|FilterDefinitions].C src/MRNetSymbolReader.h: use %Ac instead of %ac for MRNet 4.0
+	* src/STAT_FrontEnd.C : check for daemon exit when waiting for file	request
+	* config/x_ac_mrnet.m4 : Changed MRNet 3.2 to MRNet 4.0
+	* config/* : updated libtool components with `libtoolize -f -c` on RHEL 6
+
+2012-02-01 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_mrnet.m4 : Added check for MRNet 3.2 (uint64_t array size)
+
+2012-01-31 Gregory L. Lee <lee218@llnl.gov>
+	* : changes to support MRNet's use of uint64_t instead of uint32_t for array size
+
+2012-01-20 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/stat-[cl,gui,view,bench] : new lowercase commands linked to mixed/upper case commands
+
+2012-01-04 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : compare leaf info to localIp_ when searching for parent info
+
 2012-01-02 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT[_FrontEnd|_BackEnd|FilterDefinitions].[C.h] : STAT_MRNET_OUTPUT_LEVEL propagated from FE to CPs and BEs
 

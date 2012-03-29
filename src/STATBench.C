@@ -200,9 +200,8 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
 {
     int i, opt, optionIndex = 0;
     char *logOutDir = NULL;
-    bool useMrnetPrintf = false;
     StatError_t statError;
-    StatLog_t logType;
+    unsigned char logType = STAT_LOG_NONE;
 
     struct option longOptions[] =
     {
@@ -297,11 +296,11 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'l':
             if (strcmp(optarg, "FE") == 0)
-                logType = STAT_LOG_FE;
+                logType |= STAT_LOG_FE;
             else if (strcmp(optarg, "BE") == 0)
-                logType = STAT_LOG_BE;
-            else if (strcmp(optarg, "ALL") == 0)
-                logType = STAT_LOG_ALL;
+                logType |= STAT_LOG_BE;
+            else if (strcmp(optarg, "CP") == 0)
+                logType |= STAT_LOG_CP;
             else
             {
                 STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or ALL, you entered %s\n", optarg);
@@ -312,7 +311,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             logOutDir = strdup(optarg);
             break;
         case 'M':
-            useMrnetPrintf = true;
+            logType |= STAT_LOG_MRN;
             break;
         case 'u':
             topologyType = STAT_TOPOLOGY_USER;
@@ -341,7 +340,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
 
     if (logOutDir != NULL && logType != STAT_LOG_NONE)
     {
-        statError = STAT->startLog(logType, logOutDir, useMrnetPrintf);
+        statError = STAT->startLog(logType, logOutDir);
         if (statError != STAT_OK)
         {
             STAT->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");

@@ -9,6 +9,9 @@
 /* Define DEBUG flag */
 #undef DEBUG
 
+/* Graphlib 1.6 */
+#undef GRAPHLIB16
+
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
@@ -113,6 +116,10 @@
 /* Define to 1 if the system has the type `_Bool'. */
 #undef HAVE__BOOL
 
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#undef LT_OBJDIR
+
 /* MRNet 2.X */
 #undef MRNET2
 
@@ -124,6 +131,9 @@
 
 /* MRNet 3.1 */
 #undef MRNET31
+
+/* MRNet 4.0 */
+#undef MRNET40
 
 /* Name of package */
 #undef PACKAGE
@@ -176,5 +186,5 @@
 /* Define to rpl_realloc if the replacement function should be used. */
 #undef realloc
 
-/* Define to `unsigned' if <sys/types.h> does not define. */
+/* Define to `unsigned int' if <sys/types.h> does not define. */
 #undef size_t

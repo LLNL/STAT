@@ -36,7 +36,11 @@ using namespace std;
 extern "C" {
 
 //! The MRNet format string for the STAT filter
+#ifdef MRNET40
+const char *statMerge_format_string = "%Ac %d %d";
+#else
 const char *statMerge_format_string = "%ac %d %d";
+#endif
 
 //! The MRNet format string for the STAT version check
 const char *STAT_checkVersion_format_string = "%d %d %d %d %d";
@@ -234,22 +238,26 @@ void statMerge(vector<PacketPtr> &inputPackets,
                 vector<PacketPtr> &outputPackets,
                 void ** /* client data */)
 {
-    static int totalWidth;
-    int nChildren, *edgeLabelWidths, rank, inputRank, outputRank;
-    unsigned int outputByteArrayLen;
-    graphlib_graph_p returnGraph = NULL, currentGraph = NULL;
-    graphlib_error_t gl_err;
-    map<int,int> childrenOrder;
-    map<int,int>::iterator iter;
     /* The byte arrays are declared static so we can manage the allocated memory
        This is because we need to be assured that the data exists when MRNet 
        tries to send it.  They are safe to free up on the next invocation of 
        this filter function */
     static char *outputByteArray;
-    DataType type;
-    unsigned int byteArrayLen, i, j;
+    static int totalWidth;
+    int nChildren, *edgeLabelWidths, rank, inputRank, outputRank, child;
+#ifdef GRAPHLIB16
+    unsigned long outputByteArrayLen;
+#else
+    unsigned int outputByteArrayLen;
+#endif
+    unsigned long byteArrayLen;
+    unsigned int i;
     char *byteArray;
-    int child;
+    map<int, int> childrenOrder;
+    map<int, int>::iterator iter;
+    DataType type;
+    graphlib_graph_p returnGraph = NULL, currentGraph = NULL;
+    graphlib_error_t gl_err;
     PacketPtr currentPacket;
 
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
@@ -316,7 +324,14 @@ void statMerge(vector<PacketPtr> &inputPackets,
         currentPacket = inputPackets[child];
 
         /* Deserialize 1st graph in packet element [0] */
+       
+#ifdef MRNET40
         byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
+#else
+        unsigned int BAL;
+        byteArray = (char *)((*currentPacket)[0]->get_array(&type, &BAL));
+        byteArrayLen = BAL; 
+#endif
         gl_err = graphlib_deserializeGraphConn(rank, &currentGraph, byteArray, byteArrayLen);
         if (GRL_IS_FATALERROR(gl_err))
         {
@@ -355,7 +370,11 @@ void statMerge(vector<PacketPtr> &inputPackets,
         cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize output graph\n");
         return;
     }
+#ifdef MRNET40
+    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), inputPackets[0]->get_Tag(), "%Ac %d %d", outputByteArray, outputByteArrayLen, totalWidth, outputRank));
+#else
     PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), inputPackets[0]->get_Tag(), "%ac %d %d", outputByteArray, outputByteArrayLen, totalWidth, outputRank));
+#endif
     outputPackets.push_back(newPacket);
 
     /* Delete the result graphs since we no longer need them */
@@ -370,7 +389,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
 #ifdef STAT_FGFS
 
 /* New Filters for solving the Scalabilty problem of accesing files */
-map<string, pair<char*, int> > fileNameToContentsMap;
+map<string, pair<char*, unsigned long> > fileNameToContentsMap;
 set<string> visitedFileSet;
 pthread_mutex_t fileNameToContentsMapMutex, visitedFileSetMutex;
 
@@ -386,7 +405,7 @@ void fileRequestUpStream(vector<PacketPtr> &packetsIn,
     char *fileContents;
     unsigned int i;
     PacketPtr currentPacket, newPacket;
-    map<string, pair<char *, int> >::iterator iter;
+    map<string, pair<char *, unsigned long> >::iterator iter;
 
     cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "File request up stream filter begin.\n");
 
@@ -405,12 +424,14 @@ void fileRequestUpStream(vector<PacketPtr> &packetsIn,
             iter = fileNameToContentsMap.find(fileName);
             if (iter != fileNameToContentsMap.end())
             {
-                fileContents = (char *)malloc((iter->second.second) * sizeof(char));
-                memcpy(fileContents, iter->second.first, iter->second.second);
                 pthread_mutex_unlock(&fileNameToContentsMapMutex);
                 cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending cached result for %s in reverse.\n", fileName);
                 PacketPtr newPacketReverse(new Packet(packetsIn[0]->get_StreamId(),
-                                           packetsIn[0]->get_Tag(), "%auc %s", fileContents,
+#ifdef MRNET40
+                                           packetsIn[0]->get_Tag(), "%Ac %s", iter->second.first,
+#else
+                                           packetsIn[0]->get_Tag(), "%ac %s", iter->second.first,
+#endif
                                            iter->second.second, fileName));
                 packetsOutReverse.push_back(newPacketReverse);
             }
@@ -436,8 +457,11 @@ void fileRequestUpStream(vector<PacketPtr> &packetsIn,
     cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "File request up stream filter end.\n");
 }
 
-
+#ifdef MRNET40
+const char *fileRequestDownStream_format_string = "%Ac %s";
+#else
 const char *fileRequestDownStream_format_string = "%ac %s";
+#endif
 void fileRequestDownStream(vector<PacketPtr> &packetsIn,
                            vector<PacketPtr> &packetsOut,
                            vector<PacketPtr> &packetsOutReverse,
@@ -447,23 +471,17 @@ void fileRequestDownStream(vector<PacketPtr> &packetsIn,
 {
     char *fileContents;
     char *fileName;
-    int fileContentsLength;
+    unsigned long fileContentsLength;
     unsigned int i;
     PacketPtr currentPacket, newPacket;
     set<string>::iterator iter;
-    map<string,pair<char*,int> >::iterator iter2;
-    static int totalLength = 0;
+    map<string, pair<char*, unsigned long> >::iterator iter2;
+    static unsigned long totalLength = 0;
 
     cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "File request down stream filter begin.\n");
     if (packetsIn[0]->get_Tag() == PROT_FILE_REQ)
     {
         cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "PROT_FILE_REQ\n"); 
-//        set_OutputLevel(2); //TODO: this should not be used for STAT logging... designate tag for log enabling?
-//        if (statOutFp == NULL)
-//        {
-//            MRN_DEBUG_LOG_DIRECTORY = "/g/g0/lee218/logs";
-//            statOutFp = stderr;
-//        }
         pthread_mutex_init(&fileNameToContentsMapMutex, NULL);
         pthread_mutex_init(&visitedFileSetMutex, NULL);
         newPacket = packetsIn[0];
@@ -476,11 +494,15 @@ void fileRequestDownStream(vector<PacketPtr> &packetsIn,
         for (i = 0; i < packetsIn.size(); i++)
         {
             currentPacket = packetsIn[i];
+#ifdef MRNET40
+            currentPacket->unpack("%Ac %s", &fileContents, &fileContentsLength, &fileName);
+#else
             currentPacket->unpack("%ac %s", &fileContents, &fileContentsLength, &fileName);
+#endif
             if (topology.get_Network()->is_LocalNodeInternal())
             { 
                 totalLength += fileContentsLength;                        
-                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "caching contents of %s at CP length %d total %d\n", fileName, fileContentsLength, totalLength); 
+                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "caching contents of %s at CP length %lu total %lu\n", fileName, fileContentsLength, totalLength); 
                 pthread_mutex_lock(&fileNameToContentsMapMutex);
                 iter2 = fileNameToContentsMap.find(fileName);
                 if (iter2 == fileNameToContentsMap.end())
@@ -494,11 +516,14 @@ void fileRequestDownStream(vector<PacketPtr> &packetsIn,
             {        
                 visitedFileSet.erase(iter);
                 pthread_mutex_unlock(&visitedFileSetMutex);
-                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "passing along contents of %s at CP\n", fileName); 
+                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "passing along contents of %s, length %lu at CP\n", fileName, fileContentsLength); 
                 packetsOut.push_back(packetsIn[i]);
             }
             else
+            {
+                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "ignoring file %s at CP\n", fileName); 
                 pthread_mutex_unlock(&visitedFileSetMutex);
+            }
         }
     }
     cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "File request down stream filter end.\n");

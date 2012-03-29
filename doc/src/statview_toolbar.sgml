@@ -129,7 +129,7 @@ The toolbar operations are defined as follows:
     <term><GUIbutton>Search</GUIbutton></term>
     <listitem>
         <para>
-        Search for call paths containing specified text, taken by specified tasks, or from specified hosts
+        Search for call paths containing specified text, taken by specified tasks, or from specified hosts.  Search text may be a regular expression, using the syntax described in <ulink url="http://docs.python.org/library/re.html"></ulink>.
         </para>
     </listitem>
 </varlistentry>

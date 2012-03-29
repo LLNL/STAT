@@ -9,7 +9,7 @@ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Dong Ahn, Bronis de Sup
 LLNL-CODE-400455.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -2562,9 +2562,9 @@ entered as a regular expression"""
         if not os.path.exists(user_guide_path):
             show_error_dialog('Failed to find STAT user guide %s' %user_guide_path, self)
             return False
-        pdfviewer = _which('acroread')
+        pdfviewer = STAThelper._which('acroread')
         if pdfviewer == None:
-            pdfviewer = _which('xpdf')
+            pdfviewer = STAThelper._which('xpdf')
             if pdfviewer == None:
                 show_error_dialog('Failed to find PDF viewer', self)
                 return False

@@ -87,11 +87,11 @@ STAT_BackEnd::STAT_BackEnd()
     errOutFp_ = stderr;
 #endif
     
-//    /* Enable MRNet logging */
-//    envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
-//    if (envValue != NULL)
-//        set_OutputLevel(atoi(envValue));
-//    envValue = getenv("STAT_MRNET_DEBUG_LOG_DIRECTORY");
+    /* Enable MRNet logging */
+    envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
+    if (envValue != NULL)
+        set_OutputLevel(atoi(envValue));
+    envValue = getenv("STAT_MRNET_DEBUG_LOG_DIRECTORY");
     if (envValue != NULL)
         setenv("MRNET_DEBUG_LOG_DIRECTORY", envValue, 1);
 
@@ -251,6 +251,7 @@ StatError_t STAT_BackEnd::Connect()
 {
     int i;
     bool found;
+    string prettyHost, leafPrettyHost;
     lmon_rc_e rc;
     statLeafInfoArray_t leafInfoArray;
 
@@ -304,12 +305,11 @@ StatError_t STAT_BackEnd::Connect()
     /* Find my MRNet personality  */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for my connection information\n");
     found = false;
+    XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
     for (i = 0; i < leafInfoArray.size; i++)
     {
-        string prettyHost, leafPrettyHost;
-        XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
         XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
-        if (prettyHost == leafPrettyHost)
+        if (prettyHost == leafPrettyHost || strcmp(leafPrettyHost.c_str(), localIp_) == 0)
         {
             found = true;
             parentHostName_ = strdup(leafInfoArray.leaves[i].parentHostName);
@@ -367,7 +367,12 @@ StatError_t STAT_BackEnd::Connect()
 StatError_t STAT_BackEnd::mainLoop()
 {
     int tag = 0, retval, nEqClasses, swNotificationFd, mrnNotificationFd, max_fd;
-    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, sampleType, withThreads, clearOnSample, obyteArrayLen;
+    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, sampleType, withThreads, clearOnSample;
+#ifdef GRAPHLIB16
+    unsigned long obyteArrayLen;
+#else
+    unsigned int obyteArrayLen;
+#endif
     char *obyteArray = NULL, *variableSpecification;
     Stream *stream;
     fd_set readfds, writefds, exceptfds;
@@ -579,7 +584,11 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Send */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending graphs to FE\n");
+#ifdef MRNET40
+                if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%Ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+#else
                 if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+#endif
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send() failure\n");
                     return STAT_MRNET_ERROR;
@@ -614,7 +623,11 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Send */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending graphs to FE\n");
+#ifdef MRNET40
+                if (stream->send(PROT_SEND_TRACES_RESP, "%Ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+#else
                 if (stream->send(PROT_SEND_TRACES_RESP, "%ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+#endif
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send() failure\n");
                     return STAT_MRNET_ERROR;

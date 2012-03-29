@@ -93,5 +93,9 @@ AC_CONFIG_FILES([Makefile
                  scripts/STATGUI
                  scripts/STATview
                  scripts/STATBench
+                 scripts/stat-cl
+                 scripts/stat-gui
+                 scripts/stat-view
+                 scripts/stat-bench
                  scripts/Makefile])
 AC_OUTPUT

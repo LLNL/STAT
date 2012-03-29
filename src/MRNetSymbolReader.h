@@ -27,9 +27,7 @@ class Elf_X;
 
 class MRNetSymbolReader :public Dyninst::SymReader
 {
- 
  public:
-
    std::string file_;
    const char *buffer_;
    unsigned long size_;
@@ -59,7 +57,7 @@ class MRNetSymbolReader :public Dyninst::SymReader
    virtual Dyninst::Address getSectionAddress(Section_t sec);
    virtual std::string getSectionName(Section_t sec);
    virtual bool isValidSection(Section_t sec);
-   virtual Elf_X *getElfHandle();
+   virtual void *getElfHandle();
    virtual Dyninst::Offset imageOffset();
    virtual Dyninst::Offset dataOffset();
 };
@@ -75,8 +73,8 @@ class MRNetSymbolReaderFactory : public Dyninst::SymbolReaderFactory
    virtual MRNetSymbolReader *openSymReader(const char *bufferm,
                                             unsigned long size,
                                             std::string pathName="");
+
  public:
-   
    MRNetSymbolReaderFactory(SymbolReaderFactory *symbolReaderFactoryHandle,
                             Network *network,
                             Stream *stream)
@@ -92,13 +90,23 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
 {
     const char *pathStr = pathName.c_str();
     bool localLib = true;
-    int tag = PROT_LIB_REQ, fileContentsLength, ret, size;
-    char *fileName;
-    char *fileContents; 
+    int tag = PROT_LIB_REQ, ret, size;
+    unsigned long fileContentsLength;
+    char *fileName, *fileContents; 
     FILE *fp;
     PacketPtr packet;
     MRNetSymbolReader *msr;
     std::map<std::string, MRNetSymbolReader* >::iterator iter;
+
+////GLL comment: This is a temp feature to look for a copy in /tmp RAM disk first
+//std::string fileBaseName = basename(pathName.c_str());
+//std::string tmpFilePath = "/tmp/" + fileBaseName;
+//struct stat fileStat;
+//if (stat(tmpFilePath.c_str(), &fileStat) == 0)
+//{
+//fprintf(stderr, "%s %s\n", pathName.c_str(), tmpFilePath.c_str());
+//pathName = tmpFilePath;
+//}
 
     mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader", statOutFp,
             "Interposed lib functions called openSymbolReader(%s)\n",
@@ -145,7 +153,11 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                         statOutFp, "FE reported error sending contents of %s\n", pathStr));
                 localLib = true;
             }
+#ifdef MRNET40
+            else if (packet->unpack("%Ac %s", &fileContents, &fileContentsLength, &fileName) == -1)
+#else
             else if (packet->unpack("%ac %s", &fileContents, &fileContentsLength, &fileName) == -1)
+#endif
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
                         statOutFp, "Failed to unpack contents of %s\n", pathStr));
@@ -157,7 +169,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
         {
             mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
                     statOutFp, "Trying to read %s locally\n", pathStr));
-            fp = fopen(pathStr,"r");
+            fp = fopen(pathStr, "r");
             if (fp == NULL)
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
@@ -339,7 +351,7 @@ inline bool MRNetSymbolReader::isValidSection(Section_t sec)
     return symReaderHandle_->isValidSection(sec);
 }
 
-inline Elf_X *MRNetSymbolReader::getElfHandle() 
+inline void *MRNetSymbolReader::getElfHandle() 
 {
     return symReaderHandle_->getElfHandle();
 }

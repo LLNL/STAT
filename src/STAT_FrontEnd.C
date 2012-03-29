@@ -384,14 +384,14 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
-        daemonArgv[0] = "-L";
+        daemonArgv[0] = strdup("-L");
         daemonArgv[1] = logOutDir_;
-        daemonArgv[2] = "-o";
+        daemonArgv[2] = strdup("-o");
         daemonArgv[3] = (char *)malloc(8 * sizeof(char));
         snprintf(daemonArgv[3], 8, "%d", mrnetOutputLevel_);
         if (logging_ & STAT_LOG_MRN)
         {
-            daemonArgv[4] = "-m";
+            daemonArgv[4] = strdup("-m");
             daemonArgv[5] = NULL;
         }
         else
@@ -1123,10 +1123,12 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
                                                PacketPtr &packetPtr,
                                                int &retval)
 {
-    int tag, size;
+    int tag;
+    long signedFileSize;
+    unsigned long fileSize;
     char *receiveFile;
     size_t pos;
-    char *contents;
+    char *fileContents = NULL;
     FILE *fp;
     PacketPtr packet;
     Stream *stream;
@@ -1161,117 +1163,52 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
         pos = filePath.find_last_of("/");
         fileName = filePath.substr(pos + 1);
 
-//    char objcopy_cache_dir[BUFSIZE];
-//        char* cache_dir = getenv("STAT_OBJCOPY_CACHE_DIR");
-//    if (cache_dir == NULL)
-//    {
-//        char* homeDirectory = getenv("HOME");
-//        if (homeDirectory == NULL)
-//        {
-//        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, 
-//             "STAT_OBJCOPY_CACHE_DIR not set in environment, and failed to get $HOME as an alternative.\n");
-//        return STAT_FILE_ERROR;
-//        }
-//
-//        snprintf(objcopy_cache_dir, BUFSIZE, "%s/STAT_objcopy_cache", homeDirectory);
-//        int ret = mkdir(objcopy_cache_dir, S_IRUSR | S_IWUSR | S_IXUSR); 
-//        if (ret == -1 && errno != EEXIST)
-//        {
-//            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, 
-//             "Failed to create objcopy cache directory at %s\n", objcopy_cache_dir);
-//        return STAT_FILE_ERROR;
-//        }
-//    }
-//    else
-//    {
-//        strncpy(objcopy_cache_dir, cache_dir, BUFSIZE);
-//    }
-//
-//    std::string newfile(objcopy_cache_dir);
-//    newfile.append(fileName);
-//    int cpid = fork();
-//    if (cpid < 0)
-//        {
-//        int err = errno;
-//        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, 
-//             "fork() for running objcopy failed with %s\n", strerror(err));
-//        return STAT_SYSTEM_ERROR;
-//    }
-//    else if (cpid == 0)
-//        {
-//        char* objcopy_exe = "/usr/bin/objcopy";
-//        //char* objcopy_exe = getenv("STAT_OBJCOPY_EXE");
-//        //if (objcopy_exe == NULL)
-//        //{
-//        //    printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, 
-//        //     "Failed to get STAT_OBJCOPY_EXE from environment\n");
-//        //return STAT_FILE_ERROR;
-//        //}
-//
-//        char* ex_args[14];
-//        ex_args[0] = strdup(objcopy_exe);
-//        ex_args[1]= "--only-section";
-//        ex_args[2] = ".interp";
-//        ex_args[3]= "--only-section" ;
-//        ex_args[4]= ".dynamic";
-//        ex_args[5]= "--only-section";
-//        ex_args[6]= ".dynstr";
-//        ex_args[7]= "--only-section";
-//        ex_args[8]= ".dynsym";
-//        ex_args[9]= "--only-section";
-//        ex_args[10]= ".eh_frame";
-//        ex_args[11]= "--only-keep-debug";
-//        ex_args[12]= strdup(receiveFile);
-//        ex_args[13]= strdup(newfile.c_str());
-//        ex_args[14]= (char*) 0;
-//        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, 
-//             "execing objcopy to copy %s to %s\n",
-//             receiveFile, newfile.c_str());
-//        execv(ex_args[0],ex_args);
-//    }
-//    int objc = wait(NULL);
-
-     
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "received request for file %s\n", receiveFile);
 
-//        *fp = fopen(newfile.c_str(),"r");
         fp = fopen(filePath.c_str(), "r");
         if (fp == NULL)
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waitForFileRequests: file %s does not exist\n", filePath.c_str());
-            size = 4;        
-            contents = (char *)malloc(size * sizeof(char));
-            if (contents == NULL)
+            char errorMsg[BUFSIZE];
+            snprintf(errorMsg, BUFSIZE, "STAT FE failed to open file %s", filePath.c_str());
+            fileSize = strlen(errorMsg) + 1;
+            fileContents = strdup(errorMsg);
+            if (fileContents == NULL)
             {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %d elements for contents\n", strerror(errno), size);
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %lu bytes\n", strerror(errno), fileSize);
                 return STAT_ALLOCATE_ERROR;
             }
-            strcpy(contents, "err");
             tag = PROT_LIB_REQ_ERR;
         }
         else
         {            
             fseek(fp, 0, SEEK_END);
-            size = ftell(fp);
-            if (size == -1)
+            signedFileSize = ftell(fp);
+            if (signedFileSize < 0)
             {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: ftell returned -1\n", strerror(errno), size);
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: ftell returned %ld for %s\n", strerror(errno), signedFileSize, filePath.c_str());
                 fclose(fp);
                 return STAT_ALLOCATE_ERROR;
             }
+            fileSize = signedFileSize;
             fseek(fp, 0, SEEK_SET);
-            contents = (char *)malloc(size * sizeof(char));
-            if (contents == NULL)
+            fileContents = (char *)malloc(fileSize * sizeof(char));
+            if (fileContents == NULL)
             {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %d elements for contents\n", strerror(errno), size);
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %lu bytes for contents\n", strerror(errno), fileSize);
                 fclose(fp);
                 return STAT_ALLOCATE_ERROR;
             }
-            fread(contents, size, 1, fp);
+            fread(fileContents, fileSize, 1, fp);
             fclose(fp);
             tag = PROT_LIB_REQ_RESP;
         }
-        if (stream->send(tag, "%ac %s", contents, size, receiveFile) == -1)
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "sending contents of file %s, length %lu bytes\n", receiveFile, fileSize);
+#ifdef MRNET40
+        if (stream->send(tag, "%Ac %s", fileContents, fileSize, receiveFile) == -1)
+#else
+        if (stream->send(tag, "%ac %s", fileContents, fileSize, receiveFile) == -1)
+#endif
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send file contents\n");
             return STAT_MRNET_ERROR;
@@ -1281,6 +1218,8 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to flush file contents\n");
             return STAT_MRNET_ERROR;
         }
+        if (fileContents != NULL)
+            free(fileContents);
     }
 }
 
@@ -1421,6 +1360,12 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
         statError = waitForFileRequests(&streamId, &tag, packet, retval);
         if (statError == STAT_PENDING_ACK)
         {
+            if (!WIFBESPAWNED(lmonState))
+            {
+                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
+                isPendingAck_ = false;
+                return STAT_DAEMON_ERROR;
+            }
             if (blocking == true)
                 usleep(1000);
             continue;
@@ -2642,7 +2587,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 {
     static int mergeCount2d = -1, mergeCount3d = -1;
     int tag, totalWidth, retval, dummyRank, offset, mergeCount;
-    unsigned int byteArrayLen;
+    unsigned long byteArrayLen;
     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray;
     list<int>::iterator ranksIter;
     graphlib_graph_p stackTraces, sortedStackTraces;
@@ -2695,7 +2640,11 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 
     /* Unpack byte array representing the graph */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
+#ifdef MRNET40
+    if (packet->unpack("%Ac %d %d", &byteArray, &byteArrayLen, &totalWidth, &dummyRank) == -1)
+#else
     if (packet->unpack("%ac %d %d", &byteArray, &byteArrayLen, &totalWidth, &dummyRank) == -1)
+#endif
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::unpack(PROT_COLLECT_TRACES_RESP, \"%%auc\") failed\n");
         return STAT_MRNET_ERROR;
@@ -3748,9 +3697,16 @@ bool STAT_FrontEnd::checkNodeAccess(char *node)
     if (strncmp(node, checkHost, 3) != 0)
         return false;
 
-    rsh = getenv("XPLAT_RSH");
+    rsh = strdup(getenv("XPLAT_RSH"));
     if (rsh == NULL)
-        rsh = "rsh";
+    {
+        rsh = strdup("rsh");
+        if (rsh == NULL)
+        {
+             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to set rsh command\n", strerror(errno));
+            return false;
+        }
+    }
 
     /* Use run_one_sec script if available to tolerate rsh slowness/hangs */
     snprintf(runScript, BUFSIZE, "%s/bin/run_one_sec", getInstallPrefix());
