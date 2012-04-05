@@ -8839,10 +8839,6 @@ _lt_linker_boilerplate=`cat conftest.err`
 $RM -r conftest*
 
 
-## CAVEAT EMPTOR:
-## There is no encapsulation within the following macros, do not change
-## the running order or otherwise move them around unless you know exactly
-## what you are doing...
 if test -n "$compiler"; then
 
 lt_prog_compiler_no_builtin_flag=
@@ -8868,11 +8864,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8871: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8867: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8875: \$? = $ac_status" >&5
+   echo "$as_me:8871: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9207,11 +9203,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9210: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9206: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:9214: \$? = $ac_status" >&5
+   echo "$as_me:9210: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9312,11 +9308,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9315: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9311: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9319: \$? = $ac_status" >&5
+   echo "$as_me:9315: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -9367,11 +9363,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9370: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9366: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9374: \$? = $ac_status" >&5
+   echo "$as_me:9370: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -12170,7 +12166,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12173 "configure"
+#line 12169 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12266,7 +12262,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12269 "configure"
+#line 12265 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14286,11 +14282,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14289: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14285: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14293: \$? = $ac_status" >&5
+   echo "$as_me:14289: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14385,11 +14381,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14388: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14384: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14392: \$? = $ac_status" >&5
+   echo "$as_me:14388: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14437,11 +14433,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14440: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14436: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14444: \$? = $ac_status" >&5
+   echo "$as_me:14440: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16432,7 +16428,7 @@ fi
     { $as_echo "$as_me:$LINENO: checking for libstackwalk" >&5
 $as_echo_n "checking for libstackwalk... " >&6; }
     TMP_LDFLAGS=$LDFLAGS
-    LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lcommon -ldwarf -lelf -liberty"
+    LDFLAGS="$LDFLAGS -lstackwalk -lpcontrol -lparseAPI -lsymtabAPI -lcommon -ldwarf -lelf -liberty -lpthread"
     cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -16488,7 +16484,7 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
     { $as_echo "$as_me:$LINENO: result: $libstackwalk_found" >&5
 $as_echo "$libstackwalk_found" >&6; }
     if test "$libstackwalk_found" = yes; then
-      BELIBS="-lstackwalk -lsymtabAPI -lcommon -liberty $BELIBS"
+      BELIBS="-lstackwalk -lpcontrol -lparseAPI -lsymtabAPI -lcommon -liberty $BELIBS"
     else
       { { $as_echo "$as_me:$LINENO: error: libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker" >&5
 $as_echo "$as_me: error: libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker" >&2;}

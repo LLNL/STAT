@@ -46,6 +46,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     #include "frame.h"
     #include "swk_errors.h"
     #include "Type.h"
+#ifdef SW_VERSION_8_0_0
+    #include "Process.h"
+    #include "ProcessPlat.h"
+    #include "ProcessSet.h"
+    #include "PCErrors.h"
+#endif
 #ifndef BGL    
     #include "Variable.h"
     #include "Function.h"
@@ -442,6 +448,10 @@ class STAT_BackEnd
         MPIR_PROCDESC_EXT *proctab_;            /*!< the process table */
 #ifdef STACKWALKER
         std::map<int, Dyninst::Stackwalker::Walker *> processMap_;  /*!< the debug process objects */
+#ifdef SW_VERSION_8_0_0
+        Dyninst::ProcControlAPI::ProcessSet::ptr procset;
+        Dyninst::Stackwalker::WalkerSet *walkerset;
+#endif
 #else
         BPatch bpatch_;                         /*!< the application bpatch object */
         std::map<int, BPatch_process*> processMap_; /*!< the debug process objects */

@@ -26,6 +26,9 @@ using namespace MRN;
     using namespace Dyninst;
     using namespace Dyninst::Stackwalker;
     using namespace Dyninst::SymtabAPI;
+#  ifdef SW_VERSION_8_0_0
+    using namespace Dyninst::ProcControlAPI;
+#  endif
 #endif
 
 #ifdef STAT_FGFS
@@ -114,6 +117,10 @@ STAT_BackEnd::STAT_BackEnd()
         f = fopen(fileName, "w");
         Dyninst::Stackwalker::setDebug(true);
         Dyninst::Stackwalker::setDebugChannel(f); 
+#ifdef SW_VERSION_8_0_0
+        Dyninst::ProcControlAPI::setDebug(true);
+        Dyninst::ProcControlAPI::setDebugChannel(f);
+#endif
     }
 #endif
 
@@ -401,7 +408,7 @@ StatError_t STAT_BackEnd::mainLoop()
         {
             /* set the MRNet notification FD if StackWalker FD set, otherwise we can just use blocking receives */
 #ifdef MRNET3            
-            mrnNotificationFd = network_->get_EventNotificationFd(Event::DATA_EVENT);
+           mrnNotificationFd = network_->get_EventNotificationFd(MRN::Event::DATA_EVENT);
 #else            
             mrnNotificationFd = network_->get_EventNotificationFd(DATA_EVENT);
 #endif            
@@ -428,7 +435,7 @@ StatError_t STAT_BackEnd::mainLoop()
             {
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Handling MRNet event on FD %d\n", mrnNotificationFd);
 #ifdef MRNET3
-                network_->clear_EventNotificationFd(Event::DATA_EVENT);
+                network_->clear_EventNotificationFd(MRN::Event::DATA_EVENT);
 #else                
                 network_->clear_EventNotificationFd(DATA_EVENT);
 #endif                
@@ -441,7 +448,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 result = ProcDebug::handleDebugEvent(false);
                 if (result == false)
                 {
-                    printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Error handling debug events: %s\n", getLastErrorMsg());
+                   printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Error handling debug events: %s\n", Stackwalker::getLastErrorMsg());
                     //TODO: do we really want to exit?
                     //return STAT_STACKWALKER_ERROR;
                 }
@@ -844,7 +851,10 @@ StatError_t STAT_BackEnd::Attach()
 {
     int i;
     StatError_t ret;
-#ifdef STACKWALKER
+#if defined(STACKWALKER) && defined(SW_VERSION_8_0_0)
+    vector<ProcessSet::AttachInfo> ainfo;
+    ainfo.reserve(proctabSize_);
+#elif defined(STACKWALKER)
     Walker *proc;
 #else
     BPatch_process * proc;
@@ -852,10 +862,37 @@ StatError_t STAT_BackEnd::Attach()
 
     /* Attach to the processes in the process table */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
+
+#if defined(STACKWALKER) && defined(SW_VERSION_8_0_0)
+    for (i = 0; i < proctabSize_; i++)
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes proces %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+        ProcessSet::AttachInfo pattach;
+        pattach.pid = proctab_[i].pd.pid;
+        pattach.executable = proctab_[i].pd.executable_name;
+        pattach.error_ret = ProcControlAPI::err_none;
+        ainfo.push_back(pattach);
+    }
+    procset = ProcessSet::attachProcessSet(ainfo);
+    walkerset = WalkerSet::newWalkerSet();
+#endif
+
+    /* Attach to the processes in the process table */
     for (i = 0; i < proctabSize_; i++)
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
-#ifdef STACKWALKER
+#if defined(STACKWALKER) && defined(SW_VERSION_8_0_0)
+       Process::ptr pc_proc = ainfo[i].proc;
+       Walker *proc = pc_proc ? Walker::newWalker(pc_proc) : NULL;
+       if (proc == NULL)
+       {
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "Group Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, Dyninst::ProcControlAPI::getGenericErrorMsg(ainfo[i].error_ret));
+       }
+       else {
+          pc_proc->setData(proc); //Up ptr for mapping Process::ptr -> Walker
+          walkerset->insert(proc);
+       }
+#elif defined(STACKWALKER)
         proc = Walker::newWalker(proctab_[i].pd.pid, proctab_[i].pd.executable_name);
         if (proc == NULL)
         {
@@ -880,16 +917,20 @@ StatError_t STAT_BackEnd::Attach()
 StatError_t STAT_BackEnd::Pause()
 {
     /* Pause all processes */
-#ifdef STACKWALKER
+   printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
+#if defined(STACKWALKER) && defined(SW_VERSION_8_0_0)
+   procset->stopProcs();
+#else
+#  ifdef STACKWALKER
     map<int, Walker *>::iterator iter;
-#else    
+#  else    
     map<int,BPatch_process *>::iterator iter;
-#endif
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
+#  endif
     for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
     {
         pauseImpl(iter->second);
     }
+#endif
     isRunning_ = false;
 
     return STAT_OK;
@@ -898,16 +939,20 @@ StatError_t STAT_BackEnd::Pause()
 StatError_t STAT_BackEnd::Resume()
 {
     /* Resume all processes */
-#ifdef STACKWALKER
-    map<int, Walker *>::iterator iter;
-#else    
-    map<int,BPatch_process *>::iterator iter;
-#endif
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
+#if defined(STACKWALKER) && defined(SW_VERSION_8_0_0)
+    procset->continueProcs();
+#else
+#  ifdef STACKWALKER
+    map<int, Walker *>::iterator iter;
+#  else    
+    map<int,BPatch_process *>::iterator iter;
+#  endif
     for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
     {
         resumeImpl(iter->second);
     }
+#endif
     isRunning_ = true;
 
     return STAT_OK;
@@ -1269,15 +1314,11 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Broadcasting target process files\n");
 
     /* Pause process to yield CPU */
-    if (wasRunning)
+    if (isRunning_)
     {
-        for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-        {
-            ret = pauseImpl(iter->second);
-            if (ret != STAT_OK)
-                printMsg(ret, __FILE__, __LINE__, "Failed to pause process\n");
-        }
-        isRunning_ = False;
+        ret = Pause();
+        if (ret != STAT_OK)
+           printMsg(ret, __FILE__, __LINE__, "Failed to pause process\n");
     }
 
     /* Broadcast file contents */
@@ -1290,13 +1331,9 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     /* Set process back to running */
     if (wasRunning)
     {
-        for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-        {
-            ret = resumeImpl(iter->second);
-            if (ret != STAT_OK)
-                printMsg(ret, __FILE__, __LINE__, "Failed to pause process\n");
-        }
-        isRunning_ = True;
+       ret = Resume();
+       if (ret != STAT_OK)
+          printMsg(ret, __FILE__, __LINE__, "Failed to pause process\n");
     }
 #endif
 
@@ -1545,7 +1582,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
                 ret = proc->walkStack(swalk, threads[j]);
                 if (ret == false && swalk.size() < 1)
                 {
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d, thread %d id %d with StackWalker error %s\n", i, nRetries, j, threads[j], getLastErrorMsg());
+                   printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d, thread %d id %d with StackWalker error %s\n", i, nRetries, j, threads[j], Stackwalker::getLastErrorMsg());
                     if (i < nRetries)
                     {
                         if (isRunning_ == false)
@@ -1608,7 +1645,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
             /* Check to see if we got a complete stack trace */
             if (i > nRetries && partialVal < 1)
             {
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "StackWalker reported an error in walking the stack: %s\n", getLastErrorMsg());
+               printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "StackWalker reported an error in walking the stack: %s\n", Stackwalker::getLastErrorMsg());
                 trace.push_back("StackWalker_Error");
             }
             else
