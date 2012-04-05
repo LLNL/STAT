@@ -2258,10 +2258,7 @@ StatError_t STAT_BackEnd::startLog(char *logOutDir, bool useMrnetPrintf, int mrn
     if (useMrnetPrintf_ == true)
         mrn_printf_init(statOutFp);
     set_OutputLevel(mrnetOutputLevel);
-//    {
-//        MRN_DEBUG_LOG_DIRECTORY = NULL;
-//        stderr = statOutFp;
-//    }
+
     return STAT_OK;
 }
 

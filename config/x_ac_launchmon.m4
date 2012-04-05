@@ -40,4 +40,5 @@ AC_DEFUN([X_AC_LAUNCHMON], [
     AC_MSG_ERROR([the launchmon executable is required.  Specify launchmon prefix with --with-launchmon])
   fi
 AC_SUBST(LAUNCHMONBIN)
+AC_SUBST(LAUNCHMONPREFIX)
 ])

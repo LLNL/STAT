@@ -1,3 +1,10 @@
+2012-04-05 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : made failure to open log non-fatal
+	* src/STAT_FrontEnd.C : various fixes for logging
+
+2012-03-29 Gregory L. Lee <lee218@llnl.gov>
+	* configure.ac config/x_ac_launchmon.m4 src/STAT_FrontEnd.C scripts/STATGUI.in scripts/STAT.in : added LMON_PREFIX
+
 2012-03-28 Gregory L. Lee <lee218@llnl.gov>
 	* config/x_ac_graphlib.m4 : added graphlib 1.6 check
 	* src/STAT_BackEnd.C src/STAT_FilterDefinitions.C : use unsigned long for byte array len with graphlib 1.6

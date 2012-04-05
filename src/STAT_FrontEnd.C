@@ -38,6 +38,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     char tmp[BUFSIZE], *envValue;
 
     /* Enable MRNet logging if requested */
+    mrnetOutputLevel_ = 0;
     envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
     if (envValue != NULL)
     {
@@ -62,6 +63,9 @@ STAT_FrontEnd::STAT_FrontEnd()
         setenv("LMON_DEBUG_BES", envValue, 1);
 
     /* Set the launchmon and mrnet_commnode paths based on STAT env vars */
+    envValue = getenv("STAT_LMON_PREFIX");
+    if (envValue != NULL)
+        setenv("LMON_PREFIX", envValue, 1);
     envValue = getenv("STAT_LMON_LAUNCHMON_ENGINE_PATH");
     if (envValue != NULL)
         setenv("LMON_LAUNCHMON_ENGINE_PATH", envValue, 1);
@@ -1181,7 +1185,8 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
             tag = PROT_LIB_REQ_ERR;
         }
         else
-        {            
+        {      
+            //TODO: Check return codes!
             fseek(fp, 0, SEEK_END);
             signedFileSize = ftell(fp);
             if (signedFileSize < 0)
@@ -1288,13 +1293,6 @@ StatError_t STAT_FrontEnd::startLog(unsigned char logType, char *logOutDir)
 
     logging_ = logType;
     snprintf(logOutDir_, BUFSIZE, "%s", logOutDir);
-   
-    /* Make sure the log directory name has been set */
-    if (strcmp(logOutDir_, "NULL") == 0)
-    {
-        printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Can't start log.  Log output directory not specified\n");
-        return STAT_ARG_ERROR;
-    }
  
     /* Create the log directory */
     ret = mkdir(logOutDir_, S_IRUSR | S_IWUSR | S_IXUSR); 
