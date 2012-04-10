@@ -39,48 +39,40 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "graphlib.h"
 #include "lmon_api/lmon_be.h"
 
-#ifdef STACKWALKER
-    #include "Symtab.h"
-    #include "walker.h"
-    #include "procstate.h"
-    #include "frame.h"
-    #include "swk_errors.h"
-    #include "Type.h"
+#include "Symtab.h"
+#include "walker.h"
+#include "procstate.h"
+#include "frame.h"
+#include "swk_errors.h"
+#include "Type.h"
+
 #ifdef SW_VERSION_8_0_0
-    #include "Process.h"
-    #include "ProcessPlat.h"
-    #include "ProcessSet.h"
-    #include "PCErrors.h"
-#endif
-#ifndef BGL    
-    #include "Variable.h"
-    #include "Function.h"
-#endif    
-#ifdef PROTOTYPE    
-    #include "local_var.h"
-#endif    
-    #include <sys/select.h>
-    #include <errno.h>
-#else
-    #include "BPatch.h"
-    #include "BPatch_Vector.h"
-    #include "BPatch_thread.h"
-    #include "BPatch_process.h"
-    #include "BPatch_image.h"
-    #include "BPatch_frame.h"
-    #include "BPatch_function.h"
-    #include "BPatch_snippet.h"
-    #include "BPatch_statement.h"
+  #include "Process.h"
+  #include "ProcessPlat.h"
+  #include "ProcessSet.h"
+  #include "PCErrors.h"
+  #define GROUP_OPS
 #endif
 
+#ifndef BGL    
+  #include "Variable.h"
+  #include "Function.h"
+#endif    
+#ifdef PROTOTYPE    
+  #include "local_var.h"
+#endif    
+
+#include <sys/select.h>
+#include <errno.h>
+
 #ifdef SBRS
-    #include "sbrs_std.h"
+  #include "sbrs_std.h"
 #endif
 
 #ifdef STAT_FGFS
-    #include "Comm/MRNetCommFabric.h"
-    #include "AsyncFastGlobalFileStat.h"
-    #include "MRNetSymbolReader.h"
+  #include "Comm/MRNetCommFabric.h"
+  #include "AsyncFastGlobalFileStat.h"
+  #include "MRNetSymbolReader.h"
 #endif
 
 //! A struct that contains MRNet connection information to send to the daemons
@@ -162,12 +154,6 @@ int isMasterWrapper();
 class STAT_BackEnd
 {
     public:
-#if defined(STACKWALKER)
-   typedef Dyninst::Stackwalker::Walker Proc_t;
-#else
-   typedef BPatch_process Proc_t;
-#endif
-
         //! Default constructor
         STAT_BackEnd();
 
@@ -263,14 +249,14 @@ class STAT_BackEnd
             \param walker - the process to pause
             \return STAT_OK on success
         */
-        StatError_t pauseImpl(Proc_t *walker);
+        StatError_t pauseImpl(Dyninst::Stackwalker::Walker *walker);
 
         //! Resumes a single process
         /*!
             \param walker - the process to resume
             \return STAT_OK on success
         */
-        StatError_t resumeImpl(Proc_t *walker);
+        StatError_t resumeImpl(Dyninst::Stackwalker::Walker *walker);
         //! Gathers the specified number of traces from all processes
         /*!
             \param nTraces - the number of traces to gather per process
@@ -300,11 +286,7 @@ class STAT_BackEnd
         */
         graphlib_graph_p createRootedGraph();
 
-#warning TODO: Remove below test function
-        void test_printTree(Dyninst::Stackwalker::FrameNode *n, unsigned int width);
-
-#ifdef STACKWALKER
-#if defined SW_VERSION_8_0_0
+#if defined GROUP_OPS
         //! Get a stack trace from every process
         /*!
             \param[out] retGraph - the return graph
@@ -374,39 +356,6 @@ class STAT_BackEnd
         */
         void fillInName(const std::string &s, graphlib_nodeattr_t &nodeattr);
 
-#else
-        //! Get a single stack trace
-        /*!
-            \param[out] retGraph - the return graph
-            \param proc - the current process
-            \param rank - the current process rank
-            \param nRetries - the number of attempts to try to get a complete stack 
-                trace
-            \param retryFrequency - the time to wait between retries
-            \param withThreads - whether to gather thread stack traces too
-            \return STAT_OK on success
-        */
-        StatError_t getStackTrace(graphlib_graph_p retGraph, BPatch_process *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads);
-
-        //! Translates an address into a source file and line number
-        /*!
-            \param func - the current process
-            \param addr - the address to translate
-            \param[out] outBuf - the source file name
-            \param[out] lineNum - the line number
-            \return STAT_OK on success
-        */
-        StatError_t getSourceLine(BPatch_function *func, unsigned long addr, char *outBuf, int *lineNum);
-
-        //! Extract a variable value from the application
-        /*!
-            \param proc - the process to extract from
-            \param functionName - the name of the function to gather the variable
-            \param variableName - the name of the variable to gather
-            \param[out] outBuf - the value of the variable
-        */
-        StatError_t getVariable(BPatch_process *proc, char *functionName, char *variableName, char *outBuf);
-#endif
         //! Parse the variable specification
         /*!
             \param variableSpecification - the variable specification
@@ -493,15 +442,12 @@ class STAT_BackEnd
         statVariable_t *extractVariables;       /*!< a list of variables to extract for the current sample */
         int nVariables;                         /*!< the number of variables to extract */
 
-        std::map<int, Proc_t *> processMap_;    /*!< the debug process objects */
-        std::map<Proc_t *, int> procsToRanks_;  /*!< Turn a process into a rank */
+        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;    /*!< the debug process objects */
+        std::map<Dyninst::Stackwalker::Walker *, int> procsToRanks_;  /*!< Turn a process into a rank */
 
-#ifdef SW_VERSION_8_0_0
+#ifdef GROUP_OPS
         Dyninst::ProcControlAPI::ProcessSet::ptr procset;
         Dyninst::Stackwalker::WalkerSet *walkerset;
-#endif
-#ifndef STACKWALKER
-        BPatch bpatch_;                         /*!< the application bpatch object */
 #endif
 
         MRN::Stream *broadcastStream_;          /*!< the main broadcast/acknowledgement stream */

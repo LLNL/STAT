@@ -22,14 +22,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 using namespace std;
 using namespace MRN;
 
-#ifdef STACKWALKER
-    using namespace Dyninst;
-    using namespace Dyninst::Stackwalker;
-    using namespace Dyninst::SymtabAPI;
-#  ifdef SW_VERSION_8_0_0
-    using namespace Dyninst::ProcControlAPI;
-#  endif
+using namespace Dyninst;
+using namespace Dyninst::Stackwalker;
+using namespace Dyninst::SymtabAPI;
+#ifdef GROUP_OPS
+using namespace Dyninst::ProcControlAPI;
 #endif
+
 
 #ifdef STAT_FGFS
     using namespace FastGlobalFileStat;
@@ -116,7 +115,6 @@ STAT_BackEnd::STAT_BackEnd()
     envValue = getenv("STAT_NO_GROUP_OPS");
     doGroupOps_ = (envValue == NULL);
 
-#ifdef STACKWALKER
     /* Code to setup StackWalker debug logging */
     envValue = getenv("STAT_SW_DEBUG_LOG_DIR");
     if (envValue != NULL)
@@ -125,12 +123,11 @@ STAT_BackEnd::STAT_BackEnd()
         f = fopen(fileName, "w");
         Dyninst::Stackwalker::setDebug(true);
         Dyninst::Stackwalker::setDebugChannel(f); 
-#ifdef SW_VERSION_8_0_0
+#ifdef GROUP_OPS
         Dyninst::ProcControlAPI::setDebug(true);
         Dyninst::ProcControlAPI::setDebugChannel(f);
 #endif
     }
-#endif
 
     processMapNonNull_ = 0;
     statOutFp = NULL;
@@ -405,7 +402,6 @@ StatError_t STAT_BackEnd::mainLoop()
 
     do
     {
-#ifdef STACKWALKER    
         /* Set the stackwalker notification file descriptor */
         if (processMap_.size() > 0 and processMapNonNull_ > 0)
             swNotificationFd = ProcDebug::getNotificationFD();
@@ -482,7 +478,6 @@ StatError_t STAT_BackEnd::mainLoop()
                 continue;
             }
         }
-#endif        
         /* Receive the packet from the STAT FE */
         /* Use non-blocking recv to catch any false positive events */
         retval = network_->recv(&tag, packet, &stream, false);
@@ -859,16 +854,16 @@ StatError_t STAT_BackEnd::Attach()
 {
     int i;
     StatError_t ret;
-#if defined(SW_VERSION_8_0_0)
+#if defined(GROUP_OPS)
     vector<ProcessSet::AttachInfo> ainfo;
     ainfo.reserve(proctabSize_);
 #endif
-    Proc_t *proc;
+    Walker *proc;
 
     /* Attach to the processes in the process table */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
-#if defined(SW_VERSION_8_0_0)
+#if defined(GROUP_OPS)
     if (doGroupOps_) {
        for (i = 0; i < proctabSize_; i++)
        {
@@ -888,10 +883,12 @@ StatError_t STAT_BackEnd::Attach()
     for (i = 0; i < proctabSize_; i++)
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
-#if defined(SW_VERSION_8_0_0)
+
+        Walker *proc;
+#if defined(GROUP_OPS)
         if (doGroupOps_) {
            Process::ptr pc_proc = ainfo[i].proc;
-           Walker *proc = pc_proc ? Walker::newWalker(pc_proc) : NULL;
+           proc = pc_proc ? Walker::newWalker(pc_proc) : NULL;
            if (proc == NULL)
            {
               printMsg(STAT_WARNING, __FILE__, __LINE__, "Group Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, Dyninst::ProcControlAPI::getGenericErrorMsg(ainfo[i].error_ret));
@@ -902,7 +899,7 @@ StatError_t STAT_BackEnd::Attach()
            }
         }
         else
-#elif defined(STACKWALKER)
+#else
         {
            proc = Walker::newWalker(proctab_[i].pd.pid, proctab_[i].pd.executable_name);
            if (proc == NULL)
@@ -910,21 +907,14 @@ StatError_t STAT_BackEnd::Attach()
               printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, getLastErrorMsg());
            }
         }
-#else
-        {
-           proc = bpatch_.processAttach(NULL, proctab_[i].pd.pid);
-           if (proc == NULL)
-           {
-              printMsg(STAT_WARNING, __FILE__, __LINE__, "DynInst ProcessAttach to task %d, pid %d failed\n", proctab_[i].mpirank, proctab_[i].pd.pid);
-           }
-        }
 #endif
+        assert(proc);
         processMap_[proctab_[i].mpirank] = proc;
         if (proc != NULL) {
             processMapNonNull_++;
         }
     }
-    map<int, Proc_t *>::iterator j;
+    map<int, Walker *>::iterator j;
     for (i=0, j = processMap_.begin(); j != processMap_.end(); i++, j++) {
        procsToRanks_.insert(make_pair(j->second, i));
     }
@@ -937,10 +927,10 @@ StatError_t STAT_BackEnd::Pause()
 {
     /* Pause all processes */
    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
-#if defined(SW_VERSION_8_0_0)
+#if defined(GROUP_OPS)
    procset->stopProcs();
 #else
-    map<int, Proc_t *>::iterator iter;
+    map<int, Walker *>::iterator iter;
     for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
     {
         pauseImpl(iter->second);
@@ -955,10 +945,10 @@ StatError_t STAT_BackEnd::Resume()
 {
     /* Resume all processes */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
-#if defined(SW_VERSION_8_0_0)
+#if defined(GROUP_OPS)
     procset->continueProcs();
 #else
-    map<int, Proc_t *>::iterator iter;
+    map<int, Walker *>::iterator iter;
     for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
     {
         resumeImpl(iter->second);
@@ -969,7 +959,6 @@ StatError_t STAT_BackEnd::Resume()
     return STAT_OK;
 }
 
-#ifdef STACKWALKER        
 StatError_t STAT_BackEnd::pauseImpl(Walker *walker)
 {
     /* Pause the process */
@@ -1011,33 +1000,6 @@ StatError_t STAT_BackEnd::resumeImpl(Walker *walker)
     }
     return STAT_OK;
 }
-#else
-StatError_t STAT_BackEnd::pauseImpl(BPatch_process *proc)
-{
-    /* Pause the process */
-    bool ret;
-    if (proc != NULL)
-    {
-        ret = proc->stopExecution();
-        if (ret == false)
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to pause process\n");
-    }
-    return STAT_OK;
-}
-
-StatError_t STAT_BackEnd::resumeImpl(BPatch_process *proc)
-{
-    /* Resume the process */
-    bool ret;
-    if (proc != NULL)
-    {
-        ret = proc->continueExecution();
-        if (ret == false)
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to resume process\n");
-    }
-    return STAT_OK;
-}
-#endif      
 
 #ifdef SBRS
 int bcastWrapper(void *buf, int size)
@@ -1114,7 +1076,6 @@ StatError_t STAT_BackEnd::parseVariableSpecification(char *variableSpecification
     return STAT_OK;
 }
 
-#ifdef STACKWALKER
 StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf, int *lineNum)
 {
     bool ret;
@@ -1223,84 +1184,6 @@ StatError_t STAT_BackEnd::getVariable(vector<Frame> swalk, unsigned int frame, c
     return STAT_OK;
 }
 
-#else
-//! Translates an address into a source file and line number
-/*!
-    \param func - the current process
-    \param addr - the address to translate
-    \param[out] outBuf - the source file name
-    \param[out] lineNum - the line number
-    \return STAT_OK on success
-*/
-StatError_t STAT_BackEnd::getSourceLine(BPatch_function *func, unsigned long addr, char *outBuf, int *lineNum)
-{
-    bool ret;
-    const char *fileName;
-    char *functionName, *variableName;
-    BPatch_module *mod;
-    BPatch_Vector<BPatch_statement> stmts;
-
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting source line info for address %lx\n", addr);
-    *lineNum = 0;
-    if (func == NULL)
-    {
-        snprintf(outBuf, BUFSIZE, "@??");
-        return STAT_OK;
-    }
-    mod = func->getModule();
-    ret = mod->getSourceLines(addr, stmts);
-    if (ret == false)
-    {
-        snprintf(outBuf, BUFSIZE, "@??");
-        return STAT_OK;
-    }
-
-    *lineNum = stmts[0].lineNumber();
-    fileName = stmts[0].fileName();
-    
-    snprintf(outBuf, BUFSIZE, "%s", fileName);
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%lx resolved to %s:%d\n", addr, outBuf, *lineNum);
-    return STAT_OK;
-}
-
-StatError_t STAT_BackEnd::getVariable(BPatch_process *proc, char *functionName, char *variableName, char *outBuf)
-{
-    int var;
-
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting variable %s from function %s\n", functionName, variableName);
-    if (functionName != NULL && variableName != NULL)
-    {
-        BPatch_addressSpace *app = static_cast<BPatch_addressSpace *>(proc);
-        BPatch_image *app_image = app->getImage();
-        BPatch_Vector<BPatch_function *> found_funcs;
-        if ((NULL == app_image->findFunction(functionName, found_funcs)) || !found_funcs.size())
-        {
-            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find function %s\n", functionName);
-            return STAT_OK;
-        }
-        if (1 < found_funcs.size())
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Found multiple functions named %s\n", functionName);
-        BPatch_Vector<BPatch_point *> *func_point = found_funcs[0]->findPoint(BPatch_subroutine);
-        if (!func_point || ((*func_point).size() == 0))
-        {
-            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find point for function %s\n", functionName);
-            return STAT_OK;
-        }
-        BPatch_variableExpr *expr = app_image->findVariable(*(*func_point)[0], variableName);
-        if (expr == NULL)
-        {
-            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find variable %s\n", variableName);
-            return STAT_OK;
-        }
-        expr->readValue(&var);
-        snprintf(outBuf, BUFSIZE, "$%s=%d", variableName, var);
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Variable %s from function %s = %d\n", functionName, variableName, var);
-    }
-
-    return STAT_OK;
-}    
-#endif
-
 StatError_t STAT_BackEnd::mergeIntoGraphs(graphlib_graph_p currentGraph, bool last_trace)
 {
    graphlib_error_t gl_err;
@@ -1359,7 +1242,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     graphlib_graph_p currentGraph = NULL;
     graphlib_error_t gl_err;
     StatError_t ret;
-    map<int, Proc_t *>::iterator iter;
+    map<int, Walker *>::iterator iter;
     
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample stack traces\n");
 
@@ -1461,7 +1344,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
         }
 
         /* Collect call stacks from each process */
-#if defined(SW_VERSION_8_0_0)
+#if defined(GROUP_OPS)
         if (doGroupOps_) {
            /* Create return graph */
            currentGraph = createRootedGraph();
@@ -1527,7 +1410,6 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     return STAT_OK;
 }
 
-#ifdef STACKWALKER
 std::string STAT_BackEnd::getFrameName(const Frame &frame, bool is_final_frame)
 {
    string name;
@@ -1843,7 +1725,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
     return STAT_OK;
 }
 
-#if defined(SW_VERSION_8_0_0)
+#if defined(GROUP_OPS)
 
 #warning TODO: Remove bitvec internal calls after merging graphlib cleanup
 extern int bitvec_initialize(int longsize, int edgelabelwidth);
@@ -1877,12 +1759,11 @@ void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
          THR_ID thrd = child->getThread();
          assert(thrd != NULL_LWP);
          Walker *walker = child->getWalker();
-         map<Proc_t *, int>::iterator j = procsToRanks_.find(walker);
+         assert(walker);
+         map<Walker *, int>::iterator j = procsToRanks_.find(walker);
          assert(j != procsToRanks_.end());
          int rank = j->second;
          output_ranks.insert(rank);
-         fprintf(stderr, "[%s:%u] - Inserting rank %d from stack end %s\n", __FILE__, __LINE__,
-                 rank, node_id_names.c_str());
          continue;
       }
 
@@ -1940,7 +1821,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
 
    bool result = walkerset->walkStacks(tree);
    if (!result) {
-#     warning TODO: Start handling partial call stacks in group walks
+#warning TODO: Start handling partial call stacks in group walks
    }
 
    size_t setsize = procset->size();
@@ -1957,312 +1838,9 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
 }
 #endif
 
-#else
-StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, BPatch_process *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads)
-{
-    int nodeId, prevId, i, partialVal, lineNum, pos;
-    bool ret = false;
-    unsigned int j, k;
-    char buf[BUFSIZE], fileName[BUFSIZE], functionName[BUFSIZE], *returnAddress;
-    string path, name, tester;
-    graphlib_error_t gl_err;
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "",GRAPH_FONT_SIZE};
-    graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
-    graphlib_graph_p currentGraph = NULL;
-    BPatch_function *func;
-    BPatch_Vector <BPatch_frame> swalk, partial;
-    BPatch_Vector <BPatch_thread *> threads, *allThreads;
-    vector<string> trace;
-    StatError_t statError;
-
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d\n", rank);
-
-    /* Set the edge label */
-    gl_err = graphlib_setEdgeByTask(&edgeattr.edgelist, rank);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to set edge by rank\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
-    /* If we're not attached return a trace denoting the task has exited */
-    if (proc == NULL)
-        threads.push_back(NULL);
-    else
-    {
-        /* If the task has terminated return a trace denoting the task has exited */
-        if (proc->isTerminated())
-            threads.push_back(NULL);
-        else
-        {
-            /* Get DynInst BPatch threads */
-            allThreads = bpatch_.getThreads();
-            for (j = 0; j < allThreads->size(); j++)
-            {
-//                if (withThreads == 0)
-//                {
-                    if ((*allThreads)[j]->getProcess() == proc)
-                    {
-                        threads.push_back((*allThreads)[j]);
-                        break;
-                    }
-//                }
-//                else
-//                    threads.push_back((*allThreads)[j]);
-            }
-        }
-    }
-
-    /* Loop over the threads and get the traces */
-    for (j = 0; j < threads.size(); j++)
-    {
-        /* Initialize loop iteration specific variables */
-        trace.clear();
-        prevId = 0;
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from thread %d of %d\n", j, threads.size());
-
-        /* Create current working graph */
-        currentGraph = createRootedGraph();
-        if (!currentGraph)
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        /* Create graph root */
-        path = "";
-
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        if (threads[j] == NULL)
-            trace.push_back("[task_exited]");
-        else
-        {
-            /* Get the stack trace */
-            partialVal = 0;
-            for (i = 0; i <= nRetries; i++)
-            {
-                swalk.clear();
-                ret = threads[j]->getCallStack(swalk);
-                if (ret == false && swalk.size() < 1)
-                {
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d\n", i, nRetries, j);
-                    if (i < nRetries)
-                    {
-                        if (isRunning_ == false)
-                            resumeImpl(proc);
-                        usleep(retryFrequency);
-                        if (isRunning_ == false)
-                            pauseImpl(proc);
-                    }
-                    continue;
-                }
-
-                /* Get the name of the top frame */
-                func = swalk[swalk.size() - 1].findFunction();
-                if (func == NULL)
-                {
-                    if (partialVal < 1)
-                    {
-                        /* This is the best trace so far */
-                        partialVal = 1;
-                        partial = swalk;
-                    }
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY: top of stack = unknown frame on attempt %d of %d\n", i, nRetries);
-                    if (i < nRetries)
-                    {
-                        if (isRunning_ == false)
-                            resumeImpl(proc);
-                        usleep(retryFrequency);
-                        if (isRunning_ == false)
-                            pauseImpl(proc);
-                    }
-                    continue;
-                }
-                func->getName(functionName, BUFSIZE);
-                name = functionName;
-
-                /* Make sure the top frame contains the string "start" (for main thread only) */
-                if (name.find("start", 0) == string::npos && j == 0)
-                {
-                    if (partialVal < 2)
-                    {
-                        /* This is the best trace so far */
-                        partialVal = 2;
-                        partial = swalk;
-                    }
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY: top of stack '%s' not start on attempt %d of %d\n", name.c_str(), i, nRetries);
-                    if (i < nRetries)
-                    {
-                        if (isRunning_ == false)
-                            resumeImpl(proc);
-                        usleep(retryFrequency);
-                        if (isRunning_ == false)
-                            pauseImpl(proc);
-                    }
-                    continue;
-                }
-
-                /* The trace looks good so we'll use this one */
-                partial = swalk;
-                break;
-            }
-
-            /* Check to see if we got a complete stack trace */
-            if (i > nRetries && partialVal < 1)
-            {
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "DynInst reported an error in walking the stack\n");
-                trace.push_back("StackWalker_Error");
-            }
-            else
-            {
-                for (i = partial.size() - 1; i >= 0; i--)
-                {
-                    /* Get the frame */
-                    func = partial[i].findFunction();
-        
-                    /* Get the frame name */
-                    if (func == NULL)
-                        name = "[unknown]";
-                    else
-                    {
-                        func->getName(functionName, BUFSIZE);
-                        name = functionName;
-                    }
-                    if (name == "")
-                        name = "[empty]";
-        
-                    if (sampleType == STAT_FUNCTION_AND_PC)
-                    {
-                        returnAddress = (char *)partial[i].getPC();
-                        if (i == 0)
-                            snprintf(buf, BUFSIZE, "@%p", returnAddress);
-                        else
-                        {
-                            returnAddress = returnAddress - 1;
-                            snprintf(buf, BUFSIZE, "@%p", returnAddress);
-                        }
-                        name += buf;
-                    }
-                    else if (sampleType == STAT_FUNCTION_AND_LINE)
-                    {
-                        returnAddress = (char *)partial[i].getPC();
-                        if (i != 0)
-                            returnAddress = returnAddress - 1;
-                        statError = getSourceLine(func, (unsigned long)returnAddress, fileName, &lineNum);
-                        if (statError != STAT_OK)
-                        {
-                            printMsg(statError, __FILE__, __LINE__, "Failed to get source line information for %s\n", name.c_str());
-                            continue;
-                        }
-                        name += "@";
-                        name += fileName;
-                        if (lineNum != 0)
-                        {
-                            snprintf(buf, BUFSIZE, ":%d", lineNum);
-                            name += buf;
-                        }        
-                        if (extractVariables != NULL)
-                        {
-                            for (k = 0; k < nVariables; k++)
-                            {
-                                if (strcmp(fileName, extractVariables[k].fileName) == 0 && lineNum == extractVariables[k].lineNum && partial.size() - i + 1 == extractVariables[k].depth)
-                                {
-                                    statError = getVariable(proc, functionName, extractVariables[k].variableName, buf);
-                                    if (statError != STAT_OK)
-                                    {
-                                        printMsg(statError, __FILE__, __LINE__, "Failed to get variable information for $%s in %s\n", extractVariables[k].variableName, name.c_str());
-                                        continue;
-                                    }
-                                    name += buf;
-                                }
-                            }
-                        }
-                    }
-                    trace.push_back(name);
-                } // for i = partial.size()
-            } // else (got a usable stack)
-        } //else threads[j] != NULL
-
-        /* Get the name of the frames and add it to the graph */
-        for (i = 0; i < trace.size(); i++)
-        {
-            /* Add \ character before '<' and '>' characters for dot format */
-            tester = trace[i];
-            pos = -2;
-            while (1)
-            {
-                pos = trace[i].find('<', pos + 2);
-                if (pos == string::npos)
-                    break;
-                trace[i].insert(pos, "\\");    
-            }
-            pos = -2;
-            while (1)
-            {
-                pos = trace[i].find('>', pos + 2);
-                if (pos == string::npos)
-                    break;
-                trace[i].insert(pos, "\\");    
-            }
-
-            /* Add the node and edge to the graph */
-            path += trace[i].c_str();
-            nodeId = string_hash(path.c_str());
-            fillInName(trace[i], nodeattr);
-
-            gl_err = graphlib_addNode(currentGraph, nodeId, &nodeattr);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-            gl_err = graphlib_addDirectedEdge(currentGraph, prevId, nodeId, &edgeattr);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-            prevId = nodeId;
-        }
-
-        /* Merge cur graph into retGraph */
-        gl_err = graphlib_mergeGraphsRanked(retGraph, currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        /* Free up current graph */
-        gl_err = graphlib_delGraph(currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-    } /* thread iteration */
-    gl_err = graphlib_delEdgeAttr(edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Trace successfully gathered from task rank %d\n", rank);
-    return STAT_OK;
-}
-#endif
-
 StatError_t STAT_BackEnd::Detach(unsigned int *stopArray, int stopArrayLen)
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes\n");
-#ifdef STACKWALKER
     int i;
     bool leaveStopped;
     map<int, Walker *>::iterator iter;
@@ -2293,20 +1871,6 @@ StatError_t STAT_BackEnd::Detach(unsigned int *stopArray, int stopArrayLen)
         processMap_.erase(iter);
         processMapNonNull_ = processMapNonNull_ - 1;
     }
-#else
-    map<int,BPatch_process *>::iterator iter;
-    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-    {
-        if ((*iter).second != NULL)
-        {
-            iter->second->stopExecution();
-            if (iter->second->detach(!isRunning_) == false)
-                printMsg(STAT_DETACH_ERROR, __FILE__, __LINE__, "DETACH %d FAILED\n", iter->first);
-        }
-        processMap_.erase(iter);
-        processMapNonNull_ = processMapNonNull_ - 1;
-    }
-#endif
 
     return STAT_OK;
 }
@@ -2314,20 +1878,7 @@ StatError_t STAT_BackEnd::Detach(unsigned int *stopArray, int stopArrayLen)
 StatError_t STAT_BackEnd::terminateApplication()
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Terminating application processes\n");
-#ifdef STACKWALKER
-#else
-    map<int,BPatch_process *>::iterator iter;
-    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-    {
-        if ((*iter).second != NULL)
-        {
-            if (iter->second->terminateExecution() == false)
-                printMsg(STAT_TERMINATE_ERROR, __FILE__, __LINE__, "TERMINATE %d FAILED\n", iter->first);
-        }
-        processMap_.erase(iter);
-        processMapNonNull_ = processMapNonNull_ - 1;
-    }
-#endif
+#warning TODO: Fill in terminateApplication
 
     return STAT_OK;
 }

@@ -162,9 +162,6 @@
 /* Define to the type of arg 5 for `select'. */
 #undef SELECT_TYPE_ARG5
 
-/* Use StackWalker */
-#undef STACKWALKER
-
 /* The max number of CPs per node */
 #undef STAT_PROCS_PER_NODE
 
