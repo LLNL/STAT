@@ -26,7 +26,7 @@ using namespace Dyninst;
 using namespace Dyninst::Stackwalker;
 using namespace Dyninst::SymtabAPI;
 #ifdef GROUP_OPS
-using namespace Dyninst::ProcControlAPI;
+    using namespace Dyninst::ProcControlAPI;
 #endif
 
 
@@ -854,17 +854,15 @@ StatError_t STAT_BackEnd::Attach()
 {
     int i;
     StatError_t ret;
-#if defined(GROUP_OPS)
-    vector<ProcessSet::AttachInfo> ainfo;
-    ainfo.reserve(proctabSize_);
-#endif
     Walker *proc;
 
     /* Attach to the processes in the process table */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
 #if defined(GROUP_OPS)
+    vector<ProcessSet::AttachInfo> ainfo;
     if (doGroupOps_) {
+       ainfo.reserve(proctabSize_);
        for (i = 0; i < proctabSize_; i++)
        {
           printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes proces %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
@@ -899,7 +897,7 @@ StatError_t STAT_BackEnd::Attach()
            }
         }
         else
-#else
+#endif
         {
            proc = Walker::newWalker(proctab_[i].pd.pid, proctab_[i].pd.executable_name);
            if (proc == NULL)
@@ -907,7 +905,7 @@ StatError_t STAT_BackEnd::Attach()
               printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, getLastErrorMsg());
            }
         }
-#endif
+
         assert(proc);
         processMap_[proctab_[i].mpirank] = proc;
         if (proc != NULL) {
@@ -928,14 +926,18 @@ StatError_t STAT_BackEnd::Pause()
     /* Pause all processes */
    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
 #if defined(GROUP_OPS)
-   procset->stopProcs();
-#else
-    map<int, Walker *>::iterator iter;
-    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-    {
-        pauseImpl(iter->second);
-    }
+   if (doGroupOps_) {
+      procset->stopProcs();
+   }
+   else
 #endif
+   {
+      map<int, Walker *>::iterator iter;
+      for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+      {
+         pauseImpl(iter->second);
+      }
+   }
     isRunning_ = false;
 
     return STAT_OK;
@@ -946,14 +948,18 @@ StatError_t STAT_BackEnd::Resume()
     /* Resume all processes */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
 #if defined(GROUP_OPS)
-    procset->continueProcs();
-#else
-    map<int, Walker *>::iterator iter;
-    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-    {
-        resumeImpl(iter->second);
+    if (doGroupOp_) {
+       procset->continueProcs();
     }
+    else
 #endif
+    {
+       map<int, Walker *>::iterator iter;
+       for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+       {
+          resumeImpl(iter->second);
+       }
+    }
     isRunning_ = true;
 
     return STAT_OK;
