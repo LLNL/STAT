@@ -38,12 +38,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <sys/resource.h>
 #include "arpa/inet.h"
 
-#include "mrnet/MRNet.h"
-#include "xplat/NetUtils.h"
+#include "STAT.h"
 #include "graphlib.h"
 #include "STAT_timer.h"
 #include "lmon_api/lmon_fe.h"
-#include "STAT.h"
 
 #ifdef STAT_FGFS
     #include "Comm/MRNetCommFabric.h"

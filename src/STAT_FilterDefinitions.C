@@ -24,10 +24,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <sys/resource.h>
 #include <errno.h>
 #include <string.h>
-#include "config.h"
-#include "mrnet/Packet.h"
-#include "graphlib.h"
 #include "STAT.h"
+#include "graphlib.h"
 #include <sys/stat.h>
 
 using namespace MRN;

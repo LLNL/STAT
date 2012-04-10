@@ -25,8 +25,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define STAT_MINOR_VERSION 3
 #define STAT_REVISION_VERSION 0
 
-#include "mrnet/MRNet.h"
-#include "mrnet/Types.h"
+#include "STAT_IncMRNet.h"
 
 FILE *statOutFp = NULL;
 

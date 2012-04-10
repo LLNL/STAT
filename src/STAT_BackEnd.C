@@ -16,8 +16,8 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "config.h"
 #include "STAT_BackEnd.h"
+#include <set>
 
 using namespace std;
 using namespace MRN;
@@ -37,6 +37,11 @@ using namespace MRN;
     using namespace FastGlobalFileStat::CommLayer;
 #endif
 
+#ifdef GRL_DYNAMIC_NODE_NAME
+#define GRAPH_FONT_SIZE 1
+#else
+#define GRAPH_FONT_SIZE -1
+#endif
 StatError_t statInit(int *argc, char ***argv)
 {
     lmon_rc_e rc;
@@ -107,6 +112,9 @@ STAT_BackEnd::STAT_BackEnd()
         snprintf(fileName, BUFSIZE, "%s/%s.stderr.txt", envValue, localHostName_);
         freopen(fileName, "w", stderr);
     }
+
+    envValue = getenv("STAT_NO_GROUP_OPS");
+    doGroupOps_ = (envValue == NULL);
 
 #ifdef STACKWALKER
     /* Code to setup StackWalker debug logging */
@@ -374,7 +382,7 @@ StatError_t STAT_BackEnd::Connect()
 StatError_t STAT_BackEnd::mainLoop()
 {
     int tag = 0, retval, nEqClasses, swNotificationFd, mrnNotificationFd, max_fd;
-    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, sampleType, withThreads, clearOnSample;
+    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, withThreads, clearOnSample;
 #ifdef GRAPHLIB16
     unsigned long obyteArrayLen;
 #else
@@ -555,7 +563,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to sample %d traces each %d us with %d retries every %d us\n", nTraces, traceFrequency, nRetries, retryFrequency);
 
                 /* Gather stack traces */
-                statError = sampleStackTraces(nTraces, traceFrequency, nRetries, retryFrequency, sampleType, withThreads, clearOnSample, variableSpecification);
+                statError = sampleStackTraces(nTraces, traceFrequency, nRetries, retryFrequency, withThreads, clearOnSample, variableSpecification);
                 if (statError == STAT_OK)
                     retval = 0;
 
@@ -851,63 +859,74 @@ StatError_t STAT_BackEnd::Attach()
 {
     int i;
     StatError_t ret;
-#if defined(STACKWALKER) && defined(SW_VERSION_8_0_0)
+#if defined(SW_VERSION_8_0_0)
     vector<ProcessSet::AttachInfo> ainfo;
     ainfo.reserve(proctabSize_);
-#elif defined(STACKWALKER)
-    Walker *proc;
-#else
-    BPatch_process * proc;
 #endif
+    Proc_t *proc;
 
     /* Attach to the processes in the process table */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
-#if defined(STACKWALKER) && defined(SW_VERSION_8_0_0)
-    for (i = 0; i < proctabSize_; i++)
-    {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes proces %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
-        ProcessSet::AttachInfo pattach;
-        pattach.pid = proctab_[i].pd.pid;
-        pattach.executable = proctab_[i].pd.executable_name;
-        pattach.error_ret = ProcControlAPI::err_none;
-        ainfo.push_back(pattach);
+#if defined(SW_VERSION_8_0_0)
+    if (doGroupOps_) {
+       for (i = 0; i < proctabSize_; i++)
+       {
+          printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes proces %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+          ProcessSet::AttachInfo pattach;
+          pattach.pid = proctab_[i].pd.pid;
+          pattach.executable = proctab_[i].pd.executable_name;
+          pattach.error_ret = ProcControlAPI::err_none;
+          ainfo.push_back(pattach);
+       }
+       procset = ProcessSet::attachProcessSet(ainfo);
+       walkerset = WalkerSet::newWalkerSet();
     }
-    procset = ProcessSet::attachProcessSet(ainfo);
-    walkerset = WalkerSet::newWalkerSet();
 #endif
 
     /* Attach to the processes in the process table */
     for (i = 0; i < proctabSize_; i++)
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
-#if defined(STACKWALKER) && defined(SW_VERSION_8_0_0)
-       Process::ptr pc_proc = ainfo[i].proc;
-       Walker *proc = pc_proc ? Walker::newWalker(pc_proc) : NULL;
-       if (proc == NULL)
-       {
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Group Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, Dyninst::ProcControlAPI::getGenericErrorMsg(ainfo[i].error_ret));
-       }
-       else {
-          pc_proc->setData(proc); //Up ptr for mapping Process::ptr -> Walker
-          walkerset->insert(proc);
-       }
+#if defined(SW_VERSION_8_0_0)
+        if (doGroupOps_) {
+           Process::ptr pc_proc = ainfo[i].proc;
+           Walker *proc = pc_proc ? Walker::newWalker(pc_proc) : NULL;
+           if (proc == NULL)
+           {
+              printMsg(STAT_WARNING, __FILE__, __LINE__, "Group Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, Dyninst::ProcControlAPI::getGenericErrorMsg(ainfo[i].error_ret));
+           }
+           else {
+              pc_proc->setData(proc); //Up ptr for mapping Process::ptr -> Walker
+              walkerset->insert(proc);
+           }
+        }
+        else
 #elif defined(STACKWALKER)
-        proc = Walker::newWalker(proctab_[i].pd.pid, proctab_[i].pd.executable_name);
-        if (proc == NULL)
         {
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, getLastErrorMsg());
+           proc = Walker::newWalker(proctab_[i].pd.pid, proctab_[i].pd.executable_name);
+           if (proc == NULL)
+           {
+              printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, getLastErrorMsg());
+           }
         }
 #else
-        proc = bpatch_.processAttach(NULL, proctab_[i].pd.pid);
-        if (proc == NULL)
         {
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "DynInst ProcessAttach to task %d, pid %d failed\n", proctab_[i].mpirank, proctab_[i].pd.pid);
+           proc = bpatch_.processAttach(NULL, proctab_[i].pd.pid);
+           if (proc == NULL)
+           {
+              printMsg(STAT_WARNING, __FILE__, __LINE__, "DynInst ProcessAttach to task %d, pid %d failed\n", proctab_[i].mpirank, proctab_[i].pd.pid);
+           }
         }
 #endif
         processMap_[proctab_[i].mpirank] = proc;
-        if (proc != NULL)
+        if (proc != NULL) {
             processMapNonNull_++;
+        }
+    }
+    map<int, Proc_t *>::iterator j;
+    for (i=0, j = processMap_.begin(); j != processMap_.end(); i++, j++) {
+       procsToRanks_.insert(make_pair(j->second, i));
     }
     isRunning_ = false;
 
@@ -918,14 +937,10 @@ StatError_t STAT_BackEnd::Pause()
 {
     /* Pause all processes */
    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
-#if defined(STACKWALKER) && defined(SW_VERSION_8_0_0)
+#if defined(SW_VERSION_8_0_0)
    procset->stopProcs();
 #else
-#  ifdef STACKWALKER
-    map<int, Walker *>::iterator iter;
-#  else    
-    map<int,BPatch_process *>::iterator iter;
-#  endif
+    map<int, Proc_t *>::iterator iter;
     for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
     {
         pauseImpl(iter->second);
@@ -940,14 +955,10 @@ StatError_t STAT_BackEnd::Resume()
 {
     /* Resume all processes */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
-#if defined(STACKWALKER) && defined(SW_VERSION_8_0_0)
+#if defined(SW_VERSION_8_0_0)
     procset->continueProcs();
 #else
-#  ifdef STACKWALKER
-    map<int, Walker *>::iterator iter;
-#  else    
-    map<int,BPatch_process *>::iterator iter;
-#  endif
+    map<int, Proc_t *>::iterator iter;
     for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
     {
         resumeImpl(iter->second);
@@ -1290,20 +1301,65 @@ StatError_t STAT_BackEnd::getVariable(BPatch_process *proc, char *functionName, 
 }    
 #endif
 
-StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification)
+StatError_t STAT_BackEnd::mergeIntoGraphs(graphlib_graph_p currentGraph, bool last_trace)
 {
-    int j, retval, nVariables = 0;
+   graphlib_error_t gl_err;
+   /* Merge cur graph into retGraph */
+   gl_err = graphlib_mergeGraphsRanked(prefixTree3d_, currentGraph);
+   if (GRL_IS_FATALERROR(gl_err))
+   {
+      printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
+      return STAT_GRAPHLIB_ERROR;
+   }
+   if (last_trace)
+   {
+      gl_err = graphlib_mergeGraphsRanked(prefixTree2d_, currentGraph);
+      if (GRL_IS_FATALERROR(gl_err))
+      {
+         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
+         return STAT_GRAPHLIB_ERROR;
+      }
+   }
+   
+   /* Free up current graph */
+   gl_err = graphlib_delGraph(currentGraph);
+   if (GRL_IS_FATALERROR(gl_err))
+   {
+      printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
+      return STAT_GRAPHLIB_ERROR;
+   } 
+   return STAT_OK;
+}
+
+graphlib_graph_p STAT_BackEnd::createRootedGraph()
+{
+   graphlib_error_t gl_err;
+   graphlib_graph_p newGraph = NULL;
+   gl_err = graphlib_newGraph(&newGraph);
+   if (GRL_IS_FATALERROR(gl_err))
+   {
+      printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
+      return NULL;
+   }
+
+   graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "", GRAPH_FONT_SIZE};
+   gl_err = graphlib_addNode(newGraph, 0, &nodeattr);
+   if (GRL_IS_FATALERROR(gl_err)) {
+      printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
+      return NULL;
+   }
+   return newGraph;
+}
+
+StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification)
+{
+    int j, retval;
     unsigned int i;
     bool wasRunning = isRunning_;
     graphlib_graph_p currentGraph = NULL;
     graphlib_error_t gl_err;
     StatError_t ret;
-    statVariable_t *extractVariables = NULL;
-#ifdef STACKWALKER
-    map<int, Walker *>::iterator iter;
-#else
-    map<int,BPatch_process *>::iterator iter;
-#endif
+    map<int, Proc_t *>::iterator iter;
     
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample stack traces\n");
 
@@ -1381,6 +1437,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     }
 
     /* Parse the variable specification */
+    nVariables = 0;
     if (strcmp(variableSpecification, "NULL") != 0)
     {
         ret = parseVariableSpecification(variableSpecification, &extractVariables, &nVariables);
@@ -1395,102 +1452,176 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering and merging %d traces from each task\n", nTraces);
     for (i = 0; i < nTraces; i++)
     {
-        /* Pause or resume the process as necessary when gathering multiple traces */
-        if (wasRunning == false && nTraces != 1 && (i == 0 || i == nTraces - 1))
-        {
-            for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-            {
-                if (i == 0)
-                {
-                    ret = resumeImpl(iter->second);
-                    if (ret != STAT_OK)
-                        printMsg(ret, __FILE__, __LINE__, "StackWalker returned false on resume\n");
-                    isRunning_ = true;
-                }    
-                else if (i == nTraces - 1)
-                {
-                    ret = pauseImpl(iter->second);
-                    if (ret != STAT_OK)
-                        printMsg(ret, __FILE__, __LINE__, "StackWalker returned false on resume\n");
-                    isRunning_ = false;
-                }    
-            }
+        bool last_trace = (i == nTraces-1);
+        /* Pause process as necessary */
+        if (isRunning_) {
+           ret = Pause();
+           if (ret != STAT_OK)
+              printMsg(ret, __FILE__, __LINE__, "Failed to pause processes\n");
         }
 
-        j = -1;
-        for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+        /* Collect call stacks from each process */
+#if defined(SW_VERSION_8_0_0)
+        if (doGroupOps_) {
+           /* Create return graph */
+           currentGraph = createRootedGraph();
+        
+           /* Get the stack trace */
+           getStackTraceFromAll(currentGraph, nRetries, retryFrequency, withThreads);
+           
+           /* Merge into prefixTree2d and prefixTree3d */
+           ret = mergeIntoGraphs(currentGraph, last_trace);
+           if (ret != STAT_OK)
+              return ret;
+
+
+           gl_err = graphlib_exportGraph((char *) "mergegraph.dot", GRF_DOT, prefixTree3d_);
+           if (GRL_IS_FATALERROR(gl_err))
+              fprintf(stderr, "Error exporting graph\n");
+        }
+        else
+#endif
         {
-            j++;
+           int j;
+           for (iter = processMap_.begin(), j=0; iter != processMap_.end(); iter++, j++)
+           {
+              /* Create return graph */
+              currentGraph = createRootedGraph();
+              
+              /* Get the stack trace */
+              ret = getStackTrace(currentGraph, iter->second, j, nRetries, retryFrequency, 
+                                  withThreads);
+              if (ret != STAT_OK)
+              {
+                 printMsg(ret, __FILE__, __LINE__, "Error getting graph %d of %d\n", i+1, nTraces);
+                 return ret;
+              }
+              
+              /* Merge into prefixTree2d and prefixTree3d */
+              ret = mergeIntoGraphs(currentGraph, last_trace);
+              if (ret != STAT_OK)
+                 return ret;
+           } /* for iter */
 
-            /* Create return graph */
-            gl_err = graphlib_newGraph(&currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
+           gl_err = graphlib_exportGraph((char *) "origgraph.dot", GRF_DOT, prefixTree3d_);
+           if (GRL_IS_FATALERROR(gl_err))
+              fprintf(stderr, "Error exporting graph\n");
+        }
+        
+        /* Continue the process */
+        if (!last_trace || wasRunning) {
+           ret = Resume();
+           if (ret != STAT_OK)
+              printMsg(ret, __FILE__, __LINE__, "Failed to resume processes\n");
+        }
 
-            /* Get the stack trace */
-            ret = getStackTrace(currentGraph, iter->second, j, nRetries, retryFrequency, sampleType, withThreads, extractVariables, nVariables);
-            if (ret != STAT_OK)
-            {
-                printMsg(ret, __FILE__, __LINE__, "Error getting graph %d of %d\n", i+1, nTraces);
-                return ret;
-            }
-
-            /* Merge cur graph into retGraph */
-            gl_err = graphlib_mergeGraphsRanked(prefixTree3d_, currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-            if (i == nTraces - 1)
-            {
-                gl_err = graphlib_mergeGraphsRanked(prefixTree2d_, currentGraph);
-                if (GRL_IS_FATALERROR(gl_err))
-                {
-                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
-                    return STAT_GRAPHLIB_ERROR;
-                }
-            }
-
-            /* Free up current graph */
-            gl_err = graphlib_delGraph(currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-
-        } /* for iter */
-        if (i != nTraces - 1)
+        if (!last_trace)
             usleep(traceFrequency * 1000);
     } /* for i */
 
-    if (extractVariables != NULL)
+    if (extractVariables != NULL) {
         free(extractVariables);
+        extractVariables = NULL;
+    }
 
     return STAT_OK;
 }
 
 #ifdef STACKWALKER
-StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, statVariable_t *extractVariables, int nVariables)
+std::string STAT_BackEnd::getFrameName(const Frame &frame, bool is_final_frame)
 {
-    int nodeId, prevId, i, j, k, partialVal, lineNum, pos;
+   string name;
+   Address addr;
+   char buf[BUFSIZE];
+   char fileName[BUFSIZE];
+   StatError_t statError;
+   int lineNum;
+
+   bool ret = frame.getName(name);
+
+   /* Handle an error or empty frame name */
+   if (ret == false)
+      name = "[unknown]";
+   else if (name == "")
+      name = "[empty]";
+
+   /* Gather PC value or line number info if requested */
+   if (sampleType == STAT_FUNCTION_AND_PC)
+   {
+      if (is_final_frame)
+         snprintf(buf, BUFSIZE, "@0x%lx", frame.getRA());
+      else
+         snprintf(buf, BUFSIZE, "@0x%lx", frame.getRA()-1);
+      name += buf;
+   }
+   else if (sampleType == STAT_FUNCTION_AND_LINE)
+   {
+      if (is_final_frame)
+         addr = frame.getRA();
+      else
+         addr = frame.getRA() - 1;
+
+      statError = getSourceLine(frame.getWalker(), addr, fileName, &lineNum);
+      if (statError != STAT_OK)
+      {
+         printMsg(statError, __FILE__, __LINE__, "Failed to get source line information for %s\n", name.c_str());
+         return name;
+      }
+      name += "@";
+      name += fileName;
+      if (lineNum != 0)
+      {
+         snprintf(buf, BUFSIZE, ":%d", lineNum);
+         name += buf;
+      }
+#warning TODO: Re-enable variables
+      /*if (extractVariables != NULL)
+      {
+         for (k = 0; k < nVariables; k++)
+         {
+            if (strcmp(fileName, extractVariables[k].fileName) == 0 && 
+                lineNum == extractVariables[k].lineNum && 
+                partial.size() - i + 1 == extractVariables[k].depth)
+            {
+               statError = getVariable(partial, i, extractVariables[k].variableName, buf);
+               if (statError != STAT_OK)
+               {
+                  printMsg(statError, __FILE__, __LINE__, "Failed to get variable information for $%s in %s\n", extractVariables[k].variableName, name.c_str());
+                  continue;
+               }
+               name += buf;
+            }
+         }
+      }*/
+   }
+
+   return name;
+}
+
+void STAT_BackEnd::fillInName(const string &s, graphlib_nodeattr_t &nodeattr)
+{
+#ifdef GRL_DYNAMIC_NODE_NAME
+   nodeattr.name = (char *) s.c_str();
+#else
+   if (strlen(s) >= GRL_MAX_NAME_LENGTH) {
+      snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "...%s",
+               s.substr(trace[i].length() - GRL_MAX_NAME_LENGTH + 4, GRL_MAX_NAME_LENGTH - 2).c_str());
+   }
+   else {
+      snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "%s", s.c_str());
+   }
+#endif
+}
+
+StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads)
+{
+    int nodeId, prevId, i, j, k, partialVal, pos;
     bool ret;
-    char buf[BUFSIZE], fileName[BUFSIZE];
-    Address addr;
-    StatError_t statError;
     string name, path, tester;
     vector<Frame> swalk, partial;
     vector<string> trace;
     graphlib_error_t gl_err;
-#ifdef GRL_DYNAMIC_NODE_NAME
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-#else
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,"",-1};
-#endif
+    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "",GRAPH_FONT_SIZE};
     graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
     graphlib_graph_p currentGraph = NULL;
     vector<Dyninst::THR_ID> threads;
@@ -1542,30 +1673,12 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from thread %d of %d\n", j, threads.size());
 
         /* Create current working graph */
-        gl_err = graphlib_newGraph(&currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
-            return STAT_GRAPHLIB_ERROR;
+        currentGraph = createRootedGraph();
+        if (!currentGraph) {
+           return STAT_GRAPHLIB_ERROR;
         }
 
-        /* Create graph root */
         path = "";
-#ifdef GRL_DYNAMIC_NODE_NAME
-        nodeattr.name = strdup("/");
-#else
-        snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "/");
-#endif
-        gl_err = graphlib_addNode(currentGraph, 0, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-        free(nodeattr.name);
-#endif
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
         if (proc == NULL)
         {
             /* We're not attached so return a trace denoting the task has exited */
@@ -1653,61 +1766,8 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
                 /* Get the name of each frame */
                 for (i = partial.size() - 1; i >= 0; i = i - 1)
                 {
-                    string name;
-                    ret = partial[i].getName(name);
-
-                    /* Handle an error or empty frame name */
-                    if (ret == false)
-                        name = "[unknown]";
-                    else if (name == "")
-                        name = "[empty]";
-
-                    /* Gather PC value or line number info if requested */
-                    if (sampleType == STAT_FUNCTION_AND_PC)
-                    {
-                        if (i == 0)
-                            snprintf(buf, BUFSIZE, "@0x%lx", partial[i].getRA());
-                        else
-                            snprintf(buf, BUFSIZE, "@0x%lx", partial[i].getRA()-1);
-                        name += buf;
-                    }
-                    else if (sampleType == STAT_FUNCTION_AND_LINE)
-                    {
-                        if (i == 0)
-                            addr = partial[i].getRA();
-                        else
-                            addr = partial[i].getRA() - 1;
-                        statError = getSourceLine(proc, addr, fileName, &lineNum);
-                        if (statError != STAT_OK)
-                        {
-                            printMsg(statError, __FILE__, __LINE__, "Failed to get source line information for %s\n", name.c_str());
-                            continue;
-                        }
-                        name += "@";
-                        name += fileName;
-                        if (lineNum != 0)
-                        {
-                            snprintf(buf, BUFSIZE, ":%d", lineNum);
-                            name += buf;
-                        }
-                        if (extractVariables != NULL)
-                        {
-                            for (k = 0; k < nVariables; k++)
-                            {
-                                if (strcmp(fileName, extractVariables[k].fileName) == 0 && lineNum == extractVariables[k].lineNum && partial.size() - i + 1 == extractVariables[k].depth)
-                                {
-                                    statError = getVariable(partial, i, extractVariables[k].variableName, buf);
-                                    if (statError != STAT_OK)
-                                    {
-                                        printMsg(statError, __FILE__, __LINE__, "Failed to get variable information for $%s in %s\n", extractVariables[k].variableName, name.c_str());
-                                        continue;
-                                    }
-                                    name += buf;
-                                }
-                            }
-                        }
-                    }
-                    trace.push_back(name);
+                   name = getFrameName(partial[i], i == 0);
+                   trace.push_back(name);
                 }
             }
         } /* else proc == NULL */
@@ -1737,20 +1797,9 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
             /* Add the node and edge to the graph */
             path += trace[i].c_str();
             nodeId = string_hash(path.c_str());
-#ifdef GRL_DYNAMIC_NODE_NAME
-            nodeattr.name = strdup(trace[i].c_str());
-#else
-            if (trace[i].length() >= GRL_MAX_NAME_LENGTH)
-            {
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "...%s", trace[i].substr(trace[i].length() - GRL_MAX_NAME_LENGTH + 4, GRL_MAX_NAME_LENGTH - 2).c_str());
-            }
-            else
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "%s", trace[i].c_str());
-#endif
+            fillInName(trace[i], nodeattr);
             gl_err = graphlib_addNode(currentGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-            free(nodeattr.name);
-#endif
+
             if (GRL_IS_FATALERROR(gl_err))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
@@ -1794,8 +1843,122 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
     return STAT_OK;
 }
 
+#if defined(SW_VERSION_8_0_0)
+
+#warning TODO: Remove bitvec internal calls after merging graphlib cleanup
+extern int bitvec_initialize(int longsize, int edgelabelwidth);
+extern void bitvec_insert(void *vec, int val);
+extern void *bitvec_allocate();
+
+void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph,
+                                   graphlib_node_t gl_node, FrameNode *sw_node,
+                                   string node_id_names,
+                                   set<int> &output_ranks)
+{
+   /* Add the Frame associated with FrameNode to the graphlib graph, below
+      give gl_node
+
+      Note: Lots of complexity here to deal with adding edge labels (all the std::set work).
+      We could get rid of this if graphlib had graph traversal functions.
+   */
+   graphlib_error_t gl_err;
+   frame_set_t &children = sw_node->getChildren();
+
+   map<string, set<FrameNode*> > children_names;
+
+   //Traversal 1: Get names for each child in the FrameNode graph.  Merge like-names
+   // together into the children_names map.
+   for (frame_set_t::iterator i = children.begin(); i != children.end(); i++) {
+      FrameNode *child = *i;
+      Frame *frame = child->getFrame();
+      if (!frame) {
+         //We hit a thread, that means the end of the callstack.
+         // Add the associated rank to our edge label set.
+         THR_ID thrd = child->getThread();
+         assert(thrd != NULL_LWP);
+         Walker *walker = child->getWalker();
+         map<Proc_t *, int>::iterator j = procsToRanks_.find(walker);
+         assert(j != procsToRanks_.end());
+         int rank = j->second;
+         output_ranks.insert(rank);
+         fprintf(stderr, "[%s:%u] - Inserting rank %d from stack end %s\n", __FILE__, __LINE__,
+                 rank, node_id_names.c_str());
+         continue;
+      }
+
+      string name = getFrameName(*frame, frame->isTopFrame());
+      children_names[name].insert(child);
+   }
+
+   //Traversal 2: For each unique name, create a new graphlib node and add it
+   for (map<string, set<FrameNode*> >::iterator i = children_names.begin(); i != children_names.end(); i++) {
+      string name = i->first;
+      set<FrameNode *> &kids = i->second;
+
+      string new_node_id_names = node_id_names + name;
+      int newchild = string_hash(new_node_id_names.c_str());
+
+      graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0, (char *) "", GRAPH_FONT_SIZE};
+      fillInName(name, nodeattr);
+      gl_err = graphlib_addNode(gl_graph, newchild, &nodeattr);
+      if (GRL_IS_FATALERROR(gl_err)) {
+         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
+         continue;
+      }
+      
+      //Traversal 2.1: For each new node, recursively add its children to the graph
+      set<int> my_ranks;
+      for (set<FrameNode *>::iterator j = kids.begin(); j != kids.end(); j++) {
+         std::set<int> kids_ranks;
+         FrameNode *child = *j;
+         AddFrameToGraph(gl_graph, sw_graph, newchild, child, new_node_id_names, kids_ranks);
+         assert(!kids_ranks.empty());
+         my_ranks.insert(kids_ranks.begin(), kids_ranks.end());
+      }
+      
+      //Create the edge between this new node and our parent
+      graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
+      edgeattr.edgelist = bitvec_allocate();
+      for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
+         bitvec_insert(edgeattr.edgelist, *j);
+      }
+      gl_err = graphlib_addDirectedEdge(gl_graph, gl_node, newchild, &edgeattr);
+      if (GRL_IS_FATALERROR(gl_err)) {
+         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
+         continue;
+      }
+
+      output_ranks.insert(my_ranks.begin(), my_ranks.end());
+   }
+}
+
+StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
+                                               unsigned int /*nRetries*/, unsigned int /*retryFrequency*/,
+                                               unsigned int /*withThreads*/)
+{
+   CallTree tree(frame_lib_offset_cmp);
+
+   bool result = walkerset->walkStacks(tree);
+   if (!result) {
+#     warning TODO: Start handling partial call stacks in group walks
+   }
+
+   size_t setsize = procset->size();
+   size_t proc_bitfield_size = setsize;
+   proc_bitfield_size = proc_bitfield_size / sizeof(char);
+   if (setsize % sizeof(char)) proc_bitfield_size++;
+   bitvec_initialize(0, proc_bitfield_size);
+   
+   string empty;
+   std::set<int> ranks;
+   AddFrameToGraph(retGraph, &tree,
+                   0, tree.getHead(), empty, ranks);
+   return STAT_OK;
+}
+#endif
+
 #else
-StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, BPatch_process *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, statVariable_t *extractVariables, int nVariables)
+StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, BPatch_process *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads)
 {
     int nodeId, prevId, i, partialVal, lineNum, pos;
     bool ret = false;
@@ -1803,11 +1966,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, BPatch_proces
     char buf[BUFSIZE], fileName[BUFSIZE], functionName[BUFSIZE], *returnAddress;
     string path, name, tester;
     graphlib_error_t gl_err;
-#ifdef GRL_DYNAMIC_NODE_NAME
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-#else
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,"",-1};
-#endif
+    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "",GRAPH_FONT_SIZE};
     graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
     graphlib_graph_p currentGraph = NULL;
     BPatch_function *func;
@@ -1863,8 +2022,8 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, BPatch_proces
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from thread %d of %d\n", j, threads.size());
 
         /* Create current working graph */
-        gl_err = graphlib_newGraph(&currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
+        currentGraph = createRootedGraph();
+        if (!currentGraph)
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
             return STAT_GRAPHLIB_ERROR;
@@ -1872,15 +2031,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, BPatch_proces
 
         /* Create graph root */
         path = "";
-#ifdef GRL_DYNAMIC_NODE_NAME
-        nodeattr.name = strdup("/");
-#else
-        snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "/");
-#endif
-        gl_err = graphlib_addNode(currentGraph, 0, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-        free(nodeattr.name);
-#endif
+
         if (GRL_IS_FATALERROR(gl_err))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
@@ -2062,20 +2213,9 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, BPatch_proces
             /* Add the node and edge to the graph */
             path += trace[i].c_str();
             nodeId = string_hash(path.c_str());
-#ifdef GRL_DYNAMIC_NODE_NAME
-            nodeattr.name = strdup(trace[i].c_str());
-#else
-            if (trace[i].length() >= GRL_MAX_NAME_LENGTH)
-            {
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "...%s", trace[i].substr(trace[i].length() - GRL_MAX_NAME_LENGTH + 4, GRL_MAX_NAME_LENGTH - 2).c_str());
-            }
-            else
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "%s", trace[i].c_str());
-#endif
+            fillInName(trace[i], nodeattr);
+
             gl_err = graphlib_addNode(currentGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-            free(nodeattr.name);
-#endif
             if (GRL_IS_FATALERROR(gl_err))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
@@ -2718,11 +2858,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     string path;
     graphlib_graph_p retGraph;
     graphlib_error_t gl_err;
-#ifdef GRL_DYNAMIC_NODE_NAME
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-#else
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,"",-1};
-#endif
+    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,GRAPH_FONT_SIZE};
     graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
 
     /* set the edge label */
@@ -2765,44 +2901,22 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     }
 
     /* create return graph */
-    gl_err = graphlib_newGraph(&retGraph);
-    if (GRL_IS_FATALERROR(gl_err))
+    /* Create graph root */
+    retGraph = createRootedGraph();
+    if (!retGraph)
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
         return NULL;
     }
 
-    /* Create graph root */
-#ifdef GRL_DYNAMIC_NODE_NAME
-    nodeattr.name = strdup("/");
-#else
-    sprintf(nodeattr.name, "/");
-#endif
-    path = nodeattr.name;
-    nodeId = 0;
-    gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-    free(nodeattr.name);
-#endif
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
-        return NULL;
-    }
-    prevId = nodeId;
+    path = "/";
+    prevId = 0;
 
     /* Create artificial libc_start_main */
-#ifdef GRL_DYNAMIC_NODE_NAME
-    nodeattr.name = strdup("__libc_start_main");
-#else
-    sprintf(nodeattr.name, "__libc_start_main");
-#endif
+    fillInName("__libc_start_main", nodeattr);
     path += nodeattr.name;
     nodeId = string_hash(path.c_str());
     gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-    free(nodeattr.name);
-#endif
     if (GRL_IS_FATALERROR(gl_err))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
@@ -2817,17 +2931,10 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     prevId = nodeId;
 
     /* Create artificial main */
-#ifdef GRL_DYNAMIC_NODE_NAME
-    nodeattr.name = strdup("main");
-#else
-    sprintf(nodeattr.name, "main");
-#endif
+    fillInName("main", nodeattr);
     path += nodeattr.name;
     nodeId = string_hash(path.c_str());
     gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-    free(nodeattr.name);
-#endif
     if (GRL_IS_FATALERROR(gl_err))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
@@ -2851,18 +2958,13 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     depth = rand() % maxDepth;
     for (i = 0; i < depth; i++)
     {
-#ifdef GRL_DYNAMIC_NODE_NAME
         snprintf(temp, 8192, "depth%dfun%d", i, rand() % functionFanout);
-        nodeattr.name = strdup(temp);
-#else
-        sprintf(nodeattr.name, "depth%dfun%d", i, rand() % functionFanout);
-#endif
+        fillInName(temp, nodeattr);
+
         path += nodeattr.name;
         nodeId = string_hash(path.c_str());
         gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-        free(nodeattr.name);
-#endif
+
         if (GRL_IS_FATALERROR(gl_err))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");

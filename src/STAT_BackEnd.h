@@ -32,11 +32,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <stdarg.h>
 #include <signal.h>
 #include <arpa/inet.h>
+#include <set>
+
 #include "STAT.h"
 #include "STAT_timer.h"
 #include "graphlib.h"
-#include "mrnet/MRNet.h"
-#include "xplat/NetUtils.h"
 #include "lmon_api/lmon_be.h"
 
 #ifdef STACKWALKER
@@ -162,6 +162,12 @@ int isMasterWrapper();
 class STAT_BackEnd
 {
     public:
+#if defined(STACKWALKER)
+   typedef Dyninst::Stackwalker::Walker Proc_t;
+#else
+   typedef BPatch_process Proc_t;
+#endif
+
         //! Default constructor
         STAT_BackEnd();
 
@@ -252,35 +258,19 @@ class STAT_BackEnd
         */
         StatError_t Resume();
 
-#ifdef STACKWALKER        
         //! Pauses a single process
         /*!
             \param walker - the process to pause
             \return STAT_OK on success
         */
-        StatError_t pauseImpl(Dyninst::Stackwalker::Walker *walker);
+        StatError_t pauseImpl(Proc_t *walker);
 
         //! Resumes a single process
         /*!
             \param walker - the process to resume
             \return STAT_OK on success
         */
-        StatError_t resumeImpl(Dyninst::Stackwalker::Walker *walker);
-#else
-        //! Pauses a single process
-        /*!
-            \param proc - the process to pause
-            \return STAT_OK on success
-        */
-        StatError_t pauseImpl(BPatch_process *proc);
-
-        //! Resumes a single process
-        /*!
-            \param proc - the process to resume
-            \return STAT_OK on success
-        */
-        StatError_t resumeImpl(BPatch_process *proc);
-#endif      
+        StatError_t resumeImpl(Proc_t *walker);
         //! Gathers the specified number of traces from all processes
         /*!
             \param nTraces - the number of traces to gather per process
@@ -288,15 +278,53 @@ class STAT_BackEnd
             \param nRetries - the number of attempts to try to get a complete stack 
                 trace
             \param retryFrequency - the time to wait between retries
-            \param sampleType - the level of detail to gather in the trace
             \param withThreads - whether to gather thread stack traces too
             \param clearOnSample - whether to clear the accumulated traces before
                 sampling
             \param variableSpecification - the specification of variables to extract
             \return STAT_OK on success
         */
-        StatError_t sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification);
+        StatError_t sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification);
+
+        //! Merge the given graph into the 2d and 3d graphs
+        /*!
+          \param currentGraph - The graph to merge
+          \param last_trace - True iff this graph is from of the last iteration of stackwalks
+          \return STAT_OK on success
+        */
+        StatError_t mergeIntoGraphs(graphlib_graph_p currentGraph, bool last_trace);
+
+        //! Create a new graphlib graph containing only the root node
+        /*!
+          \return A new graphlib graph
+        */
+        graphlib_graph_p createRootedGraph();
+
+#warning TODO: Remove below test function
+        void test_printTree(Dyninst::Stackwalker::FrameNode *n, unsigned int width);
+
 #ifdef STACKWALKER
+#if defined SW_VERSION_8_0_0
+        //! Get a stack trace from every process
+        /*!
+            \param[out] retGraph - the return graph
+            \param nRetries - the number of attempts to try to get a complete stack 
+                trace
+            \param retryFrequency - the time to wait between retries
+            \param withThreads - whether to gather thread stack traces too
+            \param extractVariables - a list of variables to extract
+            \param nVariables - the number of variables to extract
+            \return STAT_OK on success
+        */
+        StatError_t getStackTraceFromAll(graphlib_graph_p retGraph,
+                                         unsigned int nRetries, unsigned int retryFrequency,
+                                         unsigned int withThreads);
+
+        void AddFrameToGraph(graphlib_graph_p gl_graph, Dyninst::Stackwalker::CallTree *sw_graph,
+                             graphlib_node_t gl_node, Dyninst::Stackwalker::FrameNode *sw_node,
+                             std::string node_id_names, std::set<int> &output_ranks);
+
+#endif
         //! Get a single stack trace
         /*!
             \param[out] retGraph - the return graph
@@ -305,13 +333,12 @@ class STAT_BackEnd
             \param nRetries - the number of attempts to try to get a complete stack 
                 trace
             \param retryFrequency - the time to wait between retries
-            \param sampleType - the level of detail to gather in the trace
             \param withThreads - whether to gather thread stack traces too
             \param extractVariables - a list of variables to extract
             \param nVariables - the number of variables to extract
             \return STAT_OK on success
         */
-        StatError_t getStackTrace(graphlib_graph_p retGraph, Dyninst::Stackwalker::Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, statVariable_t *extractVariables, int nVariables);
+        StatError_t getStackTrace(graphlib_graph_p retGraph, Dyninst::Stackwalker::Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads);
 
         //! Translates an address into a source file and line number
         /*!
@@ -331,6 +358,22 @@ class STAT_BackEnd
             \param[out] outBuf - the value of the variable
         */
         StatError_t getVariable(std::vector<Dyninst::Stackwalker::Frame> swalk, unsigned int frame, char *variableName, char *outBuf);
+
+        //! Return the STAT name that should be given for a specific frame
+        /*!
+          \param frame - The stack frame to get the name of
+          \param is_final_frame - True iff this frame came from the top of the callstack
+          \return The name to use for this frame
+         */
+        std::string getFrameName(const Dyninst::Stackwalker::Frame &frame, bool is_final_frame);
+        
+        //! Initialize the nodeattr's name field with the given string
+        /*!
+          \param s - The name to use
+          \param nodeattr - The graphlib_nodeaddr_t whose name field we should change
+        */
+        void fillInName(const std::string &s, graphlib_nodeattr_t &nodeattr);
+
 #else
         //! Get a single stack trace
         /*!
@@ -340,13 +383,10 @@ class STAT_BackEnd
             \param nRetries - the number of attempts to try to get a complete stack 
                 trace
             \param retryFrequency - the time to wait between retries
-            \param sampleType - the level of detail to gather in the trace
             \param withThreads - whether to gather thread stack traces too
-            \param extractVariables - a list of variables to extract
-            \param nVariables - the number of variables to extract
             \return STAT_OK on success
         */
-        StatError_t getStackTrace(graphlib_graph_p retGraph, BPatch_process *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, statVariable_t *extractVariables, int nVariables);
+        StatError_t getStackTrace(graphlib_graph_p retGraph, BPatch_process *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads);
 
         //! Translates an address into a source file and line number
         /*!
@@ -439,6 +479,7 @@ class STAT_BackEnd
         bool connected_;                        /*!< whether this daemon has been conected to MRNet */
         bool isRunning_;                        /*!< whether the target processes are running */
         bool useMrnetPrintf_;                   /*!< whether to use MRNet's printf for logging */
+        bool doGroupOps_;                       /*!< Do group operations through StackwalkerAPI */
         MRN::Network *network_;                 /*!< the MRNet Network object */
         MRN::Rank myRank_;                      /*!< this daemon's MRNet rank */
         MRN::Rank parentRank_;                  /*!< the MRNet parent's rank */
@@ -446,16 +487,23 @@ class STAT_BackEnd
         graphlib_graph_p prefixTree3d_;         /*!< the 3D prefix tree */
         graphlib_graph_p prefixTree2d_;         /*!< the 2D prefix tree */
         MPIR_PROCDESC_EXT *proctab_;            /*!< the process table */
-#ifdef STACKWALKER
-        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;  /*!< the debug process objects */
+
+        //These are specific to a sample request
+        unsigned int sampleType;                /*!< type of sample we're currently collecting */
+        statVariable_t *extractVariables;       /*!< a list of variables to extract for the current sample */
+        int nVariables;                         /*!< the number of variables to extract */
+
+        std::map<int, Proc_t *> processMap_;    /*!< the debug process objects */
+        std::map<Proc_t *, int> procsToRanks_;  /*!< Turn a process into a rank */
+
 #ifdef SW_VERSION_8_0_0
         Dyninst::ProcControlAPI::ProcessSet::ptr procset;
         Dyninst::Stackwalker::WalkerSet *walkerset;
 #endif
-#else
+#ifndef STACKWALKER
         BPatch bpatch_;                         /*!< the application bpatch object */
-        std::map<int, BPatch_process*> processMap_; /*!< the debug process objects */
 #endif
+
         MRN::Stream *broadcastStream_;          /*!< the main broadcast/acknowledgement stream */
 #ifdef STAT_FGFS
         FastGlobalFileStat::CommLayer::CommFabric *fgfsCommFabric_;
