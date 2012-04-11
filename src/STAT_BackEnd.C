@@ -902,7 +902,7 @@ StatError_t STAT_BackEnd::Attach()
            proc = Walker::newWalker(proctab_[i].pd.pid, proctab_[i].pd.executable_name);
            if (proc == NULL)
            {
-              printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, getLastErrorMsg());
+              printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, Dyninst::Stackwalker::getLastErrorMsg());
            }
         }
 
@@ -948,7 +948,7 @@ StatError_t STAT_BackEnd::Resume()
     /* Resume all processes */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
 #if defined(GROUP_OPS)
-    if (doGroupOp_) {
+    if (doGroupOps_) {
        procset->continueProcs();
     }
     else
