@@ -304,7 +304,9 @@ class STAT_BackEnd
 
         void AddFrameToGraph(graphlib_graph_p gl_graph, Dyninst::Stackwalker::CallTree *sw_graph,
                              graphlib_node_t gl_node, Dyninst::Stackwalker::FrameNode *sw_node,
-                             std::string node_id_names, std::set<int> &output_ranks);
+                             std::string node_id_names,
+                             std::set<std::pair<Dyninst::Stackwalker::Walker *, Dyninst::THR_ID> > *error_threads,
+                             std::set<int> &output_ranks);
 
 #endif
         //! Get a single stack trace

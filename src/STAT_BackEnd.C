@@ -1741,6 +1741,7 @@ extern void *bitvec_allocate();
 void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph,
                                    graphlib_node_t gl_node, FrameNode *sw_node,
                                    string node_id_names,
+                                   set<pair<Walker *, THR_ID> > *error_threads,
                                    set<int> &output_ranks)
 {
    /* Add the Frame associated with FrameNode to the graphlib graph, below
@@ -1762,10 +1763,20 @@ void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
       if (!frame) {
          //We hit a thread, that means the end of the callstack.
          // Add the associated rank to our edge label set.
+
          THR_ID thrd = child->getThread();
          assert(thrd != NULL_LWP);
          Walker *walker = child->getWalker();
          assert(walker);
+
+         if (error_threads && child->hadError()) {
+            //This stackwalk ended in an error.  Don't add it to the tree,
+            // instead return it via error_threads.  This may lead to 
+            // edges with no associated ranks, those are cleaned below.
+            error_threads->insert(make_pair(walker, thrd));
+            continue;
+         }
+
          map<Walker *, int>::iterator j = procsToRanks_.find(walker);
          assert(j != procsToRanks_.end());
          int rank = j->second;
@@ -1798,9 +1809,18 @@ void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
       for (set<FrameNode *>::iterator j = kids.begin(); j != kids.end(); j++) {
          std::set<int> kids_ranks;
          FrameNode *child = *j;
-         AddFrameToGraph(gl_graph, sw_graph, newchild, child, new_node_id_names, kids_ranks);
+         AddFrameToGraph(gl_graph, sw_graph, newchild, child, new_node_id_names, error_threads, kids_ranks);
          assert(!kids_ranks.empty());
          my_ranks.insert(kids_ranks.begin(), kids_ranks.end());
+      }
+
+      if (my_ranks.empty()) {
+         //This node only had error stackwalks ending below it, thus no ranks.
+         // It doesn't deserve to live.
+         gl_err = graphlib_deleteConnectedNode(gl_graph, newchild);
+         if (GRL_IS_FATALERROR(gl_err))
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to cleanup nodes\n");
+         continue;
       }
       
       //Create the edge between this new node and our parent
@@ -1839,7 +1859,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
    string empty;
    std::set<int> ranks;
    AddFrameToGraph(retGraph, &tree,
-                   0, tree.getHead(), empty, ranks);
+                   0, tree.getHead(), empty, NULL, ranks);
    return STAT_OK;
 }
 #endif
