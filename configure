@@ -16168,7 +16168,7 @@ fi
   { $as_echo "$as_me:$LINENO: checking for libstackwalk" >&5
 $as_echo_n "checking for libstackwalk... " >&6; }
   TMP_LDFLAGS=$LDFLAGS
-  LDFLAGS="$LDFLAGS -lstackwalk -lpcontrol -lparseAPI -lsymtabAPI -lcommon -ldwarf -lelf -liberty -lpthread"
+  LDFLAGS="$LDFLAGS -lstackwalk -lpcontrol -lparseAPI -linstruction -lsymtabAPI -lcommon -ldwarf -lelf -liberty -lpthread"
   cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -16224,7 +16224,7 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
   { $as_echo "$as_me:$LINENO: result: $libstackwalk_found" >&5
 $as_echo "$libstackwalk_found" >&6; }
   if test "$libstackwalk_found" = yes; then
-    BELIBS="-lstackwalk -lpcontrol -lparseAPI -lsymtabAPI -lcommon -liberty $BELIBS"
+    BELIBS="-lstackwalk -lpcontrol -lparseAPI -linstruction -lsymtabAPI -lcommon -liberty $BELIBS"
   else
     { { $as_echo "$as_me:$LINENO: error: libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker" >&5
 $as_echo "$as_me: error: libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker" >&2;}
