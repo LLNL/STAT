@@ -12,6 +12,9 @@
 /* Graphlib 1.6 */
 #undef GRAPHLIB16
 
+/* Graphlib 2.0 */
+#undef GRAPHLIB20
+
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 

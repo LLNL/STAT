@@ -34,9 +34,13 @@ using namespace MRN;
     using namespace FastGlobalFileStat::CommLayer;
 #endif
 
+/* Externals from STAT's graphlib routines */
+extern graphlib_functiontable_p statBitVectorFunctions;
+
 StatError_t statInit(int *argc, char ***argv)
 {
     lmon_rc_e rc;
+    graphlib_error_t graphlibError;
 
     /* Call LaunchMON's Init function */
     rc = LMON_be_init(LMON_VERSION, argc, argv);
@@ -45,6 +49,15 @@ StatError_t statInit(int *argc, char ***argv)
         fprintf(stderr, "Failed to initialize Launchmon\n");
         return STAT_LMON_ERROR;
     }
+
+    graphlibError = graphlib_Init();
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to initialize Graphlib\n");
+        return STAT_GRAPHLIB_ERROR;
+    }
+
+    statInitializeBitVectorFunctions();
 
     return STAT_OK;
 }
@@ -136,19 +149,19 @@ STAT_BackEnd::STAT_BackEnd()
 STAT_BackEnd::~STAT_BackEnd()
 {
     int i;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
 
     /* delete exisitng graphs */
     if (prefixTree3d_ != NULL)
     {
-        gl_err = graphlib_delGraph(prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree3d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
     if (prefixTree2d_ != NULL)
     {
-        gl_err = graphlib_delGraph(prefixTree2d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree2d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
 
@@ -366,7 +379,7 @@ StatError_t STAT_BackEnd::Connect()
 
 StatError_t STAT_BackEnd::mainLoop()
 {
-    int tag = 0, retval, nEqClasses, swNotificationFd, mrnNotificationFd, max_fd;
+    int tag = 0, retval, nEqClasses, swNotificationFd, mrnNotificationFd, max_fd, bitVectorLength;
     unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, sampleType, withThreads, clearOnSample;
 #ifdef GRAPHLIB16
     unsigned long obyteArrayLen;
@@ -378,7 +391,7 @@ StatError_t STAT_BackEnd::mainLoop()
     fd_set readfds, writefds, exceptfds;
     PacketPtr packet;
     StatError_t statError;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Beginning to execute main loop\n");
 
@@ -575,8 +588,8 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Serialize 2D graph */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Serializing 2D graph\n");
-                gl_err = graphlib_serializeGraph(prefixTree2d_, &obyteArray, &obyteArrayLen);
-                if (GRL_IS_FATALERROR(gl_err))
+                graphlibError = graphlib_serializeGraph(prefixTree2d_, &obyteArray, &obyteArrayLen);
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 3D prefix tree\n");
                     return STAT_GRAPHLIB_ERROR;
@@ -584,10 +597,11 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Send */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending graphs to FE\n");
+                bitVectorLength = statBitVectorLength(proctabSize_);
 #ifdef MRNET40
-                if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%Ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+                if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%Ac %d %d", obyteArray, obyteArrayLen, bitVectorLength, myRank_) == -1)
 #else
-                if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+                if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%ac %d %d", obyteArray, obyteArrayLen, bitVectorLength, myRank_) == -1)
 #endif
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send() failure\n");
@@ -614,8 +628,8 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Serialize 3D graph */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Serializing 3D graph\n");
-                gl_err = graphlib_serializeGraph(prefixTree3d_, &obyteArray, &obyteArrayLen);
-                if (GRL_IS_FATALERROR(gl_err))
+                graphlibError = graphlib_serializeGraph(prefixTree3d_, &obyteArray, &obyteArrayLen);
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 3D prefix tree\n");
                     return STAT_GRAPHLIB_ERROR;
@@ -1251,7 +1265,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     unsigned int i;
     bool wasRunning = isRunning_;
     graphlib_graph_p currentGraph = NULL;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
     StatError_t ret;
     statVariable_t *extractVariables = NULL;
 #ifdef STACKWALKER
@@ -1300,28 +1314,19 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     }
 #endif
 
-    /* Initialize graphlib if we haven't already done so */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Initializing graphlib with process table size = %d\n", proctabSize_);
-    gl_err = graphlib_InitVarEdgeLabels(proctabSize_);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
     /* Delete previously merged graphs */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deleting any previously mereged trees\n");
     if (prefixTree3d_ != NULL && clearOnSample == 1)
     {
-        gl_err = graphlib_delGraph(prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree3d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
         prefixTree3d_ = NULL;
     }
     if (prefixTree2d_ != NULL)
     {
-        gl_err = graphlib_delGraph(prefixTree2d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree2d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
 
@@ -1329,15 +1334,15 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating graphs\n");
     if (prefixTree3d_ == NULL)
     {
-        gl_err = graphlib_newGraph(&prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_newGraph(&prefixTree3d_, statBitVectorFunctions);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 3D graph\n");
             return STAT_GRAPHLIB_ERROR;
         }
     }
-    gl_err = graphlib_newGraph(&prefixTree2d_);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_newGraph(&prefixTree2d_, statBitVectorFunctions);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 2D graph\n");
         return STAT_GRAPHLIB_ERROR;
@@ -1386,8 +1391,8 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
             j++;
 
             /* Create return graph */
-            gl_err = graphlib_newGraph(&currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
+            graphlibError = graphlib_newGraph(&currentGraph, statBitVectorFunctions);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
                 return STAT_GRAPHLIB_ERROR;
@@ -1402,16 +1407,16 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
             }
 
             /* Merge cur graph into retGraph */
-            gl_err = graphlib_mergeGraphsRanked(prefixTree3d_, currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
+            graphlibError = graphlib_mergeGraphs(prefixTree3d_, currentGraph);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
                 return STAT_GRAPHLIB_ERROR;
             }
             if (i == nTraces - 1)
             {
-                gl_err = graphlib_mergeGraphsRanked(prefixTree2d_, currentGraph);
-                if (GRL_IS_FATALERROR(gl_err))
+                graphlibError = graphlib_mergeGraphs(prefixTree2d_, currentGraph);
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
                     return STAT_GRAPHLIB_ERROR;
@@ -1419,8 +1424,8 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
             }
 
             /* Free up current graph */
-            gl_err = graphlib_delGraph(currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
+            graphlibError = graphlib_delGraph(currentGraph);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
                 return STAT_GRAPHLIB_ERROR;
@@ -1448,26 +1453,32 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
     string name, path, tester;
     vector<Frame> swalk, partial;
     vector<string> trace;
-    graphlib_error_t gl_err;
-#ifdef GRL_DYNAMIC_NODE_NAME
+    graphlib_error_t graphlibError;
     graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-#else
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,"",-1};
-#endif
     graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
     graphlib_graph_p currentGraph = NULL;
+    StatBitVectorEdge_t *edge;
     vector<Dyninst::THR_ID> threads;
     ProcDebug *processState = NULL;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d\n", rank);
 
     /* Set edge label */
-    gl_err = graphlib_setEdgeByTask(&edgeattr.edgelist, rank);
-    if (GRL_IS_FATALERROR(gl_err))
+    edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+    if (edge == NULL)
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to set edge by rank\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
         return STAT_GRAPHLIB_ERROR;
     }
+    edge->length = statBitVectorLength(proctabSize_);
+    edge->bitVector = (int64_t *)calloc(edge->length, STAT_BITVECTOR_BITS);
+    if (edge->bitVector == NULL)
+    {
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+        return STAT_GRAPHLIB_ERROR;
+    }
+    edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
+    edgeattr.label = (void *)edge;
 
     /* If we're not attached return a trace denoting the task has exited */
     if (proc == NULL)
@@ -1505,8 +1516,8 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from thread %d of %d\n", j, threads.size());
 
         /* Create current working graph */
-        gl_err = graphlib_newGraph(&currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_newGraph(&currentGraph, statBitVectorFunctions);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
             return STAT_GRAPHLIB_ERROR;
@@ -1514,16 +1525,10 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
 
         /* Create graph root */
         path = "";
-#ifdef GRL_DYNAMIC_NODE_NAME
-        nodeattr.name = strdup("/");
-#else
-        snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "/");
-#endif
-        gl_err = graphlib_addNode(currentGraph, 0, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-        free(nodeattr.name);
-#endif
-        if (GRL_IS_FATALERROR(gl_err))
+        nodeattr.label = strdup("/");
+        graphlibError = graphlib_addNode(currentGraph, 0, &nodeattr);
+        free(nodeattr.label);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
             return STAT_GRAPHLIB_ERROR;
@@ -1700,27 +1705,16 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
             /* Add the node and edge to the graph */
             path += trace[i].c_str();
             nodeId = string_hash(path.c_str());
-#ifdef GRL_DYNAMIC_NODE_NAME
-            nodeattr.name = strdup(trace[i].c_str());
-#else
-            if (trace[i].length() >= GRL_MAX_NAME_LENGTH)
-            {
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "...%s", trace[i].substr(trace[i].length() - GRL_MAX_NAME_LENGTH + 4, GRL_MAX_NAME_LENGTH - 2).c_str());
-            }
-            else
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "%s", trace[i].c_str());
-#endif
-            gl_err = graphlib_addNode(currentGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-            free(nodeattr.name);
-#endif
-            if (GRL_IS_FATALERROR(gl_err))
+            nodeattr.label = strdup(trace[i].c_str());
+            graphlibError = graphlib_addNode(currentGraph, nodeId, &nodeattr);
+            free(nodeattr.label);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
                 return STAT_GRAPHLIB_ERROR;
             }
-            gl_err = graphlib_addDirectedEdge(currentGraph, prevId, nodeId, &edgeattr);
-            if (GRL_IS_FATALERROR(gl_err))
+            graphlibError = graphlib_addDirectedEdge(currentGraph, prevId, nodeId, &edgeattr);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
                 return STAT_GRAPHLIB_ERROR;
@@ -1729,16 +1723,16 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
         }
 
         /* Merge cur graph into retGraph */
-        gl_err = graphlib_mergeGraphsRanked(retGraph, currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_mergeGraphs(retGraph, currentGraph);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
             return STAT_GRAPHLIB_ERROR;
         }
 
         /* Free up current graph */
-        gl_err = graphlib_delGraph(currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(currentGraph);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
             return STAT_GRAPHLIB_ERROR;
@@ -1746,8 +1740,8 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
 
     } /* for thread iter */
 
-    gl_err = graphlib_delEdgeAttr(edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_delEdgeAttr(edgeattr, statFreeEdge);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
         return STAT_GRAPHLIB_ERROR;
@@ -1760,325 +1754,304 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
 #else
 StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, BPatch_process *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, statVariable_t *extractVariables, int nVariables)
 {
-    int nodeId, prevId, i, partialVal, lineNum, pos;
-    bool ret = false;
-    unsigned int j, k;
-    char buf[BUFSIZE], fileName[BUFSIZE], functionName[BUFSIZE], *returnAddress;
-    string path, name, tester;
-    graphlib_error_t gl_err;
-#ifdef GRL_DYNAMIC_NODE_NAME
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-#else
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,"",-1};
-#endif
-    graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
-    graphlib_graph_p currentGraph = NULL;
-    BPatch_function *func;
-    BPatch_Vector <BPatch_frame> swalk, partial;
-    BPatch_Vector <BPatch_thread *> threads, *allThreads;
-    vector<string> trace;
-    StatError_t statError;
-
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d\n", rank);
-
-    /* Set the edge label */
-    gl_err = graphlib_setEdgeByTask(&edgeattr.edgelist, rank);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to set edge by rank\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
-    /* If we're not attached return a trace denoting the task has exited */
-    if (proc == NULL)
-        threads.push_back(NULL);
-    else
-    {
-        /* If the task has terminated return a trace denoting the task has exited */
-        if (proc->isTerminated())
-            threads.push_back(NULL);
-        else
-        {
-            /* Get DynInst BPatch threads */
-            allThreads = bpatch_.getThreads();
-            for (j = 0; j < allThreads->size(); j++)
-            {
-//                if (withThreads == 0)
+//    int nodeId, prevId, i, partialVal, lineNum, pos;
+//    bool ret = false;
+//    unsigned int j, k;
+//    char buf[BUFSIZE], fileName[BUFSIZE], functionName[BUFSIZE], *returnAddress;
+//    string path, name, tester;
+//    graphlib_error_t graphlibError;
+//    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
+//    graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
+//    graphlib_graph_p currentGraph = NULL;
+//    BPatch_function *func;
+//    BPatch_Vector <BPatch_frame> swalk, partial;
+//    BPatch_Vector <BPatch_thread *> threads, *allThreads;
+//    vector<string> trace;
+//    StatError_t statError;
+//
+//    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d\n", rank);
+//
+//    /* Set the edge label */
+//    graphlibError = graphlib_setEdgeByTask(&edgeattr.edgelist, rank);
+//    if (GRL_IS_FATALERROR(graphlibError))
+//    {
+//        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to set edge by rank\n");
+//        return STAT_GRAPHLIB_ERROR;
+//    }
+//
+//    /* If we're not attached return a trace denoting the task has exited */
+//    if (proc == NULL)
+//        threads.push_back(NULL);
+//    else
+//    {
+//        /* If the task has terminated return a trace denoting the task has exited */
+//        if (proc->isTerminated())
+//            threads.push_back(NULL);
+//        else
+//        {
+//            /* Get DynInst BPatch threads */
+//            allThreads = bpatch_.getThreads();
+//            for (j = 0; j < allThreads->size(); j++)
+//            {
+////                if (withThreads == 0)
+////                {
+//                    if ((*allThreads)[j]->getProcess() == proc)
+//                    {
+//                        threads.push_back((*allThreads)[j]);
+//                        break;
+//                    }
+////                }
+////                else
+////                    threads.push_back((*allThreads)[j]);
+//            }
+//        }
+//    }
+//
+//    /* Loop over the threads and get the traces */
+//    for (j = 0; j < threads.size(); j++)
+//    {
+//        /* Initialize loop iteration specific variables */
+//        trace.clear();
+//        prevId = 0;
+//        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from thread %d of %d\n", j, threads.size());
+//
+//        /* Create current working graph */
+//        graphlibError = graphlib_newGraph(&currentGraph);
+//        if (GRL_IS_FATALERROR(graphlibError))
+//        {
+//            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
+//            return STAT_GRAPHLIB_ERROR;
+//        }
+//
+//        /* Create graph root */
+//        path = "";
+//        nodeattr.label = strdup("/");
+//        graphlibError = graphlib_addNode(currentGraph, 0, &nodeattr);
+//        if (GRL_IS_FATALERROR(graphlibError))
+//        {
+//            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
+//            return STAT_GRAPHLIB_ERROR;
+//        }
+//        free(nodeattr.label);
+//
+//        if (threads[j] == NULL)
+//            trace.push_back("[task_exited]");
+//        else
+//        {
+//            /* Get the stack trace */
+//            partialVal = 0;
+//            for (i = 0; i <= nRetries; i++)
+//            {
+//                swalk.clear();
+//                ret = threads[j]->getCallStack(swalk);
+//                if (ret == false && swalk.size() < 1)
 //                {
-                    if ((*allThreads)[j]->getProcess() == proc)
-                    {
-                        threads.push_back((*allThreads)[j]);
-                        break;
-                    }
+//                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d\n", i, nRetries, j);
+//                    if (i < nRetries)
+//                    {
+//                        if (isRunning_ == false)
+//                            resumeImpl(proc);
+//                        usleep(retryFrequency);
+//                        if (isRunning_ == false)
+//                            pauseImpl(proc);
+//                    }
+//                    continue;
 //                }
-//                else
-//                    threads.push_back((*allThreads)[j]);
-            }
-        }
-    }
-
-    /* Loop over the threads and get the traces */
-    for (j = 0; j < threads.size(); j++)
-    {
-        /* Initialize loop iteration specific variables */
-        trace.clear();
-        prevId = 0;
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from thread %d of %d\n", j, threads.size());
-
-        /* Create current working graph */
-        gl_err = graphlib_newGraph(&currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        /* Create graph root */
-        path = "";
-#ifdef GRL_DYNAMIC_NODE_NAME
-        nodeattr.name = strdup("/");
-#else
-        snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "/");
-#endif
-        gl_err = graphlib_addNode(currentGraph, 0, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-        free(nodeattr.name);
-#endif
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        if (threads[j] == NULL)
-            trace.push_back("[task_exited]");
-        else
-        {
-            /* Get the stack trace */
-            partialVal = 0;
-            for (i = 0; i <= nRetries; i++)
-            {
-                swalk.clear();
-                ret = threads[j]->getCallStack(swalk);
-                if (ret == false && swalk.size() < 1)
-                {
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d\n", i, nRetries, j);
-                    if (i < nRetries)
-                    {
-                        if (isRunning_ == false)
-                            resumeImpl(proc);
-                        usleep(retryFrequency);
-                        if (isRunning_ == false)
-                            pauseImpl(proc);
-                    }
-                    continue;
-                }
-
-                /* Get the name of the top frame */
-                func = swalk[swalk.size() - 1].findFunction();
-                if (func == NULL)
-                {
-                    if (partialVal < 1)
-                    {
-                        /* This is the best trace so far */
-                        partialVal = 1;
-                        partial = swalk;
-                    }
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY: top of stack = unknown frame on attempt %d of %d\n", i, nRetries);
-                    if (i < nRetries)
-                    {
-                        if (isRunning_ == false)
-                            resumeImpl(proc);
-                        usleep(retryFrequency);
-                        if (isRunning_ == false)
-                            pauseImpl(proc);
-                    }
-                    continue;
-                }
-                func->getName(functionName, BUFSIZE);
-                name = functionName;
-
-                /* Make sure the top frame contains the string "start" (for main thread only) */
-                if (name.find("start", 0) == string::npos && j == 0)
-                {
-                    if (partialVal < 2)
-                    {
-                        /* This is the best trace so far */
-                        partialVal = 2;
-                        partial = swalk;
-                    }
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY: top of stack '%s' not start on attempt %d of %d\n", name.c_str(), i, nRetries);
-                    if (i < nRetries)
-                    {
-                        if (isRunning_ == false)
-                            resumeImpl(proc);
-                        usleep(retryFrequency);
-                        if (isRunning_ == false)
-                            pauseImpl(proc);
-                    }
-                    continue;
-                }
-
-                /* The trace looks good so we'll use this one */
-                partial = swalk;
-                break;
-            }
-
-            /* Check to see if we got a complete stack trace */
-            if (i > nRetries && partialVal < 1)
-            {
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "DynInst reported an error in walking the stack\n");
-                trace.push_back("StackWalker_Error");
-            }
-            else
-            {
-                for (i = partial.size() - 1; i >= 0; i--)
-                {
-                    /* Get the frame */
-                    func = partial[i].findFunction();
-        
-                    /* Get the frame name */
-                    if (func == NULL)
-                        name = "[unknown]";
-                    else
-                    {
-                        func->getName(functionName, BUFSIZE);
-                        name = functionName;
-                    }
-                    if (name == "")
-                        name = "[empty]";
-        
-                    if (sampleType == STAT_FUNCTION_AND_PC)
-                    {
-                        returnAddress = (char *)partial[i].getPC();
-                        if (i == 0)
-                            snprintf(buf, BUFSIZE, "@%p", returnAddress);
-                        else
-                        {
-                            returnAddress = returnAddress - 1;
-                            snprintf(buf, BUFSIZE, "@%p", returnAddress);
-                        }
-                        name += buf;
-                    }
-                    else if (sampleType == STAT_FUNCTION_AND_LINE)
-                    {
-                        returnAddress = (char *)partial[i].getPC();
-                        if (i != 0)
-                            returnAddress = returnAddress - 1;
-                        statError = getSourceLine(func, (unsigned long)returnAddress, fileName, &lineNum);
-                        if (statError != STAT_OK)
-                        {
-                            printMsg(statError, __FILE__, __LINE__, "Failed to get source line information for %s\n", name.c_str());
-                            continue;
-                        }
-                        name += "@";
-                        name += fileName;
-                        if (lineNum != 0)
-                        {
-                            snprintf(buf, BUFSIZE, ":%d", lineNum);
-                            name += buf;
-                        }        
-                        if (extractVariables != NULL)
-                        {
-                            for (k = 0; k < nVariables; k++)
-                            {
-                                if (strcmp(fileName, extractVariables[k].fileName) == 0 && lineNum == extractVariables[k].lineNum && partial.size() - i + 1 == extractVariables[k].depth)
-                                {
-                                    statError = getVariable(proc, functionName, extractVariables[k].variableName, buf);
-                                    if (statError != STAT_OK)
-                                    {
-                                        printMsg(statError, __FILE__, __LINE__, "Failed to get variable information for $%s in %s\n", extractVariables[k].variableName, name.c_str());
-                                        continue;
-                                    }
-                                    name += buf;
-                                }
-                            }
-                        }
-                    }
-                    trace.push_back(name);
-                } // for i = partial.size()
-            } // else (got a usable stack)
-        } //else threads[j] != NULL
-
-        /* Get the name of the frames and add it to the graph */
-        for (i = 0; i < trace.size(); i++)
-        {
-            /* Add \ character before '<' and '>' characters for dot format */
-            tester = trace[i];
-            pos = -2;
-            while (1)
-            {
-                pos = trace[i].find('<', pos + 2);
-                if (pos == string::npos)
-                    break;
-                trace[i].insert(pos, "\\");    
-            }
-            pos = -2;
-            while (1)
-            {
-                pos = trace[i].find('>', pos + 2);
-                if (pos == string::npos)
-                    break;
-                trace[i].insert(pos, "\\");    
-            }
-
-            /* Add the node and edge to the graph */
-            path += trace[i].c_str();
-            nodeId = string_hash(path.c_str());
-#ifdef GRL_DYNAMIC_NODE_NAME
-            nodeattr.name = strdup(trace[i].c_str());
-#else
-            if (trace[i].length() >= GRL_MAX_NAME_LENGTH)
-            {
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "...%s", trace[i].substr(trace[i].length() - GRL_MAX_NAME_LENGTH + 4, GRL_MAX_NAME_LENGTH - 2).c_str());
-            }
-            else
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "%s", trace[i].c_str());
-#endif
-            gl_err = graphlib_addNode(currentGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-            free(nodeattr.name);
-#endif
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-            gl_err = graphlib_addDirectedEdge(currentGraph, prevId, nodeId, &edgeattr);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-            prevId = nodeId;
-        }
-
-        /* Merge cur graph into retGraph */
-        gl_err = graphlib_mergeGraphsRanked(retGraph, currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        /* Free up current graph */
-        gl_err = graphlib_delGraph(currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-    } /* thread iteration */
-    gl_err = graphlib_delEdgeAttr(edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Trace successfully gathered from task rank %d\n", rank);
-    return STAT_OK;
+//
+//                /* Get the name of the top frame */
+//                func = swalk[swalk.size() - 1].findFunction();
+//                if (func == NULL)
+//                {
+//                    if (partialVal < 1)
+//                    {
+//                        /* This is the best trace so far */
+//                        partialVal = 1;
+//                        partial = swalk;
+//                    }
+//                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY: top of stack = unknown frame on attempt %d of %d\n", i, nRetries);
+//                    if (i < nRetries)
+//                    {
+//                        if (isRunning_ == false)
+//                            resumeImpl(proc);
+//                        usleep(retryFrequency);
+//                        if (isRunning_ == false)
+//                            pauseImpl(proc);
+//                    }
+//                    continue;
+//                }
+//                func->getName(functionName, BUFSIZE);
+//                name = functionName;
+//
+//                /* Make sure the top frame contains the string "start" (for main thread only) */
+//                if (name.find("start", 0) == string::npos && j == 0)
+//                {
+//                    if (partialVal < 2)
+//                    {
+//                        /* This is the best trace so far */
+//                        partialVal = 2;
+//                        partial = swalk;
+//                    }
+//                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY: top of stack '%s' not start on attempt %d of %d\n", name.c_str(), i, nRetries);
+//                    if (i < nRetries)
+//                    {
+//                        if (isRunning_ == false)
+//                            resumeImpl(proc);
+//                        usleep(retryFrequency);
+//                        if (isRunning_ == false)
+//                            pauseImpl(proc);
+//                    }
+//                    continue;
+//                }
+//
+//                /* The trace looks good so we'll use this one */
+//                partial = swalk;
+//                break;
+//            }
+//
+//            /* Check to see if we got a complete stack trace */
+//            if (i > nRetries && partialVal < 1)
+//            {
+//                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "DynInst reported an error in walking the stack\n");
+//                trace.push_back("StackWalker_Error");
+//            }
+//            else
+//            {
+//                for (i = partial.size() - 1; i >= 0; i--)
+//                {
+//                    /* Get the frame */
+//                    func = partial[i].findFunction();
+//        
+//                    /* Get the frame name */
+//                    if (func == NULL)
+//                        name = "[unknown]";
+//                    else
+//                    {
+//                        func->getName(functionName, BUFSIZE);
+//                        name = functionName;
+//                    }
+//                    if (name == "")
+//                        name = "[empty]";
+//        
+//                    if (sampleType == STAT_FUNCTION_AND_PC)
+//                    {
+//                        returnAddress = (char *)partial[i].getPC();
+//                        if (i == 0)
+//                            snprintf(buf, BUFSIZE, "@%p", returnAddress);
+//                        else
+//                        {
+//                            returnAddress = returnAddress - 1;
+//                            snprintf(buf, BUFSIZE, "@%p", returnAddress);
+//                        }
+//                        name += buf;
+//                    }
+//                    else if (sampleType == STAT_FUNCTION_AND_LINE)
+//                    {
+//                        returnAddress = (char *)partial[i].getPC();
+//                        if (i != 0)
+//                            returnAddress = returnAddress - 1;
+//                        statError = getSourceLine(func, (unsigned long)returnAddress, fileName, &lineNum);
+//                        if (statError != STAT_OK)
+//                        {
+//                            printMsg(statError, __FILE__, __LINE__, "Failed to get source line information for %s\n", name.c_str());
+//                            continue;
+//                        }
+//                        name += "@";
+//                        name += fileName;
+//                        if (lineNum != 0)
+//                        {
+//                            snprintf(buf, BUFSIZE, ":%d", lineNum);
+//                            name += buf;
+//                        }        
+//                        if (extractVariables != NULL)
+//                        {
+//                            for (k = 0; k < nVariables; k++)
+//                            {
+//                                if (strcmp(fileName, extractVariables[k].fileName) == 0 && lineNum == extractVariables[k].lineNum && partial.size() - i + 1 == extractVariables[k].depth)
+//                                {
+//                                    statError = getVariable(proc, functionName, extractVariables[k].variableName, buf);
+//                                    if (statError != STAT_OK)
+//                                    {
+//                                        printMsg(statError, __FILE__, __LINE__, "Failed to get variable information for $%s in %s\n", extractVariables[k].variableName, name.c_str());
+//                                        continue;
+//                                    }
+//                                    name += buf;
+//                                }
+//                            }
+//                        }
+//                    }
+//                    trace.push_back(name);
+//                } // for i = partial.size()
+//            } // else (got a usable stack)
+//        } //else threads[j] != NULL
+//
+//        /* Get the name of the frames and add it to the graph */
+//        for (i = 0; i < trace.size(); i++)
+//        {
+//            /* Add \ character before '<' and '>' characters for dot format */
+//            tester = trace[i];
+//            pos = -2;
+//            while (1)
+//            {
+//                pos = trace[i].find('<', pos + 2);
+//                if (pos == string::npos)
+//                    break;
+//                trace[i].insert(pos, "\\");    
+//            }
+//            pos = -2;
+//            while (1)
+//            {
+//                pos = trace[i].find('>', pos + 2);
+//                if (pos == string::npos)
+//                    break;
+//                trace[i].insert(pos, "\\");    
+//            }
+//
+//            /* Add the node and edge to the graph */
+//            path += trace[i].c_str();
+//            nodeId = string_hash(path.c_str());
+//            nodeattr.label = strdup(trace[i].c_str());
+//            graphlibError = graphlib_addNode(currentGraph, nodeId, &nodeattr);
+//            if (GRL_IS_FATALERROR(graphlibError))
+//            {
+//                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
+//                return STAT_GRAPHLIB_ERROR;
+//            }
+//            free(nodeattr.label);
+//            graphlibError = graphlib_addDirectedEdge(currentGraph, prevId, nodeId, &edgeattr);
+//            if (GRL_IS_FATALERROR(graphlibError))
+//            {
+//                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
+//                return STAT_GRAPHLIB_ERROR;
+//            }
+//            prevId = nodeId;
+//        }
+//
+//        /* Merge cur graph into retGraph */
+//        graphlibError = graphlib_mergeGraphsRanked(retGraph, currentGraph);
+//        if (GRL_IS_FATALERROR(graphlibError))
+//        {
+//            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
+//            return STAT_GRAPHLIB_ERROR;
+//        }
+//
+//        /* Free up current graph */
+//        graphlibError = graphlib_delGraph(currentGraph);
+//        if (GRL_IS_FATALERROR(graphlibError))
+//        {
+//            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
+//            return STAT_GRAPHLIB_ERROR;
+//        }
+//
+//    } /* thread iteration */
+//    graphlibError = graphlib_delEdgeAttr(edgeattr);
+//    if (GRL_IS_FATALERROR(graphlibError))
+//    {
+//        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
+//        return STAT_GRAPHLIB_ERROR;
+//    }
+//
+//    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Trace successfully gathered from task rank %d\n", rank);
+//    return STAT_OK;
 }
 #endif
 
@@ -2569,7 +2542,7 @@ StatError_t STAT_BackEnd::statBenchConnect()
 StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses)
 {
     graphlib_graph_p currentGraph;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
     unsigned int i, j;
     static int init = 0;
 
@@ -2585,37 +2558,37 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             proctab_[i].pd.host_name = NULL;
         }
         init++;
-        gl_err = graphlib_InitVarEdgeLabels(nTasks);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
+//        graphlibError = graphlib_InitVarEdgeLabels(nTasks);
+//        if (GRL_IS_FATALERROR(graphlibError))
+//        {
+//            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
+//            return STAT_GRAPHLIB_ERROR;
+//        }
     }
 
     /* Delete previously merged graphs */
     if (prefixTree3d_ != NULL)
     {
-        gl_err = graphlib_delGraph(prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree3d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
     if (prefixTree2d_ != NULL)
     {
-        gl_err = graphlib_delGraph(prefixTree2d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree2d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
 
     /* Create graphs */
-    gl_err = graphlib_newGraph(&prefixTree3d_);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_newGraph(&prefixTree3d_, statBitVectorFunctions);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 3D graph\n");
         return STAT_GRAPHLIB_ERROR;
     }
-    gl_err = graphlib_newGraph(&prefixTree2d_);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_newGraph(&prefixTree2d_, statBitVectorFunctions);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 2D graph\n");
         return STAT_GRAPHLIB_ERROR;
@@ -2636,8 +2609,8 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             }
 
             /* Merge cur graph into retGraph */
-            gl_err = graphlib_mergeGraphsRanked(prefixTree3d_, currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
+            graphlibError = graphlib_mergeGraphs(prefixTree3d_, currentGraph);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
                 return STAT_GRAPHLIB_ERROR;
@@ -2646,8 +2619,8 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             /* Merge the current graph for 2D analysis */
             if (i == 0)
             {
-                gl_err = graphlib_mergeGraphsRanked(prefixTree2d_, currentGraph);
-                if (GRL_IS_FATALERROR(gl_err))
+                graphlibError = graphlib_mergeGraphs(prefixTree2d_, currentGraph);
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
                     return STAT_GRAPHLIB_ERROR;
@@ -2657,8 +2630,8 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             /* Free up the temporary graph if it's not being stored as an eq class */
             if (nEqClasses == -1)
             {
-                gl_err = graphlib_delGraph(currentGraph);
-                if (GRL_IS_FATALERROR(gl_err))
+                graphlibError = graphlib_delGraph(currentGraph);
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
                     return STAT_GRAPHLIB_ERROR;
@@ -2677,21 +2650,27 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     static vector<graphlib_graph_p> generated_graphs;
     string path;
     graphlib_graph_p retGraph;
-    graphlib_error_t gl_err;
-#ifdef GRL_DYNAMIC_NODE_NAME
+    graphlib_error_t graphlibError;
     graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-#else
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,"",-1};
-#endif
     graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
+    StatBitVectorEdge_t *edge;
 
     /* set the edge label */
-    gl_err = graphlib_setEdgeByTask(&edgeattr.edgelist, task);
-    if (GRL_IS_FATALERROR(gl_err))
+    edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+    if (edge == NULL)
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o set edge by task\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
         return NULL;
     }
+    edge->length = statBitVectorLength(proctabSize_);
+    edge->bitVector = (int64_t *)calloc(edge->length, STAT_BITVECTOR_BITS);
+    if (edge->bitVector == NULL)
+    {
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+        return NULL;
+    }
+    edge->bitVector[task / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(task % STAT_BITVECTOR_BITS);
+    edgeattr.label = (void *)edge;
 
     /* See if we've already generated a graph for this equivalence class and iteration */
     if (task == 0 && nEqClasses != -1)
@@ -2699,8 +2678,8 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
         for (i = 0; i < generated_graphs.size(); i++)
         {
             /* Free up the graph previously cached graphs */
-            gl_err = graphlib_delGraph(generated_graphs[i]);
-            if (GRL_IS_FATALERROR(gl_err))
+            graphlibError = graphlib_delGraph(generated_graphs[i]);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
                 return NULL;
@@ -2713,9 +2692,10 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
         if (generated_graphs.size() > task % nEqClasses)
         {
             /* modify the edges with the proper rank */
-            graphlib_modifyEdgeAttr(generated_graphs[task % nEqClasses], &edgeattr);
-            gl_err = graphlib_delEdgeAttr(edgeattr);
-            if (GRL_IS_FATALERROR(gl_err))
+            //TODO: if we have eq classes, we should generate the appropriate bit vector with grpahlib 2.0 instead of this
+            //graphlib_modifyEdgeAttr(generated_graphs[task % nEqClasses], &edgeattr);
+            graphlibError = graphlib_delEdgeAttr(edgeattr, statFreeEdge);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
                 return NULL;
@@ -2725,26 +2705,20 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     }
 
     /* create return graph */
-    gl_err = graphlib_newGraph(&retGraph);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_newGraph(&retGraph, statBitVectorFunctions);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
         return NULL;
     }
 
     /* Create graph root */
-#ifdef GRL_DYNAMIC_NODE_NAME
-    nodeattr.name = strdup("/");
-#else
-    sprintf(nodeattr.name, "/");
-#endif
-    path = nodeattr.name;
+    nodeattr.label = strdup("/");
+    path = (char *)nodeattr.label;
     nodeId = 0;
-    gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-    free(nodeattr.name);
-#endif
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_addNode(retGraph, nodeId, &nodeattr);
+    free(nodeattr.label);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
         return NULL;
@@ -2752,24 +2726,18 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     prevId = nodeId;
 
     /* Create artificial libc_start_main */
-#ifdef GRL_DYNAMIC_NODE_NAME
-    nodeattr.name = strdup("__libc_start_main");
-#else
-    sprintf(nodeattr.name, "__libc_start_main");
-#endif
-    path += nodeattr.name;
+    nodeattr.label = strdup("__libc_start_main");
+    path += (char *)nodeattr.label;
     nodeId = string_hash(path.c_str());
-    gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-    free(nodeattr.name);
-#endif
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_addNode(retGraph, nodeId, &nodeattr);
+    free(nodeattr.label);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
         return NULL;
     }
-    gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
         return NULL;
@@ -2777,24 +2745,18 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     prevId = nodeId;
 
     /* Create artificial main */
-#ifdef GRL_DYNAMIC_NODE_NAME
-    nodeattr.name = strdup("main");
-#else
-    sprintf(nodeattr.name, "main");
-#endif
-    path += nodeattr.name;
+    nodeattr.label = strdup("main");
+    path += (char *)nodeattr.label;
     nodeId = string_hash(path.c_str());
-    gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-    free(nodeattr.name);
-#endif
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_addNode(retGraph, nodeId, &nodeattr);
+    free(nodeattr.label);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
         return NULL;
     }
-    gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
         return NULL;
@@ -2811,33 +2773,27 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     depth = rand() % maxDepth;
     for (i = 0; i < depth; i++)
     {
-#ifdef GRL_DYNAMIC_NODE_NAME
         snprintf(temp, 8192, "depth%dfun%d", i, rand() % functionFanout);
-        nodeattr.name = strdup(temp);
-#else
-        sprintf(nodeattr.name, "depth%dfun%d", i, rand() % functionFanout);
-#endif
-        path += nodeattr.name;
+        nodeattr.label = strdup(temp);
+        path += (char *)nodeattr.label;
         nodeId = string_hash(path.c_str());
-        gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-        free(nodeattr.name);
-#endif
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_addNode(retGraph, nodeId, &nodeattr);
+        free(nodeattr.label);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
             return NULL;
         }
-        gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
             return NULL;
         }
         prevId = nodeId;
     }
-    gl_err = graphlib_delEdgeAttr(edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_delEdgeAttr(edgeattr, statFreeEdge);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
         return NULL;

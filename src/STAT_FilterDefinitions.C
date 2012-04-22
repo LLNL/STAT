@@ -27,6 +27,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "config.h"
 #include "mrnet/Packet.h"
 #include "graphlib.h"
+#include "STAT_GraphRoutines.h"
 #include "STAT.h"
 #include <sys/stat.h>
 
@@ -34,6 +35,14 @@ using namespace MRN;
 using namespace std;
 
 extern "C" {
+
+/* Externals from STAT's graphlib routines */
+extern graphlib_functiontable_p statMergeFunctions;
+extern int statGraphRoutinesTotalWidth;
+extern int *statGraphRoutinesEdgeLabelWidths;
+extern int statGraphRoutinesCurrentIndex;
+extern int *statGraphRoutinesRanksList;
+extern int statGraphRoutinesRanksListLength;
 
 //! The MRNet format string for the STAT filter
 #ifdef MRNET40
@@ -243,7 +252,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
        tries to send it.  They are safe to free up on the next invocation of 
        this filter function */
     static char *outputByteArray;
-    static int totalWidth;
+    int totalWidth = 0;
     int nChildren, *edgeLabelWidths, rank, inputRank, outputRank, child;
 #ifdef GRAPHLIB16
     unsigned long outputByteArrayLen;
@@ -257,7 +266,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
     map<int, int>::iterator iter;
     DataType type;
     graphlib_graph_p returnGraph = NULL, currentGraph = NULL;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
     PacketPtr currentPacket;
 
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
@@ -297,19 +306,20 @@ void statMerge(vector<PacketPtr> &inputPackets,
     {
         currentPacket = inputPackets[iter->second];
         edgeLabelWidths[i] = (*currentPacket)[1]->get_int32_t();
+        totalWidth += edgeLabelWidths[i];
         i++;
     }
-    gl_err = graphlib_InitVarEdgeLabelsConn(nChildren, edgeLabelWidths, &totalWidth);
-    free(edgeLabelWidths);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_Init();
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
         return;
     }
+    statInitializeMergeFunctions();
 
     /* Initialize the result graphs */
-    gl_err = graphlib_newGraph(&returnGraph);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_newGraph(&returnGraph, statMergeFunctions);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__,"Failed to create new graph\n");
         return;
@@ -323,8 +333,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
         child = iter->second;
         currentPacket = inputPackets[child];
 
-        /* Deserialize 1st graph in packet element [0] */
-       
+        /* Deserialize graph in packet element [0] */
 #ifdef MRNET40
         byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
 #else
@@ -332,24 +341,27 @@ void statMerge(vector<PacketPtr> &inputPackets,
         byteArray = (char *)((*currentPacket)[0]->get_array(&type, &BAL));
         byteArrayLen = BAL; 
 #endif
-        gl_err = graphlib_deserializeGraphConn(rank, &currentGraph, byteArray, byteArrayLen);
-        if (GRL_IS_FATALERROR(gl_err))
+        statGraphRoutinesTotalWidth = totalWidth;
+        statGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
+        statGraphRoutinesCurrentIndex = rank;
+        graphlibError = graphlib_deserializeGraph(&currentGraph, statMergeFunctions, byteArray, byteArrayLen);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to deserialize graph %d\n", rank);
             return;
         }
 
-        /* Merge graph 1 into 1st returnGraph */
-        gl_err = graphlib_mergeGraphsRanked(returnGraph, currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
+        /* Merge graph into returnGraph */
+        graphlibError = graphlib_mergeGraphs(returnGraph, currentGraph);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
-           cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph %d\n", rank);
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph %d\n", rank);
             return;
         }
 
         /* Delete the current graph since we no longer need it */
-        gl_err = graphlib_delGraph(currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(currentGraph);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to delete graph %d\n", rank);
             return;
@@ -364,8 +376,8 @@ void statMerge(vector<PacketPtr> &inputPackets,
     }
 
     /* Now to finish up: serialize both result graphs to create output packet */
-    gl_err = graphlib_serializeGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_serializeGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize output graph\n");
         return;
@@ -378,8 +390,8 @@ void statMerge(vector<PacketPtr> &inputPackets,
     outputPackets.push_back(newPacket);
 
     /* Delete the result graphs since we no longer need them */
-    gl_err = graphlib_delGraph(returnGraph);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_delGraph(returnGraph);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to delete output graph\n");
         return;

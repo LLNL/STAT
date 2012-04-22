@@ -34,6 +34,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <arpa/inet.h>
 #include "STAT.h"
 #include "STAT_timer.h"
+#include "STAT_GraphRoutines.h"
 #include "graphlib.h"
 #include "mrnet/MRNet.h"
 #include "xplat/NetUtils.h"

@@ -798,6 +798,7 @@ FELIBS
 LIBOBJS
 ENABLE_STATBENCH_FALSE
 ENABLE_STATBENCH_TRUE
+LAUNCHMONPREFIX
 LAUNCHMONBIN
 FGFSFILTERPATH
 PYTHONPATH
@@ -5091,13 +5092,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:5094: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:5095: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5097: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:5098: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5100: output\"" >&5)
+  (eval echo "\"\$as_me:5101: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -6303,7 +6304,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6306 "configure"' > conftest.$ac_ext
+  echo '#line 6307 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -8839,10 +8840,6 @@ _lt_linker_boilerplate=`cat conftest.err`
 $RM -r conftest*
 
 
-## CAVEAT EMPTOR:
-## There is no encapsulation within the following macros, do not change
-## the running order or otherwise move them around unless you know exactly
-## what you are doing...
 if test -n "$compiler"; then
 
 lt_prog_compiler_no_builtin_flag=
@@ -8868,11 +8865,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8871: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8868: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8875: \$? = $ac_status" >&5
+   echo "$as_me:8872: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9207,11 +9204,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9210: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9207: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:9214: \$? = $ac_status" >&5
+   echo "$as_me:9211: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9312,11 +9309,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9315: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9312: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9319: \$? = $ac_status" >&5
+   echo "$as_me:9316: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -9367,11 +9364,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9370: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9367: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9374: \$? = $ac_status" >&5
+   echo "$as_me:9371: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -12170,7 +12167,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12173 "configure"
+#line 12170 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12266,7 +12263,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12269 "configure"
+#line 12266 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14286,11 +14283,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14289: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14286: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14293: \$? = $ac_status" >&5
+   echo "$as_me:14290: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14385,11 +14382,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14388: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14385: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14392: \$? = $ac_status" >&5
+   echo "$as_me:14389: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14437,11 +14434,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14440: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14437: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14444: \$? = $ac_status" >&5
+   echo "$as_me:14441: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16584,9 +16581,59 @@ $as_echo_n "checking Checking Graphlib Version... " >&6; }
     #include <stdio.h>
     int main()
     {
-      unsigned long bufLength;
-      graphlib_serializeGraph(NULL, NULL, &bufLength);
+      graphlib_functiontable_p functions;
+      return 0;
     }
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+
+cat >>confdefs.h <<\_ACEOF
+#define GRAPHLIB20 /**/
+_ACEOF
+
+
+cat >>confdefs.h <<\_ACEOF
+#define GRAPHLIB16 /**/
+_ACEOF
+
+      graphlib_vers=2.0
+
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  if test $graphlib_vers = 1; then
+    cat >conftest.$ac_ext <<_ACEOF
+#include "graphlib.h"
+      #include <stdlib.h>
+      #include <stdio.h>
+      int main()
+      {
+        unsigned long bufLength;
+        graphlib_serializeGraph(NULL, NULL, &bufLength);
+      }
 _ACEOF
 rm -f conftest.$ac_objext
 if { (ac_try="$ac_compile"
@@ -16611,7 +16658,7 @@ cat >>confdefs.h <<\_ACEOF
 #define GRAPHLIB16 /**/
 _ACEOF
 
-      graphlib_vers=1.6
+        graphlib_vers=1.6
 
 
 else
@@ -16622,6 +16669,7 @@ sed 's/^/| /' conftest.$ac_ext >&5
 fi
 
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  fi
   { $as_echo "$as_me:$LINENO: result: $graphlib_vers" >&5
 $as_echo "$graphlib_vers" >&6; }
   { $as_echo "$as_me:$LINENO: checking for graphlib_newGraph in -llnlgraph" >&5
@@ -17277,6 +17325,7 @@ fi
 $as_echo "$as_me: error: the launchmon executable is required.  Specify launchmon prefix with --with-launchmon" >&2;}
    { (exit 1); exit 1; }; }
   fi
+
 
 
 
@@ -19904,6 +19953,7 @@ _ACEOF
 
 fi
 done
+
 
 
 
