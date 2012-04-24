@@ -48,7 +48,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #ifdef SW_VERSION_8_0_0
   #include "Process.h"
-  #include "ProcessPlat.h"
+  #include "PlatFeatures.h"
   #include "ProcessSet.h"
   #include "PCErrors.h"
   #define GROUP_OPS
