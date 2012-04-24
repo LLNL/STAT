@@ -1231,7 +1231,7 @@ graphlib_graph_p STAT_BackEnd::createRootedGraph()
       return NULL;
    }
 
-   graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "", GRAPH_FONT_SIZE};
+   graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "/", GRAPH_FONT_SIZE};
    gl_err = graphlib_addNode(newGraph, 0, &nodeattr);
    if (GRL_IS_FATALERROR(gl_err)) {
       printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
@@ -1796,12 +1796,18 @@ void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
       string new_node_id_names = node_id_names + name;
       int newchild = string_hash(new_node_id_names.c_str());
 
-      graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0, (char *) "", GRAPH_FONT_SIZE};
-      fillInName(name, nodeattr);
-      gl_err = graphlib_addNode(gl_graph, newchild, &nodeattr);
-      if (GRL_IS_FATALERROR(gl_err)) {
-         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
-         continue;
+      if (sw_node->isHead()) {
+         //Don't create a node for head, just using existing node.
+         newchild = gl_node;
+      }
+      else {
+         graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0, (char *) "", GRAPH_FONT_SIZE};
+         fillInName(name, nodeattr);
+         gl_err = graphlib_addNode(gl_graph, newchild, &nodeattr);
+         if (GRL_IS_FATALERROR(gl_err)) {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
+            continue;
+         }
       }
       
       //Traversal 2.1: For each new node, recursively add its children to the graph
@@ -1829,10 +1835,13 @@ void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
       for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
          bitvec_insert(edgeattr.edgelist, *j);
       }
-      gl_err = graphlib_addDirectedEdge(gl_graph, gl_node, newchild, &edgeattr);
-      if (GRL_IS_FATALERROR(gl_err)) {
-         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
-         continue;
+
+      if (gl_node != newchild) {
+         gl_err = graphlib_addDirectedEdge(gl_graph, gl_node, newchild, &edgeattr);
+         if (GRL_IS_FATALERROR(gl_err)) {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
+            continue;
+         }
       }
 
       output_ranks.insert(my_ranks.begin(), my_ranks.end());
@@ -1857,9 +1866,10 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
    bitvec_initialize(0, proc_bitfield_size);
    
    string empty;
-   std::set<int> ranks;
+   set<int> ranks;
    AddFrameToGraph(retGraph, &tree,
                    0, tree.getHead(), empty, NULL, ranks);
+
    return STAT_OK;
 }
 #endif
@@ -1870,34 +1880,41 @@ StatError_t STAT_BackEnd::Detach(unsigned int *stopArray, int stopArrayLen)
     int i;
     bool leaveStopped;
     map<int, Walker *>::iterator iter;
-    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+#if defined(GROUP_OPS)
+    if (doGroupOps_) {
+       procset->detach();
+    }
+    else
+#endif
     {
-        leaveStopped = false;
-        if (iter->second != NULL)
-        {
-            ProcDebug *pdebug = dynamic_cast<ProcDebug *>(iter->second->getProcessState());
-            if (pdebug == NULL)
-            {
+       for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+       {
+          leaveStopped = false;
+          if (iter->second != NULL)
+          {
+             ProcDebug *pdebug = dynamic_cast<ProcDebug *>(iter->second->getProcessState());
+             if (pdebug == NULL)
+             {
                 printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to dynamic_cast ProcDebug pointer\n");
                 return STAT_STACKWALKER_ERROR;
-            }
+             }
 #ifndef BGL            
-            for (i = 0; i < stopArrayLen; i++)
-            {
+             for (i = 0; i < stopArrayLen; i++)
+             {
                 if (stopArray[i] == iter->first)
                 {
-                    leaveStopped = true;
-                    break;
+                   leaveStopped = true;
+                   break;
                 }
-            }            
+             }            
 #endif            
-            pdebug->detach(leaveStopped);
-            delete iter->second;
-        }
-        processMap_.erase(iter);
-        processMapNonNull_ = processMapNonNull_ - 1;
+             pdebug->detach(leaveStopped);
+             delete iter->second;
+          }
+          processMap_.erase(iter);
+          processMapNonNull_ = processMapNonNull_ - 1;
+       }
     }
-
     return STAT_OK;
 }
 
