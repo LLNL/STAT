@@ -57,8 +57,6 @@ StatError_t statInit(int *argc, char ***argv)
         return STAT_GRAPHLIB_ERROR;
     }
 
-    statInitializeBitVectorFunctions();
-
     return STAT_OK;
 }
 
@@ -99,6 +97,8 @@ STAT_BackEnd::STAT_BackEnd()
 #else
     errOutFp_ = stderr;
 #endif
+
+    statInitializeBitVectorFunctions();
     
     /* Enable MRNet logging */
     envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
@@ -2600,8 +2600,13 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
         /* Loop around the number of tasks I'm emulating */
         for (j = 0; j < nTasks; j++)
         {
+#ifdef GRAPHLIB20
+            /* We now create the full eq class set at once */
+            if (j >= nEqClasses)
+                break;
+#endif
             /* Create the trace for this task */
-            currentGraph = statBenchCreateTrace(maxDepth, j, functionFanout, nEqClasses, i);
+            currentGraph = statBenchCreateTrace(maxDepth, j, nTasks, functionFanout, nEqClasses, i);
             if (currentGraph == NULL)
             {
                 printMsg(STAT_SAMPLE_ERROR, __FILE__, __LINE__, "Error creating trace\n");
@@ -2643,9 +2648,9 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
     return STAT_OK;
 }
 
-graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int functionFanout, int nEqClasses, unsigned int iter)
+graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int nTasks, unsigned int functionFanout, int nEqClasses, unsigned int iter)
 {
-    int depth, i, nodeId, prevId;
+    int depth, i, nodeId, prevId, currentTask;
     char temp[8192];
     static vector<graphlib_graph_p> generated_graphs;
     string path;
@@ -2669,7 +2674,20 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
         return NULL;
     }
+#ifdef GRAPHLIB20
+    for (i = 0; i < nTasks / nEqClasses; i++)
+    {
+        currentTask = task + i * nEqClasses;
+        edge->bitVector[currentTask / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(currentTask % STAT_BITVECTOR_BITS);
+    }
+    if (nTasks % nEqClasses > task)
+    {
+        currentTask = task + i * nEqClasses;
+        edge->bitVector[currentTask / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(currentTask % STAT_BITVECTOR_BITS);
+    }
+#else
     edge->bitVector[task / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(task % STAT_BITVECTOR_BITS);
+#endif
     edgeattr.label = (void *)edge;
 
     /* See if we've already generated a graph for this equivalence class and iteration */
@@ -2692,8 +2710,9 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
         if (generated_graphs.size() > task % nEqClasses)
         {
             /* modify the edges with the proper rank */
-            //TODO: if we have eq classes, we should generate the appropriate bit vector with grpahlib 2.0 instead of this
-            //graphlib_modifyEdgeAttr(generated_graphs[task % nEqClasses], &edgeattr);
+#ifndef GRAPHLIB20            
+            graphlib_modifyEdgeAttr(generated_graphs[task % nEqClasses], &edgeattr);
+#endif
             graphlibError = graphlib_delEdgeAttr(edgeattr, statFreeEdge);
             if (GRL_IS_FATALERROR(graphlibError))
             {
@@ -2767,7 +2786,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     if (nEqClasses == -1) /* no limit */
         srand(task + 999999 * iter);
     else
-        srand(task % nEqClasses +  999999 * iter);
+        srand(task % nEqClasses +  999999 * (1 + iter));
 
     /* Generate a atack trace and add it to the graph */
     depth = rand() % maxDepth;
