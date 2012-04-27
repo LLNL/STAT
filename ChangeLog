@@ -1,3 +1,6 @@
+2012-04-27 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : fixed handling of '<' and '>' in create_temp (add escape character)
+
 2012-04-21 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.[h,C] : Added support for graphlib 2.0
 	* src/STAT_FrontEnd.[h,C] : Added support for graphlib 2.0
