@@ -1,4 +1,5 @@
 2012-04-27 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : STATBench support for graphlib 2.0
 	* scripts/STATview.py : fixed handling of '<' and '>' in create_temp (add escape character)
 
 2012-04-21 Gregory L. Lee <lee218@llnl.gov>
