@@ -34,6 +34,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <arpa/inet.h>
 #include "STAT.h"
 #include "STAT_timer.h"
+#ifdef GRAPHLIB20
+#include "STAT_GraphRoutines.h"
+#endif
 #include "graphlib.h"
 #include "mrnet/MRNet.h"
 #include "xplat/NetUtils.h"
@@ -412,12 +415,13 @@ class STAT_BackEnd
         /*!
             \param maxDepth - the maximum call path to generate
             \param task - the emulated task rank
+            \param nTasks - the total number of emulated tasks
             \param functionFanout - the max function fanout
             \param nEqClasses - the number of equivalence classes to generate
             \param iter - the iteration value to pass to the randomizer
             \return the generated graphlib graph
         */
-        graphlib_graph_p statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int functionFanout, int nEqClasses, unsigned int iter);
+        graphlib_graph_p statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int nTasks, unsigned int functionFanout, int nEqClasses, unsigned int iter);
 
         /****************/
         /* Private data */

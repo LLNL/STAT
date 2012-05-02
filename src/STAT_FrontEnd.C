@@ -29,6 +29,15 @@ using namespace MRN;
     using namespace FastGlobalFileStat::MountPointAttribute;
 #endif
 
+/* Externals from STAT's graphlib routines */
+#ifdef GRAPHLIB20
+extern graphlib_functiontable_p statReorderFunctions;
+extern graphlib_functiontable_p statBitVectorFunctions;
+extern int statGraphRoutinesCurrentIndex;
+extern int *statGraphRoutinesRanksList;
+extern int statGraphRoutinesRanksListLength;
+#endif
+
 static int lmonState = 0;
 STAT_timer totalStart, totalEnd, startTime, endTime;
 
@@ -36,6 +45,7 @@ STAT_FrontEnd::STAT_FrontEnd()
 {
     int ret;
     char tmp[BUFSIZE], *envValue;
+    graphlib_error_t graphlibError;
 
     /* Enable MRNet logging if requested */
     mrnetOutputLevel_ = 0;
@@ -159,6 +169,15 @@ STAT_FrontEnd::STAT_FrontEnd()
     }
 #endif
 
+#ifdef GRAPHLIB20
+    /* Initialize Graphlib */
+    graphlibError = graphlib_Init();
+    if (GRL_IS_FATALERROR(graphlibError))
+        fprintf(stderr, "Failed to initialize Graphlib\n");
+    statInitializeReorderFunctions();
+    statInitializeBitVectorFunctions();
+#endif
+
     /* Get the FE hostname */
 #ifdef CRAYXT
     string temp;
@@ -210,6 +229,7 @@ STAT_FrontEnd::~STAT_FrontEnd()
     unsigned int i;
     StatError_t statError;
     map<string, IntList_t *>::iterator iter;
+    graphlib_error_t graphlibError;
 
     /* Dump the performance metrics to a file */
     statError = dumpPerf();
@@ -253,7 +273,9 @@ STAT_FrontEnd::~STAT_FrontEnd()
     }    
     isAttached_ = false;
     isConnected_ = false;
-    graphlib_Finish();
+    graphlibError = graphlib_Finish();
+    if (GRL_IS_FATALERROR(graphlibError))
+        fprintf(stderr, "Failed to finish graphlib\n");
 }
 
 StatError_t STAT_FrontEnd::attachAndSpawnDaemons(unsigned int pid, char *remoteNode)
@@ -2589,7 +2611,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray;
     list<int>::iterator ranksIter;
     graphlib_graph_p stackTraces, sortedStackTraces;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
     IntList_t *hostRanks;
     PacketPtr packet;
 
@@ -2648,19 +2670,25 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         return STAT_MRNET_ERROR;
     }
 
+#ifndef GRAPHLIB20
     /* Initialize graphlib */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Initializing graphlib\n");
-    gl_err = graphlib_InitVarEdgeLabels(totalWidth);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_InitVarEdgeLabels(totalWidth);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
         return STAT_GRAPHLIB_ERROR;
     }
+#endif
 
     /* Deserialize graph */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph 1\n");
-    gl_err = graphlib_deserializeGraph(&stackTraces, byteArray, byteArrayLen);
-    if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+    graphlibError = graphlib_deserializeGraph(&stackTraces, statBitVectorFunctions, byteArray, byteArrayLen);
+#else
+    graphlibError = graphlib_deserializeGraph(&stackTraces, byteArray, byteArrayLen);
+#endif
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "deserializeGraph() failed\n");
         return STAT_GRAPHLIB_ERROR;
@@ -2673,8 +2701,12 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating new graphs\n");
     startTime.setTime();
     offset = 0;
-    gl_err = graphlib_newGraph(&sortedStackTraces);
-    if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+    graphlibError = graphlib_newGraph(&sortedStackTraces, statReorderFunctions);
+#else
+    graphlibError = graphlib_newGraph(&sortedStackTraces);
+#endif
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
         return STAT_GRAPHLIB_ERROR;
@@ -2682,8 +2714,12 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     
     /* Copy the unordered graphs, but with empty bit vectors */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Copying graph with empty edges\n");
-    gl_err = graphlib_mergeGraphsEmptyEdges(sortedStackTraces, stackTraces);
-    if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+    graphlibError = graphlib_mergeGraphs(sortedStackTraces, stackTraces);
+#else
+    graphlibError = graphlib_mergeGraphsEmptyEdges(sortedStackTraces, stackTraces);
+#endif
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph with empty edge labels\n");
         return STAT_GRAPHLIB_ERROR;
@@ -2695,17 +2731,28 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     {
         /* Fill edge labels for this daemon */
         hostRanks = mrnetRankToMPIRanksMap_[*ranksIter];
-        gl_err = graphlib_mergeGraphsFillEdges(sortedStackTraces, stackTraces, hostRanks->list, hostRanks->count, offset);
-        if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+        statGraphRoutinesRanksList = hostRanks->list;
+        statGraphRoutinesRanksListLength = hostRanks->count;
+        statGraphRoutinesCurrentIndex = offset;
+        graphlibError = graphlib_mergeGraphs(sortedStackTraces, stackTraces);
+#else
+        graphlibError = graphlib_mergeGraphsFillEdges(sortedStackTraces, stackTraces, hostRanks->list, hostRanks->count, offset);
+#endif
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to fill edge labels\n");
             return STAT_GRAPHLIB_ERROR;
         }
        
         /* update offset, round up to the nearest bit vector count*/
+#ifdef GRAPHLIB20
+        offset += statBitVectorLength(hostRanks->count);
+#else
         offset += hostRanks->count / (graphlib_getBitVectorSize() * 8);
         if (hostRanks->count % (graphlib_getBitVectorSize() * 8) != 0)
             offset += 1;
+#endif
     }
     
     endTime.setTime();
@@ -2716,14 +2763,14 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     startTime.setTime();
 
     /* Dump spatial-temporally merged graph to dot format */
-    gl_err = graphlib_colorGraphByLeadingEdgeLabel(sortedStackTraces);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_colorGraphByLeadingEdgeLabel(sortedStackTraces);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error coloring graph by leading edge label\n");
         return STAT_GRAPHLIB_ERROR;
     }        
-    gl_err = graphlib_scaleNodeWidth(sortedStackTraces, 80, 160);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_scaleNodeWidth(sortedStackTraces, 80, 160);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error scaling node width\n");
         return STAT_GRAPHLIB_ERROR;
@@ -2733,8 +2780,8 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     else
         snprintf(outFile, BUFSIZE, "%s/%s_%d.%s.dot", outDir_, filePrefix_, mergeCount, outSuffix);
     snprintf(lastDotFileName_, BUFSIZE, "%s", outFile);
-    gl_err = graphlib_exportGraph(outFile, GRF_DOT, sortedStackTraces);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_exportGraph(outFile, GRF_DOT, sortedStackTraces);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error exporting graph to dot format\n");
         return STAT_GRAPHLIB_ERROR;
@@ -2745,14 +2792,14 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Traces merged!\n");
 
     /* Delete the graphs */
-    gl_err = graphlib_delGraph(stackTraces);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_delGraph(stackTraces);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
         return STAT_GRAPHLIB_ERROR;
     }
-    gl_err = graphlib_delGraph(sortedStackTraces);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_delGraph(sortedStackTraces);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
         return STAT_GRAPHLIB_ERROR;
