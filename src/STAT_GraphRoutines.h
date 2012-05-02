@@ -8,16 +8,19 @@
 #ifndef STAT_GRAPHROUTINES_H
 #define STAT_GRAPHROUTINES_H
 
+#define STAT_GRAPH_CHUNK 8192
+
+//! The scalar data type that makes up the bit vector
+typedef int64_t StatBitVector_t;
 #define STAT_BITVECTOR_BITS 64 
 #define STAT_BITVECTOR_BYTES 8
-#define STAT_GRAPH_BIT(i) ((int64_t)1<<(i))
-#define STAT_GRAPH_CHUNK 8192
+#define STAT_GRAPH_BIT(i) ((StatBitVector_t)1<<(i))
 
 //! A struct to specify STAT's bit vector edge label type
 typedef struct
 {
     size_t length;
-    int64_t *bitVector;
+    StatBitVector_t *bitVector;
 } StatBitVectorEdge_t;
 
 //! Initialize the standard bit vector functions
@@ -32,7 +35,7 @@ void statInitializeReorderFunctions();
 //! Calculate the bit vector length
 /*!
     \param numTasks - the number of tasks to represent in the bit vector
-    \return the length of the bit vector (i.e., number of int64_t elements)
+    \return the length of the bit vector (i.e., number of StatBitVector_t elements)
 */
 size_t statBitVectorLength(int numTasks);
 

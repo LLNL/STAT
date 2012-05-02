@@ -1,4 +1,5 @@
 AC_DEFUN([X_AC_GRAPHLIB], [
+  AM_CONDITIONAL([ENABLE_GRAPHLIB20], false)
   AC_ARG_WITH(graphlib, 
     [AS_HELP_STRING([--with-graphlib=prefix],
       [Add the compile and link search paths for graphlib]
@@ -27,6 +28,7 @@ AC_DEFUN([X_AC_GRAPHLIB], [
     [AC_DEFINE([GRAPHLIB20], [], [Graphlib 2.0])
       AC_DEFINE([GRAPHLIB16], [], [Graphlib 1.6])
       graphlib_vers=2.0
+      AM_CONDITIONAL([ENABLE_GRAPHLIB20], true)
     ]
   )
   if test $graphlib_vers = 1; then

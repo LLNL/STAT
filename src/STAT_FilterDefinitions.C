@@ -27,7 +27,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "config.h"
 #include "mrnet/Packet.h"
 #include "graphlib.h"
+#ifdef GRAPHLIB20
 #include "STAT_GraphRoutines.h"
+#endif
 #include "STAT.h"
 #include <sys/stat.h>
 
@@ -36,6 +38,7 @@ using namespace std;
 
 extern "C" {
 
+#ifdef GRAPHLIB20
 /* Externals from STAT's graphlib routines */
 extern graphlib_functiontable_p statMergeFunctions;
 extern int statGraphRoutinesTotalWidth;
@@ -43,6 +46,7 @@ extern int *statGraphRoutinesEdgeLabelWidths;
 extern int statGraphRoutinesCurrentIndex;
 extern int *statGraphRoutinesRanksList;
 extern int statGraphRoutinesRanksListLength;
+#endif
 
 //! The MRNet format string for the STAT filter
 #ifdef MRNET40
@@ -252,7 +256,11 @@ void statMerge(vector<PacketPtr> &inputPackets,
        tries to send it.  They are safe to free up on the next invocation of 
        this filter function */
     static char *outputByteArray;
+#ifdef GRAPHLIB20
     int totalWidth = 0;
+#else
+    static int totalWidth;
+#endif
     int nChildren, *edgeLabelWidths, rank, inputRank, outputRank, child;
 #ifdef GRAPHLIB16
     unsigned long outputByteArrayLen;
@@ -306,19 +314,32 @@ void statMerge(vector<PacketPtr> &inputPackets,
     {
         currentPacket = inputPackets[iter->second];
         edgeLabelWidths[i] = (*currentPacket)[1]->get_int32_t();
+#ifdef GRAPHLIB20        
         totalWidth += edgeLabelWidths[i];
+#endif
         i++;
     }
+#ifdef GRAPHLIB20
     graphlibError = graphlib_Init();
+#else
+    graphlibError = graphlib_InitVarEdgeLabelsConn(nChildren, edgeLabelWidths, &totalWidth);
+    free(edgeLabelWidths);
+#endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
         cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
         return;
     }
+#ifdef GRAPHLIB20
     statInitializeMergeFunctions();
+#endif
 
     /* Initialize the result graphs */
+#ifdef GRAPHLIB20
     graphlibError = graphlib_newGraph(&returnGraph, statMergeFunctions);
+#else
+    graphlibError = graphlib_newGraph(&returnGraph);
+#endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
         cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__,"Failed to create new graph\n");
@@ -341,10 +362,14 @@ void statMerge(vector<PacketPtr> &inputPackets,
         byteArray = (char *)((*currentPacket)[0]->get_array(&type, &BAL));
         byteArrayLen = BAL; 
 #endif
+#ifdef GRAPHLIB20
         statGraphRoutinesTotalWidth = totalWidth;
         statGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
         statGraphRoutinesCurrentIndex = rank;
         graphlibError = graphlib_deserializeGraph(&currentGraph, statMergeFunctions, byteArray, byteArrayLen);
+#else
+        graphlibError = graphlib_deserializeGraphConn(rank, &currentGraph, byteArray, byteArrayLen);
+#endif
         if (GRL_IS_FATALERROR(graphlibError))
         {
             cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to deserialize graph %d\n", rank);
@@ -352,7 +377,11 @@ void statMerge(vector<PacketPtr> &inputPackets,
         }
 
         /* Merge graph into returnGraph */
+#ifdef GRAPHLIB20
         graphlibError = graphlib_mergeGraphs(returnGraph, currentGraph);
+#else
+        graphlibError = graphlib_mergeGraphsRanked(returnGraph, currentGraph);
+#endif
         if (GRL_IS_FATALERROR(graphlibError))
         {
             cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph %d\n", rank);

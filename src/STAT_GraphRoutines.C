@@ -155,7 +155,7 @@ void statDeserializeEdge(void **edge, const char *buf, unsigned int bufLength)
 
     memcpy((void *)&(e->length), ptr, sizeof(size_t));
     ptr += sizeof(size_t);
-    e->bitVector = (int64_t *)malloc(STAT_BITVECTOR_BYTES * e->length);
+    e->bitVector = (StatBitVector_t *)malloc(STAT_BITVECTOR_BYTES * e->length);
     if (e == NULL)
     {
         fprintf(stderr, "Failed to allocate %u bytes for deserialized edge bit vector\n", STAT_BITVECTOR_BYTES * e->length);
@@ -188,7 +188,7 @@ char *statEdgeToText(const void *edge)
         if (ret_size - count < 1024)
         {
             /* Reallocate if we are within 1024 bytes of the end */
-            /* This is a large threshold to keep it out of the innter loop */
+            /* This is a large threshold to keep it out of the inner loop */
             ret_size += STAT_GRAPH_CHUNK;
             ret = (char *)realloc(ret, ret_size * sizeof(char));
             if (ret == NULL)
@@ -197,11 +197,11 @@ char *statEdgeToText(const void *edge)
                 return NULL;
             }
         }
-        for (j = 0; j < 8 * sizeof(int64_t); j++)
+        for (j = 0; j < 8 * sizeof(StatBitVector_t); j++)
         {
             if (e->bitVector[i] & STAT_GRAPH_BIT(j))
             {
-                cur_val = i * 8 * sizeof(int64_t) + j;
+                cur_val = i * 8 * sizeof(StatBitVector_t) + j;
                 if (in_range == 0)
                 {
                     snprintf(val, 128, "%d", cur_val);
@@ -262,7 +262,6 @@ void statMergeEdge(void *edge1, const void *edge2)
 {
     unsigned int i;
     StatBitVectorEdge_t *e1 = (StatBitVectorEdge_t *)edge1, *e2 = (StatBitVectorEdge_t *)edge2;
-
     for (i = 0; i < e1->length; i++)
         e1->bitVector[i] |= e2->bitVector[i];
 }
@@ -278,7 +277,7 @@ void *statCopyEdge(const void *edge)
         return NULL;
     }
     ret->length = e->length;
-    ret->bitVector = (int64_t *)malloc(e->length * STAT_BITVECTOR_BYTES);
+    ret->bitVector = (StatBitVector_t *)malloc(e->length * STAT_BITVECTOR_BYTES);
     if (ret->bitVector == NULL)
     {
         fprintf(stderr, "Failed to allocate %u bytes for bit vector\n", e->length * STAT_BITVECTOR_BYTES);
@@ -326,7 +325,7 @@ void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLen
     memcpy((void *)&(currentEdgeLength), ptr, sizeof(size_t));
     ptr += sizeof(size_t);
     e->length = statGraphRoutinesTotalWidth;
-    e->bitVector = (int64_t *)calloc(e->length, STAT_BITVECTOR_BYTES);
+    e->bitVector = (StatBitVector_t *)calloc(e->length, STAT_BITVECTOR_BYTES);
     if (e == NULL)
     {
         fprintf(stderr, "Failed to allocate %u bytes for deserialized edge bit vector\n", STAT_BITVECTOR_BYTES * e->length);
@@ -352,7 +351,7 @@ void *statCopyEdgeInitializeEmpty(const void *edge)
         return NULL;
     }
     ret->length = statGraphRoutinesTotalWidth;
-    ret->bitVector = (int64_t *)calloc(ret->length, STAT_BITVECTOR_BYTES);
+    ret->bitVector = (StatBitVector_t *)calloc(ret->length, STAT_BITVECTOR_BYTES);
     if (ret->bitVector == NULL)
     {
         fprintf(stderr, "Failed to allocate %u bytes for bit vector\n", ret->length * STAT_BITVECTOR_BYTES);
@@ -361,7 +360,7 @@ void *statCopyEdgeInitializeEmpty(const void *edge)
     return (void *)ret;
 }
 
-int bitVectorContains(int64_t *vec, int val)
+int bitVectorContains(StatBitVector_t *vec, int val)
 {
     return !!(vec[val / STAT_BITVECTOR_BITS] & STAT_GRAPH_BIT(val % STAT_BITVECTOR_BITS));
 }

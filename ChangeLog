@@ -1,3 +1,8 @@
+2012-05-02 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C src/STAT_FrontEnd.C src/STAT_FilterDefinitions.C :	graphlib 2.X and 1.X separation with ifdefs
+	* src/STAT_GraphRoutines.[C,h] : typdef for the bit vector scalar type
+	* config/x_ac_graphlib.m4, src/Makefile.am : conditional build of STAT_GraphRoutines for graphlib 2.0 only
+
 2012-04-27 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C : STATBench support for graphlib 2.0
 	* scripts/STATview.py : fixed handling of '<' and '>' in create_temp (add escape character)

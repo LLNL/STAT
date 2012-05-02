@@ -41,7 +41,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "mrnet/MRNet.h"
 #include "xplat/NetUtils.h"
 #include "graphlib.h"
+#ifdef GRAPHLIB20
 #include "STAT_GraphRoutines.h"
+#endif
 #include "STAT_timer.h"
 #include "lmon_api/lmon_fe.h"
 #include "STAT.h"
