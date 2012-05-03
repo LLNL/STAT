@@ -1536,7 +1536,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
         return STAT_GRAPHLIB_ERROR;
     }
     edge->length = statBitVectorLength(proctabSize_);
-    edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BITS);
+    edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BYTES);
     if (edge->bitVector == NULL)
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
