@@ -2684,13 +2684,13 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     /* Deserialize graph */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph 1\n");
 #ifdef GRAPHLIB20
-    graphlibError = graphlib_deserializeGraph(&stackTraces, statBitVectorFunctions, byteArray, byteArrayLen);
+    graphlibError = graphlib_deserializeBasicGraph(&stackTraces, statBitVectorFunctions, byteArray, byteArrayLen);
 #else
-    graphlibError = graphlib_deserializeGraph(&stackTraces, byteArray, byteArrayLen);
+    graphlibError = graphlib_deserializeBasicGraph(&stackTraces, byteArray, byteArrayLen);
 #endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "deserializeGraph() failed\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "deserializeBasicGraph() failed\n");
         return STAT_GRAPHLIB_ERROR;
     }
 

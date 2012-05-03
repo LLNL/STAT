@@ -1,3 +1,6 @@
+2012-05-03 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C src/STAT_FrontEnd.C src/STAT_FilterDefinitions.C :	use basic graph implementation of [de]serialize to avoid copying unused parameters
+
 2012-05-02 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C src/STAT_FrontEnd.C src/STAT_FilterDefinitions.C :	graphlib 2.X and 1.X separation with ifdefs
 	* src/STAT_GraphRoutines.[C,h] : typdef for the bit vector scalar type
