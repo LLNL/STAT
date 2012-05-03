@@ -1929,31 +1929,32 @@ bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
          continue;
       }
       
-      //Create the edge between this new node and our parent
-      graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
-#ifdef GRAPHLIB20
-      StatBitVectorEdge_t *edge = (StatBitVectorEdge_t *) malloc(sizeof(StatBitVectorEdge_t));
-      if (!edge) {
-         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
-         return false;
-      }
-      edge->length = statBitVectorLength(proctabSize_);
-      edge->bitVector = (StatBitVector_t *) calloc(edge->length, STAT_BITVECTOR_BITS);
-      if (!edge->bitVector) {
-         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
-         return false;
-      }
-      for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
-         int rank = *j;
-         edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
-      }
-#else
-      edgeattr.edgelist = bitvec_allocate();
-      for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
-         bitvec_insert(edgeattr.edgelist, *j);
-      }
-#endif
       if (gl_node != newchild) {
+         //Create the edge between this new node and our parent
+         graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
+#ifdef GRAPHLIB20
+         StatBitVectorEdge_t *edge = (StatBitVectorEdge_t *) malloc(sizeof(StatBitVectorEdge_t));
+         if (!edge) {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
+            return false;
+         }
+         edge->length = statBitVectorLength(proctabSize_);
+         edge->bitVector = (StatBitVector_t *) calloc(edge->length, STAT_BITVECTOR_BITS);
+         if (!edge->bitVector) {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+            return false;
+         }
+         for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
+            int rank = *j;
+            edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
+         }
+         edgeattr.label = (void *)edge;
+#else
+         edgeattr.edgelist = bitvec_allocate();
+         for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
+            bitvec_insert(edgeattr.edgelist, *j);
+         }
+#endif
          graphlibError = graphlib_addDirectedEdge(gl_graph, gl_node, newchild, &edgeattr);
          if (GRL_IS_FATALERROR(graphlibError)) {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
@@ -1985,23 +1986,6 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
 
 #if !defined(GRAPHLIB20)
    bitvec_initialize(0, proc_bitfield_size);
-#elif 0
-   StatBitVectorEdge_t *edge = (StatBitVectorEdge_t *) malloc(sizeof(StatBitVectorEdge_t));
-   if (!edge) {
-      printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
-      return STAT_GRAPHLIB_ERROR;
-   }
-   edge->length = statBitVectorLength(proctabSize_);
-   edge->bitVector = (StatBitVector_t *) calloc(edge->length, STAT_BITVECTOR_BITS);
-   if (!edge->bitVector) {
-      printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
-      return STAT_GRAPHLIB_ERROR;
-   }
-   for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
-      int rank = *j;
-      edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
-   }
-   edgeattr.label = (void *) edge;
 #endif
    
    string empty;
