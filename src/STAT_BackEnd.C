@@ -608,7 +608,7 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Serialize 2D graph */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Serializing 2D graph\n");
-                graphlibError = graphlib_serializeGraph(prefixTree2d_, &obyteArray, &obyteArrayLen);
+                graphlibError = graphlib_serializeBasicGraph(prefixTree2d_, &obyteArray, &obyteArrayLen);
                 if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 3D prefix tree\n");
@@ -656,7 +656,7 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Serialize 3D graph */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Serializing 3D graph\n");
-                graphlibError = graphlib_serializeGraph(prefixTree3d_, &obyteArray, &obyteArrayLen);
+                graphlibError = graphlib_serializeBasicGraph(prefixTree3d_, &obyteArray, &obyteArrayLen);
                 if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 3D prefix tree\n");
@@ -1597,7 +1597,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
         return STAT_GRAPHLIB_ERROR;
     }
     edge->length = statBitVectorLength(proctabSize_);
-    edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BITS);
+    edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BYTES);
     if (edge->bitVector == NULL)
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
