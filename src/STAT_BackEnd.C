@@ -41,9 +41,16 @@ using namespace Dyninst::SymtabAPI;
 #else
 #define GRAPH_FONT_SIZE -1
 #endif
+
+#ifdef GRAPHLIB20
+/* Externals from STAT's graphlib routines */
+extern graphlib_functiontable_p statBitVectorFunctions;
+#endif
+
 StatError_t statInit(int *argc, char ***argv)
 {
     lmon_rc_e rc;
+    graphlib_error_t graphlibError;
 
     /* Call LaunchMON's Init function */
     rc = LMON_be_init(LMON_VERSION, argc, argv);
@@ -52,6 +59,15 @@ StatError_t statInit(int *argc, char ***argv)
         fprintf(stderr, "Failed to initialize Launchmon\n");
         return STAT_LMON_ERROR;
     }
+
+#ifdef GRAPHLIB20
+    graphlibError = graphlib_Init();
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to initialize Graphlib\n");
+        return STAT_GRAPHLIB_ERROR;
+    }
+#endif
 
     return STAT_OK;
 }
@@ -92,6 +108,10 @@ STAT_BackEnd::STAT_BackEnd()
     errOutFp_ = stdout;
 #else
     errOutFp_ = stderr;
+#endif
+
+#ifdef GRAPHLIB20
+    statInitializeBitVectorFunctions();
 #endif
     
     /* Enable MRNet logging */
@@ -148,19 +168,19 @@ STAT_BackEnd::STAT_BackEnd()
 STAT_BackEnd::~STAT_BackEnd()
 {
     int i;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
 
     /* delete exisitng graphs */
     if (prefixTree3d_ != NULL)
     {
-        gl_err = graphlib_delGraph(prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree3d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
     if (prefixTree2d_ != NULL)
     {
-        gl_err = graphlib_delGraph(prefixTree2d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree2d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
 
@@ -379,7 +399,10 @@ StatError_t STAT_BackEnd::Connect()
 StatError_t STAT_BackEnd::mainLoop()
 {
     int tag = 0, retval, nEqClasses, swNotificationFd, mrnNotificationFd, max_fd;
-    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, withThreads, clearOnSample;
+    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, sampleType, withThreads, clearOnSample;
+#ifdef GRAPHLIB20
+    int bitVectorLength;
+#endif
 #ifdef GRAPHLIB16
     unsigned long obyteArrayLen;
 #else
@@ -390,7 +413,7 @@ StatError_t STAT_BackEnd::mainLoop()
     fd_set readfds, writefds, exceptfds;
     PacketPtr packet;
     StatError_t statError;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Beginning to execute main loop\n");
 
@@ -585,8 +608,8 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Serialize 2D graph */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Serializing 2D graph\n");
-                gl_err = graphlib_serializeGraph(prefixTree2d_, &obyteArray, &obyteArrayLen);
-                if (GRL_IS_FATALERROR(gl_err))
+                graphlibError = graphlib_serializeGraph(prefixTree2d_, &obyteArray, &obyteArrayLen);
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 3D prefix tree\n");
                     return STAT_GRAPHLIB_ERROR;
@@ -594,10 +617,19 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Send */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending graphs to FE\n");
-#ifdef MRNET40
-                if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%Ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+#ifdef GRAPHLIB20
+                bitVectorLength = statBitVectorLength(proctabSize_);
+    #ifdef MRNET40
+                if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%Ac %d %d", obyteArray, obyteArrayLen, bitVectorLength, myRank_) == -1)
+    #else
+                if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%ac %d %d", obyteArray, obyteArrayLen, bitVectorLength, myRank_) == -1)
+    #endif
 #else
+    #ifdef MRNET40
+                if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%Ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+    #else
                 if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+    #endif
 #endif
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send() failure\n");
@@ -624,8 +656,8 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Serialize 3D graph */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Serializing 3D graph\n");
-                gl_err = graphlib_serializeGraph(prefixTree3d_, &obyteArray, &obyteArrayLen);
-                if (GRL_IS_FATALERROR(gl_err))
+                graphlibError = graphlib_serializeGraph(prefixTree3d_, &obyteArray, &obyteArrayLen);
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 3D prefix tree\n");
                     return STAT_GRAPHLIB_ERROR;
@@ -633,10 +665,19 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Send */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending graphs to FE\n");
-#ifdef MRNET40
-                if (stream->send(PROT_SEND_TRACES_RESP, "%Ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+#ifdef GRAPHLIB20
+                bitVectorLength = statBitVectorLength(proctabSize_);
+    #ifdef MRNET40
+                if (stream->send(PROT_SEND_TRACES_RESP, "%Ac %d %d", obyteArray, obyteArrayLen, bitVectorLength, myRank_) == -1)
+    #else
+                if (stream->send(PROT_SEND_TRACES_RESP, "%ac %d %d", obyteArray, obyteArrayLen, bitVectorLength, myRank_) == -1)
+    #endif
 #else
+    #ifdef MRNET40
+                if (stream->send(PROT_SEND_TRACES_RESP, "%Ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+    #else
                 if (stream->send(PROT_SEND_TRACES_RESP, "%ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
+    #endif
 #endif
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send() failure\n");
@@ -1192,18 +1233,26 @@ StatError_t STAT_BackEnd::getVariable(vector<Frame> swalk, unsigned int frame, c
 
 StatError_t STAT_BackEnd::mergeIntoGraphs(graphlib_graph_p currentGraph, bool last_trace)
 {
-   graphlib_error_t gl_err;
+   graphlib_error_t graphlibError;
    /* Merge cur graph into retGraph */
-   gl_err = graphlib_mergeGraphsRanked(prefixTree3d_, currentGraph);
-   if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+   graphlibError = graphlib_mergeGraphs(prefixTree3d_, currentGraph);
+#else
+   graphlibError = graphlib_mergeGraphsRanked(prefixTree3d_, currentGraph);
+#endif
+   if (GRL_IS_FATALERROR(graphlibError))
    {
       printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
       return STAT_GRAPHLIB_ERROR;
    }
    if (last_trace)
    {
-      gl_err = graphlib_mergeGraphsRanked(prefixTree2d_, currentGraph);
-      if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+      graphlibError = graphlib_mergeGraphs(prefixTree2d_, currentGraph);
+#else
+      graphlibError = graphlib_mergeGraphsRanked(prefixTree2d_, currentGraph);
+#endif
+      if (GRL_IS_FATALERROR(graphlibError))
       {
          printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
          return STAT_GRAPHLIB_ERROR;
@@ -1211,8 +1260,8 @@ StatError_t STAT_BackEnd::mergeIntoGraphs(graphlib_graph_p currentGraph, bool la
    }
    
    /* Free up current graph */
-   gl_err = graphlib_delGraph(currentGraph);
-   if (GRL_IS_FATALERROR(gl_err))
+   graphlibError = graphlib_delGraph(currentGraph);
+   if (GRL_IS_FATALERROR(graphlibError))
    {
       printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
       return STAT_GRAPHLIB_ERROR;
@@ -1222,18 +1271,23 @@ StatError_t STAT_BackEnd::mergeIntoGraphs(graphlib_graph_p currentGraph, bool la
 
 graphlib_graph_p STAT_BackEnd::createRootedGraph()
 {
-   graphlib_error_t gl_err;
+   graphlib_error_t graphlibError;
    graphlib_graph_p newGraph = NULL;
-   gl_err = graphlib_newGraph(&newGraph);
-   if (GRL_IS_FATALERROR(gl_err))
+
+#ifdef GRAPHLIB20
+   graphlibError = graphlib_newGraph(&newGraph, statBitVectorFunctions);
+#else
+   graphlibError = graphlib_newGraph(&newGraph);
+#endif
+   if (GRL_IS_FATALERROR(graphlibError))
    {
       printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
       return NULL;
    }
 
    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "/", GRAPH_FONT_SIZE};
-   gl_err = graphlib_addNode(newGraph, 0, &nodeattr);
-   if (GRL_IS_FATALERROR(gl_err)) {
+   graphlibError = graphlib_addNode(newGraph, 0, &nodeattr);
+   if (GRL_IS_FATALERROR(graphlibError)) {
       printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
       return NULL;
    }
@@ -1246,7 +1300,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     unsigned int i;
     bool wasRunning = isRunning_;
     graphlib_graph_p currentGraph = NULL;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
     StatError_t ret;
     map<int, Walker *>::iterator iter;
     
@@ -1282,28 +1336,29 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     }
 #endif
 
+#ifndef GRAPHLIB20
     /* Initialize graphlib if we haven't already done so */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Initializing graphlib with process table size = %d\n", proctabSize_);
-    gl_err = graphlib_InitVarEdgeLabels(proctabSize_);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_InitVarEdgeLabels(proctabSize_);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
         return STAT_GRAPHLIB_ERROR;
     }
-
+#endif
     /* Delete previously merged graphs */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deleting any previously mereged trees\n");
     if (prefixTree3d_ != NULL && clearOnSample == 1)
     {
-        gl_err = graphlib_delGraph(prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree3d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
         prefixTree3d_ = NULL;
     }
     if (prefixTree2d_ != NULL)
     {
-        gl_err = graphlib_delGraph(prefixTree2d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree2d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
 
@@ -1311,15 +1366,23 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating graphs\n");
     if (prefixTree3d_ == NULL)
     {
-        gl_err = graphlib_newGraph(&prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+        graphlibError = graphlib_newGraph(&prefixTree3d_, statBitVectorFunctions);
+#else
+        graphlibError = graphlib_newGraph(&prefixTree3d_);
+#endif
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 3D graph\n");
             return STAT_GRAPHLIB_ERROR;
         }
     }
-    gl_err = graphlib_newGraph(&prefixTree2d_);
-    if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+    graphlibError = graphlib_newGraph(&prefixTree2d_, statBitVectorFunctions);
+#else
+    graphlibError = graphlib_newGraph(&prefixTree2d_);
+#endif
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 2D graph\n");
         return STAT_GRAPHLIB_ERROR;
@@ -1364,8 +1427,8 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
               return ret;
 
 
-           gl_err = graphlib_exportGraph((char *) "mergegraph.dot", GRF_DOT, prefixTree3d_);
-           if (GRL_IS_FATALERROR(gl_err))
+           graphlibError = graphlib_exportGraph((char *) "mergegraph.dot", GRF_DOT, prefixTree3d_);
+           if (GRL_IS_FATALERROR(graphlibError))
               fprintf(stderr, "Error exporting graph\n");
         }
         else
@@ -1392,8 +1455,8 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                  return ret;
            } /* for iter */
 
-           gl_err = graphlib_exportGraph((char *) "origgraph.dot", GRF_DOT, prefixTree3d_);
-           if (GRL_IS_FATALERROR(gl_err))
+           graphlibError = graphlib_exportGraph((char *) "origgraph.dot", GRF_DOT, prefixTree3d_);
+           if (GRL_IS_FATALERROR(graphlibError))
               fprintf(stderr, "Error exporting graph\n");
         }
         
@@ -1404,6 +1467,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
               printMsg(ret, __FILE__, __LINE__, "Failed to resume processes\n");
         }
 
+            /* Create return graph */
         if (!last_trace)
             usleep(traceFrequency * 1000);
     } /* for i */
@@ -1488,6 +1552,9 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, bool is_final_frame)
 
 void STAT_BackEnd::fillInName(const string &s, graphlib_nodeattr_t &nodeattr)
 {
+#ifdef GRAPHLIB20
+   nodeattr.label = (char *) s.c_str();
+#else
 #ifdef GRL_DYNAMIC_NODE_NAME
    nodeattr.name = (char *) s.c_str();
 #else
@@ -1499,6 +1566,7 @@ void STAT_BackEnd::fillInName(const string &s, graphlib_nodeattr_t &nodeattr)
       snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "%s", s.c_str());
    }
 #endif
+#endif
 }
 
 StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads)
@@ -1508,7 +1576,10 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
     string name, path, tester;
     vector<Frame> swalk, partial;
     vector<string> trace;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
+#ifdef GRAPHLIB20
+    StatBitVectorEdge_t *edge;
+#endif
     graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "",GRAPH_FONT_SIZE};
     graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
     graphlib_graph_p currentGraph = NULL;
@@ -1518,12 +1589,30 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d\n", rank);
 
     /* Set edge label */
-    gl_err = graphlib_setEdgeByTask(&edgeattr.edgelist, rank);
-    if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+    edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+    if (edge == NULL)
+    {
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
+        return STAT_GRAPHLIB_ERROR;
+    }
+    edge->length = statBitVectorLength(proctabSize_);
+    edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BITS);
+    if (edge->bitVector == NULL)
+    {
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+        return STAT_GRAPHLIB_ERROR;
+    }
+    edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
+    edgeattr.label = (void *)edge;
+#else
+    graphlibError = graphlib_setEdgeByTask(&edgeattr.edgelist, rank);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to set edge by rank\n");
         return STAT_GRAPHLIB_ERROR;
     }
+#endif
 
     /* If we're not attached return a trace denoting the task has exited */
     if (proc == NULL)
@@ -1686,15 +1775,15 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
             path += trace[i].c_str();
             nodeId = string_hash(path.c_str());
             fillInName(trace[i], nodeattr);
-            gl_err = graphlib_addNode(currentGraph, nodeId, &nodeattr);
+            graphlibError = graphlib_addNode(currentGraph, nodeId, &nodeattr);
 
-            if (GRL_IS_FATALERROR(gl_err))
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
                 return STAT_GRAPHLIB_ERROR;
             }
-            gl_err = graphlib_addDirectedEdge(currentGraph, prevId, nodeId, &edgeattr);
-            if (GRL_IS_FATALERROR(gl_err))
+            graphlibError = graphlib_addDirectedEdge(currentGraph, prevId, nodeId, &edgeattr);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
                 return STAT_GRAPHLIB_ERROR;
@@ -1703,16 +1792,20 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
         }
 
         /* Merge cur graph into retGraph */
-        gl_err = graphlib_mergeGraphsRanked(retGraph, currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+        graphlibError = graphlib_mergeGraphs(retGraph, currentGraph);
+#else
+        graphlibError = graphlib_mergeGraphsRanked(retGraph, currentGraph);
+#endif
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
             return STAT_GRAPHLIB_ERROR;
         }
 
         /* Free up current graph */
-        gl_err = graphlib_delGraph(currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(currentGraph);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
             return STAT_GRAPHLIB_ERROR;
@@ -1720,8 +1813,12 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
 
     } /* for thread iter */
 
-    gl_err = graphlib_delEdgeAttr(edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+    graphlibError = graphlib_delEdgeAttr(edgeattr, statFreeEdge);
+#else
+    graphlibError = graphlib_delEdgeAttr(edgeattr);
+#endif
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
         return STAT_GRAPHLIB_ERROR;
@@ -1738,7 +1835,7 @@ extern int bitvec_initialize(int longsize, int edgelabelwidth);
 extern void bitvec_insert(void *vec, int val);
 extern void *bitvec_allocate();
 
-void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph,
+bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph,
                                    graphlib_node_t gl_node, FrameNode *sw_node,
                                    string node_id_names,
                                    set<pair<Walker *, THR_ID> > *error_threads,
@@ -1750,7 +1847,7 @@ void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
       Note: Lots of complexity here to deal with adding edge labels (all the std::set work).
       We could get rid of this if graphlib had graph traversal functions.
    */
-   graphlib_error_t gl_err;
+   graphlib_error_t graphlibError;
    frame_set_t &children = sw_node->getChildren();
 
    map<string, set<FrameNode*> > children_names;
@@ -1803,8 +1900,8 @@ void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
       else {
          graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0, (char *) "", GRAPH_FONT_SIZE};
          fillInName(name, nodeattr);
-         gl_err = graphlib_addNode(gl_graph, newchild, &nodeattr);
-         if (GRL_IS_FATALERROR(gl_err)) {
+         graphlibError = graphlib_addNode(gl_graph, newchild, &nodeattr);
+         if (GRL_IS_FATALERROR(graphlibError)) {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
             continue;
          }
@@ -1815,7 +1912,10 @@ void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
       for (set<FrameNode *>::iterator j = kids.begin(); j != kids.end(); j++) {
          std::set<int> kids_ranks;
          FrameNode *child = *j;
-         AddFrameToGraph(gl_graph, sw_graph, newchild, child, new_node_id_names, error_threads, kids_ranks);
+         bool result;
+         result = AddFrameToGraph(gl_graph, sw_graph, newchild, child, new_node_id_names, error_threads, kids_ranks);
+         if (!result)
+            return false;
          assert(!kids_ranks.empty());
          my_ranks.insert(kids_ranks.begin(), kids_ranks.end());
       }
@@ -1823,22 +1923,39 @@ void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
       if (my_ranks.empty()) {
          //This node only had error stackwalks ending below it, thus no ranks.
          // It doesn't deserve to live.
-         gl_err = graphlib_deleteConnectedNode(gl_graph, newchild);
-         if (GRL_IS_FATALERROR(gl_err))
+         graphlibError = graphlib_deleteConnectedNode(gl_graph, newchild);
+         if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to cleanup nodes\n");
          continue;
       }
       
       //Create the edge between this new node and our parent
       graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
+#ifdef GRAPHLIB20
+      StatBitVectorEdge_t *edge = (StatBitVectorEdge_t *) malloc(sizeof(StatBitVectorEdge_t));
+      if (!edge) {
+         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
+         return false;
+      }
+      edge->length = statBitVectorLength(proctabSize_);
+      edge->bitVector = (StatBitVector_t *) calloc(edge->length, STAT_BITVECTOR_BITS);
+      if (!edge->bitVector) {
+         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+         return false;
+      }
+      for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
+         int rank = *j;
+         edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
+      }
+#else
       edgeattr.edgelist = bitvec_allocate();
       for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
          bitvec_insert(edgeattr.edgelist, *j);
       }
-
+#endif
       if (gl_node != newchild) {
-         gl_err = graphlib_addDirectedEdge(gl_graph, gl_node, newchild, &edgeattr);
-         if (GRL_IS_FATALERROR(gl_err)) {
+         graphlibError = graphlib_addDirectedEdge(gl_graph, gl_node, newchild, &edgeattr);
+         if (GRL_IS_FATALERROR(graphlibError)) {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
             continue;
          }
@@ -1846,6 +1963,7 @@ void STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
 
       output_ranks.insert(my_ranks.begin(), my_ranks.end());
    }
+   return true;
 }
 
 StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
@@ -1859,16 +1977,41 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
 #warning TODO: Start handling partial call stacks in group walks
    }
 
+   graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
    size_t setsize = procset->size();
    size_t proc_bitfield_size = setsize;
    proc_bitfield_size = proc_bitfield_size / sizeof(char);
    if (setsize % sizeof(char)) proc_bitfield_size++;
+
+#if !defined(GRAPHLIB20)
    bitvec_initialize(0, proc_bitfield_size);
+#elif 0
+   StatBitVectorEdge_t *edge = (StatBitVectorEdge_t *) malloc(sizeof(StatBitVectorEdge_t));
+   if (!edge) {
+      printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
+      return STAT_GRAPHLIB_ERROR;
+   }
+   edge->length = statBitVectorLength(proctabSize_);
+   edge->bitVector = (StatBitVector_t *) calloc(edge->length, STAT_BITVECTOR_BITS);
+   if (!edge->bitVector) {
+      printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+      return STAT_GRAPHLIB_ERROR;
+   }
+   for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
+      int rank = *j;
+      edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
+   }
+   edgeattr.label = (void *) edge;
+#endif
    
    string empty;
    set<int> ranks;
-   AddFrameToGraph(retGraph, &tree,
-                   0, tree.getHead(), empty, NULL, ranks);
+   result = AddFrameToGraph(retGraph, &tree,
+                            0, tree.getHead(),
+                            empty, NULL, ranks);
+   if (!result) {
+      return STAT_GRAPHLIB_ERROR;
+   }
 
    return STAT_OK;
 }
@@ -2029,10 +2172,7 @@ StatError_t STAT_BackEnd::startLog(char *logOutDir, bool useMrnetPrintf, int mrn
     if (useMrnetPrintf_ == true)
         mrn_printf_init(statOutFp);
     set_OutputLevel(mrnetOutputLevel);
-//    {
-//        MRN_DEBUG_LOG_DIRECTORY = NULL;
-//        stderr = statOutFp;
-//    }
+
     return STAT_OK;
 }
 
@@ -2343,7 +2483,7 @@ StatError_t STAT_BackEnd::statBenchConnect()
 StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses)
 {
     graphlib_graph_p currentGraph;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
     unsigned int i, j;
     static int init = 0;
 
@@ -2359,37 +2499,47 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             proctab_[i].pd.host_name = NULL;
         }
         init++;
-        gl_err = graphlib_InitVarEdgeLabels(nTasks);
-        if (GRL_IS_FATALERROR(gl_err))
+#ifndef GRAPHLIB20
+        graphlibError = graphlib_InitVarEdgeLabels(nTasks);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
             return STAT_GRAPHLIB_ERROR;
         }
+#endif
     }
 
     /* Delete previously merged graphs */
     if (prefixTree3d_ != NULL)
     {
-        gl_err = graphlib_delGraph(prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree3d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
     if (prefixTree2d_ != NULL)
     {
-        gl_err = graphlib_delGraph(prefixTree2d_);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_delGraph(prefixTree2d_);
+        if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
 
     /* Create graphs */
-    gl_err = graphlib_newGraph(&prefixTree3d_);
-    if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+    graphlibError = graphlib_newGraph(&prefixTree3d_, statBitVectorFunctions);
+#else
+    graphlibError = graphlib_newGraph(&prefixTree3d_);
+#endif
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 3D graph\n");
         return STAT_GRAPHLIB_ERROR;
     }
-    gl_err = graphlib_newGraph(&prefixTree2d_);
-    if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+    graphlibError = graphlib_newGraph(&prefixTree2d_, statBitVectorFunctions);
+#else
+    graphlibError = graphlib_newGraph(&prefixTree2d_);
+#endif
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 2D graph\n");
         return STAT_GRAPHLIB_ERROR;
@@ -2401,8 +2551,13 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
         /* Loop around the number of tasks I'm emulating */
         for (j = 0; j < nTasks; j++)
         {
+#ifdef GRAPHLIB20
+            /* We now create the full eq class set at once */
+            if (j >= nEqClasses && nEqClasses != -1)
+                break;
+#endif
             /* Create the trace for this task */
-            currentGraph = statBenchCreateTrace(maxDepth, j, functionFanout, nEqClasses, i);
+            currentGraph = statBenchCreateTrace(maxDepth, j, nTasks, functionFanout, nEqClasses, i);
             if (currentGraph == NULL)
             {
                 printMsg(STAT_SAMPLE_ERROR, __FILE__, __LINE__, "Error creating trace\n");
@@ -2410,8 +2565,12 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             }
 
             /* Merge cur graph into retGraph */
-            gl_err = graphlib_mergeGraphsRanked(prefixTree3d_, currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+            graphlibError = graphlib_mergeGraphs(prefixTree3d_, currentGraph);
+#else
+            graphlibError = graphlib_mergeGraphsRanked(prefixTree3d_, currentGraph);
+#endif
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
                 return STAT_GRAPHLIB_ERROR;
@@ -2420,8 +2579,12 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             /* Merge the current graph for 2D analysis */
             if (i == 0)
             {
-                gl_err = graphlib_mergeGraphsRanked(prefixTree2d_, currentGraph);
-                if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+                graphlibError = graphlib_mergeGraphs(prefixTree2d_, currentGraph);
+#else
+                graphlibError = graphlib_mergeGraphsRanked(prefixTree2d_, currentGraph);
+#endif
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
                     return STAT_GRAPHLIB_ERROR;
@@ -2431,8 +2594,8 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             /* Free up the temporary graph if it's not being stored as an eq class */
             if (nEqClasses == -1)
             {
-                gl_err = graphlib_delGraph(currentGraph);
-                if (GRL_IS_FATALERROR(gl_err))
+                graphlibError = graphlib_delGraph(currentGraph);
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
                     return STAT_GRAPHLIB_ERROR;
@@ -2444,24 +2607,54 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
     return STAT_OK;
 }
 
-graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int functionFanout, int nEqClasses, unsigned int iter)
+graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int nTasks, unsigned int functionFanout, int nEqClasses, unsigned int iter)
 {
-    int depth, i, nodeId, prevId;
+    int depth, i, nodeId, prevId, currentTask;
     char temp[8192];
     static vector<graphlib_graph_p> generated_graphs;
     string path;
     graphlib_graph_p retGraph;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
     graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,GRAPH_FONT_SIZE};
+#ifdef GRAPHLIB20
+    StatBitVectorEdge_t *edge;
+#endif
     graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
 
     /* set the edge label */
-    gl_err = graphlib_setEdgeByTask(&edgeattr.edgelist, task);
-    if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+    edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+    if (edge == NULL)
+    {
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
+        return NULL;
+    }
+    edge->length = statBitVectorLength(proctabSize_);
+    edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BITS);
+    if (edge->bitVector == NULL)
+    {
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+        return NULL;
+    }
+    for (i = 0; i < nTasks / nEqClasses; i++)
+    {
+        currentTask = task + i * nEqClasses;
+        edge->bitVector[currentTask / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(currentTask % STAT_BITVECTOR_BITS);
+    }
+    if (nTasks % nEqClasses > task)
+    {
+        currentTask = task + i * nEqClasses;
+        edge->bitVector[currentTask / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(currentTask % STAT_BITVECTOR_BITS);
+    }
+    edgeattr.label = (void *)edge;
+#else
+    graphlibError = graphlib_setEdgeByTask(&edgeattr.edgelist, task);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o set edge by task\n");
         return NULL;
     }
+#endif
 
     /* See if we've already generated a graph for this equivalence class and iteration */
     if (task == 0 && nEqClasses != -1)
@@ -2469,8 +2662,8 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
         for (i = 0; i < generated_graphs.size(); i++)
         {
             /* Free up the graph previously cached graphs */
-            gl_err = graphlib_delGraph(generated_graphs[i]);
-            if (GRL_IS_FATALERROR(gl_err))
+            graphlibError = graphlib_delGraph(generated_graphs[i]);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
                 return NULL;
@@ -2478,14 +2671,15 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
         }
         generated_graphs.clear();
     }
+#ifndef GRAPHLIB20            
     if (nEqClasses != -1 && task >= nEqClasses)
     {
         if (generated_graphs.size() > task % nEqClasses)
         {
             /* modify the edges with the proper rank */
             graphlib_modifyEdgeAttr(generated_graphs[task % nEqClasses], &edgeattr);
-            gl_err = graphlib_delEdgeAttr(edgeattr);
-            if (GRL_IS_FATALERROR(gl_err))
+            graphlibError = graphlib_delEdgeAttr(edgeattr);
+            if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
                 return NULL;
@@ -2493,6 +2687,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
             return generated_graphs[task % nEqClasses];
         }
     }
+#endif
 
     /* create return graph */
     /* Create graph root */
@@ -2508,16 +2703,20 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 
     /* Create artificial libc_start_main */
     fillInName("__libc_start_main", nodeattr);
-    path += nodeattr.name;
+#if defined(GRAPHLIB20)
+    path += std::string((char *) nodeattr.label);
+#else
+    path += std::string(nodeattr.name);
+#endif
     nodeId = string_hash(path.c_str());
-    gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_addNode(retGraph, nodeId, &nodeattr);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
         return NULL;
     }
-    gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
         return NULL;
@@ -2526,16 +2725,21 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 
     /* Create artificial main */
     fillInName("main", nodeattr);
-    path += nodeattr.name;
+#if defined(GRAPHLIB20)
+    path += std::string((char *) nodeattr.label);
+#else
+    path += std::string(nodeattr.name);
+#endif
+
     nodeId = string_hash(path.c_str());
-    gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_addNode(retGraph, nodeId, &nodeattr);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
         return NULL;
     }
-    gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
         return NULL;
@@ -2546,7 +2750,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     if (nEqClasses == -1) /* no limit */
         srand(task + 999999 * iter);
     else
-        srand(task % nEqClasses +  999999 * iter);
+        srand(task % nEqClasses +  999999 * (1 + iter));
 
     /* Generate a atack trace and add it to the graph */
     depth = rand() % maxDepth;
@@ -2554,26 +2758,33 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     {
         snprintf(temp, 8192, "depth%dfun%d", i, rand() % functionFanout);
         fillInName(temp, nodeattr);
-
-        path += nodeattr.name;
+#ifdef GRAPHLIB20
+        path += string((char *) nodeattr.label);
+#else
+        path += string(nodeattr.name);
+#endif
         nodeId = string_hash(path.c_str());
-        gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
 
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_addNode(retGraph, nodeId, &nodeattr);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
             return NULL;
         }
-        gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
             return NULL;
         }
         prevId = nodeId;
     }
-    gl_err = graphlib_delEdgeAttr(edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
+#ifdef GRAPHLIB20
+    graphlibError = graphlib_delEdgeAttr(edgeattr, statFreeEdge);
+#else
+    graphlibError = graphlib_delEdgeAttr(edgeattr);
+#endif
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
         return NULL;

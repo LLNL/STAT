@@ -1,4 +1,5 @@
 AC_DEFUN([X_AC_GRAPHLIB], [
+  AM_CONDITIONAL([ENABLE_GRAPHLIB20], false)
   AC_ARG_WITH(graphlib, 
     [AS_HELP_STRING([--with-graphlib=prefix],
       [Add the compile and link search paths for graphlib]
@@ -21,13 +22,29 @@ AC_DEFUN([X_AC_GRAPHLIB], [
     #include <stdio.h>
     int main()
     {
-      unsigned long bufLength;
-      graphlib_serializeGraph(NULL, NULL, &bufLength);
+      graphlib_functiontable_p functions;
+      return 0;
     }],
-    [AC_DEFINE([GRAPHLIB16], [], [Graphlib 1.6])
-      graphlib_vers=1.6
+    [AC_DEFINE([GRAPHLIB20], [], [Graphlib 2.0])
+      AC_DEFINE([GRAPHLIB16], [], [Graphlib 1.6])
+      graphlib_vers=2.0
+      AM_CONDITIONAL([ENABLE_GRAPHLIB20], true)
     ]
   )
+  if test $graphlib_vers = 1; then
+    AC_COMPILE_IFELSE([#include "graphlib.h"
+      #include <stdlib.h>
+      #include <stdio.h>
+      int main()
+      {
+        unsigned long bufLength;
+        graphlib_serializeGraph(NULL, NULL, &bufLength);
+      }],
+      [AC_DEFINE([GRAPHLIB16], [], [Graphlib 1.6])
+        graphlib_vers=1.6
+      ]
+    )
+  fi
   AC_MSG_RESULT([$graphlib_vers])
   AC_CHECK_LIB(lnlgraph,graphlib_newGraph,liblnlgraph_found=yes,liblnlgraph_found=no)
   if test "$liblnlgraph_found" = yes; then

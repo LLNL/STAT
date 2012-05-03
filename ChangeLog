@@ -1,3 +1,29 @@
+2012-05-02 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C src/STAT_FrontEnd.C src/STAT_FilterDefinitions.C :	graphlib 2.X and 1.X separation with ifdefs
+	* src/STAT_GraphRoutines.[C,h] : typdef for the bit vector scalar type
+	* config/x_ac_graphlib.m4, src/Makefile.am : conditional build of STAT_GraphRoutines for graphlib 2.0 only
+
+2012-04-27 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : STATBench support for graphlib 2.0
+	* scripts/STATview.py : fixed handling of '<' and '>' in create_temp (add escape character)
+
+2012-04-21 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.[h,C] : Added support for graphlib 2.0
+	* src/STAT_FrontEnd.[h,C] : Added support for graphlib 2.0
+	* src/STAT_FilterDefinitions.[h,C] : Added support for graphlib 2.0
+
+2012-04-20 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_graphlib.m4 : added graphlib 2.0 check
+	* src/STAT_GraphRoutines.[C,h] : new graphlib 2.0 STAT routines
+	* src/Makefile.am : support for STAT_GraphRoutines.[C,h]
+
+2012-04-05 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : made failure to open log non-fatal
+	* src/STAT_FrontEnd.C : various fixes for logging
+
+2012-03-29 Gregory L. Lee <lee218@llnl.gov>
+	* configure.ac config/x_ac_launchmon.m4 src/STAT_FrontEnd.C scripts/STATGUI.in scripts/STAT.in : added LMON_PREFIX
+
 2012-03-28 Gregory L. Lee <lee218@llnl.gov>
 	* config/x_ac_graphlib.m4 : added graphlib 1.6 check
 	* src/STAT_BackEnd.C src/STAT_FilterDefinitions.C : use unsigned long for byte array len with graphlib 1.6

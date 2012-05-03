@@ -89,7 +89,13 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(pkglibdir)" \
 LTLIBRARIES = $(lib_LTLIBRARIES) $(pkglib_LTLIBRARIES) \
 	$(pyexec_LTLIBRARIES)
 STAT_FilterDefinitions_la_DEPENDENCIES =
-am_STAT_FilterDefinitions_la_OBJECTS = STAT_FilterDefinitions.lo
+am__STAT_FilterDefinitions_la_SOURCES_DIST = STAT_FilterDefinitions.C \
+	STAT_GraphRoutines.h STAT_GraphRoutines.C
+@ENABLE_GRAPHLIB20_FALSE@am_STAT_FilterDefinitions_la_OBJECTS =  \
+@ENABLE_GRAPHLIB20_FALSE@	STAT_FilterDefinitions.lo
+@ENABLE_GRAPHLIB20_TRUE@am_STAT_FilterDefinitions_la_OBJECTS =  \
+@ENABLE_GRAPHLIB20_TRUE@	STAT_FilterDefinitions.lo \
+@ENABLE_GRAPHLIB20_TRUE@	STAT_GraphRoutines.lo
 STAT_FilterDefinitions_la_OBJECTS =  \
 	$(am_STAT_FilterDefinitions_la_OBJECTS)
 STAT_FilterDefinitions_la_LINK = $(LIBTOOL) --tag=CXX \
@@ -107,20 +113,34 @@ _STAT_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(CXXFLAGS) $(_STAT_la_LDFLAGS) $(LDFLAGS) -o $@
 @ENABLE_GUI_TRUE@am__STAT_la_rpath = -rpath $(pyexecdir)
 libstatbe_la_LIBADD =
-am_libstatbe_la_OBJECTS = STAT_BackEnd.lo STAT_timer.lo
+am__libstatbe_la_SOURCES_DIST = STAT_BackEnd.C STAT_BackEnd.h STAT.h \
+	STAT_timer.h STAT_timer.C STAT_GraphRoutines.h \
+	STAT_GraphRoutines.C
+@ENABLE_GRAPHLIB20_FALSE@am_libstatbe_la_OBJECTS = STAT_BackEnd.lo \
+@ENABLE_GRAPHLIB20_FALSE@	STAT_timer.lo
+@ENABLE_GRAPHLIB20_TRUE@am_libstatbe_la_OBJECTS = STAT_BackEnd.lo \
+@ENABLE_GRAPHLIB20_TRUE@	STAT_timer.lo STAT_GraphRoutines.lo
 libstatbe_la_OBJECTS = $(am_libstatbe_la_OBJECTS)
 libstatfe_la_LIBADD =
-am_libstatfe_la_OBJECTS = STAT_FrontEnd.lo STAT_timer.lo
+am__libstatfe_la_SOURCES_DIST = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h \
+	STAT_timer.h STAT_timer.C STAT_GraphRoutines.h \
+	STAT_GraphRoutines.C
+@ENABLE_GRAPHLIB20_FALSE@am_libstatfe_la_OBJECTS = STAT_FrontEnd.lo \
+@ENABLE_GRAPHLIB20_FALSE@	STAT_timer.lo
+@ENABLE_GRAPHLIB20_TRUE@am_libstatfe_la_OBJECTS = STAT_FrontEnd.lo \
+@ENABLE_GRAPHLIB20_TRUE@	STAT_timer.lo STAT_GraphRoutines.lo
 libstatfe_la_OBJECTS = $(am_libstatfe_la_OBJECTS)
 PROGRAMS = $(bin_PROGRAMS)
-am__STATBenchD_SOURCES_DIST = STATBenchD.C
+am__STATBenchD_SOURCES_DIST = STATBenchD.C STAT.h STAT_BackEnd.h \
+	STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@am_STATBenchD_OBJECTS = STATBenchD.$(OBJEXT)
 STATBenchD_OBJECTS = $(am_STATBenchD_OBJECTS)
 @ENABLE_STATBENCH_TRUE@STATBenchD_DEPENDENCIES = libstatbe.la
 STATBenchD_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(STATBenchD_LDFLAGS) $(LDFLAGS) -o $@
-am__STATBenchbin_SOURCES_DIST = STATBench.C
+am__STATBenchbin_SOURCES_DIST = STATBench.C STAT.h STAT_FrongEnd.h \
+	STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@am_STATBenchbin_OBJECTS = STATBench.$(OBJEXT)
 STATBenchbin_OBJECTS = $(am_STATBenchbin_OBJECTS)
 @ENABLE_STATBENCH_TRUE@STATBenchbin_DEPENDENCIES = libstatfe.la
@@ -165,9 +185,10 @@ SOURCES = $(STAT_FilterDefinitions_la_SOURCES) $(_STAT_la_SOURCES) \
 	$(libstatbe_la_SOURCES) $(libstatfe_la_SOURCES) \
 	$(STATBenchD_SOURCES) $(STATBenchbin_SOURCES) $(STATD_SOURCES) \
 	$(STATbin_SOURCES)
-DIST_SOURCES = $(STAT_FilterDefinitions_la_SOURCES) \
-	$(am___STAT_la_SOURCES_DIST) $(libstatbe_la_SOURCES) \
-	$(libstatfe_la_SOURCES) $(am__STATBenchD_SOURCES_DIST) \
+DIST_SOURCES = $(am__STAT_FilterDefinitions_la_SOURCES_DIST) \
+	$(am___STAT_la_SOURCES_DIST) $(am__libstatbe_la_SOURCES_DIST) \
+	$(am__libstatfe_la_SOURCES_DIST) \
+	$(am__STATBenchD_SOURCES_DIST) \
 	$(am__STATBenchbin_SOURCES_DIST) $(STATD_SOURCES) \
 	$(STATbin_SOURCES)
 am__python_PYTHON_DIST = STAT.py
@@ -216,6 +237,7 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LAUNCHMONBIN = @LAUNCHMONBIN@
+LAUNCHMONPREFIX = @LAUNCHMONPREFIX@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
@@ -323,24 +345,27 @@ AM_LDFLAGS =
 
 # this lists the binaries to produce, the (non-PHONY, binary) targets in
 # the previous manual Makefile
-include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h
-@ENABLE_STATBENCH_TRUE@STATBenchbin_SOURCES = STATBench.C
-@ENABLE_STATBENCH_TRUE@STATBenchD_SOURCES = STATBenchD.C
+include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h
+@ENABLE_STATBENCH_TRUE@STATBenchbin_SOURCES = STATBench.C STAT.h STAT_FrongEnd.h STAT_GraphRoutines.h
+@ENABLE_STATBENCH_TRUE@STATBenchD_SOURCES = STATBenchD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@STATBenchbin_LDFLAGS = -Wl,-E
 @ENABLE_STATBENCH_TRUE@STATBenchD_LDFLAGS = -Wl,-E
 @ENABLE_STATBENCH_TRUE@STATBenchbin_LDADD = libstatfe.la @FELIBS@ 
 @ENABLE_STATBENCH_TRUE@STATBenchD_LDADD = libstatbe.la @BELIBS@ 
 lib_LTLIBRARIES = libstatfe.la libstatbe.la 
-STATbin_SOURCES = STAT.C STAT.h STAT_FrontEnd.h
-STATD_SOURCES = STATD.C STAT.h STAT_BackEnd.h
+STATbin_SOURCES = STAT.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
+STATD_SOURCES = STATD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
 STATbin_LDFLAGS = -Wl,-E
 STATbin_LDADD = libstatfe.la @FELIBS@ 
 STATD_LDFLAGS = -Wl,-E
 STATD_LDADD = libstatbe.la @BELIBS@ 
-libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C
-libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C
+@ENABLE_GRAPHLIB20_FALSE@libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C
+@ENABLE_GRAPHLIB20_TRUE@libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_GraphRoutines.h STAT_GraphRoutines.C
+@ENABLE_GRAPHLIB20_FALSE@libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C
+@ENABLE_GRAPHLIB20_TRUE@libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_GraphRoutines.h STAT_GraphRoutines.C
 pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
-STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C
+@ENABLE_GRAPHLIB20_FALSE@STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C
+@ENABLE_GRAPHLIB20_TRUE@STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C STAT_GraphRoutines.h STAT_GraphRoutines.C
 STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version
 STAT_FilterDefinitions_la_LIBADD = @MWLIBS@
 @ENABLE_GUI_TRUE@BUILT_SOURCES = STAT_wrap.C
@@ -556,6 +581,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_BackEnd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FrontEnd.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_GraphRoutines.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_timer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STAT_la-STAT_wrap.Plo@am__quote@
 

@@ -113,6 +113,7 @@ def create_temp(dot_filename):
             temp_dot_file.write(line[:line.find('label') + 7])
             fill_start = line.find('fillcolor')
             label = line[line.find('label') + 7:line.find('fillcolor') - 3]
+            label = label.replace('<', '\\<').replace('>', '\\>') # add escape characters for '<' and '>'
             if label.find('@') != -1:
                 # if the source file information is full path, reduce to the basename
                 function_name, sourceLine, iter_string = decompose_node(label)
