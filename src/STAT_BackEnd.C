@@ -399,7 +399,7 @@ StatError_t STAT_BackEnd::Connect()
 StatError_t STAT_BackEnd::mainLoop()
 {
     int tag = 0, retval, nEqClasses, swNotificationFd, mrnNotificationFd, max_fd;
-    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, sampleType, withThreads, clearOnSample;
+    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, withThreads, clearOnSample;
 #ifdef GRAPHLIB20
     int bitVectorLength;
 #endif
@@ -608,7 +608,11 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Serialize 2D graph */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Serializing 2D graph\n");
+#ifdef GRAPHLIB20
                 graphlibError = graphlib_serializeBasicGraph(prefixTree2d_, &obyteArray, &obyteArrayLen);
+#else
+                graphlibError = graphlib_serializeGraph(prefixTree2d_, &obyteArray, &obyteArrayLen);
+#endif
                 if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 3D prefix tree\n");
@@ -656,7 +660,11 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 /* Serialize 3D graph */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Serializing 3D graph\n");
+#ifdef GRAPHLIB20
                 graphlibError = graphlib_serializeBasicGraph(prefixTree3d_, &obyteArray, &obyteArrayLen);
+#else
+                graphlibError = graphlib_serializeGraph(prefixTree3d_, &obyteArray, &obyteArrayLen);
+#endif
                 if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 3D prefix tree\n");

@@ -2686,7 +2686,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 #ifdef GRAPHLIB20
     graphlibError = graphlib_deserializeBasicGraph(&stackTraces, statBitVectorFunctions, byteArray, byteArrayLen);
 #else
-    graphlibError = graphlib_deserializeBasicGraph(&stackTraces, byteArray, byteArrayLen);
+    graphlibError = graphlib_deserializeGraph(&stackTraces, byteArray, byteArrayLen);
 #endif
     if (GRL_IS_FATALERROR(graphlibError))
     {

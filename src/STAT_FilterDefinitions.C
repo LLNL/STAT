@@ -369,7 +369,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
         statGraphRoutinesCurrentIndex = rank;
         graphlibError = graphlib_deserializeBasicGraph(&currentGraph, statMergeFunctions, byteArray, byteArrayLen);
 #else
-        graphlibError = graphlib_deserializeBasicGraphConn(rank, &currentGraph, byteArray, byteArrayLen);
+        graphlibError = graphlib_deserializeGraphConn(rank, &currentGraph, byteArray, byteArrayLen);
 #endif
         if (GRL_IS_FATALERROR(graphlibError))
         {
@@ -406,7 +406,11 @@ void statMerge(vector<PacketPtr> &inputPackets,
     }
 
     /* Now to finish up: serialize both result graphs to create output packet */
+#ifdef GRAPHLIB20
     graphlibError = graphlib_serializeBasicGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
+#else
+    graphlibError = graphlib_serializeGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
+#endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
         cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize output graph\n");
