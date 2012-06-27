@@ -19,37 +19,54 @@ Redistribution and use in source and binary forms, with or without modification,
         
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."""
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "1.1.0"
+__version__ = "2.0.0"
 
 import os.path
 import string
 import time
 import sys
+import os
+import math
+import re
+import subprocess
+from collections import defaultdict
 #import inspect
+
+# Make sure $DISPLAY is set
+if not "DISPLAY" in os.environ:
+    sys.stderr.write('$DISPLAY is not set.  Ensure that X11 forwarding is enabled.\n')
+    sys.exit(1)
 
 # Check for required modules
 try:
-    import gtk
+    import gtk, gobject, pango
 except ImportError:
-    sys.stderr.write('STATview requires gtk\n')
+    sys.stderr.write('STATview requires gtk and gobject\n')
     sys.exit(1)
-except RuntimeError:
-    sys.stderr.write('There was a problem loading the gtk module.\n')
+except RuntimeError as e:
+    sys.stderr.write('%s\n' %repr(e))
+    sys.stderr.write('There was a problem loading the gtk and gobject module.\n')
     sys.stderr.write('Is X11 forwarding enabled?\n')
     sys.exit(1)
-except:
+except Exception as e:
+    sys.stderr.write('%s\n' %repr(e))
     sys.stderr.write('There was a problem loading the gtk module.\n')
     sys.exit(1)
 
 try:
     import STAThelper
-    from STAThelper import *
+    from STAThelper import _which, color_to_string, decompose_node, get_leaf_num_tasks, get_leaf_tasks, get_node_task_list, get_num_tasks, get_task_list, have_pygments, is_MPI, list_to_string, pygments_lines, STATviewFormatter, escaped_label
 except:
     sys.stderr.write('There was a problem loading the STAThelper module.\n')
     sys.exit(1)
+if have_pygments:
+    from pygments import highlight
+    from pygments.lexers import CLexer
+    from pygments.lexers import CppLexer
+    from pygments.lexers import FortranLexer
+
 try:
     import xdot
-    from xdot import *
 except:
     sys.stderr.write('STATview requires xdot\n')
     sys.stderr.write('xdot can be downloaded from http://code.google.com/p/jrfonseca/wiki/XDot\n')
@@ -100,83 +117,86 @@ def create_temp(dot_filename):
             return None
     temp_dot_file.write('digraph G {\n\tnode [shape=record,style=filled,labeljust=c,height=0.2];\n')
     try:
-        dot_file = open(dot_filename, 'r')
-    except:
+        with open(dot_filename, 'r') as dot_file:
+            for line in dot_file:
+                if line.find('fillcolor') > -1:
+                    # this is a node
+                    label_start = line.find('label')
+                    temp_dot_file.write(line[:line.find('label') + 7])
+                    fill_start = line.find('fillcolor')
+                    label = line[line.find('label') + 7:line.find('fillcolor') - 3]
+                    label = escaped_label(label)
+#                    label = label.replace('<', '\\<').replace('>', '\\>') # add escape characters for '<' and '>'
+                    if label.find('@') != -1:
+                        # if the source file information is full path, reduce to the basename
+                        function_name, sourceLine, iter_string = decompose_node(label)
+                        if sourceLine.find(':') != -1 and sourceLine.find('?') == -1:
+                            source = sourceLine[:sourceLine.find(':')]
+                            cur_lineNum = int(sourceLine[sourceLine.find(':') + 1:])
+                            if os.path.isabs(source):
+                                source = os.path.basename(source)
+                            if iter_string != '':
+                                iter_string = '$' + iter_string
+                            label = "%s@%s:%d%s" %(function_name, source, cur_lineNum, iter_string)
+                    if len(label) > MAX_NODE_NAME:
+                        # clip long node names at the front (preserve most significant characters)
+                        if label[2-MAX_NODE_NAME] == '\\':
+                            label = '...\\%s' %label[3-MAX_NODE_NAME:]
+                        else:
+                            label = '...%s' %label[3-MAX_NODE_NAME:]
+                    temp_dot_file.write(label)
+                    temp_dot_file.write(line[line.find('fillcolor') - 3:])
+                elif line.find('->') > -1:
+                    # this is an edge
+                    tokens = line.split()
+                    source = int(tokens[0])
+                    sink = int(tokens[2])
+                    label = tokens[3]
+                    max_size = 18
+                    num_tasks = get_num_tasks(label)
+                    if label.find(':') != -1:
+                        # this is just a count and representative
+                        representative = get_task_list(label)[0]
+                        if num_tasks == 1:
+                            label = label[0:8] + str(num_tasks) + ':[' +  str(representative) + ']"]'
+                        else:
+                            label = label[0:8] + str(num_tasks) + ':[' +  str(representative) + ',...]"]'
+                    else:
+                        # this is a full node list
+                        if len(label) > max_size and label.find('...') == -1:
+                            # truncate long edge labels
+                            new_label = label[0:max_size]
+                            char = 'x'
+                            i = max_size-1
+                            while char != ',' and i+1 < len(label) and char != ']' and\
+                                  char != '"':
+                                i += 1
+                                char = label[i]
+                                new_label += char
+                            if char == ']' and i+1 < len(label):
+                                new_label += '"]'
+                            elif char == '"':
+                                new_label += ']'
+                            elif i+1 < len(label):
+                                new_label += '...]"]'
+                            label = new_label
+                        label = label[0:8] + str(num_tasks) + ':' + label[8:]
+                    line = '\t' + str(source) + ' -> ' + str(sink) + ' ' + label + '\n'
+                    temp_dot_file.write('%s' %line)
+    except IOError as e:
         show_error_dialog('Failed to open dot file %s' %dot_filename)
         return None
-    lines = dot_file.readlines()
-    dot_file.close()
-    for line in lines:
-        if line.find('fillcolor') > -1:
-            # this is a node
-            label_start = line.find('label')
-            temp_dot_file.write(line[:line.find('label') + 7])
-            fill_start = line.find('fillcolor')
-            label = line[line.find('label') + 7:line.find('fillcolor') - 3]
-            label = label.replace('<', '\\<').replace('>', '\\>') # add escape characters for '<' and '>'
-            if label.find('@') != -1:
-                # if the source file information is full path, reduce to the basename
-                function_name, sourceLine, iter_string = decompose_node(label)
-                if sourceLine.find(':') != -1 and sourceLine.find('?') == -1:
-                    source = sourceLine[:sourceLine.find(':')]
-                    cur_lineNum = int(sourceLine[sourceLine.find(':') + 1:])
-                    if os.path.isabs(source):
-                        source = os.path.basename(source)
-                    if iter_string != '':
-                        iter_string = '$' + iter_string
-                    label = "%s@%s:%d%s" %(function_name, source, cur_lineNum, iter_string)
-            if len(label) > MAX_NODE_NAME:
-                # clip long node names at the front (preserve most significant characters)
-                if label[2-MAX_NODE_NAME] == '\\':
-                    label = '...\\%s' %label[3-MAX_NODE_NAME:]
-                else:
-                    label = '...%s' %label[3-MAX_NODE_NAME:]
-            temp_dot_file.write(label)
-            temp_dot_file.write(line[line.find('fillcolor') - 3:])
-        elif line.find('->') > -1:
-            # this is an edge
-            tokens = line.split()
-            source = int(tokens[0])
-            sink = int(tokens[2])
-            label = tokens[3]
-            max_size = 18
-            num_tasks = get_num_tasks(label)
-            if label.find(':') != -1:
-                # this is just a count and representative
-                representative = get_task_list(label)[0]
-                if num_tasks == 1:
-                    label = label[0:8] + str(num_tasks) + ':[' +  str(representative) + ']"]'
-                else:
-                    label = label[0:8] + str(num_tasks) + ':[' +  str(representative) + ',...]"]'
-            else:
-                # this is a full node list
-                if len(label) > max_size and label.find('...') == -1:
-                    # truncate long edge labels
-                    new_label = label[0:max_size]
-                    char = 'x'
-                    i = max_size-1
-                    while char != ',' and i+1 < len(label) and char != ']' and\
-                          char != '"':
-                        i += 1
-                        char = label[i]
-                        new_label += char
-                    if char == ']' and i+1 < len(label):
-                        new_label += '"]'
-                    elif char == '"':
-                        new_label += ']'
-                    elif i+1 < len(label):
-                        new_label += '...]"]'
-                    label = new_label
-                label = label[0:8] + str(num_tasks) + ':' + label[8:]
-            line = '\t' + str(source) + ' -> ' + str(sink) + ' ' + label + '\n'
-            temp_dot_file.write('%s' %line)
-    temp_dot_file.write('}\n')
-    temp_dot_file.close()
+    except Exception as e:
+        show_error_dialog('Failed to create temporary dot file %s\n %d' %(dot_filename, repr(e)))
+        return None
+    finally:
+        temp_dot_file.write('}\n')
+        temp_dot_file.close()
     return temp_dot_filename
 
 
 ## STAT GUI's wait dialog.
-class STAT_wait_dialog:
+class STAT_wait_dialog(object):
     """STAT GUI's wait dialog.
 
     List subtasks with progress/activity bars and overall progress.
@@ -313,12 +333,12 @@ stat_wait_dialog = STAT_wait_dialog()
 #  \param parent - [optional] the parent dialog
 #
 #  \n
-def show_error_dialog(text, parent=None):
+def show_error_dialog(text, parent = None):
     """Display an error dialog."""
 
     # print traceback information to the terminal
-    import traceback
-    traceback.print_exc()
+    #import traceback
+    #traceback.print_exc()
 
     # create error dialog with error message
     try:
@@ -337,7 +357,7 @@ def show_error_dialog(text, parent=None):
     error_dialog.run()        
 
 ## Overloaded DragAction for use with scroll bars.
-class STATPanAction(DragAction):
+class STATPanAction(xdot.DragAction):
     """Overloaded DragAction for use with scroll bars."""
 
     def drag(self, deltax, deltay):
@@ -369,11 +389,11 @@ class STATPanAction(DragAction):
                 y = rect.height - vspan
             self.dot_widget.dotsw.get_vscrollbar().emit('change-value', gtk.SCROLL_JUMP, y)
         else:
-            DragAction.drag(self, deltax, deltay)
+            xdot.DragAction.drag(self, deltax, deltay)
 
 
 ## A shape composed of multiple sub shapes.
-class STATCompoundShape(CompoundShape):
+class STATCompoundShape(xdot.CompoundShape):
     """A shape composed of multiple sub shapes.
 
     Adds a hide attribute to the CompoundShape class.
@@ -381,7 +401,7 @@ class STATCompoundShape(CompoundShape):
 
     def __init__(self, shapes):
         """The constructor"""
-        CompoundShape.__init__(self, shapes)
+        xdot.CompoundShape.__init__(self, shapes)
         self.hide = False
 
     def draw(self, cr, highlight=False):
@@ -399,7 +419,7 @@ class STATCompoundShape(CompoundShape):
             color = shape.pen.fillcolor
             r, g, b, p = color
             shape.pen.fillcolor = (r, g, b, a_val)
-        CompoundShape.draw(self, cr, highlight)
+        xdot.CompoundShape.draw(self, cr, highlight)
 
 
 ## A new object to gather the edge label.
@@ -517,7 +537,7 @@ class STATNode(STATElement):
         if self.hide == True:
             return None
         if self.is_inside(x, y):
-            return Jump(self, self.x, self.y)
+            return xdot.Jump(self, self.x, self.y)
         return None
 
     def draw(self, cr, highlight=False):
@@ -527,14 +547,14 @@ class STATNode(STATElement):
     def get_text(self):
         """Return the text shape for the node."""
         for shape in self.shapes:
-            if isinstance(shape, TextShape):
+            if isinstance(shape, xdot.TextShape):
                 return shape.t
         return ''
 
     def set_text(self, text):
         """Set the text for the text shape of this node."""
         for shape in self.shapes:
-            if isinstance(shape, TextShape):
+            if isinstance(shape, xdot.TextShape):
                 shape.t = text
                 try:
                     shape.layout.set_text(text)
@@ -567,15 +587,15 @@ class STATEdge(STATElement):
 
     def get_jump(self, x, y):
         """Get the jump object if specified coordintes are in the edge."""
-        if square_distance(x, y, *self.points[0]) <= self.RADIUS*self.RADIUS:
-            return Jump(self, self.dst.x, self.dst.y, highlight=set([self, self.dst]))
-        if square_distance(x, y, *self.points[-1]) <= self.RADIUS*self.RADIUS:
-            return Jump(self, self.src.x, self.src.y, highlight=set([self, self.dst]))
+        if xdot.square_distance(x, y, *self.points[0]) <= self.RADIUS*self.RADIUS:
+            return xdot.Jump(self, self.dst.x, self.dst.y, highlight=set([self, self.dst]))
+        if xdot.square_distance(x, y, *self.points[-1]) <= self.RADIUS*self.RADIUS:
+            return xdot.Jump(self, self.src.x, self.src.y, highlight=set([self, self.dst]))
         return None
 
 
 ## A STAT graph object.
-class STATGraph(Graph):
+class STATGraph(xdot.Graph):
     """A STAT graph object.
     
     Derrived from xdot's Graph class and adds several STAT specific 
@@ -584,7 +604,7 @@ class STATGraph(Graph):
     
     def __init__(self, width=1, height=1, nodes=(), edges=()):
         """The constructor."""
-        Graph.__init__(self, width, height, nodes, edges)
+        xdot.Graph.__init__(self, width, height, nodes, edges)
         for node in self.nodes:
             if self.is_leaf(node):
                 node.is_leaf = True
@@ -838,7 +858,7 @@ class STATGraph(Graph):
 
         # get the node font and background colors
         for shape in node.shapes:
-            if isinstance(shape, TextShape):
+            if isinstance(shape, xdot.TextShape):
                 font_color = shape.pen.color
             else:
                 fill_color = shape.pen.fillcolor
@@ -857,7 +877,7 @@ class STATGraph(Graph):
             this_source = sourceLine[:sourceLine.find(':')]
             if this_source == source:
                 for shape in node_iter.shapes:
-                    if isinstance(shape, TextShape):
+                    if isinstance(shape, xdot.TextShape):
                         font_color = shape.pen.color
                     else:
                         fill_color = shape.pen.fillcolor
@@ -866,10 +886,13 @@ class STATGraph(Graph):
                 lineNums.append((int(sourceLine[sourceLine.find(':') + 1:]), fill_color_string, font_color_string))
 
         found = False
+        error_msg = ''
         if os.path.isabs(source):
-            source_path = source
-            if os.path.exists(source_path):
+            if os.path.exists(source):
+                source_full_path = source
                 found = True
+            else:
+                error_msg = 'Full path %s does not exist\n' %source
         if found == False:
             # find the full path to the file
             source = os.path.basename(source)
@@ -880,9 +903,9 @@ class STATGraph(Graph):
                     found = True
                     break
             if found == False:
-                show_error_dialog('Failed to find file "%s" in search paths.  Please add the source file search path for this file\n' %source)
+                show_error_dialog('%sFailed to find file "%s" in search paths.  Please add the source file search path for this file\n' %(error_msg, source))
                 return True
-            source_path = sp + '/' + source
+            source_full_path = sp + '/' + source
 
         # create the source view window
         if self.source_view_window == None:
@@ -899,11 +922,6 @@ class STATGraph(Graph):
         source_view.set_editable(False)
         source_view.set_cursor_visible(False)
         source_string = ''
-        print source_path
-        file = open(source_path, 'r')
-        lines = file.readlines()
-        file.close()
-        width = len(str(len(lines)))
         count = 0
         source_view.get_buffer().create_tag("monospace", family = "monospace")
         iter = source_view.get_buffer().get_iter_at_offset(0)
@@ -912,35 +930,42 @@ class STATGraph(Graph):
         line_count_map = {}
         lineNum_tuples = []
         for lineNum, fill_color_string, font_color_string in lineNums:
-            if lineNum in line_count_map.keys():
+            if lineNum in line_count_map:
                 if not (lineNum, fill_color_string, font_color_string) in lineNum_tuples:
                     line_count_map[lineNum] += 1
             else:
                 line_count_map[lineNum] = 1
             lineNum_tuples.append((lineNum, fill_color_string, font_color_string))
         max_count = 0
-        for key in line_count_map.keys():
-            if line_count_map[key] > max_count:
-                max_count = line_count_map[key]
+        for line_count in line_count_map.values():
+            if line_count > max_count:
+                max_count = line_count
 
         # print the actual text with line nums and ==> arrows
-        if STAThelper.have_pygments:
-            file = open(source_path, 'r')
-            c_file_patterns = ['.c', '.h']
-            cpp_file_patterns = ['.C', '.cpp', '.c++', '.cc', '.cxx', '.hpp', '.h++', '.hh', '.hxx']
-            fortran_file_patterns = ['.f', '.F', '.f90', '.F90']
-            source_extension = os.path.splitext(os.path.basename(source_path))[1]
-            if source_extension in cpp_file_patterns:
-                highlight(file.read(), CppLexer(), STATviewFormatter())
-            elif source_extension in fortran_file_patterns:
-                highlight(file.read(), FortranLexer(), STATviewFormatter())
-            else: # default to C
-                highlight(file.read(), CLexer(), STATviewFormatter())
-            file.close()
-            lines = STAThelper.pygments_lines
-            source_view.get_buffer().create_tag('bold_tag', weight = pango.WEIGHT_BOLD)
-            source_view.get_buffer().create_tag('italics_tag', style = pango.STYLE_ITALIC)
-            source_view.get_buffer().create_tag('underline_tag', underline = pango.UNDERLINE_SINGLE)
+        try:
+            with open(source_full_path, 'r') as file:
+                if have_pygments:
+                    c_file_patterns = ['.c', '.h']
+                    cpp_file_patterns = ['.C', '.cpp', '.c++', '.cc', '.cxx', '.hpp', '.h++', '.hh', '.hxx']
+                    fortran_file_patterns = ['.f', '.F', '.f90', '.F90']
+                    source_extension = os.path.splitext(os.path.basename(source_full_path))[1]
+                    if source_extension in cpp_file_patterns:
+                        highlight(file.read(), CppLexer(), STATviewFormatter())
+                    elif source_extension in fortran_file_patterns:
+                        highlight(file.read(), FortranLexer(), STATviewFormatter())
+                    else: # default to C
+                        highlight(file.read(), CLexer(), STATviewFormatter())
+                    lines = pygments_lines
+                    source_view.get_buffer().create_tag('bold_tag', weight = pango.WEIGHT_BOLD)
+                    source_view.get_buffer().create_tag('italics_tag', style = pango.STYLE_ITALIC)
+                    source_view.get_buffer().create_tag('underline_tag', underline = pango.UNDERLINE_SINGLE)
+                else:
+                    lines = file.readlines()
+        except IOError as e:
+            show_error_dialog('%s\nFailed to open file "%s"\n' %(repr(e), source_file))
+        except Exception as e:
+            show_error_dialog('%s\nFailed to process source file "%s"\n' %(repr(e), source_file))
+        width = len(str(len(lines)))
         cur_line_iter = source_view.get_buffer().get_iter_at_offset(0)
         cur_line_mark = source_view.get_buffer().create_mark('cur_line', cur_line_iter, True)
         for line in lines:
@@ -976,7 +1001,7 @@ class STATGraph(Graph):
                     source_string = "==>"
                     source_view.get_buffer().insert_with_tags_by_name(iter, source_string, fore_color_tag, back_color_tag, "monospace")
                     lineNum_tuples.append((lineNum, fill_color_string, font_color_string))
-            if STAThelper.have_pygments:
+            if have_pygments:
                 source_string = "%0*d| " %(width, count)
                 source_view.get_buffer().insert_with_tags_by_name(iter, source_string, "monospace")
                 for item in line:
@@ -1080,8 +1105,7 @@ class STATGraph(Graph):
         if node.lex_string == None:
             if sourceLine.find(':') == -1:
                 return False
-            if lex_map_index in lex_map.keys():
-                lex_string = lex_map[lex_map_index]
+            if (lex_map_index, lex_string) in lex_map.items():
                 if lex_string.find('$') != -1 and iter_string != '':
                     var_name = lex_string[lex_string.find('$') + 1:lex_string.find('(')]
                     input_var_name = iter_string[:iter_string.find('=')]
@@ -1137,7 +1161,7 @@ class STATGraph(Graph):
                 break
         if found == False:  
             return False
-        source_map = {}
+        source_map = defaultdict(list)
         progress = 0.0
         #import time
         #t11 = time.time()
@@ -1177,8 +1201,6 @@ class STATGraph(Graph):
             temp_string = temp_string[:temp_string.find('#')]
             # temp_string is now the line number offset of the function
             index_string = source + '#' + temp_string
-            if not index_string in source_map.keys():
-                source_map[index_string] = []
             to_input = tomod.to_tuple()
             to_input.basepath = temp_node.lex_string
             to_input.filename = source
@@ -1194,11 +1216,11 @@ class STATGraph(Graph):
         if error_nodes != []:
             show_error_dialog('Failed to create lexicographical string for %s.  Please be sure to gather stack traces with line number information and be sure to include the appropriate search paths\n' %str(error_nodes))
             return False
-        for key in source_map.keys():
+        for key, source in source_map.items():
             tomod.clear_program_points()
             found = False
             skip_node_rename_list = []
-            for to_input_tuple, node in source_map[key]:
+            for to_input_tuple, node in source:
                 function_name, sourceLine, iter_string = decompose_node(node.label)
                 if node.lex_string.find('$') != -1 or node.label.find('$') != -1:
                     # check if this is the first time visiting this variable
@@ -1213,11 +1235,11 @@ class STATGraph(Graph):
                         self.to_var_visit_list.append(node)
                 tomod.add_program_point(to_input_tuple)
             if found == True:
-                for to_input_tuple, node in source_map[key]:
+                for to_input_tuple, node in source:
                     # set lex string to None so we visit this next time around
                     node.lex_string = None
                 return False
-            for to_input_tuple, node in source_map[key]:
+            for to_input_tuple, node in source:
                 if node in skip_node_rename_list:
                     continue
                 temporal_string = tomod.get_temporal_string(to_input_tuple)
@@ -1410,39 +1432,42 @@ class STATGraph(Graph):
     def save_dot(self, filename, full_edge_label=True, full_node_label=True):
         """Save the current graph as a dot file."""
         try:
-            f = open(filename, 'w')
-        except:
-            show_error_dialog('Failed to open file "%s" for writing' %filename)
+            with open(filename, 'w') as f:
+                f.write('digraph G {\n')
+                f.write('\tnode [shape=record,style=filled,labeljust=c,height=0.2];\n')
+                for node in self.nodes:
+                    if node.hide:
+                        continue
+                    for shape in node.shapes:
+                        if isinstance(shape, xdot.TextShape):
+                            font_color = shape.pen.color
+                            node_text = shape.t
+                        else:
+                            fill_color = shape.pen.fillcolor
+                    if full_node_label == True:
+                        node_text = node.label
+                    fill_string = ''
+                    for fval in fill_color[0:3]:
+                        fill_string += "%02x" %(int(fval *255))
+                    font_string = ''
+                    for fval in font_color[0:3]:
+                        font_string += "%02x" %(int(fval *255))
+                    f.write('\t%s [pos="0,0", label="%s", fillcolor="#%s",font_color="#%s"];\n' %(node.node_name, escaped_label(node_text), fill_string, font_string))
+#                    f.write('\t%s [pos="0,0", label="%s", fillcolor="#%s",font_color="#%s"];\n' %(node.node_name, node_text.replace('<', '\\<').replace('>', '\\>'), fill_string, font_string))
+                for edge in self.edges:
+                    if edge.hide:
+                        continue
+                    if full_edge_label == True:
+                        f.write('\t%s -> %s [label="%s"]\n' %(edge.src.node_name, edge.dst.node_name, edge.dst.edge_label))
+                    else:
+                        f.write('\t%s -> %s [label="%s"]\n' %(edge.src.node_name, edge.dst.node_name, edge.label))
+                f.write('}\n')
+        except IOError as e:
+            show_error_dialog('%s\nFailed to open file "%s" for writing' %(repr(e), filename))
             return False
-        f.write('digraph G {\n')
-        f.write('\tnode [shape=record,style=filled,labeljust=c,height=0.2];\n')
-        for node in self.nodes:
-            if node.hide:
-                continue
-            for shape in node.shapes:
-                if isinstance(shape, TextShape):
-                    font_color = shape.pen.color
-                    node_text = shape.t
-                else:
-                    fill_color = shape.pen.fillcolor
-            if full_node_label == True:
-                node_text = node.label
-            fill_string = ''
-            for fval in fill_color[0:3]:
-                fill_string += "%02x" %(int(fval *255))
-            font_string = ''
-            for fval in font_color[0:3]:
-                font_string += "%02x" %(int(fval *255))
-            f.write('\t%s [pos="0,0", label="%s", fillcolor="#%s",font_color="#%s"];\n' %(node.node_name, node_text.replace('<', '\\<').replace('>', '\\>'), fill_string, font_string))
-        for edge in self.edges:
-            if edge.hide:
-                continue
-            if full_edge_label == True:
-                f.write('\t%s -> %s [label="%s"]\n' %(edge.src.node_name, edge.dst.node_name, edge.dst.edge_label))
-            else:
-                f.write('\t%s -> %s [label="%s"]\n' %(edge.src.node_name, edge.dst.node_name, edge.label))
-        f.write('}\n')
-        f.close()
+        except Exception as e:
+            show_error_dialog('%s\nFailed to process file "%s" for writing' %(repr(e), filename))
+            return False
         return True
 
     def save_file(self, filename):
@@ -1987,7 +2012,7 @@ class STATGraph(Graph):
             task_list = get_node_task_list(node)
             # get the node font and background colors
             for shape in node.shapes:
-                if isinstance(shape, TextShape):
+                if isinstance(shape, xdot.TextShape):
                     font_color = shape.pen.color
                 else:
                     fill_color = shape.pen.fillcolor
@@ -2029,7 +2054,7 @@ class STATGraph(Graph):
 
 
 ## The STAT XDot Parser.
-class STATXDotParser(XDotParser):
+class STATXDotParser(xdot.XDotParser):
     """The STAT XDot Parser.
     
     Derrived form the XDotParser and overrides some XDotParser methods 
@@ -2040,17 +2065,17 @@ class STATXDotParser(XDotParser):
         """The constructor."""
         self.label_map = label_map
         self.node_label_map = node_label_map
-        XDotParser.__init__(self, xdotcode)
+        xdot.XDotParser.__init__(self, xdotcode)
 
     def parse(self):
         """Parse the dot file."""
-        DotParser.parse(self)
+        xdot.DotParser.parse(self)
         return STATGraph(self.width, self.height, self.nodes, self.edges)
 
     def handle_node(self, id, attrs):
         """Handle a node attribute to create a STATNode."""
         new_id = id.strip('"')
-        XDotParser.handle_node(self, new_id, attrs)
+        xdot.XDotParser.handle_node(self, new_id, attrs)
         node = self.node_by_name[new_id]
         label = self.node_label_map[id]
         stat_node = STATNode(node.x, node.y, node.x1, node.y1, node.x2, node.y2, node.shapes, label)
@@ -2063,7 +2088,7 @@ class STATXDotParser(XDotParser):
         """Handle an edge attribute to create a STATNode."""
         new_src_id = src_id.strip('"')
         new_dst_id = dst_id.strip('"')
-        XDotParser.handle_edge(self, new_src_id, new_dst_id, attrs)
+        xdot.XDotParser.handle_edge(self, new_src_id, new_dst_id, attrs)
         label = attrs.get('label', None)
         edge = self.edges.pop()
         stat_edge = STATEdge(edge.src, edge.dst, edge.points, edge.shapes, label)
@@ -2078,7 +2103,7 @@ class STATXDotParser(XDotParser):
 
 
 ## The STATNullAction overloads the xdot NullAction.
-class STATNullAction(DragAction):
+class STATNullAction(xdot.DragAction):
     """The STATNullAction overloads the xdot NullAction.
     
     Allows highlighting the entire call path of a given node.
@@ -2113,7 +2138,7 @@ class STATNullAction(DragAction):
 
 
 ## PyGTK widget that draws STAT generated dot graphs.
-class STATDotWidget(DotWidget):
+class STATDotWidget(xdot.DotWidget):
     """PyGTK widget that draws STAT generated dot graphs.
     
     Derrived from xdot's DotWidget class.
@@ -2121,7 +2146,7 @@ class STATDotWidget(DotWidget):
 
     def __init__(self):
         """The constructor."""
-        DotWidget.__init__(self)
+        xdot.DotWidget.__init__(self)
         self.graph = STATGraph()
         self.drag_action = STATNullAction(self)
 
@@ -2159,7 +2184,7 @@ class STATDotWidget(DotWidget):
             show_error_dialog('Failed to read temp dot file %s' %temp_dot_filename, self)
             return False
         os.remove(temp_dot_filename)
-        DotWidget.set_dotcode(self, dotcode2, filename)
+        xdot.DotWidget.set_dotcode(self, dotcode2, filename)
         self.graph.cur_filename = filename
         return True
 
@@ -2231,7 +2256,7 @@ class STATDotWidget(DotWidget):
             width = int(math.ceil(self.graph.width * self.zoom_ratio)) + 2 * self.ZOOM_TO_FIT_MARGIN
             height = int(math.ceil(self.graph.height * self.zoom_ratio)) + 2 * self.ZOOM_TO_FIT_MARGIN
             self.set_size_request(max(width, 1), max(height, 1))
-        DotWidget.queue_draw(self)
+        xdot.DotWidget.queue_draw(self)
    
     def get_drag_action(self, event):
         """Overloaded get_drag_action for scroll window."""
@@ -2246,7 +2271,7 @@ class STATDotWidget(DotWidget):
                     return STATPanAction
             return NullAction
         else:
-            return DotWidget.get_drag_action(self, event)
+            return xdot.DotWidget.get_drag_action(self, event)
     
     def zoom_to_fit(self):
         """Overloaded zoom_to_fit for scroll window."""
@@ -2269,7 +2294,7 @@ class STATDotWidget(DotWidget):
                 self.zoom_image(zoom_ratio, False, (x, y))
             self.zoom_to_fit_on_resize = True
         else:
-            return DotWidget.zoom_to_fit(self)
+            return xdot.DotWidget.zoom_to_fit(self)
 
     def zoom_image(self, zoom_ratio, center=False, pos=None):
         """Overloaded zoom_image for scroll window."""
@@ -2303,10 +2328,10 @@ class STATDotWidget(DotWidget):
                 vpos = y * adj_zoom_ratio - vspan / 2.0 + self.ZOOM_TO_FIT_MARGIN
                 self.dotsw.get_vscrollbar().get_adjustment().set_value(vpos)
         else:
-            return DotWidget.zoom_image(self, zoom_ratio, center, pos)
+            return xdot.DotWidget.zoom_image(self, zoom_ratio, center, pos)
 
 ## The window object containing the STATDotWidget
-class STATDotWindow(DotWindow):
+class STATDotWindow(xdot.DotWindow):
     """The window object containing the STATDotWidget
     
     The STATDotWindow is derrived from xdot's DotWindow class.
@@ -2563,11 +2588,13 @@ entered as a regular expression"""
         if not os.path.exists(user_guide_path):
             show_error_dialog('Failed to find STAT user guide %s' %user_guide_path, self)
             return False
-        pdfviewer = STAThelper._which('acroread')
+        pdfviewer = _which('evince')
         if pdfviewer == None:
-            pdfviewer = STAThelper._which('xpdf')
+            pdfviewer = _which('xpdf')
             if pdfviewer == None:
-                show_error_dialog('Failed to find PDF viewer', self)
+                pdfviewer = _which('acroread')
+                if pdfviewere == None:
+                    show_error_dialog('Failed to find PDF viewer', self)
                 return False
         if os.fork() == 0:
             subprocess.call([pdfviewer, user_guide_path])
@@ -2616,11 +2643,12 @@ entered as a regular expression"""
     def open_file(self, filename):
         """Open a dot file and set the dotcode for the current tab."""
         try:
-            fp = file(filename, 'rt')
-            stat_wait_dialog.show_wait_dialog_and_run(self.set_dotcode, (fp.read(), filename, self.notebook.get_current_page()), ['Opening DOT File'], self)
-            fp.close()
-        except:
-            show_error_dialog('Failed to open file:\n\n%s\n\nPlease be sure the file exists and is a valid STAT outputted dot file.' %filename)
+            with open(filename, 'r') as f:
+                stat_wait_dialog.show_wait_dialog_and_run(self.set_dotcode, (f.read(), filename, self.notebook.get_current_page()), ['Opening DOT File'], self)
+        except IOError as e:
+            show_error_dialog('%s\nFailed to open file:\n\n%s\n\nPlease be sure the file exists and is a valid STAT outputted dot file.' %(repr(e), filename))
+        except IOError as e:
+            show_error_dialog('%s\nFailed to process file:\n\n%s\n\nPlease be sure the file exists and is a valid STAT outputted dot file.' %(repr(e), filename))
         self.show_all()
         self.update_history()
 
@@ -2849,6 +2877,8 @@ entered as a regular expression"""
         paths = []
         if path == '' and destroy == True:
             search_dialog.destroy()
+            return
+        elif path == '' and destroy == False:
             return
         if not os.path.exists(path):
             show_error_dialog('directory "%s" does not exist' %path, self)
@@ -3192,7 +3222,7 @@ entered as a regular expression"""
             sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
             text_view = gtk.TextView()
             for shape in node.shapes:
-                if isinstance(shape, TextShape):
+                if isinstance(shape, xdot.TextShape):
                     font_color = shape.pen.color
                 else:
                     fill_color = shape.pen.fillcolor
@@ -3335,14 +3365,19 @@ def STATview_main(argv):
         for filename in argv[1:]:
             i += 1
             try:
-                f = file(filename, 'rt')
-            except:
-                sys.stderr.write('\nfailed to open file %s\n\n' %filename)
+                with open(filename, 'r') as f:
+#                f = file(filename, 'rt')
+                    if i != 0:
+                        window.create_new_tab()
+                    stat_wait_dialog.show_wait_dialog_and_run(window.set_dotcode, (f.read(), filename, i), ['Opening DOT file'], window)
+            except IOError as e:
+                sys.stderr.write('\n%s\nfailed to open file %s\n\n' %(repr(e), filename))
                 sys.stderr.write('usage:\n\tSTATview [<your_STAT_generated_graph.dot>]*\n\n')
                 sys.exit(-1)
-            if i != 0:
-                window.create_new_tab()
-            stat_wait_dialog.show_wait_dialog_and_run(window.set_dotcode, (f.read(), filename, i), ['Opening DOT file'], window)
+            except Exception as e:
+                sys.stderr.write('\n%s\nfailed to proess file %s\n\n' %(repr(e), filename))
+                sys.stderr.write('usage:\n\tSTATview [<your_STAT_generated_graph.dot>]*\n\n')
+                sys.exit(-1)
     window.connect('destroy', window.on_destroy)
     #gtk.gdk.threads_init()
     gtk.main()

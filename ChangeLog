@@ -1,3 +1,13 @@
+2012-06-27 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C src/STAT_FrontEnd.C src/STAT_FilterDefinitions.C src/STAT_GraphRoutines.[h,C] : fixed memory leaks
+
+2012-06-26 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STAThelper.py scripts/STATview.py scripts/STATGUI.py : code cleanup, improved fault handling, and various optimizations
+
+2012-06-18 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATmerge.py scripts/core_stack_merge.in scripts/bg_core_backtrace.py scripts/stat_merge_base.py src/STAT_merge.C : added files for STAT merge script
+	* : updated configure/Makefile inputs to build merge tools
+
 2012-05-03 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C src/STAT_FrontEnd.C src/STAT_FilterDefinitions.C :	use basic graph implementation of [de]serialize to avoid copying unused parameters
 	* src/STAT_BackEnd.C : calloc num BYTES not BITS for bit vector

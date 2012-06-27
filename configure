@@ -792,6 +792,7 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 STATPYTHON
+GRAPHLIBPREFIX
 MWLIBS
 BELIBS
 FELIBS
@@ -803,6 +804,8 @@ LAUNCHMONBIN
 FGFSFILTERPATH
 ENABLE_GRAPHLIB20_FALSE
 ENABLE_GRAPHLIB20_TRUE
+ENABLE_BGL_FALSE
+ENABLE_BGL_TRUE
 PYTHONPATH
 DOTFOUND
 SWIG
@@ -5094,13 +5097,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:5097: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:5100: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5100: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:5103: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5103: output\"" >&5)
+  (eval echo "\"\$as_me:5106: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -6306,7 +6309,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6309 "configure"' > conftest.$ac_ext
+  echo '#line 6312 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -8871,11 +8874,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8874: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8877: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8878: \$? = $ac_status" >&5
+   echo "$as_me:8881: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9210,11 +9213,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9213: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9216: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:9217: \$? = $ac_status" >&5
+   echo "$as_me:9220: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9315,11 +9318,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9318: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9321: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9322: \$? = $ac_status" >&5
+   echo "$as_me:9325: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -9370,11 +9373,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9373: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9376: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9377: \$? = $ac_status" >&5
+   echo "$as_me:9380: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -12173,7 +12176,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12176 "configure"
+#line 12179 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12269,7 +12272,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12272 "configure"
+#line 12275 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14289,11 +14292,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14292: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14295: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14296: \$? = $ac_status" >&5
+   echo "$as_me:14299: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14388,11 +14391,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14391: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14394: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14395: \$? = $ac_status" >&5
+   echo "$as_me:14398: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14440,11 +14443,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14443: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14446: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14447: \$? = $ac_status" >&5
+   echo "$as_me:14450: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -15990,6 +15993,14 @@ fi
 
 
 
+   if false; then
+  ENABLE_BGL_TRUE=
+  ENABLE_BGL_FALSE='#'
+else
+  ENABLE_BGL_TRUE='#'
+  ENABLE_BGL_FALSE=
+fi
+
 
 # Check whether --with-bluegene was given.
 if test "${with_bluegene+set}" = set; then
@@ -15999,6 +16010,14 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
     CXXFLAGS="$CXXFLAGS"
+     if true; then
+  ENABLE_BGL_TRUE=
+  ENABLE_BGL_FALSE='#'
+else
+  ENABLE_BGL_TRUE='#'
+  ENABLE_BGL_FALSE=
+fi
+
 
 fi
 
@@ -16519,6 +16538,7 @@ fi
 if test "${with_graphlib+set}" = set; then
   withval=$with_graphlib; CXXFLAGS="$CXXFLAGS -I${withval}/include"
       LDFLAGS="$LDFLAGS -L${withval}/lib -Wl,-rpath=${withval}/lib"
+      GRAPHLIBPREFIX=${withval}
 
 else
   CXXFLAGS="$CXXFLAGS"
@@ -19989,7 +20009,8 @@ done
 
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile scripts/STAT scripts/STATGUI scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
+
+ac_config_files="$ac_config_files Makefile src/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile scripts/STAT scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -20128,6 +20149,20 @@ if test -z "${ENABLE_GUI_TRUE}" && test -z "${ENABLE_GUI_FALSE}"; then
   { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_GUI\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 $as_echo "$as_me: error: conditional \"ENABLE_GUI\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${ENABLE_BGL_TRUE}" && test -z "${ENABLE_BGL_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_BGL\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"ENABLE_BGL\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${ENABLE_BGL_TRUE}" && test -z "${ENABLE_BGL_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_BGL\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"ENABLE_BGL\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -21025,6 +21060,7 @@ do
     "examples/scripts/Makefile") CONFIG_FILES="$CONFIG_FILES examples/scripts/Makefile" ;;
     "scripts/STAT") CONFIG_FILES="$CONFIG_FILES scripts/STAT" ;;
     "scripts/STATGUI") CONFIG_FILES="$CONFIG_FILES scripts/STATGUI" ;;
+    "scripts/core_stack_merge") CONFIG_FILES="$CONFIG_FILES scripts/core_stack_merge" ;;
     "scripts/STATview") CONFIG_FILES="$CONFIG_FILES scripts/STATview" ;;
     "scripts/STATBench") CONFIG_FILES="$CONFIG_FILES scripts/STATBench" ;;
     "scripts/stat-cl") CONFIG_FILES="$CONFIG_FILES scripts/stat-cl" ;;

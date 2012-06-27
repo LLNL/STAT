@@ -43,15 +43,21 @@ endif
 STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version
 STAT_FilterDefinitions_la_LIBADD = @MWLIBS@
 
+pyexec_LTLIBRARIES = _STATmerge.la
+_STATmerge_la_SOURCES = STAT_merge.C STAT_GraphRoutines.C
+_STATmerge_la_CPPFLAGS = -I./ 
+_STATmerge_la_LDFLAGS = -module -avoid-version
+_STATmerge_la_LIBADD = -llnlgraph
+
 if ENABLE_GUI
 BUILT_SOURCES = STAT_wrap.C
 SWIG_SOURCES = STAT.i
-pyexec_LTLIBRARIES = _STAT.la
+pyexec_LTLIBRARIES += _STAT.la 
 python_PYTHON = STAT.py
 _STAT_la_SOURCES = STAT_wrap.C $(SWIG_SOURCES)
 _STAT_la_CPPFLAGS = -I./
 _STAT_la_LDFLAGS = -module -avoid-version
-_STAT_la_LIBADD = libstatfe.la @FELIBS@ 
+_STAT_la_LIBADD = libstatfe.la @FELIBS@
 
 STAT_wrap.C:$(SWIG_SOURCES) Makefile
 	$(SWIG) -c++ -python -o $@ $<

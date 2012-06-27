@@ -331,6 +331,8 @@ void statMerge(vector<PacketPtr> &inputPackets,
         return;
     }
 #ifdef GRAPHLIB20
+    statInitializeReorderFunctions();
+    statInitializeBitVectorFunctions();
     statInitializeMergeFunctions();
 #endif
 

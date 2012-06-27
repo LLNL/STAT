@@ -79,6 +79,7 @@ AC_SUBST(MRNETCOMMNODEBIN)
 AC_SUBST(DOTBINDIR)
 AC_SUBST(LAUNCHMONBIN)
 AC_SUBST(LAUNCHMONPREFIX)
+AC_SUBST(GRAPHLIBPREFIX)
 AC_SUBST(STATPYTHON)
 
 AC_CONFIG_FILES([Makefile
@@ -92,6 +93,7 @@ AC_CONFIG_FILES([Makefile
                  examples/scripts/Makefile
                  scripts/STAT
                  scripts/STATGUI
+                 scripts/core_stack_merge
                  scripts/STATview
                  scripts/STATBench
                  scripts/stat-cl

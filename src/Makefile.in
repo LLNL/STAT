@@ -39,6 +39,7 @@ host_triplet = @host@
 @ENABLE_STATBENCH_TRUE@bin_PROGRAMS = STATbin$(EXEEXT) STATD$(EXEEXT) \
 @ENABLE_STATBENCH_TRUE@	STATBenchbin$(EXEEXT) \
 @ENABLE_STATBENCH_TRUE@	STATBenchD$(EXEEXT)
+@ENABLE_GUI_TRUE@am__append_1 = _STAT.la 
 subdir = src
 DIST_COMMON = $(am__python_PYTHON_DIST) $(include_HEADERS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in
@@ -117,6 +118,13 @@ _STAT_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(_STAT_la_LDFLAGS) $(LDFLAGS) -o $@
 @ENABLE_GUI_TRUE@am__STAT_la_rpath = -rpath $(pyexecdir)
+_STATmerge_la_DEPENDENCIES =
+am__STATmerge_la_OBJECTS = _STATmerge_la-STAT_merge.lo \
+	_STATmerge_la-STAT_GraphRoutines.lo
+_STATmerge_la_OBJECTS = $(am__STATmerge_la_OBJECTS)
+_STATmerge_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
+	$(CXXFLAGS) $(_STATmerge_la_LDFLAGS) $(LDFLAGS) -o $@
 libstatbe_la_LIBADD =
 am__libstatbe_la_SOURCES_DIST = STAT_BackEnd.C STAT_BackEnd.h STAT.h \
 	STAT_timer.h STAT_timer.C STAT_GraphRoutines.h \
@@ -187,11 +195,12 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(STAT_FilterDefinitions_la_SOURCES) $(_STAT_la_SOURCES) \
-	$(libstatbe_la_SOURCES) $(libstatfe_la_SOURCES) \
-	$(STATBenchD_SOURCES) $(STATBenchbin_SOURCES) $(STATD_SOURCES) \
-	$(STATbin_SOURCES)
+	$(_STATmerge_la_SOURCES) $(libstatbe_la_SOURCES) \
+	$(libstatfe_la_SOURCES) $(STATBenchD_SOURCES) \
+	$(STATBenchbin_SOURCES) $(STATD_SOURCES) $(STATbin_SOURCES)
 DIST_SOURCES = $(am__STAT_FilterDefinitions_la_SOURCES_DIST) \
-	$(am___STAT_la_SOURCES_DIST) $(am__libstatbe_la_SOURCES_DIST) \
+	$(am___STAT_la_SOURCES_DIST) $(_STATmerge_la_SOURCES) \
+	$(am__libstatbe_la_SOURCES_DIST) \
 	$(am__libstatfe_la_SOURCES_DIST) \
 	$(am__STATBenchD_SOURCES_DIST) \
 	$(am__STATBenchbin_SOURCES_DIST) $(STATD_SOURCES) \
@@ -235,6 +244,7 @@ EXEEXT = @EXEEXT@
 FELIBS = @FELIBS@
 FGFSFILTERPATH = @FGFSFILTERPATH@
 FGREP = @FGREP@
+GRAPHLIBPREFIX = @GRAPHLIBPREFIX@
 GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -373,14 +383,18 @@ pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
 @ENABLE_GRAPHLIB20_TRUE@STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C STAT_GraphRoutines.h STAT_GraphRoutines.C
 STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version
 STAT_FilterDefinitions_la_LIBADD = @MWLIBS@
+pyexec_LTLIBRARIES = _STATmerge.la $(am__append_1)
+_STATmerge_la_SOURCES = STAT_merge.C STAT_GraphRoutines.C
+_STATmerge_la_CPPFLAGS = -I./ 
+_STATmerge_la_LDFLAGS = -module -avoid-version
+_STATmerge_la_LIBADD = -llnlgraph
 @ENABLE_GUI_TRUE@BUILT_SOURCES = STAT_wrap.C
 @ENABLE_GUI_TRUE@SWIG_SOURCES = STAT.i
-@ENABLE_GUI_TRUE@pyexec_LTLIBRARIES = _STAT.la
 @ENABLE_GUI_TRUE@python_PYTHON = STAT.py
 @ENABLE_GUI_TRUE@_STAT_la_SOURCES = STAT_wrap.C $(SWIG_SOURCES)
 @ENABLE_GUI_TRUE@_STAT_la_CPPFLAGS = -I./
 @ENABLE_GUI_TRUE@_STAT_la_LDFLAGS = -module -avoid-version
-@ENABLE_GUI_TRUE@_STAT_la_LIBADD = libstatfe.la @FELIBS@ 
+@ENABLE_GUI_TRUE@_STAT_la_LIBADD = libstatfe.la @FELIBS@
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -395,9 +409,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign src/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu src/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign src/Makefile
+	  $(AUTOMAKE) --gnu src/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -513,6 +527,8 @@ STAT_FilterDefinitions.la: $(STAT_FilterDefinitions_la_OBJECTS) $(STAT_FilterDef
 	$(STAT_FilterDefinitions_la_LINK) -rpath $(pkglibdir) $(STAT_FilterDefinitions_la_OBJECTS) $(STAT_FilterDefinitions_la_LIBADD) $(LIBS)
 _STAT.la: $(_STAT_la_OBJECTS) $(_STAT_la_DEPENDENCIES) 
 	$(_STAT_la_LINK) $(am__STAT_la_rpath) $(_STAT_la_OBJECTS) $(_STAT_la_LIBADD) $(LIBS)
+_STATmerge.la: $(_STATmerge_la_OBJECTS) $(_STATmerge_la_DEPENDENCIES) 
+	$(_STATmerge_la_LINK) -rpath $(pyexecdir) $(_STATmerge_la_OBJECTS) $(_STATmerge_la_LIBADD) $(LIBS)
 libstatbe.la: $(libstatbe_la_OBJECTS) $(libstatbe_la_DEPENDENCIES) 
 	$(CXXLINK) -rpath $(libdir) $(libstatbe_la_OBJECTS) $(libstatbe_la_LIBADD) $(LIBS)
 libstatfe.la: $(libstatfe_la_OBJECTS) $(libstatfe_la_DEPENDENCIES) 
@@ -589,6 +605,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_GraphRoutines.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_timer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STAT_la-STAT_wrap.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STATmerge_la-STAT_GraphRoutines.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STATmerge_la-STAT_merge.Plo@am__quote@
 
 .C.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -617,6 +635,20 @@ _STAT_la-STAT_wrap.lo: STAT_wrap.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STAT_wrap.C' object='_STAT_la-STAT_wrap.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STAT_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o _STAT_la-STAT_wrap.lo `test -f 'STAT_wrap.C' || echo '$(srcdir)/'`STAT_wrap.C
+
+_STATmerge_la-STAT_merge.lo: STAT_merge.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STATmerge_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT _STATmerge_la-STAT_merge.lo -MD -MP -MF $(DEPDIR)/_STATmerge_la-STAT_merge.Tpo -c -o _STATmerge_la-STAT_merge.lo `test -f 'STAT_merge.C' || echo '$(srcdir)/'`STAT_merge.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/_STATmerge_la-STAT_merge.Tpo $(DEPDIR)/_STATmerge_la-STAT_merge.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STAT_merge.C' object='_STATmerge_la-STAT_merge.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STATmerge_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o _STATmerge_la-STAT_merge.lo `test -f 'STAT_merge.C' || echo '$(srcdir)/'`STAT_merge.C
+
+_STATmerge_la-STAT_GraphRoutines.lo: STAT_GraphRoutines.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STATmerge_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT _STATmerge_la-STAT_GraphRoutines.lo -MD -MP -MF $(DEPDIR)/_STATmerge_la-STAT_GraphRoutines.Tpo -c -o _STATmerge_la-STAT_GraphRoutines.lo `test -f 'STAT_GraphRoutines.C' || echo '$(srcdir)/'`STAT_GraphRoutines.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/_STATmerge_la-STAT_GraphRoutines.Tpo $(DEPDIR)/_STATmerge_la-STAT_GraphRoutines.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STAT_GraphRoutines.C' object='_STATmerge_la-STAT_GraphRoutines.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STATmerge_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o _STATmerge_la-STAT_GraphRoutines.lo `test -f 'STAT_GraphRoutines.C' || echo '$(srcdir)/'`STAT_GraphRoutines.C
 
 mostlyclean-libtool:
 	-rm -f *.lo

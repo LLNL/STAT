@@ -176,6 +176,7 @@ STAT_FrontEnd::STAT_FrontEnd()
         fprintf(stderr, "Failed to initialize Graphlib\n");
     statInitializeReorderFunctions();
     statInitializeBitVectorFunctions();
+    statInitializeMergeFunctions();
 #endif
 
     /* Get the FE hostname */
@@ -228,7 +229,7 @@ STAT_FrontEnd::~STAT_FrontEnd()
 {
     unsigned int i;
     StatError_t statError;
-    map<string, IntList_t *>::iterator iter;
+    map<int, IntList_t *>::iterator iter;
     graphlib_error_t graphlibError;
 
     /* Dump the performance metrics to a file */
@@ -271,6 +272,18 @@ STAT_FrontEnd::~STAT_FrontEnd()
         }
         free(launcherArgv_);
     }    
+    for (iter = mrnetRankToMPIRanksMap_.begin(); iter != mrnetRankToMPIRanksMap_.end(); iter++)
+    {
+        if (iter->second != NULL)
+        {
+            if (iter->second->list != NULL)
+                free(iter->second->list);
+            free(iter->second);
+        }
+    }
+    statFreeReorderFunctions();
+    statFreeBitVectorFunctions();
+    statFreeMergeFunctions();
     isAttached_ = false;
     isConnected_ = false;
     graphlibError = graphlib_Finish();
@@ -411,7 +424,7 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
             return STAT_ALLOCATE_ERROR;
         }
         daemonArgv[0] = strdup("-L");
-        daemonArgv[1] = logOutDir_;
+        daemonArgv[1] = strdup(logOutDir_);
         daemonArgv[2] = strdup("-o");
         daemonArgv[3] = (char *)malloc(8 * sizeof(char));
         snprintf(daemonArgv[3], 8, "%d", mrnetOutputLevel_);
@@ -558,7 +571,15 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
     }
 
     if (daemonArgv != NULL)
+    {
+        for (i = 0;;i++)
+        {
+            if (daemonArgv[i] == NULL)
+                break;
+            free(daemonArgv[i]);
+        }
         free(daemonArgv);
+    }
 
     return STAT_OK;
 }

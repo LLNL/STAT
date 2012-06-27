@@ -120,6 +120,7 @@ EXEEXT = @EXEEXT@
 FELIBS = @FELIBS@
 FGFSFILTERPATH = @FGFSFILTERPATH@
 FGREP = @FGREP@
+GRAPHLIBPREFIX = @GRAPHLIBPREFIX@
 GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -241,9 +242,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign doc/userguide/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu doc/userguide/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign doc/userguide/Makefile
+	  $(AUTOMAKE) --gnu doc/userguide/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \

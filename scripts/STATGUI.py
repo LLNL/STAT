@@ -20,20 +20,33 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "1.1.0"
+__version__ = "2.0.0"
 
 import STAThelper
-from STAThelper import *
+from STAThelper import var_spec_to_string, get_task_list
 import STATview
-from STATview import *
+from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
 import sys, DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import *
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_NONE, STAT_OK, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_FUNCTION_NAME_ONLY, STAT_FUNCTION_AND_PC, STAT_FUNCTION_AND_LINE, STAT_APPLICATION_EXITED
 import commands
+import subprocess
 import shelve
 import time
 import string
+import os
+import gtk
+import gobject
+import re
+from collections import defaultdict
 
+## The ProcTab class stores the process table
+class ProcTab(object):
+    def __init__(self):
+        self.launcher_host = None
+        self.launcher_pid = None
+        self.executable_path = None
+        self.process_list = []
 
 ## The STATGUI window adds STAT operations to the STATview window.
 class STATGUI(STATDotWindow):
@@ -65,54 +78,53 @@ class STATGUI(STATDotWindow):
                 pass
         self.STAT = STAT_FrontEnd()
         self.properties_window = None
-        self.proctab_file = None
+        self.proctab_file_path = None
+        self.proctab = None
         self.attached = False
         self.reattach = False
         self.combo_boxes = {}
         self.spinners = {}
-        self.types = {}
         self.sample_task_list = ['Sample Stack Traces', 'Gather Stack Traces', 'Render Stack Traces']
         self.attach_task_list = ['Launch Daemons', 'Connect to Daemons', 'Attach to Application']
         self.attach_task_list += self.sample_task_list
-        self.types['Topology Type'] = ['automatic', 'depth', 'max fanout', 'custom']
-        self.types['Verbosity Type'] = ['error', 'stdout', 'full']
-        self.types['Sample Type'] = ['function only', 'function and pc', 'function and line']
-        self.types['Remote Host Shell'] = ['rsh', 'ssh']
-        self.options = {}
-        self.options['Remote Host'] = "localhost"
-        self.options['Remote Host Shell'] = "rsh"
-        self.options['PID'] = None
-        self.options['Launcher Exe'] = ''
-        self.options['Topology Type'] = 'automatic'
-        self.options['Topology'] = '1'
-        self.options['Share App Nodes'] = True
-        self.options['Tool Daemon Path'] = self.STAT.getToolDaemonExe()
-        self.options['Filter Path'] = self.STAT.getFilterPath()
-        self.options['Job Launcher'] = 'mpirun|srun|orterun'
-        self.options['Log Dir'] = os.environ['HOME']
-        self.options['Log Frontend'] = False
-        self.options['Log Backend'] = False
-        self.options['Log CP'] = False
-        self.options['Use MRNet Printf'] = False
+        self.types = { 'Topology Type'     : ['automatic', 'depth', 'max fanout', 'custom'],
+                       'Verbosity Type'    : ['error', 'stdout', 'full'],
+                       'Sample Type'       : ['function only', 'function and pc', 'function and line'],
+                       'Remote Host Shell' : ['rsh', 'ssh'] }
+        self.options = { 'Remote Host'                      : "localhost",
+                         'Remote Host Shell'                : "rsh",
+                         'PID'                              : None,
+                         'Launcher Exe'                     : '',
+                         'Topology Type'                    : 'automatic',
+                         'Topology'                         : '1',
+                         'Share App Nodes'                  : True,
+                         'Tool Daemon Path'                 : self.STAT.getToolDaemonExe(),
+                         'Filter Path'                      : self.STAT.getFilterPath(),
+                         'Job Launcher'                     : 'mpirun|srun|orterun',
+                         'Log Dir'                          : os.environ['HOME'],
+                         'Log Frontend'                     : False,
+                         'Log Backend'                      : False,
+                         'Log CP'                           : False,
+                         'Use MRNet Printf'                 : False,
+                         'Verbosity Type'                   : 'error',
+                         'Communication Nodes'              : '',
+                         'Communication Processes per Node' : 8,
+                         'Num Traces'                       : 10,
+                         'Trace Frequency (ms)'             : 1000,
+                         'Num Retries'                      : 5,
+                         'Retry Frequency (ms)'             : 10,
+                         'With Threads'                     : False,
+                         'Clear On Sample'                  : True,
+                         'Gather Individual Samples'        : False,
+                         'Run Time Before Sample (sec)'     : 0,
+                         'Sample Type'                      : 'function only',
+                         'DDT Path'                         : STAThelper._which('ddt'),
+                         'DDT LaunchMON Prefix'             : '/usr/local',
+                         'TotalView Path'                   : STAThelper._which('totalview') }
         if 'STAT_LMON_DEBUG_BES' in os.environ:
             self.options['Debug Backends'] = True
         else:
             self.options['Debug Backends'] = False
-        self.options['Verbosity Type'] = 'error'
-        self.options['Communication Nodes'] = ''
-        self.options['Communication Processes per Node'] = 8
-        self.options['Num Traces'] = 10
-        self.options['Trace Frequency (ms)'] = 1000
-        self.options['Num Retries'] = 5
-        self.options['Retry Frequency (ms)'] = 10
-        self.options['With Threads'] = False
-        self.options['Clear On Sample'] = True
-        self.options['Gather Individual Samples'] = False
-        self.options['Run Time Before Sample (sec)'] = 0
-        self.options['Sample Type'] = 'function only'
-        self.options['DDT Path'] = STAThelper._which('ddt')
-        self.options['DDT LaunchMON Prefix'] = '/usr/local'
-        self.options['TotalView Path'] = STAThelper._which('totalview')
 
         # Check for site default options then for user default options
         site_options_path = '%s/etc/STAT/STAT.conf' %self.STAT.getInstallPrefix()
@@ -120,43 +132,46 @@ class STATGUI(STATDotWindow):
         for path in [site_options_path, user_options_path]:
             if os.path.exists(path):
                 try:
-                    f = open(path, 'r')
-                except:
-                    sys.stderr.write('failed to open preferences file %s\n' %(path))
-                    continue
-                for line in f.readlines():
-                    if line[0] == '#':
-                        continue
-                    split_line = line.split('=')
-                    if len(split_line) != 2:
-                        sys.stderr.write('invalid preference specification %s in file %s\n' %(line.strip('\n'), path))
-                        continue
-                    option = string.lstrip(string.rstrip(split_line[0]))
-                    value = string.lstrip(string.rstrip(split_line[1]))
-                    if option in self.options.keys():
-                        if type(self.options[option]) == type(1):
-                            value = int(value)
-                        elif type(self.options[option]) == type(True):
-                            if string.lower(value) == 'true':
-                                value = True
-                            elif string.lower(value) == 'false':
-                                value = False
-                            else:
-                                sys.stderr.write('invalid value %s for option %s as specified in file %s.  Expecting either "true" or "false".\n' %(value, option, path))
+                    with open(path, 'r') as f:
+                        for line in f:
+                            if line[0] == '#':
                                 continue
-                        self.options[option] = value
-                    elif option == 'Source Search Path':
-                        if os.path.exists(value):
-                            search_paths['source'].append(value)
-                        else:
-                            sys.stderr.write('search path %s specified in %s is not accessible\n' %(value, path))
-                    elif option == 'Include Search Path':
-                        if os.path.exists(value):
-                            search_paths['include'].append(value)
-                        else:
-                            sys.stderr.write('search path %s specified in %s is not accessible\n' %(value, path))
-                    else:
-                        sys.stderr.write('invalid option %s in file %s\n' %(option, path))
+                            split_line = line.split('=')
+                            if len(split_line) != 2:
+                                sys.stderr.write('invalid preference specification %s in file %s\n' %(line.strip('\n'), path))
+                                continue
+                            option = string.lstrip(string.rstrip(split_line[0]))
+                            value = string.lstrip(string.rstrip(split_line[1]))
+                            if option in self.options.keys():
+                                if type(self.options[option]) == type(1):
+                                    value = int(value)
+                                elif type(self.options[option]) == type(True):
+                                    if string.lower(value) == 'true':
+                                        value = True
+                                    elif string.lower(value) == 'false':
+                                        value = False
+                                    else:
+                                        sys.stderr.write('invalid value %s for option %s as specified in file %s.  Expecting either "true" or "false".\n' %(value, option, path))
+                                        continue
+                                self.options[option] = value
+                            elif option == 'Source Search Path':
+                                if os.path.exists(value):
+                                    search_paths['source'].append(value)
+                                else:
+                                    sys.stderr.write('search path %s specified in %s is not accessible\n' %(value, path))
+                            elif option == 'Include Search Path':
+                                if os.path.exists(value):
+                                    search_paths['include'].append(value)
+                                else:
+                                    sys.stderr.write('search path %s specified in %s is not accessible\n' %(value, path))
+                            else:
+                                sys.stderr.write('invalid option %s in file %s\n' %(option, path))
+                except IOError as e:
+                    sys.stderr.write('%s\nfailed to open preferences file %s\n' %(repr(e), path))
+                    continue
+                except Exception as e:
+                    sys.stderr.write('%s\nfailed to process preferences file %s\n' %(repr(e), path))
+                    continue
 
         self.var_spec = []
         self.filter_entry = None
@@ -229,25 +244,15 @@ host[1-10,12,15-20];otherhost[30]
                     host_list.append(node_name)
             else:
                 host_list.append(host)
-        tasks = ''
-        ret = self.set_proctab_file()
+        ret = self.set_proctab()
         if ret == False:
             return False
-        try:
-            f = open(self.proctab_file, 'r')
-        except:
-            show_error_dialog('failed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %self.proctab_file, self)
-            return False
-        lines = f.readlines()
-        lines = lines[1:]
-        for line in lines:
-            line = line.split()
-            host_pid = line[1]
-            host = host_pid.split(':')[0]
+        tasks = ''
+        for rank, host, pid in self.proctab.process_list:
             if match_case_check_box.get_active() == False:
                 host = host.lower()
             if host in host_list:
-                tasks += line[0] + ','
+                tasks += str(rank) + ','
         tasks = tasks[0:-1]
         self.get_current_graph().focus_tasks(tasks)
         return True
@@ -311,8 +316,10 @@ host[1-10,12,15-20];otherhost[30]
                 for key in self.options.keys():
                     self.options[key] = shelf[key]
                 shelf.close()    
-            except:
-                show_error_dialog('Failed to load preferences file %s\n' %filename, self)
+            except IOError as e:
+                show_error_dialog('%s\nFailed to load preferences file %s\n' %(repr(e), filename), self)
+            except Exception as e:
+                show_error_dialog('%s\nFailed to process preferences file %s\n' %(repr(e), filename), self)
         chooser.destroy()    
 
     def on_save_prefs(self, action):        
@@ -340,8 +347,10 @@ host[1-10,12,15-20];otherhost[30]
                 for key in self.options.keys():
                     shelf[key] = self.options[key]
                 shelf.close()    
-            except:
-                show_error_dialog('Failed to save preferences file %s\n' %filename, self)
+            except IOError as e:
+                show_error_dialog('%s\nFailed to save preferences file %s\n' %(repr(e), filename), self)
+            except Exception as e:
+                show_error_dialog('%s\nFailed to save preferences file %s\n' %(repr(e), filename), self)
         chooser.destroy()    
 
     def on_properties(self, action):   
@@ -357,20 +366,19 @@ host[1-10,12,15-20];otherhost[30]
         num_nodes = self.STAT.getNumApplNodes()
         num_procs = self.STAT.getNumApplProcs()
         appl_exe = self.STAT.getApplExe()
-        self.set_proctab_file()
-        try:
-            f = open(self.proctab_file, 'r')
-            lines = f.readlines()
-            # resort by MPI rank (instead of hostname)
-            process_table = lines[0] 
-            entries = range(len(lines[1:]))
-            for line in lines[1:]:
-                num = int(line.split()[0])
-                entries[num] = line
-            for entry in entries:
-                process_table += entry
-        except:
-            process_table = ''
+        ret = self.set_proctab()
+        if ret == False:
+            show_error_dialog('Failed to set process table file\n', self)
+            return False
+
+        process_table = ''
+        job_launcher = "%s:%d" %(self.proctab.launcher_host, self.proctab.launcher_pid)
+        entries = range(len(self.proctab.process_list))
+        for rank, host, pid in self.proctab.process_list:
+            entries[rank] = '%d %s:%d\n' %(rank, host, pid)
+        for entry in entries:
+            process_table += entry
+
         self.properties_window = gtk.Window()
         self.properties_window.set_title('Properties')
         self.properties_window.connect('destroy', self.on_properties_destroy)
@@ -409,7 +417,18 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(text_view)
         vbox.pack_start(frame, False, False, 0)
 
-        frame = gtk.Frame('Process Table')
+        frame = gtk.Frame('Job Launcher (host:PID)')
+        text_view = gtk.TextView()
+        text_buffer = gtk.TextBuffer()
+        text_buffer.set_text(job_launcher)
+        text_view.set_buffer(text_buffer)
+        text_view.set_wrap_mode(False)
+        text_view.set_editable(False)
+        text_view.set_cursor_visible(False)
+        frame.add(text_view)
+        vbox.pack_start(frame, False, False, 0)
+
+        frame = gtk.Frame('Process Table (rank host:PID)')
         text_view = gtk.TextView()
         text_view.set_size_request(400, 200)
         text_buffer = gtk.TextBuffer()
@@ -423,12 +442,16 @@ host[1-10,12,15-20];otherhost[30]
         sw.add(text_view)
         frame.add(sw)
         vbox.pack_start(frame, True, True, 0)
+        global blahblah
+        blahblah = text_buffer
 
         self.properties_window.add(vbox)
         self.properties_window.show_all()
        
     def on_properties_destroy(self, action):
         """Clean up the properties window."""
+        global blahblah
+        blahblah.set_text('')
         self.properties_window = None
 
     def pid_toggle_cb(self, action, pid, command):
@@ -461,15 +484,13 @@ host[1-10,12,15-20];otherhost[30]
         line = output[0].split()
         pid_index = 0
         command_index = 0
-        counter = 0
-        for token in line:
+        for counter, token in enumerate(line):
             if token == 'PID':
                 pid_index = counter
             elif token == 'COMMAND':
                 command_index = counter
-            counter += 1
-        counter = 0
         filter_compiled_re = re.compile(filter.get_text())
+        started = False
         for line in output[1:]:
             try:
                 text = '% 5d ' %int(line.split()[pid_index])
@@ -481,16 +502,16 @@ host[1-10,12,15-20];otherhost[30]
                 if filter.get_text() != '':
                     if filter_compiled_re.search(text) == None:
                         continue
-            if counter == 0:
+            if started == False:
+                started = True
                 radio_button = gtk.RadioButton(None, text)
                 radio_button.set_active(True)
                 self.options['PID'] = int(line.split()[pid_index])
                 self.options['Launcher Exe'] = line.split()[command_index]
-            else:    
+            else:
                 radio_button = gtk.RadioButton(radio_button, text)
             radio_button.connect("toggled", self.pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
             vbox.pack_start(radio_button, False, False, 0)
-            counter += 1
         try:
             if self.sw != None:
                 frame.remove(self.sw)
@@ -626,7 +647,8 @@ host[1-10,12,15-20];otherhost[30]
         if self.reattach == True and self.STAT != None:
             self.STAT.shutDown()
             self.STAT = None
-        self.STAT = STAT_FrontEnd()
+        if self.STAT == None:
+            self.STAT = STAT_FrontEnd()
         self.options['PID'] = None
         self.options['Launcher Exe'] = ''
         attach_dialog = gtk.Dialog('Attach', self)
@@ -764,7 +786,6 @@ host[1-10,12,15-20];otherhost[30]
                 show_error_dialog('No job selected.  Please select a valid\njob launcher process to attach to.\n', self)
                 return False
 
-
         self.STAT.setToolDaemonExe(self.options['Tool Daemon Path'])
         self.STAT.setFilterPath(self.options['Filter Path'])
         logType = STAT_LOG_NONE 
@@ -806,6 +827,9 @@ host[1-10,12,15-20];otherhost[30]
                 ret = self.STAT.launchAndSpawnDaemons(self.options['Remote Host'])
             else:
                 ret = self.STAT.launchAndSpawnDaemons()
+            if self.options['PID'] == None:
+                self.set_proctab()
+                self.options['PID'] = self.proctab.launcher_pid
         if 'LMON_DEBUG_BES' in os.environ:
             del os.environ['LMON_DEBUG_BES']
         if ret != STAT_OK:
@@ -872,6 +896,8 @@ host[1-10,12,15-20];otherhost[30]
         if self.attached == False:
             self.STAT = None
             self.reattach = False
+            self.proctab_file_path = None
+            self.proctab = None
             return True
         self.var_spec = []
         self.show_all()
@@ -972,7 +998,7 @@ host[1-10,12,15-20];otherhost[30]
 
     def sleep(self, seconds):
         """Sleep for specified time with a progress bar."""
-        for i in range(int(seconds * 100)):
+        for i in xrange(int(seconds * 100)):
             stat_wait_dialog.update_progress_bar(float(i) / seconds / 100)
             time.sleep(.01)
 
@@ -1063,12 +1089,15 @@ host[1-10,12,15-20];otherhost[30]
         stat_wait_dialog.update(0.70)
         filename = self.STAT.getLastDotFilename()
         try:
-            f = file(filename, 'rt')
-        except:
-            show_error_dialog('Failed to open file %s' %filename, self)
+            with open(filename, 'r') as f:
+                self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
+                self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+        except IOError as e:
+            show_error_dialog('%s\nFailed to open file %s' %(repr(e), filename), self)
             return ret
-        self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
-        self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+        except Exception as e:
+            show_error_dialog('%s\nFailed to process file %s' %(repr(e), filename), self)
+            return ret
         stat_wait_dialog.update(1.0)
         if ret_val != STAT_OK:
             show_error_dialog('An error was detected:\n%s' %self.STAT.getLastErrorMessage(), self)
@@ -1082,7 +1111,7 @@ host[1-10,12,15-20];otherhost[30]
         self.update_sample_options()
         stat_wait_dialog.update_progress_bar(0.01)
 
-        for i in range(self.options['Num Traces']):
+        for i in xrange(self.options['Num Traces']):
             if stat_wait_dialog.cancelled == True:
                 stat_wait_dialog.cancelled = False
                 break
@@ -1127,7 +1156,6 @@ host[1-10,12,15-20];otherhost[30]
             if ret == STAT_APPLICATION_EXITED:
                 ret_val = STAT_APPLICATION_EXITED
                 break
-                    
 
             if self.options['Gather Individual Samples'] == True:
                 ret = self.STAT.gatherLastTrace(False)
@@ -1147,15 +1175,18 @@ host[1-10,12,15-20];otherhost[30]
                         return ret
                 filename = self.STAT.getLastDotFilename()
                 try:
-                    f = file(filename, 'rt')
-                except:
-                    show_error_dialog('Failed to open file %s' %filename, self)
+                    with open(filename, 'r') as f:
+                        page = self.notebook.get_current_page()
+                        self.create_new_tab(page + 1)
+                        self.notebook.set_current_page(page + 1)
+                        self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
+                        self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+                except IOError as e:
+                    show_error_dialog('%s\nFailed to open file %s' %(repr(e), filename), self)
                     return False
-                page = self.notebook.get_current_page()
-                self.create_new_tab(page + 1)
-                self.notebook.set_current_page(page + 1)
-                self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
-                self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+                except Exception as e:
+                    show_error_dialog('%s\nFailed to process file %s' %(repr(e), filename), self)
+                    return False
 
             stat_wait_dialog.update_progress_bar(float(i) / self.options['Num Traces'])
             if ret_val != STAT_OK:
@@ -1168,7 +1199,7 @@ host[1-10,12,15-20];otherhost[30]
                 elif ret != STAT_OK:
                     return ret
                 self.set_action_sensitivity('running')
-                for i in range(int(self.options['Trace Frequency (ms)'] / 10)):
+                for i in xrange(int(self.options['Trace Frequency (ms)'] / 10)):
                     time.sleep(.01)
                     if gtk.events_pending():
                         gtk.main_iteration()
@@ -1191,17 +1222,20 @@ host[1-10,12,15-20];otherhost[30]
         stat_wait_dialog.update(0.95)
         filename = self.STAT.getLastDotFilename()
         try:
-            f = file(filename, 'rt')
-        except:
-            show_error_dialog('Failed to open file %s' %filename, self)
+            with open(filename, 'r') as f:
+                if self.options['Gather Individual Samples'] == True:
+                    page = self.notebook.get_current_page()
+                    self.create_new_tab(page + 1)
+                    self.notebook.set_current_page(page + 1)
+                else:
+                    self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
+                self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+        except IOError as e:
+            show_error_dialog('%s\nFailed to open file %s' %(repr(e), filename), self)
             return False
-        if self.options['Gather Individual Samples'] == True:
-            page = self.notebook.get_current_page()
-            self.create_new_tab(page + 1)
-            self.notebook.set_current_page(page + 1)
-        else:
-            self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
-        self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+        except Exception as e:
+            show_error_dialog('%s\nFailed to process file %s' %(repr(e), filename), self)
+            return False
         stat_wait_dialog.update(1.0)
         if ret_val != STAT_OK:
             show_error_dialog('An error was detected:\n%s' %self.STAT.getLastErrorMessage(), self)
@@ -1374,25 +1408,51 @@ host[1-10,12,15-20];otherhost[30]
         self.dont_recurse = False
         return True
         
-    def set_proctab_file(self):
-        if self.proctab_file == None:
-            self.proctab_file = ''
-            try:
-                out_dir = self.STAT.getOutDir()
-                file_prefix = self.STAT.getFilePrefix()
-                self.proctab_file = out_dir + '/' + file_prefix + '.ptab'
-            except:
-                pass
-            if not os.path.exists(self.proctab_file):
-                directory = os.path.dirname(os.path.abspath(self.get_current_graph().cur_filename))
-                self.proctab_file = ''
-                for file in os.listdir(directory):
-                    if file.find('.ptab') != -1:
-                        self.proctab_file = directory + '/' + file
-                        break
-            if self.proctab_file == '':
-                show_error_dialog('Failed to find process table .ptab file.', self)
-                return False
+    def set_proctab(self):
+        if self.proctab_file_path != None and self.proctab != None:
+            return True
+
+        self.proctab_file_path = ''
+        try:
+            out_dir = self.STAT.getOutDir()
+            file_prefix = self.STAT.getFilePrefix()
+            self.proctab_file_path = out_dir + '/' + file_prefix + '.ptab'
+        except:
+            pass
+        if not os.path.exists(self.proctab_file_path):
+            directory = os.path.dirname(os.path.abspath(self.get_current_graph().cur_filename))
+            self.proctab_file_path = ''
+            for file in os.listdir(directory):
+                if file.find('.ptab') != -1:
+                    self.proctab_file_path = directory + '/' + file
+                    break
+        if self.proctab_file_path == '':
+            show_error_dialog('Failed to find process table .ptab file.', self)
+            return False
+        
+        try:
+            with open(self.proctab_file_path, 'r') as f:
+                launcher = f.next().strip('\n').split(':')
+                self.proctab = ProcTab()
+                self.proctab.launcher_host = launcher[0]
+                self.proctab.launcher_pid = int(launcher[1])
+                for line in f:
+                    line = line.strip('\n').split()
+                    rank = int(line[0])
+                    host_pid = line[1].split(':')
+                    host = host_pid[0]
+                    pid = int(host_pid[1])
+                    if self.proctab.executable_path == None:
+                        exe = line[2]
+                        self.proctab.executable_path = exe
+                    self.proctab.process_list.append((rank, host, pid))
+        except IOError as e:
+            show_error_dialog('%s\nfailed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %(repr(e), self.proctab_file_path), self)
+            return False
+        except Exception as e:
+            show_error_dialog('%s\nfailed to process process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %(repr(e), self.proctab_file_path), self)
+            return False
+        return True
         
 
     def launch_debugger_cb(self, widget, args):
@@ -1409,19 +1469,10 @@ host[1-10,12,15-20];otherhost[30]
         task_list_set = set(get_task_list(additional_tasks) + subset_list)
         subset_list = list(task_list_set)
         # use current STAT session to determine job launcher PID
-        ret = self.set_proctab_file()
+        ret = self.set_proctab()
         if ret == False:
             return False
-        try:
-            f = open(self.proctab_file, 'r')
-        except:
-            show_error_dialog('failed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %self.proctab_file, self)
-            return False
-        lines = f.readlines()
-        launcher = lines[0].strip('\n')
-        lines = lines[1:]
-        pids = []
-        executable = lines[0].split()[2]
+        executable = self.proctab.executable_path#f.next().split()[2]
         executable_path = executable
         cancel = False
         while os.path.exists(executable_path) == False:
@@ -1450,12 +1501,11 @@ host[1-10,12,15-20];otherhost[30]
                 dialog.destroy()
                 return False
             executable_path = entry.get_text() + '/' + executable
-        for line in lines:
-            line = line.split()
-            for rank in subset_list:
-                if int(line[0]) == rank:
-                    pids.append(line[1])
-                    break
+        pids = []
+        for rank, host, pid in self.proctab.process_list:
+            if rank in subset_list:
+                pids.append(pid)
+                break
         arg_list = []
         if debugger == 'TotalView':
             filepath = self.options['TotalView Path']
@@ -1469,7 +1519,7 @@ host[1-10,12,15-20];otherhost[30]
                 arg_list.append('-remote')
                 arg_list.append(self.options['Remote Host'])
             arg_list.append('-pid')
-            arg_list.append(launcher[launcher.find(':')+1:])
+            arg_list.append(str(self.proctab.launcher_pid))
             str_list = ''
             for rank in subset_list:
                 str_list += '%s ' %(rank)
@@ -1500,7 +1550,7 @@ host[1-10,12,15-20];otherhost[30]
                 arg_list.append("LMON_LAUNCHMON_ENGINE_PATH=%s" %(ddt_lmon_launchmon))
                 arg_list.append(filepath)
                 arg_list.append("-attach-mpi")
-                arg_list.append(launcher[launcher.find(':')+1:])
+                arg_list.append(str(self.proctab.launcher_pid))
                 arg_list.append("-subset")
                 rank_list_arg = ''
                 for rank in subset_list:

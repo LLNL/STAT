@@ -17,6 +17,8 @@ Redistribution and use in source and binary forms, with or without modification,
         
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."""
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
+__version__ = "2.0.0"
+
 import os.path
 import string
 import time
@@ -25,12 +27,7 @@ import sys
 ## A variable to determine whther we have the pygments module for syntax hilighting
 have_pygments = True
 try:
-    import pygments
-    from pygments import highlight
     from pygments.formatter import Formatter
-    from pygments.lexers import CLexer
-    from pygments.lexers import CppLexer
-    from pygments.lexers import FortranLexer
 except:
     have_pygments = False
 
@@ -149,8 +146,6 @@ if have_pygments:
     
             # parse step to generate structure
             current_line = []
-            global pygments_lines
-            pygments_lines = []
             for ttype, value in tokensource:
                 color = '#000000'
                 bold = False
@@ -269,7 +264,7 @@ def get_node_task_list(node):
     First see if we have this label indexed to avoid duplicate generation."""
 
     global next_label_id
-    if node.edge_label_id in task_label_id_to_list.keys(): 
+    if node.edge_label_id in task_label_id_to_list: 
         return task_label_id_to_list[node.edge_label_id]
     colon_pos = node.edge_label.find(':')
     if colon_pos != -1:
@@ -283,7 +278,7 @@ def get_node_task_list(node):
             key = node.edge_label[1:-1]
         else:
             key = node.edge_label
-    if key in task_label_to_list.keys():
+    if key in task_label_to_list:
         task_list = task_label_to_list[key]
     else:
         task_list = get_task_list(key)
@@ -301,11 +296,9 @@ def get_node_task_list(node):
 def list_to_string(task_list):
     """Translate a list of tasks into a range string."""
     global next_label_id
-    if task_list in task_label_id_to_list.keys(): 
-        return task_label_id_to_list[task_list]
-    for key in task_label_to_list.keys():
-        if task_list == task_label_to_list[key]:
-            return key.replace(',', ', ')
+    for key, value in task_label_to_list.items():
+        if task_list == value:
+            return key
     ret = ''
     in_range = False
     first_iteration = True
@@ -336,7 +329,7 @@ def list_to_string(task_list):
         ret += '%d' %(task)
     next_label_id += 1
     task_label_id_to_list[next_label_id] = task_list
-    task_label_to_list[ret.replace(', ', ',')] = task_list
+    task_label_to_list[ret] = task_list
     return ret
 
 
@@ -350,7 +343,7 @@ def get_leaf_tasks(node):
     out_set = set([])
     for edge in node.out_edges:
         out_set |= set(get_node_task_list(edge.dst))
-    return list(in_set - out_set)
+    return sorted(list(in_set - out_set))
 
 
 ## \param node - the input node 
@@ -438,6 +431,20 @@ def var_spec_to_string(var_spec):
     for file, line, depth, var in var_spec:
         ret += '%s:%d.%d$%s,' %(file, line, depth, var)
     ret = ret[:len(ret) - 1]
+    return ret
+
+## \param label - the input label
+#  \return a copy of the label with appropriate escape characters added
+#
+#  \n
+def escaped_label(label):
+    ret = ''
+    prev = ' '
+    for c in label:
+        if prev != '\\' and (c == '<' or c == '>'):
+            ret += '\\'
+        ret += c
+        prev = c
     return ret
 
 #global DEBUG
