@@ -111,7 +111,9 @@ STAT_BackEnd::STAT_BackEnd()
 #endif
 
 #ifdef GRAPHLIB20
+    statInitializeReorderFunctions();
     statInitializeBitVectorFunctions();
+    statInitializeMergeFunctions();
 #endif
     
     /* Enable MRNet logging */
@@ -200,6 +202,9 @@ STAT_BackEnd::~STAT_BackEnd()
         }
         free(proctab_);
     }
+    statFreeReorderFunctions();
+    statFreeBitVectorFunctions();
+    statFreeMergeFunctions();
 
 #ifdef STAT_FGFS
     if (fgfsCommFabric_ != NULL)

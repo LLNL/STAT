@@ -14,6 +14,14 @@ The node operations are defined as follows:
 </para>
 <variablelist>
 <varlistentry>
+    <term><GUIbutton>Join Equivalence Class</GUIbutton></term>
+    <listitem>
+        <para>
+        collapses all of the descendent nodes with the same equivalence class into the current node and renders in a new tab.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>Collapse</GUIbutton></term>
     <listitem>
         <para>

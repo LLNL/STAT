@@ -134,6 +134,14 @@ The toolbar operations are defined as follows:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term><GUIbutton>Join</GUIbutton></term>
+    <listitem>
+        <para>
+        Join consecutive nodes of the same equivalence class into a single node and render in a new tab.  This is useful for condensing long call sequences.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>[Identify] Eq C</GUIbutton></term>
     <listitem>
         <para>

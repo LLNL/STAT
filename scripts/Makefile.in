@@ -34,15 +34,18 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@ENABLE_GUI_TRUE@am__append_1 = STATGUI STATview stat-gui stat-view
-@ENABLE_STATBENCH_TRUE@am__append_2 = STATBench stat-bench
+@ENABLE_BGL_TRUE@am__append_1 = core_stack_merge
+@ENABLE_BGL_TRUE@am__append_2 = bg_core_backtrace.py
+@ENABLE_GUI_TRUE@am__append_3 = STATGUI.py STATview.py xdot.py STAThelper.py
+@ENABLE_GUI_TRUE@am__append_4 = STATGUI STATview stat-gui stat-view
+@ENABLE_STATBENCH_TRUE@am__append_5 = STATBench stat-bench
 subdir = scripts
 DIST_COMMON = $(am__python_PYTHON_DIST) $(dist_bin_SCRIPTS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in $(srcdir)/STAT.in \
 	$(srcdir)/STATBench.in $(srcdir)/STATGUI.in \
-	$(srcdir)/STATview.in $(srcdir)/stat-bench.in \
-	$(srcdir)/stat-cl.in $(srcdir)/stat-gui.in \
-	$(srcdir)/stat-view.in
+	$(srcdir)/STATview.in $(srcdir)/core_stack_merge.in \
+	$(srcdir)/stat-bench.in $(srcdir)/stat-cl.in \
+	$(srcdir)/stat-gui.in $(srcdir)/stat-view.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
@@ -61,8 +64,8 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
-CONFIG_CLEAN_FILES = STAT STATGUI STATview STATBench stat-cl stat-gui \
-	stat-view stat-bench
+CONFIG_CLEAN_FILES = STAT STATGUI core_stack_merge STATview STATBench \
+	stat-cl stat-gui stat-view stat-bench
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -90,7 +93,9 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" \
 SCRIPTS = $(bin_SCRIPTS) $(dist_bin_SCRIPTS)
 SOURCES =
 DIST_SOURCES =
-am__python_PYTHON_DIST = STATGUI.py STATview.py xdot.py STAThelper.py
+am__python_PYTHON_DIST = stat_merge_base.py STATmerge.py \
+	bg_core_backtrace.py STATGUI.py STATview.py xdot.py \
+	STAThelper.py
 py_compile = $(top_srcdir)/config/py-compile
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
@@ -125,6 +130,7 @@ EXEEXT = @EXEEXT@
 FELIBS = @FELIBS@
 FGFSFILTERPATH = @FGFSFILTERPATH@
 FGREP = @FGREP@
+GRAPHLIBPREFIX = @GRAPHLIBPREFIX@
 GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -234,8 +240,10 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 dist_bin_SCRIPTS = run_one_sec
-bin_SCRIPTS = STAT stat-cl $(am__append_1) $(am__append_2)
-@ENABLE_GUI_TRUE@python_PYTHON = STATGUI.py STATview.py xdot.py STAThelper.py
+bin_SCRIPTS = STAT stat-cl $(am__append_1) $(am__append_4) \
+	$(am__append_5)
+python_PYTHON = stat_merge_base.py STATmerge.py $(am__append_2) \
+	$(am__append_3)
 all: all-am
 
 .SUFFIXES:
@@ -272,6 +280,8 @@ $(am__aclocal_m4_deps):
 STAT: $(top_builddir)/config.status $(srcdir)/STAT.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 STATGUI: $(top_builddir)/config.status $(srcdir)/STATGUI.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+core_stack_merge: $(top_builddir)/config.status $(srcdir)/core_stack_merge.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 STATview: $(top_builddir)/config.status $(srcdir)/STATview.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@

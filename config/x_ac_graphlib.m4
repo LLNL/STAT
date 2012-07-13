@@ -6,6 +6,7 @@ AC_DEFUN([X_AC_GRAPHLIB], [
     )],
     [CXXFLAGS="$CXXFLAGS -I${withval}/include"
       LDFLAGS="$LDFLAGS -L${withval}/lib -Wl,-rpath=${withval}/lib"
+      GRAPHLIBPREFIX=${withval}
     ],
     [CXXFLAGS="$CXXFLAGS"]
   )
