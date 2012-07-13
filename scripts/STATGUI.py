@@ -267,7 +267,7 @@ host[1-10,12,15-20];otherhost[30]
         about_dialog.set_license(__license__)
         about_dialog.set_wrap_license(80)
         version = intArray(3)
-        if self.STAT == None:
+        if self.STAT is None:
             self.STAT = STAT_FrontEnd()
         self.STAT.getVersion(version)
         about_dialog.set_version('%d.%d.%d' %(version[0], version[1], version[2]))
@@ -500,7 +500,7 @@ host[1-10,12,15-20];otherhost[30]
                 continue
             if filter != None:
                 if filter.get_text() != '':
-                    if filter_compiled_re.search(text) == None:
+                    if filter_compiled_re.search(text) is None:
                         continue
             if started == False:
                 started = True
@@ -647,7 +647,7 @@ host[1-10,12,15-20];otherhost[30]
         if self.reattach == True and self.STAT != None:
             self.STAT.shutDown()
             self.STAT = None
-        if self.STAT == None:
+        if self.STAT is None:
             self.STAT = STAT_FrontEnd()
         self.options['PID'] = None
         self.options['Launcher Exe'] = ''
@@ -779,10 +779,10 @@ host[1-10,12,15-20];otherhost[30]
         self.options['Topology Type'] = self.types['Topology Type'][self.combo_boxes['Topology Type'].get_active()]
         self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
         self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
-        if self.STAT == None:
+        if self.STAT is None:
             self.STAT = STAT_FrontEnd()
         if launch == False:
-            if self.options['PID'] == None:
+            if self.options['PID'] is None:
                 show_error_dialog('No job selected.  Please select a valid\njob launcher process to attach to.\n', self)
                 return False
 
@@ -827,7 +827,7 @@ host[1-10,12,15-20];otherhost[30]
                 ret = self.STAT.launchAndSpawnDaemons(self.options['Remote Host'])
             else:
                 ret = self.STAT.launchAndSpawnDaemons()
-            if self.options['PID'] == None:
+            if self.options['PID'] is None:
                 self.set_proctab()
                 self.options['PID'] = self.proctab.launcher_pid
         if 'LMON_DEBUG_BES' in os.environ:
@@ -1442,7 +1442,7 @@ host[1-10,12,15-20];otherhost[30]
                     host_pid = line[1].split(':')
                     host = host_pid[0]
                     pid = int(host_pid[1])
-                    if self.proctab.executable_path == None:
+                    if self.proctab.executable_path is None:
                         exe = line[2]
                         self.proctab.executable_path = exe
                     self.proctab.process_list.append((rank, host, pid))

@@ -398,15 +398,38 @@ def color_to_string(color):
 
 
 ## \param input - the stack frame text
+#  \return True if the label includes source file and line number info
+#
+#  \n
+def label_has_source(input):
+    return input.find('@') != -1
+
+## \param input - the stack frame text
+#  \return True if the label includes source file and line number info and the node is not eq class collapsed
+#
+#  \n
+def label_collapsed(input):
+    return input.find('==\\>') != -1 or input.find('==>') != -1
+
+## \param input - the stack frame text
+#  \return True if the label includes source file and line number info and the node is not eq class collapsed
+#
+#  \n
+def has_source_and_not_collapsed(input):
+    #return input.find('@') != -1 and (input.find('@') == input.rfind('@')) # the and is to capture collapsed nodes
+    return label_has_source(input) and not label_collapsed(input)
+
+
+## \param input - the stack frame text
 #  \return - a tuple of (function name, line number, variable info)
 #
 #  \n
-def decompose_node(input):
+def decompose_node(input, item = None):
     """Decompose a stack frame's text into individual components."""
     function_name = ''
     sourceLine = ''
     iter_string = ''
-    if input.find('@') != -1:
+    if has_source_and_not_collapsed(input):
         function_name = input[:input.find('@')] 
         if input.find('$') != -1:
             sourceLine = input[input.find('@') + 1:input.find('$')]
@@ -414,6 +437,17 @@ def decompose_node(input):
         else:
             sourceLine = input[input.find('@') + 1:]
             iter_string = ''
+    #elif label_has_source(input) and label_collapsed(input) and item is not None:
+    elif label_collapsed(input) and item is not None:
+        if item == -1:
+            return_list = []
+            frames = input.split(' ==> ')
+            for frame in frames:
+                function_name, sourceLine, iter_string = decompose_node(frame)
+                return_list.append((function_name, sourceLine, iter_string))
+            return return_list
+        else:
+            function_name, sourceLine, iter_string = decompose_node(input.split(' ==> ')[item])
     else:
         function_name = input
     return function_name, sourceLine, iter_string

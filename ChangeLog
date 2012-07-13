@@ -1,3 +1,17 @@
+2012-07-12 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added ability to view source of collapsed/joined nodes
+	* scripts/STATview.py : added ability to hide MPI with collapsed/joined nodes
+
+2012-07-07 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added repr strings for node and edge classes
+	* scripts/STATview.py : don't check for $DISPLAY on Windows
+	* scripts/STATview.py : don't import STAThelper components that require pygments if pygments not available
+	* scripts/STATview.py : fixed handling of join with hidden nodes/edges
+	* scripts/STATview.py : fixed handling of hide mpi with line info
+
+2012-07-03 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py scripts/STAThelper.py : added routines to collapse equivalence classes
+
 2012-06-27 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C src/STAT_FrontEnd.C src/STAT_FilterDefinitions.C src/STAT_GraphRoutines.[h,C] : fixed memory leaks
 
