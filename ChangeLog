@@ -1,3 +1,6 @@
+2011-12-12 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : fixed handling of case where swalk.size() < 1 but walkStack returns true
+
 2011-11-01 Gregory L. Lee <lee218@llnl.gov>
 	* : tag version 1.2.1
 	* scripts/STATview.py : fixed label handling (don't restore to full path) in "on_original_graph" function
@@ -382,20 +385,6 @@
 	* Fixed EQ Class identification, an EQ leaf can be an internal node
 	* Optimized GUI is_leaf function with use of Python sets
 	* focus_task function in GUI optimized to use sets
-
-2009-12-18 Gregory L. Lee <lee218@llnl.gov>
-	* Applied patch from Dane Gardner for daemons to use MRNet GetHostName to get non-fully qualified hostname to find the appropriate connection information
-
-2009-12-17 Gregory L. Lee <lee218@llnl.gov>
-	* Added -S option to gather multiple individual samples
-	* Modified FE not to error if LMON detects app exit
-
-2009-10-07 Gregory L. Lee <lee218@llnl.gov>
-	* Fixed select to handle false positives from MRNet and SW and false negatives from SW.
-	* Modified Makefile.in to automatically set rpath to ${prefix}/lib
-
-2009-10-05 Gregory L. Lee <lee218@llnl.gov>
-	* Fixed SW notificaiton handling... need dummy write, except fds
 
 2009-10-02 Gregory L. Lee <lee218@llnl.gov>
 	* Set state to stopped after attach

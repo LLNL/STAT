@@ -1467,9 +1467,12 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
                 /* Try to walk the stack */
                 swalk.clear();
                 ret = proc->walkStack(swalk, threads[j]);
-                if (ret == false && swalk.size() < 1)
+                if (swalk.size() < 1)
                 {
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d, thread %d id %d with StackWalker error %s\n", i, nRetries, j, threads[j], getLastErrorMsg());
+                    if (ret == false)
+                        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d, thread %d id %d with StackWalker error %s\n", i, nRetries, j, threads[j], getLastErrorMsg());
+                    else
+                        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d, thread %d id %d with no stack frames\n", i, nRetries, j, threads[j]);
                     if (i < nRetries)
                     {
                         if (isRunning_ == false)
