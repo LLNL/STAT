@@ -444,7 +444,7 @@ class STAT_BackEnd
         MPIR_PROCDESC_EXT *proctab_;            /*!< the process table */
 
         //These are specific to a sample request
-        unsigned int sampleType;                /*!< type of sample we're currently collecting */
+        StatSample_t sampleType_;                /*!< type of sample we're currently collecting */
         statVariable_t *extractVariables;       /*!< a list of variables to extract for the current sample */
         int nVariables;                         /*!< the number of variables to extract */
 

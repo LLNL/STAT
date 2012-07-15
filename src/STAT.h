@@ -117,7 +117,10 @@ typedef enum {
 typedef enum {
     STAT_FUNCTION_NAME_ONLY = 0,
     STAT_FUNCTION_AND_PC,
-    STAT_FUNCTION_AND_LINE
+    STAT_FUNCTION_AND_LINE,
+    STAT_CR_FUNCTION_NAME_ONLY,
+    STAT_CR_FUNCTION_AND_PC,
+    STAT_CR_FUNCTION_AND_LINE
 } StatSample_t;
 
 //! An enum for STAT verbosity type

@@ -120,6 +120,14 @@
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>-U, --countrep</term>
+    <listitem>
+        <para>
+        only gather count and a single representative
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>-l, --log <cmdsynopsis><group><arg><replaceable class="parameter">FE</replaceable></arg><arg><replaceable class="parameter">BE</replaceable></arg><arg><replaceable class="parameter">ALL</replaceable></arg></group></cmdsynopsis></term>
     <listitem>
         <para>

@@ -33,6 +33,7 @@ using namespace MRN;
 #ifdef GRAPHLIB20
 extern graphlib_functiontable_p statReorderFunctions;
 extern graphlib_functiontable_p statBitVectorFunctions;
+extern graphlib_functiontable_p statCountRepFunctions;
 extern int statGraphRoutinesCurrentIndex;
 extern int *statGraphRoutinesRanksList;
 extern int statGraphRoutinesRanksListLength;
@@ -176,6 +177,7 @@ STAT_FrontEnd::STAT_FrontEnd()
         fprintf(stderr, "Failed to initialize Graphlib\n");
     statInitializeReorderFunctions();
     statInitializeBitVectorFunctions();
+    statInitializeCountRepFunctions();
     statInitializeMergeFunctions();
 #endif
 
@@ -283,6 +285,7 @@ STAT_FrontEnd::~STAT_FrontEnd()
     }
     statFreeReorderFunctions();
     statFreeBitVectorFunctions();
+    statFreeCountRepFunctions();
     statFreeMergeFunctions();
     isAttached_ = false;
     isConnected_ = false;
@@ -2635,6 +2638,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     graphlib_error_t graphlibError;
     IntList_t *hostRanks;
     PacketPtr packet;
+    StatSample_t sampleType;
 
     /* Receive the traces */
     do
@@ -2682,9 +2686,9 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     /* Unpack byte array representing the graph */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
 #ifdef MRNET40
-    if (packet->unpack("%Ac %d %d", &byteArray, &byteArrayLen, &totalWidth, &dummyRank) == -1)
+    if (packet->unpack("%Ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
 #else
-    if (packet->unpack("%ac %d %d", &byteArray, &byteArrayLen, &totalWidth, &dummyRank) == -1)
+    if (packet->unpack("%ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
 #endif
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::unpack(PROT_COLLECT_TRACES_RESP, \"%%auc\") failed\n");
@@ -2705,7 +2709,10 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     /* Deserialize graph */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph 1\n");
 #ifdef GRAPHLIB20
-    graphlibError = graphlib_deserializeBasicGraph(&stackTraces, statBitVectorFunctions, byteArray, byteArrayLen);
+    if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE) 
+        graphlibError = graphlib_deserializeBasicGraph(&stackTraces, statCountRepFunctions, byteArray, byteArrayLen);
+    else
+        graphlibError = graphlib_deserializeBasicGraph(&stackTraces, statBitVectorFunctions, byteArray, byteArrayLen);
 #else
     graphlibError = graphlib_deserializeGraph(&stackTraces, byteArray, byteArrayLen);
 #endif
@@ -2718,66 +2725,71 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     endTime.setTime();
     addPerfData("\tMerge", (endTime - startTime).getDoubleTime());
 
-    /* Translate the graphs into rank ordered bit vector */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating new graphs\n");
-    startTime.setTime();
-    offset = 0;
-#ifdef GRAPHLIB20
-    graphlibError = graphlib_newGraph(&sortedStackTraces, statReorderFunctions);
-#else
-    graphlibError = graphlib_newGraph(&sortedStackTraces);
-#endif
-    if (GRL_IS_FATALERROR(graphlibError))
+    if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE) 
+        sortedStackTraces = stackTraces;
+    else
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-    
-    /* Copy the unordered graphs, but with empty bit vectors */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Copying graph with empty edges\n");
+        /* Translate the graphs into rank ordered bit vector */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating new graphs\n");
+        startTime.setTime();
+        offset = 0;
 #ifdef GRAPHLIB20
-    graphlibError = graphlib_mergeGraphs(sortedStackTraces, stackTraces);
+        graphlibError = graphlib_newGraph(&sortedStackTraces, statReorderFunctions);
 #else
-    graphlibError = graphlib_mergeGraphsEmptyEdges(sortedStackTraces, stackTraces);
-#endif
-    if (GRL_IS_FATALERROR(graphlibError))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph with empty edge labels\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
-    /* Fill edge labels on a per daemon basis */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Filling in edges\n");
-    for (ranksIter = remapRanksList_.begin(); ranksIter != remapRanksList_.end(); ranksIter++)
-    {
-        /* Fill edge labels for this daemon */
-        hostRanks = mrnetRankToMPIRanksMap_[*ranksIter];
-#ifdef GRAPHLIB20
-        statGraphRoutinesRanksList = hostRanks->list;
-        statGraphRoutinesRanksListLength = hostRanks->count;
-        statGraphRoutinesCurrentIndex = offset;
-        graphlibError = graphlib_mergeGraphs(sortedStackTraces, stackTraces);
-#else
-        graphlibError = graphlib_mergeGraphsFillEdges(sortedStackTraces, stackTraces, hostRanks->list, hostRanks->count, offset);
+        graphlibError = graphlib_newGraph(&sortedStackTraces);
 #endif
         if (GRL_IS_FATALERROR(graphlibError))
         {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to fill edge labels\n");
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
             return STAT_GRAPHLIB_ERROR;
         }
-       
-        /* update offset, round up to the nearest bit vector count*/
-#ifdef GRAPHLIB20
-        offset += statBitVectorLength(hostRanks->count);
-#else
-        offset += hostRanks->count / (graphlib_getBitVectorSize() * 8);
-        if (hostRanks->count % (graphlib_getBitVectorSize() * 8) != 0)
-            offset += 1;
-#endif
-    }
     
-    endTime.setTime();
-    addPerfData("Graph Rank Ordering Time", (endTime - startTime).getDoubleTime());
+        /* Copy the unordered graphs, but with empty bit vectors */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Copying graph with empty edges\n");
+#ifdef GRAPHLIB20
+        graphlibError = graphlib_mergeGraphs(sortedStackTraces, stackTraces);
+#else
+        graphlibError = graphlib_mergeGraphsEmptyEdges(sortedStackTraces, stackTraces);
+#endif
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph with empty edge labels\n");
+            return STAT_GRAPHLIB_ERROR;
+        }
+
+        /* Fill edge labels on a per daemon basis */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Filling in edges\n");
+        for (ranksIter = remapRanksList_.begin(); ranksIter != remapRanksList_.end(); ranksIter++)
+        {
+            /* Fill edge labels for this daemon */
+            hostRanks = mrnetRankToMPIRanksMap_[*ranksIter];
+#ifdef GRAPHLIB20
+            statGraphRoutinesRanksList = hostRanks->list;
+            statGraphRoutinesRanksListLength = hostRanks->count;
+            statGraphRoutinesCurrentIndex = offset;
+            graphlibError = graphlib_mergeGraphs(sortedStackTraces, stackTraces);
+#else
+            graphlibError = graphlib_mergeGraphsFillEdges(sortedStackTraces, stackTraces, hostRanks->list, hostRanks->count, offset);
+#endif
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to fill edge labels\n");
+                return STAT_GRAPHLIB_ERROR;
+            }
+       
+            /* update offset, round up to the nearest bit vector count*/
+#ifdef GRAPHLIB20
+            offset += statBitVectorLength(hostRanks->count);
+#else
+            offset += hostRanks->count / (graphlib_getBitVectorSize() * 8);
+            if (hostRanks->count % (graphlib_getBitVectorSize() * 8) != 0)
+                offset += 1;
+#endif
+        }
+    
+        endTime.setTime();
+        addPerfData("Graph Rank Ordering Time", (endTime - startTime).getDoubleTime());
+    }
 
     /* Export temporally and spatially merged graph */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Exporting %s graph to dot\n", outSuffix);
@@ -2819,11 +2831,15 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
         return STAT_GRAPHLIB_ERROR;
     }
-    graphlibError = graphlib_delGraph(sortedStackTraces);
-    if (GRL_IS_FATALERROR(graphlibError))
+
+    if (sampleType == STAT_FUNCTION_NAME_ONLY || sampleType == STAT_FUNCTION_AND_PC || sampleType == STAT_FUNCTION_AND_LINE) 
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-        return STAT_GRAPHLIB_ERROR;
+        graphlibError = graphlib_delGraph(sortedStackTraces);
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
+            return STAT_GRAPHLIB_ERROR;
+        }
     }
 
     return STAT_OK;
@@ -3820,9 +3836,9 @@ StatError_t STAT_FrontEnd::STATBench_setAppNodeList()
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses)
+StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, bool countRep)
 {
-    int tag, retval;
+    int tag, retval, iCountRep = 0;
     char *currentNode;
     char name[BUFSIZE];
     unsigned int i, j;
@@ -3835,6 +3851,8 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
     /* Rework the proc table to represent the STATBench emulated application */
     startTime.setTime();
 
+    if (countRep == true)
+        iCountRep = 1;
     for (i = 0; i < proctabSize_; i++)
     {
         if (proctab_[i].pd.executable_name != NULL)
@@ -3899,10 +3917,10 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
         return STAT_NOT_CONNECTED_ERROR;
     }
 
-    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Generating traces with parameters %d %d %d %d %d...\n", maxDepth, nTasks, nTraces, functionFanout, nEqClasses);
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Generating traces with parameters %d %d %d %d %d %d...\n", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, iCountRep);
 
     /* Send request to daemons to gather stack traces and wait for confirmation */
-    if (broadcastStream_->send(PROT_STATBENCH_CREATE_TRACES, "%ud %ud %ud %ud %d", maxDepth, nTasks, nTraces, functionFanout, nEqClasses) == -1) 
+    if (broadcastStream_->send(PROT_STATBENCH_CREATE_TRACES, "%ud %ud %ud %ud %d %d", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, iCountRep) == -1) 
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send request to create traces\n");
         return STAT_MRNET_ERROR;

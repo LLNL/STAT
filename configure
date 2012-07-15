@@ -16243,16 +16243,72 @@ rm -rf conftest.dSYM
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
   LDFLAGS=$TMP_LDFLAGS
-  { $as_echo "$as_me:$LINENO: result: $libstackwalk_found" >&5
-$as_echo "$libstackwalk_found" >&6; }
   if test "$libstackwalk_found" = yes; then
     BELIBS="-lstackwalk -lpcontrol -lparseAPI -linstruction -lsymtabAPI -lcommon -liberty $BELIBS"
   else
-    { { $as_echo "$as_me:$LINENO: error: libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker" >&5
+    LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lcommon -ldwarf -lelf -liberty -lpthread"
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include "walker.h"
+      using namespace Dyninst;
+      using namespace Dyninst::Stackwalker;
+      Walker *walker;
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 $as_test_x conftest$ac_exeext
+       }; then
+  libstackwalk_found=yes
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	libstackwalk_found=no
+
+fi
+
+rm -rf conftest.dSYM
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+    LDFLAGS=$TMP_LDFLAGS
+    if test "$libstackwalk_found" = yes; then
+      BELIBS="-lstackwalk -lsymtabAPI -lcommon -liberty $BELIBS"
+    else
+      { { $as_echo "$as_me:$LINENO: error: libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker" >&5
 $as_echo "$as_me: error: libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker" >&2;}
    { (exit 1); exit 1; }; }
+    fi
   fi
-
+  { $as_echo "$as_me:$LINENO: result: $libstackwalk_found" >&5
+$as_echo "$libstackwalk_found" >&6; }
   ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'

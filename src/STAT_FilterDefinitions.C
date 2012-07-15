@@ -42,6 +42,7 @@ extern "C" {
 #ifdef GRAPHLIB20
 /* Externals from STAT's graphlib routines */
 extern graphlib_functiontable_p statMergeFunctions;
+extern graphlib_functiontable_p statCountRepFunctions;
 extern int statGraphRoutinesTotalWidth;
 extern int *statGraphRoutinesEdgeLabelWidths;
 extern int statGraphRoutinesCurrentIndex;
@@ -51,9 +52,9 @@ extern int statGraphRoutinesRanksListLength;
 
 //! The MRNet format string for the STAT filter
 #ifdef MRNET40
-const char *statMerge_format_string = "%Ac %d %d";
+const char *statMerge_format_string = "%Ac %d %d %ud";
 #else
-const char *statMerge_format_string = "%ac %d %d";
+const char *statMerge_format_string = "%ac %d %d %ud";
 #endif
 
 //! The MRNet format string for the STAT version check
@@ -277,6 +278,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
     graphlib_graph_p returnGraph = NULL, currentGraph = NULL;
     graphlib_error_t graphlibError;
     PacketPtr currentPacket;
+    StatSample_t sampleType;
 
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
 //    static int init = 0;
@@ -301,6 +303,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
         rank = (*currentPacket)[2]->get_int32_t();
         childrenOrder[rank] = i;
     }
+    sampleType = (StatSample_t)(*inputPackets[0])[3]->get_uint32_t();
 
     /* Initialize graphlib */
     nChildren = inputPackets.size();
@@ -334,12 +337,16 @@ void statMerge(vector<PacketPtr> &inputPackets,
 #ifdef GRAPHLIB20
     statInitializeReorderFunctions();
     statInitializeBitVectorFunctions();
+    statInitializeCountRepFunctions();
     statInitializeMergeFunctions();
 #endif
 
     /* Initialize the result graphs */
 #ifdef GRAPHLIB20
-    graphlibError = graphlib_newGraph(&returnGraph, statMergeFunctions);
+    if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE) 
+        graphlibError = graphlib_newGraph(&returnGraph, statCountRepFunctions);
+    else
+        graphlibError = graphlib_newGraph(&returnGraph, statMergeFunctions);
 #else
     graphlibError = graphlib_newGraph(&returnGraph);
 #endif
@@ -366,10 +373,15 @@ void statMerge(vector<PacketPtr> &inputPackets,
         byteArrayLen = BAL; 
 #endif
 #ifdef GRAPHLIB20
-        statGraphRoutinesTotalWidth = totalWidth;
-        statGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
-        statGraphRoutinesCurrentIndex = rank;
-        graphlibError = graphlib_deserializeBasicGraph(&currentGraph, statMergeFunctions, byteArray, byteArrayLen);
+        if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE) 
+            graphlibError = graphlib_deserializeBasicGraph(&currentGraph, statCountRepFunctions, byteArray, byteArrayLen);
+        else
+        {
+            statGraphRoutinesTotalWidth = totalWidth;
+            statGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
+            statGraphRoutinesCurrentIndex = rank;
+            graphlibError = graphlib_deserializeBasicGraph(&currentGraph, statMergeFunctions, byteArray, byteArrayLen);
+        }
 #else
         graphlibError = graphlib_deserializeGraphConn(rank, &currentGraph, byteArray, byteArrayLen);
 #endif
@@ -419,9 +431,9 @@ void statMerge(vector<PacketPtr> &inputPackets,
         return;
     }
 #ifdef MRNET40
-    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), inputPackets[0]->get_Tag(), "%Ac %d %d", outputByteArray, outputByteArrayLen, totalWidth, outputRank));
+    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), inputPackets[0]->get_Tag(), "%Ac %d %d %ud", outputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
 #else
-    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), inputPackets[0]->get_Tag(), "%ac %d %d", outputByteArray, outputByteArrayLen, totalWidth, outputRank));
+    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), inputPackets[0]->get_Tag(), "%ac %d %d %ud", outputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
 #endif
     outputPackets.push_back(newPacket);
 

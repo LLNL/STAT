@@ -30,6 +30,14 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term><GUIbutton>full list</GUIbutton> | <GUIbutton>count and representative</GUIbutton></term>
+    <listitem>
+        <para>
+        Sample traces with the full task list or just the count and a single representative.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>Run Time Before Sample</GUIbutton></term>
     <listitem>
         <para>

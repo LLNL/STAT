@@ -5928,6 +5928,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_statBenchCreateStackTraces(PyObject *SW
   unsigned int arg4 ;
   unsigned int arg5 ;
   int arg6 ;
+  int arg7 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   unsigned int val2 ;
@@ -5940,15 +5941,18 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_statBenchCreateStackTraces(PyObject *SW
   int ecode5 = 0 ;
   int val6 ;
   int ecode6 = 0 ;
+  int val7 ;
+  int ecode7 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
   PyObject * obj3 = 0 ;
   PyObject * obj4 = 0 ;
   PyObject * obj5 = 0 ;
+  PyObject * obj6 = 0 ;
   StatError_t result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOO:STAT_FrontEnd_statBenchCreateStackTraces",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOOO:STAT_FrontEnd_statBenchCreateStackTraces",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_STAT_FrontEnd, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "STAT_FrontEnd_statBenchCreateStackTraces" "', argument " "1"" of type '" "STAT_FrontEnd *""'"); 
@@ -5979,7 +5983,12 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_statBenchCreateStackTraces(PyObject *SW
     SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "STAT_FrontEnd_statBenchCreateStackTraces" "', argument " "6"" of type '" "int""'");
   } 
   arg6 = static_cast< int >(val6);
-  result = (StatError_t)(arg1)->statBenchCreateStackTraces(arg2,arg3,arg4,arg5,arg6);
+  ecode7 = SWIG_AsVal_int(obj6, &val7);
+  if (!SWIG_IsOK(ecode7)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode7), "in method '" "STAT_FrontEnd_statBenchCreateStackTraces" "', argument " "7"" of type '" "int""'");
+  } 
+  arg7 = static_cast< int >(val7);
+  result = (StatError_t)(arg1)->statBenchCreateStackTraces(arg2,arg3,arg4,arg5,arg6,arg7);
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
 fail:
@@ -7437,6 +7446,9 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "STAT_FUNCTION_NAME_ONLY",SWIG_From_int(static_cast< int >(STAT_FUNCTION_NAME_ONLY)));
   SWIG_Python_SetConstant(d, "STAT_FUNCTION_AND_PC",SWIG_From_int(static_cast< int >(STAT_FUNCTION_AND_PC)));
   SWIG_Python_SetConstant(d, "STAT_FUNCTION_AND_LINE",SWIG_From_int(static_cast< int >(STAT_FUNCTION_AND_LINE)));
+  SWIG_Python_SetConstant(d, "STAT_CR_FUNCTION_NAME_ONLY",SWIG_From_int(static_cast< int >(STAT_CR_FUNCTION_NAME_ONLY)));
+  SWIG_Python_SetConstant(d, "STAT_CR_FUNCTION_AND_PC",SWIG_From_int(static_cast< int >(STAT_CR_FUNCTION_AND_PC)));
+  SWIG_Python_SetConstant(d, "STAT_CR_FUNCTION_AND_LINE",SWIG_From_int(static_cast< int >(STAT_CR_FUNCTION_AND_LINE)));
   SWIG_Python_SetConstant(d, "STAT_LAUNCH",SWIG_From_int(static_cast< int >(STAT_LAUNCH)));
   SWIG_Python_SetConstant(d, "STAT_ATTACH",SWIG_From_int(static_cast< int >(STAT_ATTACH)));
   SWIG_Python_SetConstant(d, "STAT_VERBOSE_ERROR",SWIG_From_int(static_cast< int >(STAT_VERBOSE_ERROR)));

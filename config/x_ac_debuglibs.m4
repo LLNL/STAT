@@ -40,12 +40,24 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     [libstackwalk_found=no]
   )
   LDFLAGS=$TMP_LDFLAGS
-  AC_MSG_RESULT($libstackwalk_found)
   if test "$libstackwalk_found" = yes; then
     BELIBS="-lstackwalk -lpcontrol -lparseAPI -linstruction -lsymtabAPI -lcommon -liberty $BELIBS"
   else
-    AC_MSG_ERROR([libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker])
+    LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lcommon -ldwarf -lelf -liberty -lpthread"
+    AC_LINK_IFELSE([AC_LANG_PROGRAM(#include "walker.h"
+      using namespace Dyninst;
+      using namespace Dyninst::Stackwalker;
+      Walker *walker;)],
+      [libstackwalk_found=yes],
+      [libstackwalk_found=no]
+    )
+    LDFLAGS=$TMP_LDFLAGS
+    if test "$libstackwalk_found" = yes; then
+      BELIBS="-lstackwalk -lsymtabAPI -lcommon -liberty $BELIBS"
+    else
+      AC_MSG_ERROR([libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker])
+    fi
   fi
-
+  AC_MSG_RESULT($libstackwalk_found)
   AC_LANG_POP(C++)
 ])

@@ -104,6 +104,14 @@
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>-U, --countrep</term>
+    <listitem>
+        <para>
+        only gather count and a single representative
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>-w, --withthreads</term>
     <listitem>
         <para>

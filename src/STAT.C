@@ -50,6 +50,7 @@ char *remoteNode = NULL;                /*!< the remote node running the job lau
 char *nodeList = NULL;                  /*!< the CP node list */
 bool individualSamples = false;         /*!< whether to gather individual samples when sampling multiple */
 bool comprehensive = false;             /*!< whether to gather a comprehensive set of samples */
+bool countRep = false;                  /*!< whether to gather just a count and representative */
 bool withThreads = false;               /*!< whether to gather samples from helper threads */
 bool clearOnSample = true;              /*!< whether to clear accumulated traces when sampling */
 bool shareAppNodes = false;             /*!< whether to use the application nodes to run communication processes */
@@ -160,22 +161,34 @@ int main(int argc, char **argv)
             if (i == 0)
             {
                 traces = 1;
-                sampleType = STAT_FUNCTION_NAME_ONLY;
+                if (countRep == true)
+                    sampleType = STAT_CR_FUNCTION_NAME_ONLY;
+                else
+                    sampleType = STAT_FUNCTION_NAME_ONLY;
             }
             else if (i == 1)
             {
                 traces = 1;
-                sampleType = STAT_FUNCTION_AND_LINE;
+                if (countRep == true)
+                    sampleType = STAT_CR_FUNCTION_AND_LINE;
+                else
+                    sampleType = STAT_FUNCTION_AND_LINE;
             }
             else if (i == 2)
             {
                 traces = 1;
-                sampleType = STAT_FUNCTION_AND_PC;
+                if (countRep == true)
+                    sampleType = STAT_CR_FUNCTION_AND_PC;
+                else
+                    sampleType = STAT_FUNCTION_AND_PC;
             }
             else
             {
                 traces = nTraces;
-                sampleType = STAT_FUNCTION_NAME_ONLY;
+                if (countRep == true)
+                    sampleType = STAT_CR_FUNCTION_NAME_ONLY;
+                else
+                    sampleType = STAT_FUNCTION_NAME_ONLY;
             }
         }
         for (j = 0; j < traces; j++)
@@ -285,6 +298,7 @@ void printUsage(int argc, char **argv)
     fprintf(stderr, "  -P, --withpc\t\t\tsample program counter in addition to\n\t\t\t\tfunction name\n");
     fprintf(stderr, "  -i, --withline\t\t\tsample source line number in addition\n\t\t\t\tto function name\n");
     fprintf(stderr, "  -c, --comprehensive\t\tgather 4 traces: function only; function + line;\n\t\t\t\tfunction + pc; and 3D function only\n");
+    fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
     fprintf(stderr, "  -s, --sleep <time>\t\tsleep time before attaching and gathering traces\n");
     fprintf(stderr, "\nTopology options:\n");
@@ -333,6 +347,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         {"appnodes", no_argument, 0, 'A'}, 
         {"sampleindividual", no_argument, 0, 'S'}, 
         {"mrnetprintf", no_argument, 0, 'M'}, 
+        {"countrep", no_argument, 0, 'U'}, 
         {"fanout", required_argument, 0, 'f'},
         {"nodes", required_argument, 0, 'n'},
         {"procs", required_argument, 0, 'p'},
@@ -362,7 +377,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvPicwaCASMf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPicwaCASMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'C')
@@ -475,6 +490,9 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         case 'M':
             logType |= STAT_LOG_MRN;
             break;
+        case 'U':
+            countRep = true;
+            break;
         case '?':
             STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
             printUsage(argc, argv);
@@ -494,6 +512,16 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             STAT->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
             return statError;
         }
+    }
+
+    if (countRep == true)
+    {
+        if (sampleType == STAT_FUNCTION_NAME_ONLY)
+            sampleType = STAT_CR_FUNCTION_NAME_ONLY;
+        else if (sampleType == STAT_FUNCTION_AND_PC)
+            sampleType = STAT_CR_FUNCTION_AND_PC;
+        else if (sampleType == STAT_FUNCTION_AND_LINE)
+            sampleType = STAT_CR_FUNCTION_AND_LINE;
     }
 
     if (optind == argc - 1 && createJob == false)

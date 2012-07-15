@@ -42,6 +42,7 @@ int iters;                              /*!< the number of merge iterations */
 int nEqClasses;                         /*!< the number of equivalence classes */
 char topologySpecification[BUFSIZE];    /*!< the topology specification */
 char *nodeList = NULL;                  /*!< the list of nodes for CPs */
+bool countRep = false;                  /*!< whether to gather just a count and representative */
 bool shareAppNodes = false;             /*!< whether to use the application nodes to run communication processes */
 StatTopology_t topologyType;            /*!< the topology specification type */
 
@@ -125,7 +126,7 @@ int main(int argc, char **argv)
     }
 
     /* Generate the traces */
-    statError = STAT->statBenchCreateStackTraces(maxDepth, nTasks, nTraces, functionFanout, nEqClasses);
+    statError = STAT->statBenchCreateStackTraces(maxDepth, nTasks, nTraces, functionFanout, nEqClasses, countRep);
     if (statError != STAT_OK)
     {
         STAT->printMsg(statError, __FILE__, __LINE__, "Failed to generate stack traces\n");
@@ -178,6 +179,7 @@ void STAT_PrintUsage(int argc, char **argv)
     fprintf(stderr, "  -m, --maxdepth <depth>\tgenerate traces with a maximum depth of <depth>.\n");
     fprintf(stderr, "  -b, --branch <width>\t\tgenerate traces with a max branching factor of\n\t\t\t\t<width>.\n");
     fprintf(stderr, "  -e, --eqclasses <count>\tgenerate traces within <count> equivalent\n\t\t\t\tclasses.\n\n");
+    fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "Topology options:\n");
     fprintf(stderr, "  -a, --autotopo\t\tlet STAT automatically create topology\n");
     fprintf(stderr, "  -d, --depth <depth>\t\ttree topology depth\n");
@@ -211,6 +213,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
         {"autotopo", no_argument, 0, 'a'},
         {"appnodes", no_argument, 0, 'A'}, 
         {"mrnetprintf", no_argument, 0, 'M'}, 
+        {"countrep", no_argument, 0, 'U'}, 
         {"fanout", required_argument, 0, 'f'},
         {"nodes", required_argument, 0, 'n'},
         {"procs", required_argument, 0, 'p'},
@@ -234,7 +237,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvaAMf:n:p:t:m:b:e:D:F:l:L:u:d:N:i:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvaAMUf:n:p:t:m:b:e:D:F:l:L:u:d:N:i:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         switch(opt)
@@ -326,6 +329,9 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'i':
             iters = atoi(optarg);
+            break;
+        case 'U':
+            countRep = true;
             break;
         case '?':
             STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);

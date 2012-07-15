@@ -28,7 +28,7 @@ import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
 import sys, DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_NONE, STAT_OK, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_FUNCTION_NAME_ONLY, STAT_FUNCTION_AND_PC, STAT_FUNCTION_AND_LINE, STAT_APPLICATION_EXITED
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_NONE, STAT_OK, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_FUNCTION_NAME_ONLY, STAT_FUNCTION_AND_PC, STAT_FUNCTION_AND_LINE, STAT_APPLICATION_EXITED, STAT_CR_FUNCTION_NAME_ONLY, STAT_CR_FUNCTION_AND_PC, STAT_CR_FUNCTION_AND_LINE
 import commands
 import subprocess
 import shelve
@@ -90,6 +90,7 @@ class STATGUI(STATDotWindow):
         self.types = { 'Topology Type'     : ['automatic', 'depth', 'max fanout', 'custom'],
                        'Verbosity Type'    : ['error', 'stdout', 'full'],
                        'Sample Type'       : ['function only', 'function and pc', 'function and line'],
+                       'Edge Type'       : ['full list', 'count and representative'],
                        'Remote Host Shell' : ['rsh', 'ssh'] }
         self.options = { 'Remote Host'                      : "localhost",
                          'Remote Host Shell'                : "rsh",
@@ -118,6 +119,7 @@ class STATGUI(STATDotWindow):
                          'Gather Individual Samples'        : False,
                          'Run Time Before Sample (sec)'     : 0,
                          'Sample Type'                      : 'function only',
+                         'Edge Type'                        : 'full list',
                          'DDT Path'                         : STAThelper._which('ddt'),
                          'DDT LaunchMON Prefix'             : '/usr/local',
                          'TotalView Path'                   : STAThelper._which('totalview') }
@@ -1050,11 +1052,12 @@ host[1-10,12,15-20];otherhost[30]
             show_error_dialog('Failed to pause application during sample stack trace operation:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
             return ret
-        sample_type = STAT_FUNCTION_NAME_ONLY
         if self.options['Sample Type'] == 'function and pc':
-            sample_type = STAT_FUNCTION_AND_PC
+            sample_type = STAT_FUNCTION_AND_PC if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_PC
         elif self.options['Sample Type'] == 'function and line':
-            sample_type = STAT_FUNCTION_AND_LINE
+            sample_type = STAT_FUNCTION_AND_LINE if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_LINE
+        else:
+            sample_type = STAT_FUNCTION_NAME_ONLY if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_NAME_ONLY
         ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 1, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
         if ret != STAT_OK:
             show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
@@ -1127,11 +1130,12 @@ host[1-10,12,15-20];otherhost[30]
                 return ret
             self.set_action_sensitivity('paused')
 
-            sample_type = STAT_FUNCTION_NAME_ONLY
             if self.options['Sample Type'] == 'function and pc':
-                sample_type = STAT_FUNCTION_AND_PC
+                sample_type = STAT_FUNCTION_AND_PC if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_PC
             elif self.options['Sample Type'] == 'function and line':
-                sample_type = STAT_FUNCTION_AND_LINE
+                sample_type = STAT_FUNCTION_AND_LINE if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_LINE
+            else:
+                sample_type = STAT_FUNCTION_NAME_ONLY if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_NAME_ONLY
             ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 0, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
             if ret != STAT_OK:
                 if ret == STAT_APPLICATION_EXITED:
@@ -1650,7 +1654,17 @@ host[1-10,12,15-20];otherhost[30]
         frame = gtk.Frame('Per Sample Options')
         vbox2 = gtk.VBox()
         self.pack_check_button(vbox2, 'With Threads', False, False, 5)
-        self.pack_radio_buttons(vbox2, 'Sample Type')
+        frame2 = gtk.Frame('Node Sample Options')
+        vbox3 = gtk.VBox()
+        self.pack_radio_buttons(vbox3, 'Sample Type')
+        frame2.add(vbox3)
+        vbox2.pack_start(frame2, False, False, 5)
+        frame2 = gtk.Frame('Edge Sample Options')
+        vbox3 = gtk.VBox()
+        self.pack_radio_buttons(vbox3, 'Edge Type')
+        frame2.add(vbox3)
+        vbox2.pack_start(frame2, False, False, 5)
+
         if attach == False:
             self.pack_spinbutton(vbox2, 'Run Time Before Sample (sec)')
         expander = gtk.Expander("Advanced")

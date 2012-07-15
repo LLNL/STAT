@@ -29,7 +29,11 @@ extern "C" {
 
 vector<graphlib_graph_p> *graphs = NULL;
 int high_rank;
+#ifdef COUNTREP
+extern graphlib_functiontable_p statCountRepFunctions;
+#else
 extern graphlib_functiontable_p statBitVectorFunctions;
+#endif
 
 static unsigned int string_hash(const char *str)
 {
@@ -56,7 +60,11 @@ static PyObject *py_Init_Graphlib(PyObject *self, PyObject *args)
         return Py_BuildValue("i", -1);
     }
 
+#ifdef COUNTREP
+    statInitializeCountRepFunctions();
+#else
     statInitializeBitVectorFunctions();
+#endif
 
     return Py_BuildValue("i", 0);
 }        
@@ -67,7 +75,11 @@ static PyObject *py_New_Graph(PyObject *self, PyObject *args)
     graphlib_graph_p new_graph;
     graphlib_error_t gl_err;
 
+#ifdef COUNTREP
+    gl_err = graphlib_newGraph(&new_graph, statCountRepFunctions);
+#else
     gl_err = graphlib_newGraph(&new_graph, statBitVectorFunctions);
+#endif
     if (GRL_IS_FATALERROR(gl_err))
     {
         fprintf(stderr, "Error intializing graph\n");
@@ -88,7 +100,11 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
     int node_id, prev_id, handle;
     char *trace, *ptr, *next, *tmp;
     char path[BUFSIZE], prev_path[BUFSIZE];
+#ifdef COUNTREP
+    StatCountRepEdge_t *edge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
+#else
     StatBitVectorEdge_t *edge;
+#endif
     graphlib_graph_p cur_graph, graph_ptr = NULL;
     graphlib_error_t gl_err;
     graphlib_nodeattr_t node_attr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
@@ -103,6 +119,24 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
 
     graph_ptr = (*graphs)[handle];
 
+#ifdef COUNTREP
+    edge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
+    if (edge == NULL)
+    {
+        fprintf(stderr, "Failed to create bit edge\n");
+        return Py_BuildValue("i", -1);
+    }
+    edge->count = 1;
+    edge->representative = task;
+    edge->checksum = task;
+    edge_attr.label = (void *)edge;
+    gl_err = graphlib_newGraph(&cur_graph, statCountRepFunctions);
+    if (GRL_IS_FATALERROR(gl_err))
+    {
+        fprintf(stderr, "Failed to create new graph\n");
+        return Py_BuildValue("i", -1);
+    }
+#else
     edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
     if (edge == NULL)
     {
@@ -129,6 +163,7 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
         fprintf(stderr, "Failed to create new graph\n");
         return Py_BuildValue("i", -1);
     }
+#endif
 
     tmp = (char *)malloc(2 * sizeof(char));
     snprintf(tmp, 2, "/");
@@ -185,7 +220,11 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
         return Py_BuildValue("i", -1);
     }
 
+#ifdef COUNTREP
+    gl_err = graphlib_delEdgeAttr(edge_attr, statFreeCountRepEdge);
+#else
     gl_err = graphlib_delEdgeAttr(edge_attr, statFreeEdge);
+#endif
     if (GRL_IS_FATALERROR(gl_err))
     {
         fprintf(stderr, "Error deleting edge attr\n");
@@ -338,7 +377,11 @@ static PyObject *py_Deserialize_Graph(PyObject *self, PyObject *args)
         return Py_BuildValue("i", -1);
     }
 
+#ifdef COUNTREP
+    gl_err = graphlib_deserializeBasicGraph(&graph_ptr, statCountRepFunctions, buf, (unsigned int)buf_len);
+#else
     gl_err = graphlib_deserializeBasicGraph(&graph_ptr, statBitVectorFunctions, buf, (unsigned int)buf_len);
+#endif
     if (GRL_IS_FATALERROR(gl_err))
     {
         fprintf(stderr, "Error serializing graph\n");

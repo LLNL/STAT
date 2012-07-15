@@ -119,7 +119,15 @@ Here is a list of options:
     <term>Sample Type = <replaceable class="parameter">function only|function and pc|function and line</replaceable></term>
     <listitem>
         <para>
-        Controls the granularity of the stack traces gathered.
+        Controls the granularity of the nodes in the gathered stack traces.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Edge Type = <replaceable class="parameter">full list|count and representative</replaceable></term>
+    <listitem>
+        <para>
+        Controls the granularity of the edges in the gathered stack traces.
         </para>
     </listitem>
 </varlistentry>

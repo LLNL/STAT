@@ -47,7 +47,10 @@ enum StatLogOptions_t {
 typedef enum {
     STAT_FUNCTION_NAME_ONLY = 0,
     STAT_FUNCTION_AND_PC,
-    STAT_FUNCTION_AND_LINE
+    STAT_FUNCTION_AND_LINE,
+    STAT_CR_FUNCTION_NAME_ONLY,
+    STAT_CR_FUNCTION_AND_PC,
+    STAT_CR_FUNCTION_AND_LINE
 } StatSample_t;
 
 typedef enum {
@@ -125,7 +128,7 @@ class STAT_FrontEnd
         void printMsg(StatError_t statError, const char *sourceFile, int sourceLine, const char *fmt, ...);
         StatError_t startLog(unsigned char logType, char *logOutDir);
         StatError_t receiveAck(bool blocking = true);
-        StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
+        StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, int iCountRep);
 
         void printCommunicationNodeList();
         void printApplicationNodeList();

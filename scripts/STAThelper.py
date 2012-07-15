@@ -208,10 +208,11 @@ def get_task_list(label):
     colon_pos = label.find(':')
     if colon_pos != -1:
         # this is just a count and representative
-        if label.find('label') != -1:
-            label = label[colon_pos + 2:-3]
-        elif label.find('[') != -1:
-            label = label[colon_pos + 2:-1]
+        label = label[colon_pos + 2:label.find(']')]
+        #if label.find('label') != -1:
+        #    label = label[colon_pos + 2:label.find(']')]
+        #elif label.find('[') != -1:
+        #    label = label[colon_pos + 2:label.find(']')]
     else:
         # this is a full node list
         if label.find('label') != -1:

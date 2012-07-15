@@ -21,6 +21,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 graphlib_functiontable_p statBitVectorFunctions;
 graphlib_functiontable_p statMergeFunctions;
 graphlib_functiontable_p statReorderFunctions;
+graphlib_functiontable_p statCountRepFunctions;
 int statGraphRoutinesTotalWidth;
 int *statGraphRoutinesEdgeLabelWidths;
 int statGraphRoutinesCurrentIndex;
@@ -115,6 +116,36 @@ void statFreeReorderFunctions()
     if (statReorderFunctions != NULL)
         free(statReorderFunctions);
     statReorderFunctions = NULL;
+}
+
+void statInitializeCountRepFunctions()
+{
+    statFreeCountRepFunctions();
+    statCountRepFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
+    if (statCountRepFunctions == NULL)
+        fprintf(stderr, "Failed to malloc function table\n");
+    statCountRepFunctions->serialize_node = statSerializeNode;
+    statCountRepFunctions->serialize_node_length = statSerializeNodeLength;
+    statCountRepFunctions->deserialize_node = statDeserializeNode;
+    statCountRepFunctions->node_to_text = statNodeToText;
+    statCountRepFunctions->merge_node = statMergeNode;
+    statCountRepFunctions->copy_node = statCopyNode;
+    statCountRepFunctions->free_node = statFreeNode;
+    statCountRepFunctions->serialize_edge = statSerializeCountRepEdge;///
+    statCountRepFunctions->serialize_edge_length = statSerializeCountRepEdgeLength;///
+    statCountRepFunctions->deserialize_edge = statDeserializeCountRepEdge;///
+    statCountRepFunctions->edge_to_text = statCountRepEdgeToText;///
+    statCountRepFunctions->merge_edge = statMergeCountRepEdge;///
+    statCountRepFunctions->copy_edge = statCopyCountRepEdge;///
+    statCountRepFunctions->free_edge = statFreeCountRepEdge;///
+    statCountRepFunctions->edge_checksum = statCountRepEdgeCheckSum;///
+}
+
+void statFreeCountRepFunctions()
+{
+    if (statCountRepFunctions != NULL)
+        free(statCountRepFunctions);
+    statCountRepFunctions = NULL;
 }
 
 size_t statBitVectorLength(int numTasks)
@@ -423,4 +454,65 @@ void statMergeEdgeOrdered(void *edge1, const void *edge2)
             e1->bitVector[byte] |= STAT_GRAPH_BIT(bit);
         }
     }
+}
+
+void statSerializeCountRepEdge(char *buf, const void *edge)
+{
+    memcpy(buf, edge, sizeof(StatCountRepEdge_t));
+}
+
+unsigned int statSerializeCountRepEdgeLength(const void *edge)
+{
+    return sizeof(StatCountRepEdge_t);
+}
+
+void statDeserializeCountRepEdge(void **edge, const char *buf, unsigned int bufLength)
+{
+    StatCountRepEdge_t *e;
+
+    e = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
+    memcpy(e, buf, bufLength);
+    *edge = (void *)e;
+}
+
+char *statCountRepEdgeToText(const void *edge)
+{
+    char *ret;
+    StatCountRepEdge_t *e;
+
+    e = (StatCountRepEdge_t *)edge;
+    ret = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
+    snprintf(ret, STAT_GRAPH_CHUNK, "%ld:[%ld](%ld)", e->count, e->representative, e->checksum);
+    return ret;
+}
+
+void statMergeCountRepEdge(void *edge1, const void *edge2)
+{
+    StatCountRepEdge_t *e1, *e2;
+
+    e1 = (StatCountRepEdge_t *)edge1;
+    e2 = (StatCountRepEdge_t *)edge2;
+    e1->count += e2->count;
+    e1->checksum += e2->checksum;
+    if (e2->representative < e1->representative)
+        e1->representative = e2->representative;
+}
+
+void *statCopyCountRepEdge(const void *edge)
+{
+    StatCountRepEdge_t *ret;
+
+    ret = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
+    memcpy((void *)ret, edge, sizeof(StatCountRepEdge_t));
+    return (void *)ret;
+}
+
+void statFreeCountRepEdge(void *edge)
+{
+    free((StatCountRepEdge_t *) edge);
+}
+
+long statCountRepEdgeCheckSum(const void *edge)
+{
+    return ((StatCountRepEdge_t *)edge)->checksum;
 }

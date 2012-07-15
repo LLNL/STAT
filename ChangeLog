@@ -1,3 +1,13 @@
+2012-07-14 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_GraphRoutines.[C,h], src/STAT_FrontEnd.[C,h],
+	src/STAT_FilterDefinitions.C src/STAT_BackEnd.[C,h], src/STAT.[i,h,C],
+	src/STATBench.C, scripts/STAThelper.py, scripts/STATview.py,
+	scripts/STATGUI.py, doc/src/* : added count + representative level of
+	detail
+
+2012-07-13 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_debuglibs.m4 : fixed stackwalker test to capture older versions
+
 2012-07-12 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATview.py : added ability to view source of collapsed/joined nodes
 	* scripts/STATview.py : added ability to hide MPI with collapsed/joined nodes

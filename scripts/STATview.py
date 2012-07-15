@@ -68,7 +68,6 @@ if have_pygments:
     from pygments.lexers import CppLexer
     from pygments.lexers import FortranLexer
     from STAThelper import STATviewFormatter
-    #from STAThelper import pygments_lines, STATviewFormatter
 
 try:
     import xdot
@@ -82,7 +81,7 @@ except:
 have_tomod = True
 try:
     import tomod
-except:
+except Exception as e:
     have_tomod = False
 
 ## The location of the STAT logo image
@@ -134,7 +133,6 @@ def create_temp(dot_filename):
                     fill_start = line.find('fillcolor')
                     label = line[line.find('label') + 7:line.find('fillcolor') - 3]
                     label = escaped_label(label)
-#                    label = label.replace('<', '\\<').replace('>', '\\>') # add escape characters for '<' and '>'
                     if has_source_and_not_collapsed(label):
                         # if the source file information is full path, reduce to the basename
                         function_name, sourceLine, iter_string = decompose_node(label)
@@ -195,6 +193,8 @@ def create_temp(dot_filename):
         show_error_dialog('Failed to open dot file %s' %dot_filename, exception = e)
         return None
     except Exception as e:
+        print line
+        print tokens
         show_error_dialog('Failed to create temporary dot file %s\n %d' %(dot_filename, repr(e)), exception = e)
         return None
     finally:
@@ -3385,6 +3385,7 @@ entered as a regular expression"""
             my_frame.add(sw)
             vpaned1.add1(my_frame)
             #TODO: make frames resizable
+            print tasks
             if tasks.find(':') == -1:
                 leaf_tasks = get_leaf_tasks(node)
                 num_leaf_tasks = len(leaf_tasks)

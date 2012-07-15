@@ -359,7 +359,7 @@ class STAT_FrontEnd
             \param nEqClasses - the number of equivalence classes to generate
             \return STAT_OK on success
         */
-        StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
+        StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, bool countRep);
 
         //! Creates the ranks list
         /*!
