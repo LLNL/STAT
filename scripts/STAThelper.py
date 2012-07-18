@@ -189,15 +189,6 @@ def is_MPI(function_name):
         return True
     return False
 
-## A global table to avoid redundant task list generation
-task_label_to_list = {}
-
-## A global table to avoid unnecessary parsing of long label strings
-task_label_id_to_list = {}
-
-## A counter to keep track of unique label IDs
-next_label_id = -1
-
 
 ## \param label - the edge label string 
 #  \return a list of integer ranks 
@@ -209,10 +200,6 @@ def get_task_list(label):
     if colon_pos != -1:
         # this is just a count and representative
         label = label[colon_pos + 2:label.find(']')]
-        #if label.find('label') != -1:
-        #    label = label[colon_pos + 2:label.find(']')]
-        #elif label.find('[') != -1:
-        #    label = label[colon_pos + 2:label.find(']')]
     else:
         # this is a full node list
         if label.find('label') != -1:
@@ -246,128 +233,13 @@ def get_num_tasks(label):
     if colon_pos != -1:
         # this is just a count and representative
         if label.find('label') != -1:
-            label = label[8:colon_pos]
+            count = label[8:colon_pos]
         elif label.find('[') != -1:
-            label = label[0:colon_pos]
-        return int(label)
+            count = label[0:colon_pos]
+        return int(count)
     else:
         # this is a full node list
         return len(get_task_list(label))
-
-
-## \param node - the node
-#  \return the task list
-#
-#  \n
-def get_node_task_list(node):
-    """Get the task list corresponding to the node's edge label.
-
-    First see if we have this label indexed to avoid duplicate generation."""
-
-    global next_label_id
-    if node.edge_label_id in task_label_id_to_list: 
-        return task_label_id_to_list[node.edge_label_id]
-    colon_pos = node.edge_label.find(':')
-    if colon_pos != -1:
-        # this is just a count and representative
-        key = node.edge_label
-    else:
-        # this is a full node list
-        if node.edge_label.find('label') != -1:
-            key = node.edge_label[9:-3]
-        elif node.edge_label.find('[') != -1:
-            key = node.edge_label[1:-1]
-        else:
-            key = node.edge_label
-    if key in task_label_to_list:
-        task_list = task_label_to_list[key]
-    else:
-        task_list = get_task_list(key)
-    next_label_id += 1
-    task_label_to_list[key] = task_list
-    task_label_id_to_list[next_label_id] = task_list
-    node.edge_label_id = next_label_id
-    return task_list
-
-
-## \param task_list - the list of tasks
-#  \return the string representation
-#
-#  \n
-def list_to_string(task_list):
-    """Translate a list of tasks into a range string."""
-    global next_label_id
-    for key, value in task_label_to_list.items():
-        if task_list == value:
-            return key
-    ret = ''
-    in_range = False
-    first_iteration = True
-    range_start = -1
-    range_end = -1
-    last_val = -1
-    for task in task_list:
-        if in_range:
-            if task == last_val + 1:
-                range_end = task
-            else:
-                ret += '%d, %d' %(last_val, task)
-                in_range = False
-        else:
-            if first_iteration:
-                ret += '%d' %(task)
-                first_iteration = False
-            else:   
-                if task == last_val + 1:
-                    in_range = True
-                    range_start = last_val
-                    range_end = task
-                    ret += '-'
-                else:
-                    ret += ', %d' %(task)
-        last_val = task
-    if in_range:
-        ret += '%d' %(task)
-    next_label_id += 1
-    task_label_id_to_list[next_label_id] = task_list
-    task_label_to_list[ret] = task_list
-    return ret
-
-
-## \param node - the input node 
-#  \return the task list
-#
-#  \n
-def get_leaf_tasks(node):
-    """Get the list of tasks that ended on this node."""
-    in_set = set(get_node_task_list(node))
-    out_set = set([])
-    for edge in node.out_edges:
-        out_set |= set(get_node_task_list(edge.dst))
-    return sorted(list(in_set - out_set))
-
-
-## \param node - the input node 
-#  \return the task count
-#
-#  \n
-def get_leaf_num_tasks(node):
-    """Get the number of tasks that ended on this node."""
-    colon_pos = node.edge_label.find(':')
-    if colon_pos != -1:
-        # this is just a count and representative
-        out_sum = 0
-        for edge in node.out_edges:
-            out_sum += get_num_tasks(edge.label)
-        if out_sum < get_num_tasks(node.edge_label):
-            return get_num_tasks(node.edge_label) - out_sum
-        else:
-            return 0
-    else:
-        # this is a full node list
-        return len(get_leaf_tasks(node))
-    return 0 # should not get here
-
 
 
 ## \param executable - the executable to search for

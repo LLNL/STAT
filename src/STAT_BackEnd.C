@@ -1630,7 +1630,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
         CrEdge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
         CrEdge->count = 1;
         CrEdge->representative = rank;
-        CrEdge->checksum = rank;
+        CrEdge->checksum = rank + 1;
         edgeattr.label = (void *)CrEdge;
     }
     else
@@ -1992,7 +1992,7 @@ bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
                int rank = *j;
                if (rank < edge->representative || edge->representative == -1)
                   edge->representative = rank;
-               edge->checksum += rank;
+               edge->checksum += rank + 1; // We add one to ensure rank == 0 gets counted
                edge->count += 1;
             }
             edgeattr.label = (void *)edge;
@@ -2688,18 +2688,18 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
         if (nEqClasses == -1)
         {
             CrEdge->count = 1;
-            CrEdge->checksum = task;
+            CrEdge->checksum = task + 1;
         }
         else
         {
             CrEdge->count = nTasks / nEqClasses;
             CrEdge->checksum = 0;
             for (i = 0; i < nTasks / nEqClasses; i++)
-                CrEdge->checksum += task + i * nEqClasses;
+                CrEdge->checksum += task + i * nEqClasses + 1;
             if (nTasks % nEqClasses > task)
             {
                 CrEdge->count += 1;
-                CrEdge->checksum += task + i * nEqClasses;
+                CrEdge->checksum += task + i * nEqClasses + 1;
             }
         }
         edgeattr.label = (void *)CrEdge;

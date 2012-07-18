@@ -1267,8 +1267,6 @@ host[1-10,12,15-20];otherhost[30]
             in_range = False
             task_count = 0
             task_list, fill_color_string, font_color_string = eq_class
-            if task_list == []:
-                continue
             for num in task_list:
                 task_count += 1
                 if num == prev + 1:
@@ -1317,6 +1315,7 @@ host[1-10,12,15-20];otherhost[30]
         all_button.connect('toggled', lambda w: self.on_toggle_eq(w, 'all', 'all_button'))
         none_button.connect('toggled', lambda w: self.on_toggle_eq(w, 'all', 'none_button'))
         for item in classes:
+            hbox = gtk.HBox()
             rep_button = gtk.RadioButton(None)
             all_button = gtk.RadioButton(rep_button)
             none_button = gtk.RadioButton(rep_button)
@@ -1324,7 +1323,6 @@ host[1-10,12,15-20];otherhost[30]
             all_button.connect('toggled', lambda w: self.on_toggle_eq(w, classes.index(item), 'all_button'))
             none_button.connect('toggled', lambda w: self.on_toggle_eq(w, classes.index(item), 'none_button'))
             rep_button.set_active(True)
-            hbox = gtk.HBox()
             item['rep_button'] = rep_button
             item['all_button'] = all_button
             item['none_button'] = none_button
@@ -1462,21 +1460,24 @@ host[1-10,12,15-20];otherhost[30]
     def launch_debugger_cb(self, widget, args):
         """Callback to launch full-featured debugger on a subset of tasks."""
         debugger, eq_dialog = args
-        eq_dialog.destroy()
         subset_list = []
         for item in self.eq_state['classes']:
-            if item['rep_button'].get_active() == True:
+            if item['rep_button'].get_active() == True and len(item['class']) > 0:
                 subset_list.append(item['class'][0])
-            elif item['all_button'].get_active() == True:
+            elif item['all_button'].get_active() == True and len(item['class']) > 0:
                 subset_list += item['class']
         additional_tasks = '[' + self.eq_state['entry'].get_text().strip(' ').strip('[').strip(']') + ']'
         task_list_set = set(get_task_list(additional_tasks) + subset_list)
         subset_list = list(task_list_set)
+        if subset_list == []:
+            show_error_dialog('No tasks selected.  Please choose a subset of tasks to debug', self)
+            return False
+        eq_dialog.destroy()
         # use current STAT session to determine job launcher PID
         ret = self.set_proctab()
         if ret == False:
             return False
-        executable = self.proctab.executable_path#f.next().split()[2]
+        executable = self.proctab.executable_path
         executable_path = executable
         cancel = False
         while os.path.exists(executable_path) == False:

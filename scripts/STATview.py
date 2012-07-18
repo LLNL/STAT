@@ -57,7 +57,7 @@ except Exception as e:
 
 try:
     import STAThelper
-    from STAThelper import _which, color_to_string, decompose_node, get_leaf_num_tasks, get_leaf_tasks, get_node_task_list, get_num_tasks, get_task_list, have_pygments, is_MPI, list_to_string, escaped_label, has_source_and_not_collapsed, label_has_source, label_collapsed
+    from STAThelper import _which, color_to_string, decompose_node, get_num_tasks, get_task_list, have_pygments, is_MPI, escaped_label, has_source_and_not_collapsed, label_has_source, label_collapsed
 except Exception as e:
     sys.stderr.write('%s\n' %repr(e))
     sys.stderr.write('There was a problem loading the STAThelper module.\n')
@@ -102,6 +102,58 @@ search_paths['source'] = []
 search_paths['source'].append(os.getcwd())
 search_paths['include'] = []
 
+## A global table to avoid redundant task list generation
+task_label_to_list = {}
+
+## A global table to avoid unnecessary parsing of long label strings
+task_label_id_to_list = {}
+
+## A counter to keep track of unique label IDs
+next_label_id = -1
+
+
+## \param task_list - the list of tasks
+#  \return the string representation
+#
+#  \n
+def list_to_string(task_list):
+    """Translate a list of tasks into a range string."""
+    global next_label_id
+    for key, value in task_label_to_list.items():
+        if task_list == value:
+            return key
+    ret = ''
+    in_range = False
+    first_iteration = True
+    range_start = -1
+    range_end = -1
+    last_val = -1
+    for task in task_list:
+        if in_range:
+            if task == last_val + 1:
+                range_end = task
+            else:
+                ret += '%d, %d' %(last_val, task)
+                in_range = False
+        else:
+            if first_iteration:
+                ret += '%d' %(task)
+                first_iteration = False
+            else:   
+                if task == last_val + 1:
+                    in_range = True
+                    range_start = last_val
+                    range_end = task
+                    ret += '-'
+                else:
+                    ret += ', %d' %(task)
+        last_val = task
+    if in_range:
+        ret += '%d' %(task)
+    next_label_id += 1
+    task_label_id_to_list[next_label_id] = task_list
+    task_label_to_list[ret] = task_list
+    return ret
 
 ## \param dot_filename - the input .dot file
 #  \return the created temporary dot file name
@@ -584,6 +636,73 @@ class STATNode(STATElement):
                 return True
         return False
 
+    #  \return the task list
+    #
+    #  \n
+    def get_node_task_list(self):
+        """Get the task list corresponding to the node's edge label.
+    
+        First see if we have this label indexed to avoid duplicate generation."""
+    
+        global next_label_id
+        if self.edge_label_id in task_label_id_to_list: 
+            return task_label_id_to_list[self.edge_label_id]
+        colon_pos = self.edge_label.find(':')
+        if colon_pos != -1:
+            # this is just a count and representative
+            key = self.edge_label
+        else:
+            # this is a full node list
+            if self.edge_label.find('label') != -1:
+                key = self.edge_label[9:-3]
+            elif self.edge_label.find('[') != -1:
+                key = self.edge_label[1:-1]
+            else:
+                key = self.edge_label
+        if key in task_label_to_list:
+            task_list = task_label_to_list[key]
+        else:
+            task_list = get_task_list(key)
+        next_label_id += 1
+        task_label_to_list[key] = task_list
+        task_label_id_to_list[next_label_id] = task_list
+        self.edge_label_id = next_label_id
+        return task_list
+
+    ## \param node - the input node 
+    #  \return the task list
+    #
+    #  \n
+    def get_leaf_tasks(self):
+        """Get the list of tasks that ended on this node."""
+        in_set = set(self.get_node_task_list())
+        out_set = set([])
+        for edge in self.out_edges:
+            out_set |= set(edge.dst.get_node_task_list())
+        return sorted(list(in_set - out_set))
+    
+    
+    ## \param node - the input node 
+    #  \return the task count
+    #
+    #  \n
+    def get_leaf_num_tasks(self):
+        """Get the number of tasks that ended on this node."""
+        colon_pos = self.edge_label.find(':')
+        if colon_pos != -1:
+            # this is just a count and representative
+            out_sum = 0
+            for edge in self.out_edges:
+                out_sum += get_num_tasks(edge.label)
+            if out_sum < get_num_tasks(self.edge_label):
+                return get_num_tasks(self.edge_label) - out_sum
+            else:
+                return 0
+        else:
+            # this is a full node list
+            return len(self.get_leaf_tasks())
+        return 0 # should not get here
+    
     def can_join_eq_c(self):
         if self.hide == True:
             return False
@@ -1752,10 +1871,10 @@ class STATGraph(xdot.Graph):
         for node in self.nodes:
             if node.node_name == '0':
                 continue
-            if task_list_set & set(get_node_task_list(node)) == set([]):
+            if task_list_set & set(node.get_node_task_list()) == set([]):
                 node.hide = True
         for edge in self.edges:
-            if task_list_set & set(get_node_task_list(edge.dst)) == set([]):
+            if task_list_set & set(edge.dst.get_node_task_list()) == set([]):
                 edge.hide = True
         return True
 
@@ -1849,8 +1968,8 @@ class STATGraph(xdot.Graph):
         child_task_list = []
         for edge in node.out_edges:
             if edge.dst != None:
-                child_task_list += get_node_task_list(edge.dst)
-        if set(child_task_list) == set(get_node_task_list(node)):
+                child_task_list += edge.dst.get_node_task_list()
+        if set(child_task_list) == set(node.get_node_task_list()):
             return False
         return True
 
@@ -1914,7 +2033,7 @@ class STATGraph(xdot.Graph):
         """Traverse the call prefix tree by least tasks."""
         least_map = {}
         for node in self.nodes:
-            task_count = get_leaf_num_tasks(node)
+            task_count = node.get_leaf_num_tasks()
             if task_count == 0:
                 continue
             try:
@@ -1945,7 +2064,7 @@ class STATGraph(xdot.Graph):
         """Traverse the call prefix tree by most tasks."""
         most_map = {}
         for node in self.nodes:
-            task_count = get_leaf_num_tasks(node)
+            task_count = node.get_leaf_num_tasks()
             if task_count == 0:
                 continue
             try:
@@ -2090,13 +2209,29 @@ class STATGraph(xdot.Graph):
         #TODO-count-rep: using task list not sufficient if we just have count + representative
         if node.hide == True or node.node_name == '0':
             return False
-        task_list = []
-        for edge in node.out_edges:
-            if edge.dst.hide == False:
-                task_list += get_node_task_list(edge.dst)
-        if set(get_node_task_list(node)) == set(task_list):
+        if node.edge_label.find(':') == -1:
+            # if we have a full task list
+            task_list = []
+            for edge in node.out_edges:
+                if edge.dst.hide == False:
+                    task_list += edge.dst.get_node_task_list()
+            if set(node.get_node_task_list()) == set(task_list):
+                return False
+            return True
+        else:
+            checksum = int(node.edge_label[node.edge_label.find('(') + 1:node.edge_label.find(')')])
+            num_tasks = get_num_tasks(node.edge_label)
+            children_checksum = children_num_tasks = 0
+            for edge in node.out_edges:
+                if edge.dst.hide == False:
+                    label = edge.dst.edge_label
+                    children_checksum += int(label[label.find('(') + 1:label.find(')')])
+                    children_num_tasks += get_num_tasks(label)
+            if num_tasks > children_num_tasks or checksum > children_checksum:  
+                return True
             return False
-        return True
+        return False
+
 
     def identify_num_eq_classes(self, widget):
         """Find all equivalence classes (based on color) of the call tree."""
@@ -2106,10 +2241,11 @@ class STATGraph(xdot.Graph):
                 leaves.append(node)
         task_leaf_list = []
         leaf_task_sets = []
+        #if node.edge_label.find(':') == -1: # TODO: currently showing non-leaf task as representative...
         for node in leaves:
-            leaf_task_sets.append(set(get_node_task_list(node)))
+            leaf_task_sets.append(set(node.get_node_task_list()))
         for node in leaves:
-            task_list = get_node_task_list(node)
+            task_list = node.get_node_task_list()
             # get the node font and background colors
             for shape in node.shapes:
                 if isinstance(shape, xdot.TextShape):
@@ -2123,8 +2259,8 @@ class STATGraph(xdot.Graph):
             for edge in node.out_edges:
                 if edge.dst.hide == True:
                     continue
-                if set(get_node_task_list(edge.dst)) in leaf_task_sets:
-                    task_list_set = task_list_set - set(get_node_task_list(edge.dst))
+                if set(edge.dst.get_node_task_list()) in leaf_task_sets:
+                    task_list_set = task_list_set - set(edge.dst.get_node_task_list())
             task_list = list(task_list_set)
             if (task_list, fill_color_string, font_color_string) not in task_leaf_list:
                 task_leaf_list.append((task_list, fill_color_string, font_color_string))
@@ -2138,7 +2274,7 @@ class STATGraph(xdot.Graph):
                 leaves.append(node)
         task_leaf_map = {}
         for node in leaves:
-            task_list = get_node_task_list(node)
+            task_list = node.get_node_task_list()
             for task in task_list:
                 try:
                     task_leaf_map[task] += '#%s' %node.node_name
@@ -3343,6 +3479,7 @@ entered as a regular expression"""
         function = widget.get_label(int(event.x), int(event.y)).label.replace('==>', '==>\n')
         tasks = widget.get_edge_label(int(event.x), int(event.y)).edge_label
         node = widget.get_node(int(event.x), int(event.y))
+        print node.label, node.edge_label
         if node.hide == True:
             return True
         options = ['Join Equivalence Class', 'Collapse', 'Collapse Depth', 'Hide', 'Expand', 'Expand All', 'Focus', 'View Source']
@@ -3385,9 +3522,8 @@ entered as a regular expression"""
             my_frame.add(sw)
             vpaned1.add1(my_frame)
             #TODO: make frames resizable
-            print tasks
             if tasks.find(':') == -1:
-                leaf_tasks = get_leaf_tasks(node)
+                leaf_tasks = node.get_leaf_tasks()
                 num_leaf_tasks = len(leaf_tasks)
                 num_tasks = get_num_tasks(tasks)
                 if num_leaf_tasks != 0:
@@ -3430,6 +3566,22 @@ entered as a regular expression"""
                         vpaned1.add2(vpaned2)
                     except:
                         vpaned1.add2(my_frame)
+            else:
+                num_tasks = get_num_tasks(tasks)
+                num_leaf_tasks = node.get_leaf_num_tasks()
+                vpaned2 = gtk.VPaned()
+                my_frame = gtk.Frame("Node summary:")
+                sw = gtk.ScrolledWindow()
+                sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+                summary_view = gtk.TextView()
+                summary_view.set_editable(False)
+                summary_view.set_cursor_visible(False)
+                task_view_buffer = summary_view.get_buffer()
+                summary_view.set_wrap_mode(gtk.WRAP_WORD)
+                task_view_buffer.set_text("%d total tasks, %d leaf tasks, representative = %d" %(num_tasks, num_leaf_tasks, get_task_list(tasks)[0]))
+                sw.add(summary_view)
+                my_frame.add(sw)
+                vpaned1.add2(my_frame)
             self.my_dialog.vbox.pack_start(vpaned1, True, True, 5)
             self.separator = gtk.HSeparator()
             self.my_dialog.vbox.pack_start(self.separator, False, True, 5)

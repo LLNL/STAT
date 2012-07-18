@@ -1,4 +1,12 @@
 2012-07-14 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : add 1 to rank for checksum in count + rep case to
+	account for rank 0
+	* scripts/STAThelper.py, scripts/STATview.py : moved node query functions
+	from STAThelper.py to STATview.py
+	* scripts/STATview.py : proper handling of eq class identification for
+	count + rep case
+
+2012-07-14 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_GraphRoutines.[C,h], src/STAT_FrontEnd.[C,h],
 	src/STAT_FilterDefinitions.C src/STAT_BackEnd.[C,h], src/STAT.[i,h,C],
 	src/STATBench.C, scripts/STAThelper.py, scripts/STATview.py,
