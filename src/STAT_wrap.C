@@ -5996,6 +5996,37 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_STAT_FrontEnd_getNodeInEdge(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
+  int arg2 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int val2 ;
+  int ecode2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  char *result = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:STAT_FrontEnd_getNodeInEdge",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_STAT_FrontEnd, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "STAT_FrontEnd_getNodeInEdge" "', argument " "1"" of type '" "STAT_FrontEnd *""'"); 
+  }
+  arg1 = reinterpret_cast< STAT_FrontEnd * >(argp1);
+  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_getNodeInEdge" "', argument " "2"" of type '" "int""'");
+  } 
+  arg2 = static_cast< int >(val2);
+  result = (char *)(arg1)->getNodeInEdge(arg2);
+  resultobj = SWIG_FromCharPtr((const char *)result);
+  return resultobj;
+fail:
+  return NULL;
+}
+
+
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_printCommunicationNodeList(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
@@ -6760,6 +6791,7 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"STAT_FrontEnd_startLog", _wrap_STAT_FrontEnd_startLog, METH_VARARGS, NULL},
 	 { (char *)"STAT_FrontEnd_receiveAck", _wrap_STAT_FrontEnd_receiveAck, METH_VARARGS, NULL},
 	 { (char *)"STAT_FrontEnd_statBenchCreateStackTraces", _wrap_STAT_FrontEnd_statBenchCreateStackTraces, METH_VARARGS, NULL},
+	 { (char *)"STAT_FrontEnd_getNodeInEdge", _wrap_STAT_FrontEnd_getNodeInEdge, METH_VARARGS, NULL},
 	 { (char *)"STAT_FrontEnd_printCommunicationNodeList", _wrap_STAT_FrontEnd_printCommunicationNodeList, METH_VARARGS, NULL},
 	 { (char *)"STAT_FrontEnd_printApplicationNodeList", _wrap_STAT_FrontEnd_printApplicationNodeList, METH_VARARGS, NULL},
 	 { (char *)"STAT_FrontEnd_getLauncherPid", _wrap_STAT_FrontEnd_getLauncherPid, METH_VARARGS, NULL},

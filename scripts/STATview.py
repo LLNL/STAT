@@ -686,22 +686,15 @@ class STATNode(STATElement):
     #  \return the task count
     #
     #  \n
-    def get_leaf_num_tasks(self):
+    def get_num_leaf_tasks(self):
         """Get the number of tasks that ended on this node."""
-        colon_pos = self.edge_label.find(':')
-        if colon_pos != -1:
-            # this is just a count and representative
-            out_sum = 0
-            for edge in self.out_edges:
-                out_sum += get_num_tasks(edge.label)
-            if out_sum < get_num_tasks(self.edge_label):
-                return get_num_tasks(self.edge_label) - out_sum
-            else:
-                return 0
+        out_sum = 0
+        for edge in self.out_edges:
+            out_sum += get_num_tasks(edge.label)
+        if out_sum < get_num_tasks(self.edge_label):
+            return get_num_tasks(self.edge_label) - out_sum
         else:
-            # this is a full node list
-            return len(self.get_leaf_tasks())
-        return 0 # should not get here
+            return 0
     
     def can_join_eq_c(self):
         if self.hide == True:
@@ -2033,7 +2026,7 @@ class STATGraph(xdot.Graph):
         """Traverse the call prefix tree by least tasks."""
         least_map = {}
         for node in self.nodes:
-            task_count = node.get_leaf_num_tasks()
+            task_count = node.get_num_leaf_tasks()
             if task_count == 0:
                 continue
             try:
@@ -2064,7 +2057,7 @@ class STATGraph(xdot.Graph):
         """Traverse the call prefix tree by most tasks."""
         most_map = {}
         for node in self.nodes:
-            task_count = node.get_leaf_num_tasks()
+            task_count = node.get_num_leaf_tasks()
             if task_count == 0:
                 continue
             try:
@@ -2206,32 +2199,15 @@ class STATGraph(xdot.Graph):
 
     def node_is_visual_eq_leaf(self, node):
         """Determine if the node is an eq class leaf of the visible tree."""
-        #TODO-count-rep: using task list not sufficient if we just have count + representative
         if node.hide == True or node.node_name == '0':
             return False
-        if node.edge_label.find(':') == -1:
-            # if we have a full task list
-            task_list = []
-            for edge in node.out_edges:
-                if edge.dst.hide == False:
-                    task_list += edge.dst.get_node_task_list()
-            if set(node.get_node_task_list()) == set(task_list):
-                return False
+            
+        num_leaf_tasks = node.get_num_leaf_tasks()
+        num_tasks = get_num_tasks(node.edge_label)
+        if num_leaf_tasks != 0:
             return True
         else:
-            checksum = int(node.edge_label[node.edge_label.find('(') + 1:node.edge_label.find(')')])
-            num_tasks = get_num_tasks(node.edge_label)
-            children_checksum = children_num_tasks = 0
-            for edge in node.out_edges:
-                if edge.dst.hide == False:
-                    label = edge.dst.edge_label
-                    children_checksum += int(label[label.find('(') + 1:label.find(')')])
-                    children_num_tasks += get_num_tasks(label)
-            if num_tasks > children_num_tasks or checksum > children_checksum:  
-                return True
             return False
-        return False
-
 
     def identify_num_eq_classes(self, widget):
         """Find all equivalence classes (based on color) of the call tree."""
@@ -2241,11 +2217,9 @@ class STATGraph(xdot.Graph):
                 leaves.append(node)
         task_leaf_list = []
         leaf_task_sets = []
-        #if node.edge_label.find(':') == -1: # TODO: currently showing non-leaf task as representative...
         for node in leaves:
             leaf_task_sets.append(set(node.get_node_task_list()))
         for node in leaves:
-            task_list = node.get_node_task_list()
             # get the node font and background colors
             for shape in node.shapes:
                 if isinstance(shape, xdot.TextShape):
@@ -2254,7 +2228,9 @@ class STATGraph(xdot.Graph):
                     fill_color = shape.pen.fillcolor
             font_color_string = color_to_string(font_color)
             fill_color_string = color_to_string(fill_color)
+
             # adjust task list for eq class leaves with children
+            task_list = node.get_node_task_list()
             task_list_set = set(task_list)
             for edge in node.out_edges:
                 if edge.dst.hide == True:
@@ -3474,19 +3450,23 @@ entered as a regular expression"""
         eq_dialog.show_all()
         return True
 
-    def on_node_clicked(self, widget, label, event):
+    def on_node_clicked(self, widget, button_clicked, event):
         """Callback to handle clicking of a node."""
-        function = widget.get_label(int(event.x), int(event.y)).label.replace('==>', '==>\n')
-        tasks = widget.get_edge_label(int(event.x), int(event.y)).edge_label
-        node = widget.get_node(int(event.x), int(event.y))
-        print node.label, node.edge_label
+        if isinstance(event, STATNode):
+            node = event
+        else:
+            node = widget.get_node(int(event.x), int(event.y))
+        function = node.label.replace('==>', '==>\n')
+        tasks = node.edge_label
         if node.hide == True:
             return True
         options = ['Join Equivalence Class', 'Collapse', 'Collapse Depth', 'Hide', 'Expand', 'Expand All', 'Focus', 'View Source']
 
         if have_tomod == True:
             options.append('Temporally Order Children')
-        if label == 'left':
+        if button_clicked == 'left':
+            if hasattr(self, 'get_full_edge_label') and tasks.find(':') != -1:
+                options.append('Get Full Edge Label')
             try:
                 self.my_dialog.destroy()
             except:
@@ -3524,9 +3504,9 @@ entered as a regular expression"""
             #TODO: make frames resizable
             if tasks.find(':') == -1:
                 leaf_tasks = node.get_leaf_tasks()
-                num_leaf_tasks = len(leaf_tasks)
+                num_leaf_tasks = node.get_num_leaf_tasks() #len(leaf_tasks)
                 num_tasks = get_num_tasks(tasks)
-                if num_leaf_tasks != 0:
+                if num_leaf_tasks != 0 and num_leaf_tasks == len(leaf_tasks):
                     vpaned2 = gtk.VPaned()
                     if num_leaf_tasks == 1:
                         my_frame = gtk.Frame("%d Leaf Task:" %(num_leaf_tasks))
@@ -3568,7 +3548,7 @@ entered as a regular expression"""
                         vpaned1.add2(my_frame)
             else:
                 num_tasks = get_num_tasks(tasks)
-                num_leaf_tasks = node.get_leaf_num_tasks()
+                num_leaf_tasks = node.get_num_leaf_tasks()
                 vpaned2 = gtk.VPaned()
                 my_frame = gtk.Frame("Node summary:")
                 sw = gtk.ScrolledWindow()
@@ -3588,7 +3568,7 @@ entered as a regular expression"""
             box2 = gtk.HButtonBox()
             for option in options:
                 button = gtk.Button(option.replace(' ', '\n'))
-                if option !=  'View Source':
+                if option !=  'View Source' and option != 'Get Full Edge Label':
                     button.connect("clicked", self.manipulate_cb, option, node)
                 if option == 'View Source':
                     if not label_has_source(node.label):
@@ -3600,18 +3580,20 @@ entered as a regular expression"""
                 elif option == 'Join Equivalence Class':
                     if not node.can_join_eq_c():
                         button.set_sensitive(False)
+                elif option == 'Get Full Edge Label':
+                    button.connect("clicked", lambda x, w, l, n: self.get_full_edge_label(w, l, n), widget, button_clicked, node)
                 box2.pack_start(button, False, True, 5)
             button = gtk.Button(stock=gtk.STOCK_OK)
             button.connect("clicked", lambda w, d: self.my_dialog.destroy(), "ok")
             box2.pack_end(button, False, True, 5)
             self.my_dialog.vbox.pack_end(box2, False, False, 0)
             self.my_dialog.show_all()
-        elif label == 'right':
+        elif button_clicked == 'right':
             menu = gtk.Menu()
             for option in options:
                 menu_item = gtk.MenuItem(option)
                 menu.append(menu_item)
-                if option != 'View Source':
+                if option != 'View Source' and option != 'Get Full Edge Label':
                     menu_item.connect('activate', self.manipulate_cb, option, node)
                 if option == 'View Source':
                     if label_has_source(node.label):

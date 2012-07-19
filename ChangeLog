@@ -1,4 +1,9 @@
-2012-07-14 Gregory L. Lee <lee218@llnl.gov>
+2012-07-19 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.[C,h],src/STAT_FilterDefinitions.C,
+	src/STAT_BackEnd.[C,h], src/STAT.[i,h], scripts/STATview.py,
+	scripts/STATGUI.py : added ability to gather full edge labels
+
+2012-07-17 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C : add 1 to rank for checksum in count + rep case to
 	account for rank 0
 	* scripts/STAThelper.py, scripts/STATview.py : moved node query functions

@@ -1578,6 +1578,26 @@ host[1-10,12,15-20];otherhost[30]
         if os.fork() == 0:
             self.exec_and_exit(arg_list)
 
+    def get_full_edge_label(self, widget, button_clicked, node):
+        edge_label = self.STAT.getNodeInEdge(int(node.node_name))
+        old_label = node.edge_label
+        node.edge_label = edge_label
+        task_list = get_task_list(edge_label)
+        if node.edge_label_id in STATview.task_label_id_to_list: 
+            STATview.task_label_id_to_list[node.edge_label_id] = task_list
+        if old_label in STATview.task_label_to_list:
+            del STATview.task_label_to_list[old_label]
+        for inode in self.get_current_graph().nodes:
+            if inode.edge_label == old_label:
+                inode.edge_label = edge_label
+                if inode.edge_label_id in STATview.task_label_id_to_list: 
+                    STATview.task_label_id_to_list[inode.edge_label_id] = task_list
+        try:
+            self.my_dialog.destroy()
+        except:
+            pass
+        self.on_node_clicked(widget, button_clicked, node)
+
     def on_fatal_error(self):
         """Handle fatal error."""
         self.set_action_sensitivity('new')

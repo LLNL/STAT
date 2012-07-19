@@ -2456,9 +2456,7 @@ bool STAT_FrontEnd::isRunning()
 
 StatError_t STAT_FrontEnd::sampleStackTraces(StatSample_t sampleType, bool withThreads, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, char *variableSpecification)
 {
-    int tag, retval;
     StatError_t ret;
-    PacketPtr packet;
 
     startTime.setTime();
 
@@ -2843,6 +2841,128 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     }
 
     return STAT_OK;
+}
+
+char *STAT_FrontEnd::getNodeInEdge(int nodeId)
+{
+    int tag, retval, totalWidth, dummyRank, offset = 0;
+    char *byteArray, *edgeLabel;
+    unsigned long byteArrayLen;
+    StatError_t ret;
+    PacketPtr packet;
+    StatBitVectorEdge_t *unorderedEdge, *orderedEdge;
+    StatSample_t sampleType;
+    list<int>::iterator ranksIter;
+    IntList_t *hostRanks;
+
+    startTime.setTime();
+
+    /* Make sure we're in the expected state */
+    if (isAttached_ == false)
+    {
+        printMsg(STAT_NOT_ATTACHED_ERROR, __FILE__, __LINE__, "STAT not attached to the application... ignoring request to gather samples\n");
+        return NULL;
+    }
+    if (isConnected_ == false)
+    {
+        printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
+        return NULL;
+    }
+    if (WIFKILLED(lmonState))
+    {
+        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
+        return NULL;
+    }
+    if (!WIFBESPAWNED(lmonState))
+    {
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
+        return NULL;
+    }
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting incoming-edge for node %d\n", nodeId);
+
+    /* Send request to daemons to get edge */
+    if (mergeStream_->send(PROT_SEND_NODE_IN_EDGE, "%d", nodeId) == -1) 
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send request to gather edge label\n");
+        return NULL;
+    }
+    if (mergeStream_->flush() != 0)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to flush message\n");
+        return NULL;
+    }
+  
+    /* Receive the ack */
+    do
+    {
+        retval = mergeStream_->recv(&tag, packet, false);
+        if (retval == 0)
+        {
+            if (!WIFBESPAWNED(lmonState))
+            {
+                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
+                return NULL;
+            }
+            usleep(1000);
+        }
+    }
+    while (retval == 0);// && blocking == true);
+    if (retval == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to gather edge label\n");
+        return NULL;
+    }
+    if (tag != PROT_SEND_NODE_IN_EDGE_RESP)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to gather edge label.  Unexpected tag %d, expecting tag %d\n", tag, PROT_SEND_NODE_IN_EDGE_RESP);
+        return NULL;
+    }
+
+    /* Unpack byte array representing the edge */
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
+#ifdef MRNET40
+    if (packet->unpack("%Ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
+#else
+    if (packet->unpack("%ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank &sampleType) == -1)
+#endif
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::unpack(PROT_SEND_NODE_IN_EDGE_RESP) failed\n");
+        return NULL;
+    }
+    
+    /* Deserialize the unordered edge */
+    statDeserializeEdge((void **)&unorderedEdge, byteArray, byteArrayLen);
+
+    /* Create an empty bit vector for reordering */
+    orderedEdge = (StatBitVectorEdge_t *)statCopyEdgeInitializeEmpty(unorderedEdge);
+    if (orderedEdge == NULL)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "statCopyEdgeInitializeEmpty failed\n");
+        return NULL;
+    }
+        
+    /* Fill edge label on a per daemon basis */
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Filling in edges\n");
+    for (ranksIter = remapRanksList_.begin(); ranksIter != remapRanksList_.end(); ranksIter++)
+    {
+        /* Fill edge labels for this daemon */
+        hostRanks = mrnetRankToMPIRanksMap_[*ranksIter];
+        statGraphRoutinesRanksList = hostRanks->list;
+        statGraphRoutinesRanksListLength = hostRanks->count;
+        statGraphRoutinesCurrentIndex = offset;
+        statMergeEdgeOrdered(orderedEdge, unorderedEdge);
+        offset += statBitVectorLength(hostRanks->count);
+    }
+
+    edgeLabel = statEdgeToText((void *)orderedEdge);
+    statFreeEdge((void *)orderedEdge);
+    statFreeEdge((void *)unorderedEdge);
+
+    endTime.setTime();
+    addPerfData("\tGather Edge", (endTime - startTime).getDoubleTime());
+
+    return edgeLabel;
 }
 
 char *STAT_FrontEnd::getLastDotFilename()

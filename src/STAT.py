@@ -171,6 +171,7 @@ class STAT_FrontEnd(_object):
     def startLog(self, *args): return _STAT.STAT_FrontEnd_startLog(self, *args)
     def receiveAck(self, blocking = True): return _STAT.STAT_FrontEnd_receiveAck(self, blocking)
     def statBenchCreateStackTraces(self, *args): return _STAT.STAT_FrontEnd_statBenchCreateStackTraces(self, *args)
+    def getNodeInEdge(self, *args): return _STAT.STAT_FrontEnd_getNodeInEdge(self, *args)
     def printCommunicationNodeList(self): return _STAT.STAT_FrontEnd_printCommunicationNodeList(self)
     def printApplicationNodeList(self): return _STAT.STAT_FrontEnd_printApplicationNodeList(self)
     def getLauncherPid(self): return _STAT.STAT_FrontEnd_getLauncherPid(self)

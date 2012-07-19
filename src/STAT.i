@@ -129,6 +129,7 @@ class STAT_FrontEnd
         StatError_t startLog(unsigned char logType, char *logOutDir);
         StatError_t receiveAck(bool blocking = true);
         StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, int iCountRep);
+        char *getNodeInEdge(int nodeId);
 
         void printCommunicationNodeList();
         void printApplicationNodeList();

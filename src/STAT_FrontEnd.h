@@ -361,6 +361,13 @@ class STAT_FrontEnd
         */
         StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, bool countRep);
 
+        //! Collect the full incoming-edge label for the specified node
+        /*!
+            \param nodeId - the ID of the node
+            \return the text node label
+        */
+        char *getNodeInEdge(int nodeId);
+
         //! Creates the ranks list
         /*!
             \return STAT_OK on success

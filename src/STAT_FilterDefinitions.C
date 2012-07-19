@@ -263,7 +263,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
 #else
     static int totalWidth;
 #endif
-    int nChildren, *edgeLabelWidths, rank, inputRank, outputRank, child;
+    int nChildren, *edgeLabelWidths, rank, inputRank, outputRank, child, tag;
 #ifdef GRAPHLIB16
     unsigned long outputByteArrayLen;
 #else
@@ -279,6 +279,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
     graphlib_error_t graphlibError;
     PacketPtr currentPacket;
     StatSample_t sampleType;
+    StatBitVectorEdge_t *edge, *retEdge;
 
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
 //    static int init = 0;
@@ -304,6 +305,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
         childrenOrder[rank] = i;
     }
     sampleType = (StatSample_t)(*inputPackets[0])[3]->get_uint32_t();
+    tag = inputPackets[0]->get_Tag();
 
     /* Initialize graphlib */
     nChildren = inputPackets.size();
@@ -341,109 +343,170 @@ void statMerge(vector<PacketPtr> &inputPackets,
     statInitializeMergeFunctions();
 #endif
 
-    /* Initialize the result graphs */
-#ifdef GRAPHLIB20
-    if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE) 
-        graphlibError = graphlib_newGraph(&returnGraph, statCountRepFunctions);
-    else
-        graphlibError = graphlib_newGraph(&returnGraph, statMergeFunctions);
-#else
-    graphlibError = graphlib_newGraph(&returnGraph);
-#endif
-    if (GRL_IS_FATALERROR(graphlibError))
+    if (tag == PROT_SEND_NODE_IN_EDGE_RESP)
     {
-        cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__,"Failed to create new graph\n");
-        return;
-    }
-
-    /* Loop around the packets in order of lowest task rank and merge into output */
-    rank = -1;
-    for (iter = childrenOrder.begin(); iter != childrenOrder.end(); iter++)
-    {
-        rank++;
-        child = iter->second;
-        currentPacket = inputPackets[child];
-
-        /* Deserialize graph in packet element [0] */
-#ifdef MRNET40
-        byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
-#else
-        unsigned int BAL;
-        byteArray = (char *)((*currentPacket)[0]->get_array(&type, &BAL));
-        byteArrayLen = BAL; 
-#endif
-#ifdef GRAPHLIB20
-        if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE) 
-            graphlibError = graphlib_deserializeBasicGraph(&currentGraph, statCountRepFunctions, byteArray, byteArrayLen);
-        else
+        retEdge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+        if (retEdge == NULL)
         {
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
+            return;
+        }
+        retEdge->length = totalWidth;
+        retEdge->bitVector = (StatBitVector_t *)calloc(retEdge->length, STAT_BITVECTOR_BYTES);
+        if (retEdge->bitVector == NULL)
+        {
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), retEdge->length);
+            return;
+        }
+    
+        /* Loop around the packets in order of lowest task rank and merge into output */
+        rank = -1;
+        for (iter = childrenOrder.begin(); iter != childrenOrder.end(); iter++)
+        {
+            rank++;
+            child = iter->second;
+            currentPacket = inputPackets[child];
+    
+            /* Deserialize edge in packet element [0] */
+#ifdef MRNET40
+            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
+#else
+            unsigned int BAL;
+            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &BAL));
+            byteArrayLen = BAL; 
+#endif
             statGraphRoutinesTotalWidth = totalWidth;
             statGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
             statGraphRoutinesCurrentIndex = rank;
-            graphlibError = graphlib_deserializeBasicGraph(&currentGraph, statMergeFunctions, byteArray, byteArrayLen);
-        }
-#else
-        graphlibError = graphlib_deserializeGraphConn(rank, &currentGraph, byteArray, byteArrayLen);
-#endif
-        if (GRL_IS_FATALERROR(graphlibError))
-        {
-            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to deserialize graph %d\n", rank);
-            return;
-        }
-
-        /* Merge graph into returnGraph */
-#ifdef GRAPHLIB20
-        graphlibError = graphlib_mergeGraphs(returnGraph, currentGraph);
-#else
-        graphlibError = graphlib_mergeGraphsRanked(returnGraph, currentGraph);
-#endif
-        if (GRL_IS_FATALERROR(graphlibError))
-        {
-            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph %d\n", rank);
-            return;
+            statFilterDeserializeEdge((void **)&edge, byteArray, byteArrayLen);
+            statMergeEdge(retEdge, edge);
+            statFreeEdge(edge);
+    
+            /* Add the array of ranks associated with this packet */
+            inputRank = (*currentPacket)[2]->get_int32_t();
+            if (rank == 0)
+                outputRank = inputRank;
+            else if (inputRank < outputRank)
+                outputRank = inputRank;
         }
 
-        /* Delete the current graph since we no longer need it */
-        graphlibError = graphlib_delGraph(currentGraph);
-        if (GRL_IS_FATALERROR(graphlibError))
+        outputByteArrayLen = statSerializeEdgeLength(retEdge);
+        outputByteArray = (char *)malloc(outputByteArrayLen);
+        if (outputByteArray == NULL)
         {
-            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to delete graph %d\n", rank);
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__,"%s: Failed to malloc outputByteArray\n", strerror(errno));
             return;
         }
-
-        /* Add the array of ranks associated with this packet */
-        inputRank = (*currentPacket)[2]->get_int32_t();
-        if (rank == 0)
-            outputRank = inputRank;
-        else if (inputRank < outputRank)
-            outputRank = inputRank;
+        statSerializeEdge(outputByteArray, retEdge);
+        statFreeEdge(retEdge);
     }
-
-    /* Now to finish up: serialize both result graphs to create output packet */
-#ifdef GRAPHLIB20
-    graphlibError = graphlib_serializeBasicGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
-#else
-    graphlibError = graphlib_serializeGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
-#endif
-    if (GRL_IS_FATALERROR(graphlibError))
+    else
     {
-        cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize output graph\n");
-        return;
-    }
-#ifdef MRNET40
-    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), inputPackets[0]->get_Tag(), "%Ac %d %d %ud", outputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
+        /* Initialize the result graphs */
+#ifdef GRAPHLIB20
+        if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE) 
+            graphlibError = graphlib_newGraph(&returnGraph, statCountRepFunctions);
+        else
+            graphlibError = graphlib_newGraph(&returnGraph, statMergeFunctions);
 #else
-    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), inputPackets[0]->get_Tag(), "%ac %d %d %ud", outputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
+        graphlibError = graphlib_newGraph(&returnGraph);
+#endif
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__,"Failed to create new graph\n");
+            return;
+        }
+    
+        /* Loop around the packets in order of lowest task rank and merge into output */
+        rank = -1;
+        for (iter = childrenOrder.begin(); iter != childrenOrder.end(); iter++)
+        {
+            rank++;
+            child = iter->second;
+            currentPacket = inputPackets[child];
+    
+            /* Deserialize graph in packet element [0] */
+#ifdef MRNET40
+            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
+#else
+            unsigned int BAL;
+            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &BAL));
+            byteArrayLen = BAL; 
+#endif
+#ifdef GRAPHLIB20
+            if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE) 
+                graphlibError = graphlib_deserializeBasicGraph(&currentGraph, statCountRepFunctions, byteArray, byteArrayLen);
+            else
+            {
+                statGraphRoutinesTotalWidth = totalWidth;
+                statGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
+                statGraphRoutinesCurrentIndex = rank;
+                graphlibError = graphlib_deserializeBasicGraph(&currentGraph, statMergeFunctions, byteArray, byteArrayLen);
+            }
+#else
+            graphlibError = graphlib_deserializeGraphConn(rank, &currentGraph, byteArray, byteArrayLen);
+#endif
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to deserialize graph %d\n", rank);
+                return;
+            }
+    
+            /* Merge graph into returnGraph */
+#ifdef GRAPHLIB20
+            graphlibError = graphlib_mergeGraphs(returnGraph, currentGraph);
+#else
+            graphlibError = graphlib_mergeGraphsRanked(returnGraph, currentGraph);
+#endif
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph %d\n", rank);
+                return;
+            }
+    
+            /* Delete the current graph since we no longer need it */
+            graphlibError = graphlib_delGraph(currentGraph);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to delete graph %d\n", rank);
+                return;
+            }
+    
+            /* Add the array of ranks associated with this packet */
+            inputRank = (*currentPacket)[2]->get_int32_t();
+            if (rank == 0)
+                outputRank = inputRank;
+            else if (inputRank < outputRank)
+                outputRank = inputRank;
+        }
+    
+        /* Now to finish up: serialize the result graph to create output packet */
+#ifdef GRAPHLIB20
+        graphlibError = graphlib_serializeBasicGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
+#else
+        graphlibError = graphlib_serializeGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
+#endif
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize output graph\n");
+            return;
+        }
+    
+        /* Delete the result graphs since we no longer need them */
+        graphlibError = graphlib_delGraph(returnGraph);
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to delete output graph\n");
+            return;
+        }
+    }
+
+#ifdef MRNET40
+    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), tag, "%Ac %d %d %ud", outputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
+#else
+    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), tag, "%ac %d %d %ud", outputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
 #endif
     outputPackets.push_back(newPacket);
-
-    /* Delete the result graphs since we no longer need them */
-    graphlibError = graphlib_delGraph(returnGraph);
-    if (GRL_IS_FATALERROR(graphlibError))
-    {
-        cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to delete output graph\n");
-        return;
-    }
 }
 
 #ifdef STAT_FGFS
