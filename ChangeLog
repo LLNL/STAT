@@ -1,3 +1,5 @@
+2012-07-20 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py, scripts/xdot.py : updated to latest xdot
 2012-07-19 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.[C,h],src/STAT_FilterDefinitions.C,
 	src/STAT_BackEnd.[C,h], src/STAT.[i,h], scripts/STATview.py,

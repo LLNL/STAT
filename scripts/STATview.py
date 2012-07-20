@@ -758,9 +758,9 @@ class STATGraph(xdot.Graph):
     operations for tree manipulation and traversal.
     """
     
-    def __init__(self, width=1, height=1, nodes=(), edges=()):
+    def __init__(self, width=1, height=1, shapes=(), nodes=(), edges=()):
         """The constructor."""
-        xdot.Graph.__init__(self, width, height, nodes, edges)
+        xdot.Graph.__init__(self, width, height, shapes, nodes, edges)
         for node in self.nodes:
             if self.is_leaf(node):
                 node.is_leaf = True
@@ -2282,7 +2282,7 @@ class STATXDotParser(xdot.XDotParser):
     def parse(self):
         """Parse the dot file."""
         xdot.DotParser.parse(self)
-        return STATGraph(self.width, self.height, self.nodes, self.edges)
+        return STATGraph(self.width, self.height, (), self.nodes, self.edges)
 
     def handle_node(self, id, attrs):
         """Handle a node attribute to create a STATNode."""
@@ -2407,6 +2407,9 @@ class STATDotWidget(xdot.DotWidget):
         self.graph.visible_width = self.graph.width
         self.graph.visible_height = self.graph.height
         self.zoom_image(self.zoom_ratio, center=True)
+
+    def update(self):
+        pass
 
     def on_area_button_release(self, area, event):
         """Handle the clicking of a node."""
