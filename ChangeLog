@@ -1,5 +1,21 @@
+2012-07-24 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.[h,C], src/STAT_GraphRoutines.[h,C] : moved
+	createRootedGraph and string_hash (renamed to statStringHash) to 
+	STAT_GraphRoutines
+	* src/STAT_FrontEnd.[h,C] : keep track of daemon errors and denote in
+	stack traces
+	* src/STAT_BackEnd.[h,C], src/STAT_GraphRoutines.[h,C],
+	src/STAT_FrontEnd.[h,C] : created helper function to initialize bit vector
+	edges
+	* : removed trainling white spaces
+
+2012-07-23 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py, scripts/STATGUI.py : fixed caching of edge labels w/
+	count + rep
+
 2012-07-20 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATview.py, scripts/xdot.py : updated to latest xdot
+
 2012-07-19 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.[C,h],src/STAT_FilterDefinitions.C,
 	src/STAT_BackEnd.[C,h], src/STAT.[i,h], scripts/STATview.py,

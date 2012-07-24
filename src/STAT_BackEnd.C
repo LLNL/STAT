@@ -36,12 +36,6 @@ using namespace Dyninst::SymtabAPI;
     using namespace FastGlobalFileStat::CommLayer;
 #endif
 
-#ifdef GRL_DYNAMIC_NODE_NAME
-#define GRAPH_FONT_SIZE 1
-#else
-#define GRAPH_FONT_SIZE -1
-#endif
-
 #ifdef GRAPHLIB20
 /* Externals from STAT's graphlib routines */
 extern graphlib_functiontable_p statBitVectorFunctions;
@@ -90,7 +84,7 @@ StatError_t statFinalize()
 
 STAT_BackEnd::STAT_BackEnd()
 {
-    char abuf[INET_ADDRSTRLEN], fileName[BUFSIZE], *envValue; 
+    char abuf[INET_ADDRSTRLEN], fileName[BUFSIZE], *envValue;
     FILE *f;
     struct sockaddr_in addr, *sinp = NULL;
     struct addrinfo *addinf = NULL;
@@ -104,7 +98,7 @@ STAT_BackEnd::STAT_BackEnd()
         snprintf(localIp_, BUFSIZE, "%s", inet_ntop(AF_INET, &sinp->sin_addr, abuf, INET_ADDRSTRLEN));
     if (addinf != NULL)
         freeaddrinfo(addinf);
-    
+
 #ifdef BGL
     errOutFp_ = stdout;
 #else
@@ -117,7 +111,7 @@ STAT_BackEnd::STAT_BackEnd()
     statInitializeMergeFunctions();
     statInitializeCountRepFunctions();
 #endif
-    
+
     /* Enable MRNet logging */
     envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
     if (envValue != NULL)
@@ -146,7 +140,7 @@ STAT_BackEnd::STAT_BackEnd()
         snprintf(fileName, BUFSIZE, "%s/%s.sw.txt", envValue, localHostName_);
         f = fopen(fileName, "w");
         Dyninst::Stackwalker::setDebug(true);
-        Dyninst::Stackwalker::setDebugChannel(f); 
+        Dyninst::Stackwalker::setDebugChannel(f);
 #ifdef GROUP_OPS
         Dyninst::ProcControlAPI::setDebug(true);
         Dyninst::ProcControlAPI::setDebugChannel(f);
@@ -306,7 +300,7 @@ StatError_t STAT_BackEnd::Connect()
 
     /* Receive MRNet connection information */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Receiving connection information from FE\n");
-    rc = LMON_be_recvUsrData((void *)&leafInfoArray); 
+    rc = LMON_be_recvUsrData((void *)&leafInfoArray);
     if (rc != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to receive data from FE\n");
@@ -384,7 +378,7 @@ StatError_t STAT_BackEnd::Connect()
     param[3] = parentRank;
     param[4] = localHostName_;
     param[5] = myRank;
-    printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"Calling CreateNetworkBE\n"); 
+    printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"Calling CreateNetworkBE\n");
     network_ = Network::CreateNetworkBE(6, param);
     printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"End of create network be\n");
 #else
@@ -444,11 +438,11 @@ StatError_t STAT_BackEnd::mainLoop()
         if (swNotificationFd != -1)
         {
             /* set the MRNet notification FD if StackWalker FD set, otherwise we can just use blocking receives */
-#ifdef MRNET3            
+#ifdef MRNET3
            mrnNotificationFd = network_->get_EventNotificationFd(MRN::Event::DATA_EVENT);
-#else            
+#else
             mrnNotificationFd = network_->get_EventNotificationFd(DATA_EVENT);
-#endif            
+#endif
             /* setup the select call for the MRNet and SW FDs */
             if (mrnNotificationFd > swNotificationFd)
                 max_fd = mrnNotificationFd + 1;
@@ -473,9 +467,9 @@ StatError_t STAT_BackEnd::mainLoop()
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Handling MRNet event on FD %d\n", mrnNotificationFd);
 #ifdef MRNET3
                 network_->clear_EventNotificationFd(MRN::Event::DATA_EVENT);
-#else                
+#else
                 network_->clear_EventNotificationFd(DATA_EVENT);
-#endif                
+#endif
             }
             else if (FD_ISSET(swNotificationFd, &readfds))
             {
@@ -489,7 +483,7 @@ StatError_t STAT_BackEnd::mainLoop()
                     //TODO: do we really want to exit?
                     //return STAT_STACKWALKER_ERROR;
                 }
-                
+
                 /* Check is target processes exited, if so, set Walker to NULL */
                 for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
                 {
@@ -715,7 +709,7 @@ StatError_t STAT_BackEnd::mainLoop()
             case PROT_SEND_NODE_IN_EDGE:
                 /* Send requested edge label to the FE */
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to send edge label to the FE\n");
-                
+
                 /* Unpack the message */
                 previousSampleType = sampleType_;
                 if (packet->unpack("%d", &nodeId) == -1)
@@ -731,22 +725,16 @@ StatError_t STAT_BackEnd::mainLoop()
                     obyteArray = NULL;
                 }
 
+                /* Find the requested edge label or create an empty dummy one */
                 if (nodeInEdgeMap_.find(nodeId) != nodeInEdgeMap_.end())
                     edge = nodeInEdgeMap_[nodeId];
                 else
                 {
-                    edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+                    edge = initializeBitVectorEdge(proctabSize_);
                     if (edge == NULL)
                     {
-                        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
-                        return STAT_GRAPHLIB_ERROR;
-                    }
-                    edge->length = statBitVectorLength(proctabSize_);
-                    edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BYTES);
-                    if (edge->bitVector == NULL)
-                    {
-                        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
-                        return STAT_GRAPHLIB_ERROR;
+                        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+                        return STAT_ALLOCATE_ERROR;
                     }
                 }
 
@@ -755,7 +743,8 @@ StatError_t STAT_BackEnd::mainLoop()
                 obyteArrayLen = statSerializeEdgeLength(edge);
                 obyteArray = (char *)malloc(obyteArrayLen);
                 statSerializeEdge(obyteArray, edge);
-                
+
+                /* Free the dummy edge label */
                 if (nodeInEdgeMap_.find(nodeId) == nodeInEdgeMap_.end())
                     statFreeEdge(edge);
 
@@ -941,10 +930,10 @@ StatError_t STAT_BackEnd::mainLoop()
             case PROT_FILE_REQ:
                 MRNetSymbolReaderFactory *msrf;
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to register file request stream \n");
-        
+
                 //Save the Stream for sending File requests later
                 msrf = new MRNetSymbolReaderFactory(Walker::getSymbolReader(), network_, stream);
-                Walker::setSymbolReader(msrf);            
+                Walker::setSymbolReader(msrf);
                 retval = 0;
 
                 //Send File Request Acknowledgement
@@ -1205,7 +1194,7 @@ StatError_t STAT_BackEnd::parseVariableSpecification(char *variableSpecification
             delimPos = cur.find_first_of(",");
         temp = cur.substr(0, delimPos);
         snprintf((*outBuf)[i].variableName, BUFSIZE, "%s", temp.c_str());
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "elements: %s %d %d %s\n", (*outBuf)[i].fileName, (*outBuf)[i].lineNum, (*outBuf)[i].depth, (*outBuf)[i].variableName);        
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "elements: %s %d %d %s\n", (*outBuf)[i].fileName, (*outBuf)[i].lineNum, (*outBuf)[i].depth, (*outBuf)[i].variableName);
         if (i != nElements - 1)
             cur = cur.substr(delimPos + 1, cur.length());
     }
@@ -1221,7 +1210,7 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
     LibAddrPair lib;
     Symtab *symtab;
     vector<LineNoTuple *> lines;
-    
+
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting source line info for address %lx\n", addr);
 
     *lineNum = 0;
@@ -1312,12 +1301,12 @@ StatError_t STAT_BackEnd::getVariable(vector<Frame> swalk, unsigned int frame, c
                 snprintf(outBuf, BUFSIZE, "$%s=%d", variableName, *((int *)buf));
         }
     }
- 
+
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s\n", outBuf);
-#else    
+#else
     printMsg(STAT_WARNING, __FILE__, __LINE__, "Prototype variable extraction feature not enabled!\n");
     snprintf(outBuf, BUFSIZE, "$%s=-1", variableName);
-#endif    
+#endif
     return STAT_OK;
 }
 
@@ -1348,44 +1337,15 @@ StatError_t STAT_BackEnd::mergeIntoGraphs(graphlib_graph_p currentGraph, bool la
          return STAT_GRAPHLIB_ERROR;
       }
    }
-   
+
    /* Free up current graph */
    graphlibError = graphlib_delGraph(currentGraph);
    if (GRL_IS_FATALERROR(graphlibError))
    {
       printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
       return STAT_GRAPHLIB_ERROR;
-   } 
+   }
    return STAT_OK;
-}
-
-graphlib_graph_p STAT_BackEnd::createRootedGraph()
-{
-    graphlib_error_t graphlibError;
-    graphlib_graph_p newGraph = NULL;
-
-#ifdef GRAPHLIB20
-    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE) 
-        graphlibError = graphlib_newGraph(&newGraph, statCountRepFunctions);
-    else
-        graphlibError = graphlib_newGraph(&newGraph, statBitVectorFunctions);
-#else
-    graphlibError = graphlib_newGraph(&newGraph);
-#endif
-    if (GRL_IS_FATALERROR(graphlibError))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
-        return NULL;
-    }
-
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "/", GRAPH_FONT_SIZE};
-    graphlibError = graphlib_addNode(newGraph, 0, &nodeattr);
-    if (GRL_IS_FATALERROR(graphlibError)) 
-    {
-       printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
-       return NULL;
-    }
-    return newGraph;
 }
 
 StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification)
@@ -1398,7 +1358,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     StatError_t ret;
     map<int, Walker *>::iterator iter;
     map<int, StatBitVectorEdge_t *>::iterator iter2;
-    
+
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample stack traces\n");
 
 #ifdef SBRS
@@ -1462,7 +1422,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     if (prefixTree3d_ == NULL)
     {
 #ifdef GRAPHLIB20
-        if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE) 
+        if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
             graphlibError = graphlib_newGraph(&prefixTree3d_, statCountRepFunctions);
         else
             graphlibError = graphlib_newGraph(&prefixTree3d_, statBitVectorFunctions);
@@ -1476,10 +1436,10 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
         }
     }
 #ifdef GRAPHLIB20
-    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE) 
+    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
     {
         graphlibError = graphlib_newGraph(&prefixTree2d_, statCountRepFunctions);
-            
+
         /* delete previous edge labels */
         for (iter2 = nodeInEdgeMap_.begin(); iter2 != nodeInEdgeMap_.end(); iter2++)
             statFreeEdge((void *)iter2->second);
@@ -1524,11 +1484,14 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
 #if defined(GROUP_OPS)
         if (doGroupOps_) {
            /* Create return graph */
-           currentGraph = createRootedGraph();
-        
+            if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
+               currentGraph = createRootedGraph(statCountRepFunctions);
+            else
+               currentGraph = createRootedGraph(statBitVectorFunctions);
+
            /* Get the stack trace */
            getStackTraceFromAll(currentGraph, nRetries, retryFrequency, withThreads);
-           
+
            /* Merge into prefixTree2d and prefixTree3d */
            ret = mergeIntoGraphs(currentGraph, last_trace);
            if (ret != STAT_OK)
@@ -1546,17 +1509,20 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
            for (iter = processMap_.begin(), j=0; iter != processMap_.end(); iter++, j++)
            {
               /* Create return graph */
-              currentGraph = createRootedGraph();
-              
+              if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
+                 currentGraph = createRootedGraph(statCountRepFunctions);
+              else
+                 currentGraph = createRootedGraph(statBitVectorFunctions);
+
               /* Get the stack trace */
-              ret = getStackTrace(currentGraph, iter->second, j, nRetries, retryFrequency, 
+              ret = getStackTrace(currentGraph, iter->second, j, nRetries, retryFrequency,
                                   withThreads);
               if (ret != STAT_OK)
               {
                  printMsg(ret, __FILE__, __LINE__, "Error getting graph %d of %d\n", i+1, nTraces);
                  return ret;
               }
-              
+
               /* Merge into prefixTree2d and prefixTree3d */
               ret = mergeIntoGraphs(currentGraph, last_trace);
               if (ret != STAT_OK)
@@ -1567,7 +1533,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
            if (GRL_IS_FATALERROR(graphlibError))
               fprintf(stderr, "Error exporting graph\n");
         }
-        
+
         /* Continue the process */
         if (!last_trace || wasRunning) {
            ret = Resume();
@@ -1639,8 +1605,8 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, bool is_final_frame)
       {
          for (k = 0; k < nVariables; k++)
          {
-            if (strcmp(fileName, extractVariables[k].fileName) == 0 && 
-                lineNum == extractVariables[k].lineNum && 
+            if (strcmp(fileName, extractVariables[k].fileName) == 0 &&
+                lineNum == extractVariables[k].lineNum &&
                 partial.size() - i + 1 == extractVariables[k].depth)
             {
                statError = getVariable(partial, i, extractVariables[k].variableName, buf);
@@ -1686,7 +1652,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
     vector<string> trace;
     graphlib_error_t graphlibError;
 #ifdef GRAPHLIB20
-    StatCountRepEdge_t *CrEdge;
+    StatCountRepEdge_t *countRepEdge;
     StatBitVectorEdge_t *edge;
 #endif
     graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "",GRAPH_FONT_SIZE};
@@ -1699,27 +1665,25 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
 
     /* Set edge label */
 #ifdef GRAPHLIB20
-    edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+    edge = initializeBitVectorEdge(proctabSize_);
     if (edge == NULL)
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
-        return STAT_GRAPHLIB_ERROR;
-    }
-    edge->length = statBitVectorLength(proctabSize_);
-    edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BYTES);
-    if (edge->bitVector == NULL)
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
-        return STAT_GRAPHLIB_ERROR;
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+        return STAT_ALLOCATE_ERROR;
     }
     edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
-    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE) 
+    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
     {
-        CrEdge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
-        CrEdge->count = 1;
-        CrEdge->representative = proctab_[rank].mpirank;
-        CrEdge->checksum = proctab_[rank].mpirank + 1;
-        edgeattr.label = (void *)CrEdge;
+        countRepEdge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
+        if (countRepEdge == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to initialize edge\n", strerror(errno));
+            return STAT_ALLOCATE_ERROR;
+        }
+        countRepEdge->count = 1;
+        countRepEdge->representative = proctab_[rank].mpirank;
+        countRepEdge->checksum = proctab_[rank].mpirank + 1;
+        edgeattr.label = (void *)countRepEdge;
     }
     else
     {
@@ -1770,7 +1734,10 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from thread %d of %d\n", j, threads.size());
 
         /* Create current working graph */
-        currentGraph = createRootedGraph();
+        if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
+           currentGraph = createRootedGraph(statCountRepFunctions);
+        else
+           currentGraph = createRootedGraph(statBitVectorFunctions);
         if (!currentGraph) {
            return STAT_GRAPHLIB_ERROR;
         }
@@ -1880,7 +1847,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
                 pos = trace[i].find('<', pos + 2);
                 if (pos == string::npos)
                     break;
-                trace[i].insert(pos, "\\");    
+                trace[i].insert(pos, "\\");
             }
             pos = -2;
             while (1)
@@ -1888,12 +1855,12 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
                 pos = trace[i].find('>', pos + 2);
                 if (pos == string::npos)
                     break;
-                trace[i].insert(pos, "\\");    
+                trace[i].insert(pos, "\\");
             }
 
             /* Add the node and edge to the graph */
             path += trace[i].c_str();
-            nodeId = string_hash(path.c_str());
+            nodeId = statStringHash(path.c_str());
             fillInName(trace[i], nodeattr);
             graphlibError = graphlib_addNode(currentGraph, nodeId, &nodeattr);
 
@@ -1909,7 +1876,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
                 return STAT_GRAPHLIB_ERROR;
             }
 
-            if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE) 
+            if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
             {
                 if (nodeInEdgeMap_.find(nodeId) != nodeInEdgeMap_.end())
                     statMergeEdge(nodeInEdgeMap_[nodeId], edge);
@@ -2002,7 +1969,7 @@ bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
 
          if (error_threads && child->hadError()) {
             //This stackwalk ended in an error.  Don't add it to the tree,
-            // instead return it via error_threads.  This may lead to 
+            // instead return it via error_threads.  This may lead to
             // edges with no associated ranks, those are cleaned below.
             error_threads->insert(make_pair(walker, thrd));
             continue;
@@ -2025,7 +1992,7 @@ bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
       set<FrameNode *> &kids = i->second;
 
       string new_node_id_names = node_id_names + name;
-      int newchild = string_hash(new_node_id_names.c_str());
+      int newchild = statStringHash(new_node_id_names.c_str());
 
       if (sw_node->isHead()) {
          //Don't create a node for head, just using existing node.
@@ -2040,7 +2007,7 @@ bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
             continue;
          }
       }
-      
+
       //Traversal 2.1: For each new node, recursively add its children to the graph
       set<int> my_ranks;
       for (set<FrameNode *>::iterator j = kids.begin(); j != kids.end(); j++) {
@@ -2062,20 +2029,14 @@ bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to cleanup nodes\n");
          continue;
       }
-      
+
       if (gl_node != newchild) {
          //Create the edge between this new node and our parent
          graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
 #ifdef GRAPHLIB20
-         StatBitVectorEdge_t *edge = (StatBitVectorEdge_t *) malloc(sizeof(StatBitVectorEdge_t));
+         StatBitVectorEdge_t *edge = initializeBitVectorEdge(proctabSize_);
          if (!edge) {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
-            return false;
-         }
-         edge->length = statBitVectorLength(proctabSize_);
-         edge->bitVector = (StatBitVector_t *) calloc(edge->length, STAT_BITVECTOR_BITS);
-         if (!edge->bitVector) {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
             return false;
          }
          for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
@@ -2084,18 +2045,23 @@ bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
          }
          if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
          {
-            StatCountRepEdge_t *CrEdge = (StatCountRepEdge_t *) malloc(sizeof(StatCountRepEdge_t));
-            CrEdge->count = 0;
-            CrEdge->representative = -1;
-            CrEdge->checksum = 0;
+            StatCountRepEdge_t *countRepEdge = (StatCountRepEdge_t *) malloc(sizeof(StatCountRepEdge_t));
+            if (countRepEdge == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to initialize edge\n", strerror(errno));
+                return false;
+            }
+            countRepEdge->count = 0;
+            countRepEdge->representative = -1;
+            countRepEdge->checksum = 0;
             for (set<int>::iterator j = my_ranks.begin(); j != my_ranks.end(); j++) {
                int rank = *j;
-               if (rank < CrEdge->representative || CrEdge->representative == -1)
-                  CrEdge->representative = proctab_[rank].mpirank;
-               CrEdge->checksum += proctab_[rank].mpirank + 1; // We add one to ensure rank == 0 gets counted
-               CrEdge->count += 1;
+               if (rank < countRepEdge->representative || countRepEdge->representative == -1)
+                  countRepEdge->representative = proctab_[rank].mpirank;
+               countRepEdge->checksum += proctab_[rank].mpirank + 1; // We add one to ensure rank == 0 gets counted
+               countRepEdge->count += 1;
             }
-            edgeattr.label = (void *)CrEdge;
+            edgeattr.label = (void *)countRepEdge;
          }
          else
          {
@@ -2113,7 +2079,7 @@ bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
             continue;
          }
 
-         if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE) 
+         if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
          {
             if (nodeInEdgeMap_.find(newchild) != nodeInEdgeMap_.end())
                statMergeEdge(nodeInEdgeMap_[newchild], edge);
@@ -2158,7 +2124,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
 #if !defined(GRAPHLIB20)
    bitvec_initialize(0, proc_bitfield_size);
 #endif
-   
+
    string empty;
    set<int> ranks;
    result = AddFrameToGraph(retGraph, &tree,
@@ -2196,7 +2162,7 @@ StatError_t STAT_BackEnd::Detach(unsigned int *stopArray, int stopArrayLen)
                 printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to dynamic_cast ProcDebug pointer\n");
                 return STAT_STACKWALKER_ERROR;
              }
-#ifndef BGL            
+#ifndef BGL
              for (i = 0; i < stopArrayLen; i++)
              {
                 if (stopArray[i] == iter->first)
@@ -2204,8 +2170,8 @@ StatError_t STAT_BackEnd::Detach(unsigned int *stopArray, int stopArrayLen)
                    leaveStopped = true;
                    break;
                 }
-             }            
-#endif            
+             }
+#endif
              pdebug->detach(leaveStopped);
              delete iter->second;
           }
@@ -2299,17 +2265,6 @@ int Unpack_STAT_BE_info(void *buf, int bufLen, void *data)
     } /* for i */
 
     return 0;
-}
-
-unsigned int string_hash(const char *str)
-{
-    unsigned int hash = 0;
-    int c;
-
-    while (c = *(str++))
-        hash = c + (hash << 6) + (hash << 16) - hash;
-
-    return hash;
 }
 
 StatError_t STAT_BackEnd::startLog(char *logOutDir, bool useMrnetPrintf, int mrnetOutputLevel)
@@ -2545,7 +2500,7 @@ StatError_t STAT_BackEnd::statBenchConnect()
     {
         /* Set up my file name */
         snprintf(fileName, BUFSIZE, "/tmp/%s.%d.statbench.txt", localHostName_, i);
-    
+
         /* Make the fifo if the helper hasn't already done so */
         ret = mkfifo(fileName, S_IRUSR | S_IWUSR);
         if (ret != 0)
@@ -2681,7 +2636,7 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
 
     /* Create graphs */
 #ifdef GRAPHLIB20
-    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE) 
+    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
         graphlibError = graphlib_newGraph(&prefixTree3d_, statCountRepFunctions);
     else
         graphlibError = graphlib_newGraph(&prefixTree3d_, statBitVectorFunctions);
@@ -2694,7 +2649,7 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
         return STAT_GRAPHLIB_ERROR;
     }
 #ifdef GRAPHLIB20
-    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE) 
+    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
         graphlibError = graphlib_newGraph(&prefixTree2d_, statCountRepFunctions);
     else
         graphlibError = graphlib_newGraph(&prefixTree2d_, statBitVectorFunctions);
@@ -2779,49 +2734,47 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     graphlib_error_t graphlibError;
     graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,GRAPH_FONT_SIZE};
 #ifdef GRAPHLIB20
-    StatCountRepEdge_t *CrEdge;
+    StatCountRepEdge_t *countRepEdge;
     StatBitVectorEdge_t *edge;
 #endif
     graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
 
     /* set the edge label */
 #ifdef GRAPHLIB20
-    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE) 
+    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
     {
-        CrEdge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
-        CrEdge->representative = proctab_[task].mpirank;
+        countRepEdge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
+        if (countRepEdge == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to initialize edge\n", strerror(errno));
+            return NULL;
+        }
+        countRepEdge->representative = proctab_[task].mpirank;
         if (nEqClasses == -1)
         {
-            CrEdge->count = 1;
-            CrEdge->checksum = proctab_[task].mpirank + 1;
+            countRepEdge->count = 1;
+            countRepEdge->checksum = proctab_[task].mpirank + 1;
         }
         else
         {
-            CrEdge->count = nTasks / nEqClasses;
-            CrEdge->checksum = 0;
+            countRepEdge->count = nTasks / nEqClasses;
+            countRepEdge->checksum = 0;
             for (i = 0; i < nTasks / nEqClasses; i++)
-                CrEdge->checksum += proctab_[task].mpirank + i * nEqClasses + 1;
+                countRepEdge->checksum += proctab_[task].mpirank + i * nEqClasses + 1;
             if (nTasks % nEqClasses > task)
             {
-                CrEdge->count += 1;
-                CrEdge->checksum += proctab_[task].mpirank + i * nEqClasses + 1;
+                countRepEdge->count += 1;
+                countRepEdge->checksum += proctab_[task].mpirank + i * nEqClasses + 1;
             }
         }
-        edgeattr.label = (void *)CrEdge;
+        edgeattr.label = (void *)countRepEdge;
     }
     else
     {
-        edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+        edge = initializeBitVectorEdge(proctabSize_);
         if (edge == NULL)
         {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
-            return NULL;
-        }
-        edge->length = statBitVectorLength(proctabSize_);
-        edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BITS);
-        if (edge->bitVector == NULL)
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
             return NULL;
         }
         for (i = 0; i < nTasks / nEqClasses; i++)
@@ -2860,7 +2813,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
         }
         generated_graphs.clear();
     }
-#ifndef GRAPHLIB20            
+#ifndef GRAPHLIB20
     if (nEqClasses != -1 && task >= nEqClasses)
     {
         if (generated_graphs.size() > task % nEqClasses)
@@ -2880,7 +2833,10 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 
     /* create return graph */
     /* Create graph root */
-    retGraph = createRootedGraph();
+    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
+       retGraph = createRootedGraph(statCountRepFunctions);
+    else
+       retGraph = createRootedGraph(statBitVectorFunctions);
     if (!retGraph)
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
@@ -2897,7 +2853,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #else
     path += std::string(nodeattr.name);
 #endif
-    nodeId = string_hash(path.c_str());
+    nodeId = statStringHash(path.c_str());
     graphlibError = graphlib_addNode(retGraph, nodeId, &nodeattr);
     if (GRL_IS_FATALERROR(graphlibError))
     {
@@ -2920,7 +2876,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
     path += std::string(nodeattr.name);
 #endif
 
-    nodeId = string_hash(path.c_str());
+    nodeId = statStringHash(path.c_str());
     graphlibError = graphlib_addNode(retGraph, nodeId, &nodeattr);
     if (GRL_IS_FATALERROR(graphlibError))
     {
@@ -2952,7 +2908,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
 #else
         path += string(nodeattr.name);
 #endif
-        nodeId = string_hash(path.c_str());
+        nodeId = statStringHash(path.c_str());
 
         graphlibError = graphlib_addNode(retGraph, nodeId, &nodeattr);
         if (GRL_IS_FATALERROR(graphlibError))
@@ -2969,7 +2925,7 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
         prevId = nodeId;
     }
 #ifdef GRAPHLIB20
-    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE) 
+    if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
         graphlibError = graphlib_delEdgeAttr(edgeattr, statFreeCountRepEdge);
     else
         graphlibError = graphlib_delEdgeAttr(edgeattr, statFreeEdge);

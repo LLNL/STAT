@@ -17,7 +17,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 #ifdef STAT_FGFS
-#include <stdint.h> 
+#include <stdint.h>
 #include <cstring>
 #endif
 
@@ -124,7 +124,7 @@ void cpPrintMsg(StatError_t statError, const char *sourceFile, int sourceLine, c
         va_end(arg);
         fprintf(stderr, "%s", lastErrorMessage_);
     }
-   
+
     /* Print the message to the log */
     if (statOutFp != NULL)
     {
@@ -145,7 +145,7 @@ void cpPrintMsg(StatError_t statError, const char *sourceFile, int sourceLine, c
                 fprintf(statOutFp, "STAT returned error type ");
                 statPrintErrorType(statError, statOutFp);
                 fprintf(statOutFp, ": ");
-            }    
+            }
             va_start(arg, fmt);
             vfprintf(statOutFp, fmt, arg);
             va_end(arg);
@@ -175,10 +175,10 @@ void filterInit(vector<PacketPtr> &packetsIn,
                 cpPrintMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to unpack packet\n");
             if (topology.get_Network()->is_LocalNodeInternal())
             {
-                if (logging_ & STAT_LOG_CP)  
+                if (logging_ & STAT_LOG_CP)
                 {
                     /* Create the log directory */
-                    ret = mkdir(logDir, S_IRUSR | S_IWUSR | S_IXUSR); 
+                    ret = mkdir(logDir, S_IRUSR | S_IWUSR | S_IXUSR);
                     if (ret == -1 && errno != EEXIST)
                     {
                         cpPrintMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: mkdir failed to create log directory %s\n", strerror(errno), logDir);
@@ -254,8 +254,8 @@ void statMerge(vector<PacketPtr> &inputPackets,
                 void ** /* client data */)
 {
     /* The byte arrays are declared static so we can manage the allocated memory
-       This is because we need to be assured that the data exists when MRNet 
-       tries to send it.  They are safe to free up on the next invocation of 
+       This is because we need to be assured that the data exists when MRNet
+       tries to send it.  They are safe to free up on the next invocation of
        this filter function */
     static char *outputByteArray;
 #ifdef GRAPHLIB20
@@ -295,8 +295,8 @@ void statMerge(vector<PacketPtr> &inputPackets,
         free(outputByteArray);
 
     /* TODO: if there's only one packet, just ship it back out! */
-    /* We want to make sure we're processing packets in the same order 
-       every time the filter is invoked.  That way, we know where in the 
+    /* We want to make sure we're processing packets in the same order
+       every time the filter is invoked.  That way, we know where in the
        final bit vector to place each incoming bit vector */
     for (i = 0; i < inputPackets.size(); i++)
     {
@@ -320,7 +320,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
     {
         currentPacket = inputPackets[iter->second];
         edgeLabelWidths[i] = (*currentPacket)[1]->get_int32_t();
-#ifdef GRAPHLIB20        
+#ifdef GRAPHLIB20
         totalWidth += edgeLabelWidths[i];
 #endif
         i++;
@@ -358,7 +358,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
             cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), retEdge->length);
             return;
         }
-    
+
         /* Loop around the packets in order of lowest task rank and merge into output */
         rank = -1;
         for (iter = childrenOrder.begin(); iter != childrenOrder.end(); iter++)
@@ -366,14 +366,14 @@ void statMerge(vector<PacketPtr> &inputPackets,
             rank++;
             child = iter->second;
             currentPacket = inputPackets[child];
-    
+
             /* Deserialize edge in packet element [0] */
 #ifdef MRNET40
             byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
 #else
             unsigned int BAL;
             byteArray = (char *)((*currentPacket)[0]->get_array(&type, &BAL));
-            byteArrayLen = BAL; 
+            byteArrayLen = BAL;
 #endif
             statGraphRoutinesTotalWidth = totalWidth;
             statGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
@@ -381,7 +381,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
             statFilterDeserializeEdge((void **)&edge, byteArray, byteArrayLen);
             statMergeEdge(retEdge, edge);
             statFreeEdge(edge);
-    
+
             /* Add the array of ranks associated with this packet */
             inputRank = (*currentPacket)[2]->get_int32_t();
             if (rank == 0)
@@ -404,7 +404,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
     {
         /* Initialize the result graphs */
 #ifdef GRAPHLIB20
-        if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE) 
+        if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE)
             graphlibError = graphlib_newGraph(&returnGraph, statCountRepFunctions);
         else
             graphlibError = graphlib_newGraph(&returnGraph, statMergeFunctions);
@@ -416,7 +416,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
             cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__,"Failed to create new graph\n");
             return;
         }
-    
+
         /* Loop around the packets in order of lowest task rank and merge into output */
         rank = -1;
         for (iter = childrenOrder.begin(); iter != childrenOrder.end(); iter++)
@@ -424,17 +424,17 @@ void statMerge(vector<PacketPtr> &inputPackets,
             rank++;
             child = iter->second;
             currentPacket = inputPackets[child];
-    
+
             /* Deserialize graph in packet element [0] */
 #ifdef MRNET40
             byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
 #else
             unsigned int BAL;
             byteArray = (char *)((*currentPacket)[0]->get_array(&type, &BAL));
-            byteArrayLen = BAL; 
+            byteArrayLen = BAL;
 #endif
 #ifdef GRAPHLIB20
-            if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE) 
+            if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE)
                 graphlibError = graphlib_deserializeBasicGraph(&currentGraph, statCountRepFunctions, byteArray, byteArrayLen);
             else
             {
@@ -451,7 +451,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
                 cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to deserialize graph %d\n", rank);
                 return;
             }
-    
+
             /* Merge graph into returnGraph */
 #ifdef GRAPHLIB20
             graphlibError = graphlib_mergeGraphs(returnGraph, currentGraph);
@@ -463,7 +463,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
                 cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph %d\n", rank);
                 return;
             }
-    
+
             /* Delete the current graph since we no longer need it */
             graphlibError = graphlib_delGraph(currentGraph);
             if (GRL_IS_FATALERROR(graphlibError))
@@ -471,7 +471,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
                 cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to delete graph %d\n", rank);
                 return;
             }
-    
+
             /* Add the array of ranks associated with this packet */
             inputRank = (*currentPacket)[2]->get_int32_t();
             if (rank == 0)
@@ -479,7 +479,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
             else if (inputRank < outputRank)
                 outputRank = inputRank;
         }
-    
+
         /* Now to finish up: serialize the result graph to create output packet */
 #ifdef GRAPHLIB20
         graphlibError = graphlib_serializeBasicGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
@@ -491,7 +491,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
             cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize output graph\n");
             return;
         }
-    
+
         /* Delete the result graphs since we no longer need them */
         graphlibError = graphlib_delGraph(returnGraph);
         if (GRL_IS_FATALERROR(graphlibError))
@@ -604,7 +604,7 @@ void fileRequestDownStream(vector<PacketPtr> &packetsIn,
     cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "File request down stream filter begin.\n");
     if (packetsIn[0]->get_Tag() == PROT_FILE_REQ)
     {
-        cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "PROT_FILE_REQ\n"); 
+        cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "PROT_FILE_REQ\n");
         pthread_mutex_init(&fileNameToContentsMapMutex, NULL);
         pthread_mutex_init(&visitedFileSetMutex, NULL);
         newPacket = packetsIn[0];
@@ -612,7 +612,7 @@ void fileRequestDownStream(vector<PacketPtr> &packetsIn,
     }
     else
     {
-        cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "!PROT_FILE_REQ\n"); 
+        cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "!PROT_FILE_REQ\n");
 
         for (i = 0; i < packetsIn.size(); i++)
         {
@@ -623,9 +623,9 @@ void fileRequestDownStream(vector<PacketPtr> &packetsIn,
             currentPacket->unpack("%ac %s", &fileContents, &fileContentsLength, &fileName);
 #endif
             if (topology.get_Network()->is_LocalNodeInternal())
-            { 
-                totalLength += fileContentsLength;                        
-                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "caching contents of %s at CP length %lu total %lu\n", fileName, fileContentsLength, totalLength); 
+            {
+                totalLength += fileContentsLength;
+                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "caching contents of %s at CP length %lu total %lu\n", fileName, fileContentsLength, totalLength);
                 pthread_mutex_lock(&fileNameToContentsMapMutex);
                 iter2 = fileNameToContentsMap.find(fileName);
                 if (iter2 == fileNameToContentsMap.end())
@@ -636,15 +636,15 @@ void fileRequestDownStream(vector<PacketPtr> &packetsIn,
             pthread_mutex_lock(&visitedFileSetMutex);
             iter = visitedFileSet.find(fileName);
             if (iter != visitedFileSet.end())
-            {        
+            {
                 visitedFileSet.erase(iter);
                 pthread_mutex_unlock(&visitedFileSetMutex);
-                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "passing along contents of %s, length %lu at CP\n", fileName, fileContentsLength); 
+                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "passing along contents of %s, length %lu at CP\n", fileName, fileContentsLength);
                 packetsOut.push_back(packetsIn[i]);
             }
             else
             {
-                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "ignoring file %s at CP\n", fileName); 
+                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "ignoring file %s at CP\n", fileName);
                 pthread_mutex_unlock(&visitedFileSetMutex);
             }
         }
@@ -652,6 +652,6 @@ void fileRequestDownStream(vector<PacketPtr> &packetsIn,
     cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "File request down stream filter end.\n");
 }
 
-#endif 
+#endif
 
 } /* extern "C" */

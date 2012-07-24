@@ -12,7 +12,7 @@ Redistribution and use in source and binary forms, with or without modification,
         Redistributions of source code must retain the above copyright notice, this list of conditions and the disclaimer below.
         Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the disclaimer (as noted below) in the documentation and/or other materials provided with the distribution.
         Neither the name of the LLNS/LLNL nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-        
+
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
@@ -35,15 +35,6 @@ extern graphlib_functiontable_p statCountRepFunctions;
 extern graphlib_functiontable_p statBitVectorFunctions;
 #endif
 
-static unsigned int string_hash(const char *str)
-{
-    unsigned int hash = 0;
-    int c;
-    while (c = *(str++))
-        hash = c + (hash << 6) + (hash << 16) - hash;
-    return hash;
-}
-
 static PyObject *py_Init_Graphlib(PyObject *self, PyObject *args)
 {
     graphlib_error_t gl_err;
@@ -52,7 +43,7 @@ static PyObject *py_Init_Graphlib(PyObject *self, PyObject *args)
     {
         fprintf(stderr, "Failed to parse args, expecting (int)\n");
         return Py_BuildValue("i", -1);
-    }    
+    }
     gl_err = graphlib_Init();
     if (GRL_IS_FATALERROR(gl_err))
     {
@@ -67,7 +58,7 @@ static PyObject *py_Init_Graphlib(PyObject *self, PyObject *args)
 #endif
 
     return Py_BuildValue("i", 0);
-}        
+}
 
 static PyObject *py_New_Graph(PyObject *self, PyObject *args)
 {
@@ -137,20 +128,13 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
         return Py_BuildValue("i", -1);
     }
 #else
-    edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+    edge = initializeBitVectorEdge(high_rank);
     if (edge == NULL)
     {
         fprintf(stderr, "Failed to create bit edge\n");
         return Py_BuildValue("i", -1);
     }
-    edge->length = statBitVectorLength(high_rank);
-    edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BYTES);
-    if (edge->bitVector == NULL)
-    {
-        fprintf(stderr, "Failed to create bit vector of length %d\n", edge->length);
-        return Py_BuildValue("i", -1);
-    }
-    
+
     int byte = task / STAT_BITVECTOR_BITS;
     int bit = task % STAT_BITVECTOR_BITS;
     edge->bitVector[byte] |= STAT_GRAPH_BIT(bit);
@@ -195,7 +179,7 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
         next += size;
         snprintf(prev_path, BUFSIZE, "%s", path);
         snprintf(path, BUFSIZE, "%s%s", prev_path, node_attr.label);
-        node_id = string_hash(path);
+        node_id = statStringHash(path);
 
         gl_err = graphlib_addNode(cur_graph, node_id, &node_attr);
         if (GRL_IS_FATALERROR(gl_err))
@@ -246,7 +230,7 @@ static PyObject *py_Merge_Traces(PyObject *self, PyObject *args)
     int handle1, handle2;
     graphlib_graph_p cur_graph, graph_ptr;
     graphlib_error_t gl_err;
-    
+
     if (!PyArg_ParseTuple(args, "ii", &handle1, &handle2))
     {
         fprintf(stderr, "Failed to parse args, expecting (int, int, string)\n");
@@ -254,14 +238,14 @@ static PyObject *py_Merge_Traces(PyObject *self, PyObject *args)
     }
     graph_ptr = (*graphs)[handle1];
     cur_graph = (*graphs)[handle2];
-    
+
     gl_err = graphlib_mergeGraphs(graph_ptr, cur_graph);
     if (GRL_IS_FATALERROR(gl_err))
     {
         fprintf(stderr, "Error merging graph\n");
         return Py_BuildValue("i", -1);
     }
-    
+
     return Py_BuildValue("i", 0);
 }
 
@@ -295,7 +279,7 @@ static PyObject *py_Serialize_Graph(PyObject *self, PyObject *args)
         fprintf(stderr, "%s: Error opening file %s\n", strerror(errno), filename);
         return Py_BuildValue("i", -1);
     }
-    
+
     ret = fwrite(buf, sizeof(char), buf_len, f);
     if (ret != buf_len)
     {
@@ -348,7 +332,7 @@ static PyObject *py_Deserialize_Graph(PyObject *self, PyObject *args)
         fprintf(stderr, "%s: %d Error ftell file %s\n", strerror(errno), buf_len, filename);
         return Py_BuildValue("i", -1);
     }
-    
+
     ret = fseek(f, 0, SEEK_SET);
     if (ret != 0)
     {
@@ -416,7 +400,7 @@ static PyObject *py_Output_Graph(PyObject *self, PyObject *args)
     {
         fprintf(stderr, "graphlib error coloring graph by leading edge label\n");
         return Py_BuildValue("i", -1);
-    }    
+    }
 
     gl_err =  graphlib_scaleNodeWidth(graph_ptr, 80, 160);
     if ( GRL_IS_FATALERROR(gl_err) )

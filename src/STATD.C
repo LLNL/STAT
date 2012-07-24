@@ -21,7 +21,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "STAT_BackEnd.h"
 
 
-//! The daemon main 
+//! The daemon main
 int main(int argc, char **argv)
 {
     int opt, optionIndex = 0, mrnetOutputLevel = 1;
@@ -30,10 +30,10 @@ int main(int argc, char **argv)
     StatError_t statError;
     STAT_BackEnd *STAT;
 
-    struct option longOptions[] = 
+    struct option longOptions[] =
     {
-        {"mrnetprintf", no_argument, 0, 'm'}, 
-        {"mrnetoutputlevel", required_argument, 0, 'o'}, 
+        {"mrnetprintf", no_argument, 0, 'm'},
+        {"mrnetoutputlevel", required_argument, 0, 'o'},
         {"logdir", required_argument, 0, 'L'},
         {0, 0, 0, 0}
     };
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     } // while(1)
 
     /* Check if logging of the daemon is enabled */
-    if (logOutDir != NULL) 
+    if (logOutDir != NULL)
     {
         statError = STAT->startLog(logOutDir, useMrnetPrintf, mrnetOutputLevel);
         if (statError != STAT_OK)

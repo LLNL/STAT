@@ -1,5 +1,5 @@
 """@package stat_merge_base
-A base class and implementation for merging trace files into a .dot format 
+A base class and implementation for merging trace files into a .dot format
 suitable for the Stack Trace Analysis Tool."""
 
 __copyright__ = """Copyright (c) 2007-2008, Lawrence Livermore National Security, LLC."""
@@ -15,7 +15,7 @@ Redistribution and use in source and binary forms, with or without modification,
         Redistributions of source code must retain the above copyright notice, this list of conditions and the disclaimer below.
         Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the disclaimer (as noted below) in the documentation and/or other materials provided with the distribution.
         Neither the name of the LLNS/LLNL nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-        
+
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
@@ -47,11 +47,11 @@ class StatTrace(object):
         The base implementation simply uses each line of the trace file as the
         frame name in the call trace.
 
-        The return type is a list of list of (sub) traces, where the former 
-        list is to support different levels of detail and the latter list is to 
-        support multiple traces within a trace file.  For example, consider a 
-        trace file that includes traces from multiple threads (thr) and assume 
-        we want two levels of detail, function name only (fn) and source line 
+        The return type is a list of list of (sub) traces, where the former
+        list is to support different levels of detail and the latter list is to
+        support multiple traces within a trace file.  For example, consider a
+        trace file that includes traces from multiple threads (thr) and assume
+        we want two levels of detail, function name only (fn) and source line
         number (sl).  The return value would be of the form:
 
         [[fn.thr1, fn.thr2], [sl.thr1, sl.thr2]]
@@ -79,7 +79,7 @@ class StatMergerArgs(object):
     """
     The StatMergerArgs class is responsible for parsing command line options.
     It can be extended to add additional arguments.
-    
+
     Derrived classes should implement the is_valid_file function.  If adding
     command line options, the derrived class should also include an __init__
     function and add to the arg_map.  The derrived __init__ method should first
@@ -103,13 +103,13 @@ class StatMergerArgs(object):
 
     def is_valid_file(self, file_path):
         """
-        The is_valid_file function should be overloaded to verify that a file 
+        The is_valid_file function should be overloaded to verify that a file
         is a valid trace file.  This is necssary in the case where a directory
-        is specified and that directory contains files that are not trace 
+        is specified and that directory contains files that are not trace
         files.
         """
         return True
-        
+
     def error_check(self, options):
         """
         The error_check function is used to validate the specified arguments.
@@ -128,8 +128,8 @@ class StatMergerArgs(object):
                     short_name = arg_tuple.short_name + ":"
                     name += "="
                 self._short_args_string += short_name
-                self._long_args_list.append(name)                
-        
+                self._long_args_list.append(name)
+
     def get_short_args_string(self):
         self.set_args()
         return self._short_args_string
@@ -150,7 +150,7 @@ class StatMergerArgs(object):
         self.print_options()
         sys.stderr.write(self.usage_msg_examples)
         sys.exit(return_value)
-    
+
     def parse_args(self):
         # first delineate the file list from the options
         try:
@@ -160,7 +160,7 @@ class StatMergerArgs(object):
             self.print_usage()
         trace_file_args = sys.argv[sys.argv.index('-c') + 1:]
         sys.argv = sys.argv[0:sys.argv.index('-c')]
-    
+
         # get list of trace files
         if len(trace_file_args) == 1:
             if os.path.isdir(trace_file_args[0]):
@@ -170,9 +170,9 @@ class StatMergerArgs(object):
                         trace_files.append(trace_file_args[0] + '/' + file_path)
             else:
                 trace_files = [trace_file_args[0]]
-        else: 
+        else:
             trace_files = trace_file_args[0:]
-        
+
         # parse the args
         try:
             opts, args = getopt.getopt(sys.argv[1:], self.get_short_args_string(), self.get_long_args_list())
@@ -182,11 +182,11 @@ class StatMergerArgs(object):
         except Exception as e:
             sys.stderr.write('Exception: %s\n%s, %s\n' %(str(e), self.get_short_args_string(), str(self.get_long_args_list())))
             self.print_usage()
-        
+
         options = {}
         for name, arg_tuple in self.arg_map.items():
             options[name] = arg_tuple.default_value
-        
+
         for option, arg in opts:
             if option in ("-h", "--help"):
                 self.print_usage(0)
@@ -262,19 +262,19 @@ class StatMerger(object):
         # we don't want sub processes to print this out...
         if self.options["type"] != 'raw':
             sys.stdout.write('merging %d trace files\n' %len(self.trace_files)) ; sys.stdout.flush()
-    
+
         filenames = self.generate_unique_filenames(2)
-    
+
         if len(self.trace_files) > self.options["limit"]:
             # spawn sub processes to parallelize the merging
             sub_processes = self.spawn_sub_processes()
-            
+
             # initialize graphlib
             ret = STATmerge.Init_Graphlib(self.options["high"])
             if ret != 0:
                 sys.stderr.write('Failed to initialize graphlib\n')
                 return ret
-    
+
             # synchronize the sub processes
             handles = self.sync_sub_processes(sub_processes)
 
@@ -283,7 +283,7 @@ class StatMerger(object):
             self.verbose = False
             if self.options["type"] == 'dot':
                 self.verbose = True
-        
+
             # parse and merge the traces
             length = len(self.trace_files)
             for i, file in enumerate(self.trace_files):
@@ -304,16 +304,16 @@ class StatMerger(object):
                                 sys.stderr.write('Failed to create new graph\n')
                                 sys.exit(1)
                             handles.append(handle)
-    
+
                         # add the current trace
                         ret = STATmerge.Add_Trace(handles[j], trace_object.rank, sub_trace)
                         if ret != 0:
                             sys.stderr.write('Failed to add trace\n')
                             sys.exit(1)
-                            
+
             if self.verbose:
                 sys.stdout.write('... done!\n')
-    
+
         # now get a merge with only the function name
         self.output_files(handles, filenames)
 
@@ -325,8 +325,8 @@ class StatMerger(object):
         for handle, filename in zip(handles, filenames):
             if self.verbose:
                 sys.stdout.write('outputing to file "%s" ...' %(filename))
-            if self.options["type"] == 'dot':        
-                STATmerge.Output_Graph(handle, filename)        
+            if self.options["type"] == 'dot':
+                STATmerge.Output_Graph(handle, filename)
             elif self.options["type"] == 'raw':
                 STATmerge.Serialize_Graph(handle, filename)
             if self.verbose:
@@ -347,7 +347,7 @@ class StatMerger(object):
                 trace_files_subset = self.trace_files[i * self.options["limit"]:(i + 1) * self.options["limit"]]
             command = [sys.executable, sys.argv[0]]
             for name, value in self.options.items():
-                if name == "type": 
+                if name == "type":
                     value = "raw"
                 if name == "fileprefix" :
                     value = tmp_file_prefix
@@ -368,7 +368,7 @@ class StatMerger(object):
             time.sleep(.1)
             for i in xrange(remain):
                 key, (tmp_file_prefix, sub_process) = sub_processes.items()[i]
-                ret = sub_process.poll() 
+                ret = sub_process.poll()
                 if ret != None:
                     try:
                         if ret != 0:
@@ -390,7 +390,7 @@ class StatMerger(object):
                                 handles.append(current_handle)
                             else:
                                 ret = STATmerge.Merge_Traces(handles[j], current_handle)
-                                if ret == -1:   
+                                if ret == -1:
                                     raise Exception(-1, 'failed to merge handle %d into handle %d from sub process %d of %d.' %(handles[j], current_handle, key, total))
                             os.remove(file_path)
                     except Exception as e:

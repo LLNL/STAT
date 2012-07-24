@@ -33,7 +33,7 @@ using namespace FastGlobalFileStat;
 using namespace FastGlobalFileStat::MountPointAttribute;
 using namespace FastGlobalFileStat::CommLayer;
 
-extern int CUR_OUTPUT_LEVEL; 
+extern int CUR_OUTPUT_LEVEL;
 #define mrn_dbg(x, y) \
 do { \
     if( MRN::CUR_OUTPUT_LEVEL >= x ){           \
@@ -52,19 +52,19 @@ class MRNetSymbolReader :public Dyninst::SymReader
    SymReader *symReaderHandle_;
    int refCount_;
 
-   MRNetSymbolReader(std::string file, 
+   MRNetSymbolReader(std::string file,
                      const char* buffer,
-                     unsigned long size, 
+                     unsigned long size,
                      SymReader* symReaderHandle)
                       : file_(file), buffer_(buffer), size_(size),
-                        symReaderHandle_(symReaderHandle) {}   
+                        symReaderHandle_(symReaderHandle) {}
    virtual ~MRNetSymbolReader() {}
    virtual Symbol_t getSymbolByName(std::string symname);
    virtual Symbol_t getContainingSymbol(Dyninst::Offset offset);
    virtual std::string getInterpreterName();
    virtual unsigned getAddressWidth();
    virtual unsigned numRegions();
-   virtual bool getRegion(unsigned num, SymRegion &reg); 
+   virtual bool getRegion(unsigned num, SymRegion &reg);
    virtual Dyninst::Offset getSymbolOffset(const Symbol_t &sym);
    virtual std::string getSymbolName(const Symbol_t &sym);
    virtual std::string getDemangledName(const Symbol_t &sym);
@@ -97,7 +97,7 @@ class MRNetSymbolReaderFactory : public Dyninst::SymbolReaderFactory
                             Network *network,
                             Stream *stream)
                              : symbolReaderFactoryHandle_(symbolReaderFactoryHandle),
-                               network_(network), stream_(stream) {} 
+                               network_(network), stream_(stream) {}
    virtual ~MRNetSymbolReaderFactory() {}
    virtual SymReader *openSymbolReader(std::string pathName);
    virtual SymReader *openSymbolReader(const char *buffer, unsigned long size);
@@ -110,7 +110,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
     bool localLib = true;
     int tag = PROT_LIB_REQ, ret, size;
     unsigned long fileContentsLength;
-    char *fileName, *fileContents; 
+    char *fileName, *fileContents;
     FILE *fp;
     PacketPtr packet;
     MRNetSymbolReader *msr;
@@ -132,18 +132,18 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
 
     iter = openReaders_.find(pathName);
     if (iter == openReaders_.end())
-    {  
+    {
         mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader", statOutFp,
                 "no existing reader for %s\n", pathStr));
 
         AsyncGlobalFileStat myStat(pathStr);
         if (IS_YES(myStat.isUnique()))
         {
-            localLib = false;                
-            
+            localLib = false;
+
             mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
                     statOutFp, "requesting contents for %s\n", pathStr));
-    
+
             if (stream_->send(tag, "%s", pathStr) == -1)
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
@@ -156,7 +156,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                         statOutFp, "BE: stream::flush() failure\n"));
                 return NULL;
             }
-                
+
             ret = network_->recv(&tag, packet, &stream_);
             if (ret != 1)
             {
@@ -182,7 +182,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                 localLib = true;
             }
         }
-    
+
         if (localLib == true)
         {
             mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
@@ -207,12 +207,12 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
             }
             fread(fileContents, size, 1, fp);
             fclose(fp);
-    
+
             msr = openSymReader((char *)fileContents, size, pathName);
             if (msr == NULL)
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        statOutFp, "openSymReader returned NULL for %s %d\n", 
+                        statOutFp, "openSymReader returned NULL for %s %d\n",
                         pathName.c_str(), size));
                 return NULL;
             }
@@ -226,7 +226,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
             if (msr == NULL)
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        statOutFp, "openSymReader returned NULL for %s %d\n", 
+                        statOutFp, "openSymReader returned NULL for %s %d\n",
                         pathName.c_str(), fileContentsLength));
                 return NULL;
             }
@@ -251,7 +251,7 @@ MRNetSymbolReaderFactory::openSymReader(const char *buffer,
                                         std::string file)
 {
     SymReader *handle = symbolReaderFactoryHandle_->openSymbolReader(buffer,
-                                                                     size);    
+                                                                     size);
     if (handle == NULL)
     {
         mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymReader", statOutFp,
@@ -283,8 +283,8 @@ bool MRNetSymbolReaderFactory::closeSymbolReader(SymReader *sr)
     msr->refCount_--;
     std::map<std::string, MRNetSymbolReader *>::iterator iter = openReaders_.find(msr->file_);
     if ((iter != openReaders_.end()) && (msr->refCount_ == 0))
-        openReaders_.erase(iter);    
-    
+        openReaders_.erase(iter);
+
     delete msr;
     return true;
 }
@@ -369,7 +369,7 @@ inline bool MRNetSymbolReader::isValidSection(Section_t sec)
     return symReaderHandle_->isValidSection(sec);
 }
 
-inline void *MRNetSymbolReader::getElfHandle() 
+inline void *MRNetSymbolReader::getElfHandle()
 {
     return symReaderHandle_->getElfHandle();
 }

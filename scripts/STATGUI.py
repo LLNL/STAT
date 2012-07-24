@@ -16,7 +16,7 @@ Redistribution and use in source and binary forms, with or without modification,
         Redistributions of source code must retain the above copyright notice, this list of conditions and the disclaimer below.
         Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the disclaimer (as noted below) in the documentation and/or other materials provided with the distribution.
         Neither the name of the LLNS/LLNL nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-        
+
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
@@ -202,11 +202,11 @@ class STATGUI(STATDotWindow):
             count += 1
             if line.find('menuitem action="SaveAs') != -1:
                 break
-        lines.insert(count, '            <menuitem action="SavePrefs"/>') 
-        lines.insert(count, '            <menuitem action="LoadPrefs"/>') 
-        lines.insert(count, '            <separator/>') 
-        lines.insert(count, '            <menuitem action="Properties"/>') 
-        lines.insert(count, '            <separator/>') 
+        lines.insert(count, '            <menuitem action="SavePrefs"/>')
+        lines.insert(count, '            <menuitem action="LoadPrefs"/>')
+        lines.insert(count, '            <separator/>')
+        lines.insert(count, '            <menuitem action="Properties"/>')
+        lines.insert(count, '            <separator/>')
         STATDotWindow.ui = ''
         for line in lines:
             STATDotWindow.ui += line + '\n'
@@ -312,19 +312,19 @@ host[1-10,12,15-20];otherhost[30]
         chooser.add_filter(filter)
         chooser.set_current_folder('%s/.STAT' %os.environ['HOME'])
         if chooser.run() == gtk.RESPONSE_OK:
-            filename = chooser.get_filename() 
+            filename = chooser.get_filename()
             try:
                 shelf = shelve.open(filename)
                 for key in self.options.keys():
                     self.options[key] = shelf[key]
-                shelf.close()    
+                shelf.close()
             except IOError as e:
                 show_error_dialog('%s\nFailed to load preferences file %s\n' %(repr(e), filename), self)
             except Exception as e:
                 show_error_dialog('%s\nFailed to process preferences file %s\n' %(repr(e), filename), self)
-        chooser.destroy()    
+        chooser.destroy()
 
-    def on_save_prefs(self, action):        
+    def on_save_prefs(self, action):
         """Save user preferences to a file."""
         chooser = gtk.FileChooserDialog(title = "Save Preferences", action = gtk.FILE_CHOOSER_ACTION_SAVE, buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
         chooser.set_default_response(gtk.RESPONSE_OK)
@@ -348,14 +348,14 @@ host[1-10,12,15-20];otherhost[30]
                 shelf = shelve.open(filename)
                 for key in self.options.keys():
                     shelf[key] = self.options[key]
-                shelf.close()    
+                shelf.close()
             except IOError as e:
                 show_error_dialog('%s\nFailed to save preferences file %s\n' %(repr(e), filename), self)
             except Exception as e:
                 show_error_dialog('%s\nFailed to save preferences file %s\n' %(repr(e), filename), self)
-        chooser.destroy()    
+        chooser.destroy()
 
-    def on_properties(self, action):   
+    def on_properties(self, action):
         """Display a window with application properties."""
         if self.attached == False:
             show_error_dialog('Application properties only available after attaching\n', self)
@@ -449,7 +449,7 @@ host[1-10,12,15-20];otherhost[30]
 
         self.properties_window.add(vbox)
         self.properties_window.show_all()
-       
+
     def on_properties_destroy(self, action):
         """Clean up the properties window."""
         global blahblah
@@ -471,7 +471,7 @@ host[1-10,12,15-20];otherhost[30]
         vbox = gtk.VBox()
         if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
             output = commands.getoutput('ps xw')
-        else:    
+        else:
             output = commands.getoutput('%s %s ps xw' %(self.options['Remote Host Shell'], self.options['Remote Host']))
             if output.find('Hostname not found') != -1 or output.find('PID') == -1:
                 show_error_dialog('Failed to get process listing for %s' %self.options['Remote Host'], attach_dialog)
@@ -533,8 +533,8 @@ host[1-10,12,15-20];otherhost[30]
 
     def on_cancel_attach(self, widget, dialog):
         """Callback to handle canceling of attach dialog."""
-        dialog.destroy()            
-    
+        dialog.destroy()
+
     def manipulate_cb(self, widget, data, node):
         """Overloaded manipulate callback to handle variable search."""
         STATDotWindow.manipulate_cb(self, widget, data, node)
@@ -558,7 +558,7 @@ host[1-10,12,15-20];otherhost[30]
 
     def check_for_loop_variable(self):
         """Searches for loop ordering variables.
-        
+
         If found, prompt user to gather stack trace with variable values."""
         found = False
         for node in self.get_current_graph().nodes:
@@ -601,7 +601,7 @@ host[1-10,12,15-20];otherhost[30]
             dialog.vbox.pack_start(hbox, False, False, 0)
             dialog.show_all()
             dialog.run()
-    
+
     def new_tab_and_sample(self):
         """Create a new tab and gather a stack sample"""
         page = self.notebook.get_current_page()
@@ -629,7 +629,7 @@ host[1-10,12,15-20];otherhost[30]
                 self.on_to_traverse_least_progress(None)
         self.get_current_graph().adjust_dims()
         self.get_current_widget().zoom_to_fit()
-                
+
 
     def run_and_destroy_dialog(self, function, args, dialog):
         """Run the specified function and destroys the specified dialog."""
@@ -638,7 +638,7 @@ host[1-10,12,15-20];otherhost[30]
 
     def on_reattach(self, action):
         """Attach to the same job as the previous session.
-        
+
         Also gather a stack trace.
         """
         self.attach_cb(None, None)
@@ -790,7 +790,7 @@ host[1-10,12,15-20];otherhost[30]
 
         self.STAT.setToolDaemonExe(self.options['Tool Daemon Path'])
         self.STAT.setFilterPath(self.options['Filter Path'])
-        logType = STAT_LOG_NONE 
+        logType = STAT_LOG_NONE
         if self.options['Log Frontend']:
             logType |= STAT_LOG_FE
         if self.options['Log Backend']:
@@ -903,7 +903,7 @@ host[1-10,12,15-20];otherhost[30]
             return True
         self.var_spec = []
         self.show_all()
-           
+
         ret = self.STAT.detachApplication(stop_list, stop_list_len, False)
         if ret != STAT_OK:
             show_error_dialog('Failed to detach from application:\n%s' %self.STAT.getLastErrorMessage(), self)
@@ -938,7 +938,7 @@ host[1-10,12,15-20];otherhost[30]
                     sys.stderr.write('Failed to detach from application:\n%s\n' %self.STAT.getLastErrorMessage())
                 self.STAT.shutDown()
             self.STAT = None
-        gtk.main_quit()    
+        gtk.main_quit()
 
     def on_pause(self, action=None):
         """Callback to pause the job."""
@@ -1016,7 +1016,7 @@ host[1-10,12,15-20];otherhost[30]
             stat_wait_dialog.show_wait_dialog_and_run(self.sleep, (self.options['Run Time Before Sample (sec)'],), [], self)
         if sample_function == self.sample_multiple:
             stat_wait_dialog.show_wait_dialog_and_run(sample_function, (), self.sample_task_list, self, True)
-        else:    
+        else:
             stat_wait_dialog.show_wait_dialog_and_run(sample_function, (), self.sample_task_list, self)
 
     def on_sample(self, action, multiple):
@@ -1244,9 +1244,9 @@ host[1-10,12,15-20];otherhost[30]
         if ret_val != STAT_OK:
             show_error_dialog('An error was detected:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
-            
+
         return ret_val
-    
+
     def on_identify_num_eq_classes(self, action):
         """Callback to identify equivalence classes."""
         if self.get_current_graph().cur_filename == '':
@@ -1409,7 +1409,7 @@ host[1-10,12,15-20];otherhost[30]
             self.eq_state[type].set_active(True)
         self.dont_recurse = False
         return True
-        
+
     def set_proctab(self):
         if self.proctab_file_path != None and self.proctab != None:
             return True
@@ -1431,7 +1431,7 @@ host[1-10,12,15-20];otherhost[30]
         if self.proctab_file_path == '':
             show_error_dialog('Failed to find process table .ptab file.', self)
             return False
-        
+
         try:
             with open(self.proctab_file_path, 'r') as f:
                 launcher = f.next().strip('\n').split(':')
@@ -1455,7 +1455,7 @@ host[1-10,12,15-20];otherhost[30]
             show_error_dialog('%s\nfailed to process process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %(repr(e), self.proctab_file_path), self)
             return False
         return True
-        
+
 
     def launch_debugger_cb(self, widget, args):
         """Callback to launch full-featured debugger on a subset of tasks."""
@@ -1535,7 +1535,7 @@ host[1-10,12,15-20];otherhost[30]
             if not filepath or not os.access(filepath, os.X_OK):
                 show_error_dialog('Failed to locate executable ddt\ndefault: %s\n' %filepath, self)
                 return
-    
+
             # Look for LaunchMON installation for DDT 2.5+
             ddt_lmon_prefix = self.options['DDT LaunchMON Prefix']
             ddt_lmon_lib = '%s/lib' %(ddt_lmon_prefix)
@@ -1583,14 +1583,16 @@ host[1-10,12,15-20];otherhost[30]
         old_label = node.edge_label
         node.edge_label = edge_label
         task_list = get_task_list(edge_label)
-        if node.edge_label_id in STATview.task_label_id_to_list: 
+        node.num_leaf_tasks = -1
+        if node.edge_label_id in STATview.task_label_id_to_list:
             STATview.task_label_id_to_list[node.edge_label_id] = task_list
         if old_label in STATview.task_label_to_list:
             del STATview.task_label_to_list[old_label]
         for inode in self.get_current_graph().nodes:
             if inode.edge_label == old_label:
                 inode.edge_label = edge_label
-                if inode.edge_label_id in STATview.task_label_id_to_list: 
+                inode.num_leaf_tasks = -1
+                if inode.edge_label_id in STATview.task_label_id_to_list:
                     STATview.task_label_id_to_list[inode.edge_label_id] = task_list
         try:
             self.my_dialog.destroy()
@@ -1612,7 +1614,7 @@ host[1-10,12,15-20];otherhost[30]
         subprocess.call(arg_list)
         sys.exit(0)
 
-    def update_option(self, w, label, parent_window, option):        
+    def update_option(self, w, label, parent_window, option):
         """Generate text entry dialog to update the specified option."""
         dialog = gtk.Dialog('Update %s' %option, parent_window)
         entry = gtk.Entry()
@@ -1728,7 +1730,7 @@ host[1-10,12,15-20];otherhost[30]
         for type in self.types[option]:
             combo_box.append_text(type)
         combo_box.set_active(self.types[option].index(self.options[option]))
-        hbox.pack_start(combo_box, False, False, 10)    
+        hbox.pack_start(combo_box, False, False, 10)
         self.combo_boxes[option] = combo_box
         box.pack_start(hbox, False, False, 0)
 
@@ -1746,7 +1748,7 @@ host[1-10,12,15-20];otherhost[30]
         """Callback to toggle on/off a check button."""
         if self.options[option] == True:
             self.options[option] = False
-        else:            
+        else:
             self.options[option] = True
 
     def pack_string_option(self, box, option, parent_window):

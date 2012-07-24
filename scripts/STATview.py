@@ -16,7 +16,7 @@ Redistribution and use in source and binary forms, with or without modification,
         Redistributions of source code must retain the above copyright notice, this list of conditions and the disclaimer below.
         Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the disclaimer (as noted below) in the documentation and/or other materials provided with the distribution.
         Neither the name of the LLNS/LLNL nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-        
+
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."""
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
 __version__ = "2.0.0"
@@ -139,7 +139,7 @@ def list_to_string(task_list):
             if first_iteration:
                 ret += '%d' %(task)
                 first_iteration = False
-            else:   
+            else:
                 if task == last_val + 1:
                     in_range = True
                     range_start = last_val
@@ -150,9 +150,9 @@ def list_to_string(task_list):
         last_val = task
     if in_range:
         ret += '%d' %(task)
+    task_label_to_list[ret] = task_list
     next_label_id += 1
     task_label_id_to_list[next_label_id] = task_list
-    task_label_to_list[ret] = task_list
     return ret
 
 ## \param dot_filename - the input .dot file
@@ -245,8 +245,6 @@ def create_temp(dot_filename):
         show_error_dialog('Failed to open dot file %s' %dot_filename, exception = e)
         return None
     except Exception as e:
-        print line
-        print tokens
         show_error_dialog('Failed to create temporary dot file %s\n %d' %(dot_filename, repr(e)), exception = e)
         return None
     finally:
@@ -264,7 +262,7 @@ class STAT_wait_dialog(object):
 
     def __init__(self):
         """The constructor"""
-        self.tasks = []                 
+        self.tasks = []
         self.task_progress_bars = []
         self.current_task = 0
         self.wait_dialog = None
@@ -280,9 +278,9 @@ class STAT_wait_dialog(object):
     #
     #  \n
     def show_wait_dialog_and_run(self, fun, args, task_list=[], parent=None, cancelable=False):
-        """Display a wait dialog and run the specified function.  
-        
-        Note, the specified function should NOT create any new windows or do 
+        """Display a wait dialog and run the specified function.
+
+        Note, the specified function should NOT create any new windows or do
         any drawing, otherwise it will hang.
         """
         self.wait_dialog = gtk.Dialog('Please Wait', parent)
@@ -343,7 +341,7 @@ class STAT_wait_dialog(object):
             ret = apply(fun, (args))
         except Exception as e:
             ret = False
-            show_error_dialog('Unexpected error:  %s\n%s\n%s\n' %(sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]), exception = e)            
+            show_error_dialog('Unexpected error:  %s\n%s\n%s\n' %(sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]), exception = e)
         if self.wait_dialog != None:
             self.wait_dialog.destroy()
             self.wait_dialog = None
@@ -366,7 +364,7 @@ class STAT_wait_dialog(object):
         #while gtk.events_pending():
         if gtk.events_pending():
             gtk.main_iteration()
-    
+
     ## \param self - the instance
     #  \param fraction - the new fraction
     #
@@ -378,7 +376,7 @@ class STAT_wait_dialog(object):
         #while gtk.events_pending():
         if gtk.events_pending():
             gtk.main_iteration()
-    
+
     def update_active_bar(self):
         """Register activity on the active bar."""
         if self.current_task >= len(self.task_progress_bars):
@@ -415,7 +413,7 @@ def show_error_dialog(text, parent = None, exception = None):
     button.connect("clicked", lambda w, d: error_dialog.destroy(), "ok")
     error_dialog.vbox.pack_start(button)
     error_dialog.show_all()
-    error_dialog.run()        
+    error_dialog.run()
 
 ## Overloaded DragAction for use with scroll bars.
 class STATPanAction(xdot.DragAction):
@@ -467,7 +465,7 @@ class STATCompoundShape(xdot.CompoundShape):
 
     def draw(self, cr, highlight=False):
         """Draw the compound shape if not hidden.
-        
+
         Hidden shapes are not completely hidden, rather they are made opaque.
         """
         a_val = 1.0
@@ -537,8 +535,8 @@ class STATElement(STATCompoundShape):
 ## A node in the STAT graph.
 class STATNode(STATElement):
     """A node in the STAT graph.
-    
-    Derrived from the STATElement to include the hide attribute.  
+
+    Derrived from the STATElement to include the hide attribute.
     It adds several STAT specific members to the xdot Node class.
     """
 
@@ -561,6 +559,7 @@ class STATNode(STATElement):
         self.out_edges = []
         self.node_name = None
         self.num_tasks = -1
+        self.num_leaf_tasks = -1
         self.undo = []
         self.redo = []
         self.is_leaf = False
@@ -641,11 +640,11 @@ class STATNode(STATElement):
     #  \n
     def get_node_task_list(self):
         """Get the task list corresponding to the node's edge label.
-    
+
         First see if we have this label indexed to avoid duplicate generation."""
-    
+
         global next_label_id
-        if self.edge_label_id in task_label_id_to_list: 
+        if self.edge_label_id in task_label_id_to_list:
             return task_label_id_to_list[self.edge_label_id]
         colon_pos = self.edge_label.find(':')
         if colon_pos != -1:
@@ -663,13 +662,14 @@ class STATNode(STATElement):
             task_list = task_label_to_list[key]
         else:
             task_list = get_task_list(key)
+        if key.find(':') == -1:
+            task_label_to_list[key] = task_list
         next_label_id += 1
-        task_label_to_list[key] = task_list
         task_label_id_to_list[next_label_id] = task_list
         self.edge_label_id = next_label_id
         return task_list
 
-    ## \param node - the input node 
+    ## \param node - the input node
     #  \return the task list
     #
     #  \n
@@ -680,22 +680,24 @@ class STATNode(STATElement):
         for edge in self.out_edges:
             out_set |= set(edge.dst.get_node_task_list())
         return sorted(list(in_set - out_set))
-    
-    
-    ## \param node - the input node 
+
+
+    ## \param node - the input node
     #  \return the task count
     #
     #  \n
     def get_num_leaf_tasks(self):
         """Get the number of tasks that ended on this node."""
-        out_sum = 0
-        for edge in self.out_edges:
-            out_sum += get_num_tasks(edge.label)
-        if out_sum < get_num_tasks(self.edge_label):
-            return get_num_tasks(self.edge_label) - out_sum
-        else:
-            return 0
-    
+        if self.num_leaf_tasks == -1:
+            out_sum = 0
+            for edge in self.out_edges:
+                out_sum += get_num_tasks(edge.label)
+            if out_sum < get_num_tasks(self.edge_label):
+                self.num_leaf_tasks = get_num_tasks(self.edge_label) - out_sum
+            else:
+                self.num_leaf_tasks = 0
+        return self.num_leaf_tasks
+
     def can_join_eq_c(self):
         if self.hide == True:
             return False
@@ -709,8 +711,8 @@ class STATNode(STATElement):
 ## An edge in the STAT graph.
 class STATEdge(STATElement):
     """An edge in the STAT graph.
-    
-    Derrived from the STATElement to include the hide attribute.  
+
+    Derrived from the STATElement to include the hide attribute.
     It adds several STAT specific members to the xdot Edge class.
     """
 
@@ -753,11 +755,11 @@ class STATEdge(STATElement):
 ## A STAT graph object.
 class STATGraph(xdot.Graph):
     """A STAT graph object.
-    
-    Derrived from xdot's Graph class and adds several STAT specific 
+
+    Derrived from xdot's Graph class and adds several STAT specific
     operations for tree manipulation and traversal.
     """
-    
+
     def __init__(self, width=1, height=1, shapes=(), nodes=(), edges=()):
         """The constructor."""
         xdot.Graph.__init__(self, width, height, shapes, nodes, edges)
@@ -857,7 +859,7 @@ class STATGraph(xdot.Graph):
 
     def redo(self, widget):
         """Redo the modifications of the previous operation.
-        
+
         Restore previous undo attributes.
         """
         if len(self.nodes) == 0:
@@ -946,7 +948,7 @@ class STATGraph(xdot.Graph):
         modified, (leaf_node, label) = self.join_eq_c(node.out_edges[0].dst)
         if root == True:
             node.out_edges[0].hide
-            node.eq_collapsed_out_edges = [] 
+            node.eq_collapsed_out_edges = []
             node.eq_collapsed_label = ''
             if leaf_node is not None:
                 for edge in leaf_node.out_edges:
@@ -956,7 +958,7 @@ class STATGraph(xdot.Graph):
                     node.eq_collapsed_out_edges.append(new_edge)
                     new_edge.dst.eq_collapsed_in_edge = new_edge
                     self.edges.append(new_edge)
-                node.eq_collapsed_label = node.label + ' ==> ' + label 
+                node.eq_collapsed_label = node.label + ' ==> ' + label
         else:
             node.hide = True
             node.in_edge.hide = True
@@ -997,8 +999,8 @@ class STATGraph(xdot.Graph):
 
     def focus(self, node):
         """Focus on a node
-        
-        Hide all nodes that are neither descendents nor ancestors of the 
+
+        Hide all nodes that are neither descendents nor ancestors of the
         specified node.
         """
         if node is None:
@@ -1045,12 +1047,7 @@ class STATGraph(xdot.Graph):
             show_error_dialog('Cannot determine source file, please run STAT with the -i option to get source file and line number information\n')
             return
         source = sourceLine[:sourceLine.find(':')]
-        try:
-            cur_lineNum = int(sourceLine[sourceLine.find(':') + 1:])
-        except:
-            print node.label
-            print item
-            print function_name, sourceLine, iter_string
+        cur_lineNum = int(sourceLine[sourceLine.find(':') + 1:])
 
         # get the node font and background colors
         for shape in node.shapes:
@@ -1360,7 +1357,7 @@ class STATGraph(xdot.Graph):
             if self.get_to_string(edge.dst) == '':
                 found = True
                 break
-        if found == False:  
+        if found == False:
             return False
         source_map = defaultdict(list)
         progress = 0.0
@@ -1459,7 +1456,7 @@ class STATGraph(xdot.Graph):
         #print t2 - t1
         return True
 
-# TODO 
+# TODO
 #    def update_children_temporal_string(self, node, temporal_string):
 #        if not self.has_to_descendents():
 #            return True
@@ -1500,7 +1497,7 @@ class STATGraph(xdot.Graph):
             blue = float(color_index)/255.0
         else:
             red = float(511 - color_index)/255.0
-        return red, blue            
+        return red, blue
 
     ## \param self - the instance
     #  \param nodes - a list of nodes to check
@@ -1527,7 +1524,7 @@ class STATGraph(xdot.Graph):
                         max_len = len(num_string)
                 if temporal_string in temporal_string_list:
                     duplicates += 1
-                else:    
+                else:
                     temporal_string_list.append(temporal_string)
                 to_leaves.append((temporal_string, node))
                 node_list.append(node)
@@ -1547,7 +1544,7 @@ class STATGraph(xdot.Graph):
 
     def color_temporally_ordered_edges(self):
         """Color the edges based on temporal ordering.
-        
+
         From red (least progress) to blue (most progress).
         """
         to_leaves, temporal_string_list, node_list = self.get_to_list(self.nodes, True)
@@ -1611,8 +1608,8 @@ class STATGraph(xdot.Graph):
             return 1
 
     def get_node_eq_depth(self, node):
-        """Determine the equivalence class depth. 
-        
+        """Determine the equivalence class depth.
+
         i.e., number of colors along the path of the specified node."""
         if node.in_edge != None:
             parent_node = node.in_edge.src
@@ -1706,7 +1703,7 @@ class STATGraph(xdot.Graph):
                 r, g, b, p = shape.pen.fillcolor
                 shape.pen.fillcolor = (0.0, 0.0, 0.0, p)
         return modified
-    
+
     def hide_mpi(self):
         """Hide the MPI implementation frames."""
         modified = False
@@ -1775,7 +1772,7 @@ class STATGraph(xdot.Graph):
                 break
         ret = self._traverse_progress(root, 'least')
         return ret
-               
+
     def to_traverse_most_progress(self, widget, traversal_depth):
         """Traverse the call prefix tree by most progress."""
         if traversal_depth == 1:
@@ -1801,7 +1798,7 @@ class STATGraph(xdot.Graph):
                 break
         ret = self._traverse_progress(root, 'most')
         return ret
-                
+
     def _traverse_progress(self, node, least_or_most):
         """Generic implementation for traversal by progress."""
         node.hide = False
@@ -2201,9 +2198,8 @@ class STATGraph(xdot.Graph):
         """Determine if the node is an eq class leaf of the visible tree."""
         if node.hide == True or node.node_name == '0':
             return False
-            
+
         num_leaf_tasks = node.get_num_leaf_tasks()
-        num_tasks = get_num_tasks(node.edge_label)
         if num_leaf_tasks != 0:
             return True
         else:
@@ -2268,8 +2264,8 @@ class STATGraph(xdot.Graph):
 ## The STAT XDot Parser.
 class STATXDotParser(xdot.XDotParser):
     """The STAT XDot Parser.
-    
-    Derrived form the XDotParser and overrides some XDotParser methods 
+
+    Derrived form the XDotParser and overrides some XDotParser methods
     to build a STATGraph.
     """
 
@@ -2317,7 +2313,7 @@ class STATXDotParser(xdot.XDotParser):
 ## The STATNullAction overloads the xdot NullAction.
 class STATNullAction(xdot.DragAction):
     """The STATNullAction overloads the xdot NullAction.
-    
+
     Allows highlighting the entire call path of a given node.
     """
 
@@ -2352,7 +2348,7 @@ class STATNullAction(xdot.DragAction):
 ## PyGTK widget that draws STAT generated dot graphs.
 class STATDotWidget(xdot.DotWidget):
     """PyGTK widget that draws STAT generated dot graphs.
-    
+
     Derrived from xdot's DotWidget class.
     """
 
@@ -2364,8 +2360,8 @@ class STATDotWidget(xdot.DotWidget):
 
     def set_dotcode(self, dotcode, filename='<stdin>'):
         """Set the dotcode for the widget.
-        
-        Create a temporary dot file with truncated edge labels from the 
+
+        Create a temporary dot file with truncated edge labels from the
         specified dotcode and generates xdotcode with layout information.
         """
         lines = dotcode.split('\n')
@@ -2464,7 +2460,7 @@ class STATDotWidget(xdot.DotWidget):
         """Get the label that contains the specified coordinates."""
         x, y = self.window2graph(x, y)
         return self.graph.get_label(x, y)
-    
+
     def queue_draw(self):
         """Overloaded queue_draw to set size request for scroll window."""
         if use_scroll_bars:
@@ -2472,7 +2468,7 @@ class STATDotWidget(xdot.DotWidget):
             height = int(math.ceil(self.graph.height * self.zoom_ratio)) + 2 * self.ZOOM_TO_FIT_MARGIN
             self.set_size_request(max(width, 1), max(height, 1))
         xdot.DotWidget.queue_draw(self)
-   
+
     def get_drag_action(self, event):
         """Overloaded get_drag_action for scroll window."""
         if use_scroll_bars:
@@ -2487,7 +2483,7 @@ class STATDotWidget(xdot.DotWidget):
             return NullAction
         else:
             return xdot.DotWidget.get_drag_action(self, event)
-    
+
     def zoom_to_fit(self):
         """Overloaded zoom_to_fit for scroll window."""
         if use_scroll_bars:
@@ -2534,7 +2530,7 @@ class STATDotWidget(xdot.DotWidget):
             elif pos != None:
                 x, y = pos
                 allocation = self.viewport.get_allocation()
-                
+
                 rect = self.get_allocation()
                 hspan = allocation[2]
                 vspan = allocation[3]
@@ -2548,7 +2544,7 @@ class STATDotWidget(xdot.DotWidget):
 ## The window object containing the STATDotWidget
 class STATDotWindow(xdot.DotWindow):
     """The window object containing the STATDotWidget
-    
+
     The STATDotWindow is derrived from xdot's DotWindow class.
     It adds STAT specific operations to manipulate the graph.
     """
@@ -2725,8 +2721,8 @@ class STATDotWindow(xdot.DotWindow):
             for path in search_paths['include']:
                 tomod.add_include_path(path)
         self.search_types = []
-        help_string = """Search for a specified task, range 
-of tasks, or comma-separated list 
+        help_string = """Search for a specified task, range
+of tasks, or comma-separated list
 of tasks.  Example task lists:
 0
 0-10
@@ -3248,7 +3244,7 @@ entered as a regular expression"""
             combo_box.append_text(type)
         combo_box.set_active(0)
         combo_box.connect('changed', lambda w: self.on_search_type_toggled(w, label))
-        hbox.pack_start(combo_box, False, False, 10)    
+        hbox.pack_start(combo_box, False, False, 10)
         self.task_dialog.vbox.pack_start(hbox, False, False, 0)
         match_case_check_box = gtk.CheckButton("Match Case")
         match_case_check_box.set_active(True)
@@ -3380,7 +3376,7 @@ entered as a regular expression"""
                 graph.edges.pop()
             graph.undo(False)
         return ret
-    
+
     def join_eq_classes(self, node):
         """Recursively collapse equivalence classes."""
         found = False
@@ -3507,8 +3503,8 @@ entered as a regular expression"""
             #TODO: make frames resizable
             if tasks.find(':') == -1:
                 leaf_tasks = node.get_leaf_tasks()
-                num_leaf_tasks = node.get_num_leaf_tasks() #len(leaf_tasks)
-                num_tasks = get_num_tasks(tasks)
+                num_leaf_tasks = node.get_num_leaf_tasks()
+                num_tasks = node.num_tasks
                 if num_leaf_tasks != 0 and num_leaf_tasks == len(leaf_tasks):
                     vpaned2 = gtk.VPaned()
                     if num_leaf_tasks == 1:
@@ -3522,7 +3518,7 @@ entered as a regular expression"""
                     task_view.set_cursor_visible(False)
                     task_view_buffer = task_view.get_buffer()
                     task_view.set_wrap_mode(gtk.WRAP_WORD)
-                    task_view_buffer.set_text(list_to_string(leaf_tasks))
+                    task_view_buffer.set_text(list_to_string(leaf_tasks).replace(",", ", "))
                     sw.add(task_view)
                     my_frame.add(sw)
                     if num_tasks != num_leaf_tasks:
@@ -3550,7 +3546,7 @@ entered as a regular expression"""
                     except:
                         vpaned1.add2(my_frame)
             else:
-                num_tasks = get_num_tasks(tasks)
+                num_tasks = node.num_tasks
                 num_leaf_tasks = node.get_num_leaf_tasks()
                 vpaned2 = gtk.VPaned()
                 my_frame = gtk.Frame("Node summary:")
@@ -3611,7 +3607,7 @@ entered as a regular expression"""
                                 sub_menu_item.connect('button-release-event', lambda w, e, o, n, i2: self.get_current_graph().view_source(n, i2), option, node, i)
                                 sub_menu.append(sub_menu_item)
                                 sub_menu_item.show()
-                                
+
                             menu_item.set_submenu(sub_menu)
                     else:
                         menu_item.set_sensitive(False)
@@ -3653,7 +3649,7 @@ entered as a regular expression"""
             hbox.pack_end(button, False, False, 0)
             self.my_dialog.vbox.pack_end(hbox, False, False, 0)
             self.my_dialog.show_all()
-            
+
 
     def manipulate_cb(self, widget, data, node):
         """Callback to handle the request of a manipulation operation."""
@@ -3661,7 +3657,7 @@ entered as a regular expression"""
         # setup
         if data != 'View Source':
             ret = self.get_current_graph().set_undo_list()
-        
+
         # process command
         if data == 'Collapse':
             ret = self.get_current_graph().collapse(node, True)

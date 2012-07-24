@@ -28,6 +28,58 @@ int statGraphRoutinesCurrentIndex;
 int *statGraphRoutinesRanksList;
 int statGraphRoutinesRanksListLength;
 
+unsigned int statStringHash(const char *str)
+{
+    unsigned int hash = 0;
+    int c;
+
+    while (c = *(str++))
+        hash = c + (hash << 6) + (hash << 16) - hash;
+
+    return hash;
+}
+
+graphlib_graph_p createRootedGraph(graphlib_functiontable_p functions)
+{
+    graphlib_error_t graphlibError;
+    graphlib_graph_p newGraph = NULL;
+
+    graphlibError = graphlib_newGraph(&newGraph, functions);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Error creating new graph\n");
+        return NULL;
+    }
+
+    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "/", GRAPH_FONT_SIZE};
+    graphlibError = graphlib_addNode(newGraph, 0, &nodeattr);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Error adding sentinel node to graph\n");
+        return NULL;
+    }
+    return newGraph;
+}
+
+StatBitVectorEdge_t *initializeBitVectorEdge(int numTasks)
+{
+    StatBitVectorEdge_t *edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+    if (edge == NULL)
+    {
+        fprintf(stderr, "%s: Failed to malloc edge\n", strerror(errno));
+        return NULL;
+    }
+    edge->length = statBitVectorLength(numTasks);
+    edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BYTES);
+    if (edge->bitVector == NULL)
+    {
+        fprintf(stderr, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+        free(edge);
+        return NULL;
+    }
+    return edge;
+}
+
 void statInitializeBitVectorFunctions()
 {
     statFreeBitVectorFunctions();
@@ -246,7 +298,7 @@ char *statEdgeToText(const void *edge)
     int in_range = 0, first_iteration = 1, range_start, range_end, cur_val, last_val = 0;
     char *ret;
     unsigned int ret_size = 0, count = 0;
-  
+
     ret = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
     ret_size = STAT_GRAPH_CHUNK;
     if (ret == NULL)
@@ -287,7 +339,7 @@ char *statEdgeToText(const void *edge)
                             range_end = cur_val;
                             sprintf(ret + count, "-");
                             count += 1;
-                        }        
+                        }
                         else
                         {
                             sprintf(ret + count, ",");
@@ -334,7 +386,11 @@ char *statEdgeToText(const void *edge)
 void statMergeEdge(void *edge1, const void *edge2)
 {
     unsigned int i;
+    size_t length;
     StatBitVectorEdge_t *e1 = (StatBitVectorEdge_t *)edge1, *e2 = (StatBitVectorEdge_t *)edge2;
+    length = e1->length;
+    if (e2->length < e1->length)
+        length = e2->length;
     for (i = 0; i < e1->length; i++)
         e1->bitVector[i] |= e2->bitVector[i];
 }
@@ -377,7 +433,7 @@ long statEdgeCheckSum(const void *edge)
 
     for (i = 0; i < e->length; i++)
         ret = ret + e->bitVector[i] * (e->length - i + 1);
-        
+
     return ret;
 }
 

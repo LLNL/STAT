@@ -75,7 +75,7 @@ typedef enum {
     PROT_ATTACH_PERF_RESP,
     PROT_SEND_FGFS_STREAM,
     PROT_FGFS_REQUEST,
-#endif               
+#endif
     PROT_SEND_NODE_IN_EDGE,
     PROT_SEND_NODE_IN_EDGE_RESP
 } StatProt_t;
@@ -225,7 +225,6 @@ typedef enum {
         default: \
             fprintf(outFp, "Unknown Error"); \
             break; \
-    }; 
-//}
+    };
 
 #endif /* __STAT_H */

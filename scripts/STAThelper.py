@@ -14,7 +14,7 @@ Redistribution and use in source and binary forms, with or without modification,
         Redistributions of source code must retain the above copyright notice, this list of conditions and the disclaimer below.
         Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the disclaimer (as noted below) in the documentation and/or other materials provided with the distribution.
         Neither the name of the LLNS/LLNL nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-        
+
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."""
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
 __version__ = "2.0.0"
@@ -92,7 +92,7 @@ mpi_functions = ['mpi_file_iwrite_shared', 'mpi_info_set', 'mpio_request_c2f',\
 'mpi_waitany', 'mpi_file_iread_at', 'mpi_info_get', 'mpi_waitsome',\
 'mpi_file_iread_shared', 'mpi_info_get_nkeys', 'mpi_wtick', 'mpi_file_iwrite',\
 'mpi_info_get_nthkey', 'mpi_wtime', 'mpi_file_iwrite_at',\
-'mpi_info_get_valuelen', 'mpi_file_iwrite_shared', 'mpi_info_set'] 
+'mpi_info_get_valuelen', 'mpi_file_iwrite_shared', 'mpi_info_set']
 
 ## A global variable to store to pygments highlighted source lines
 pygments_lines = []
@@ -107,7 +107,7 @@ if have_pygments:
             Formatter.__init__(self, **options)
             self.styles = {}
             for token, style in self.style:
-                start = '' 
+                start = ''
                 end = ''
                 newline_end = '\n'
                 newline_start = ''
@@ -136,14 +136,14 @@ if have_pygments:
                     end = newline_end + end + '</STATviewcolor>\n'
                     newline_end = ''
                 self.styles[token] = (start, end)
-   
+
         def format(self, tokensource, outfile):
             """Define the output format, generate the pygments_list."""
             lastval = ''
             lasttype = None
             last_style_end_newline = False
             last_value_end_newline = True
-    
+
             # parse step to generate structure
             current_line = []
             for ttype, value in tokensource:
@@ -170,13 +170,13 @@ if have_pygments:
                     if value != values[-1] and len(values) != 1:
                         pygments_lines.append(current_line)
                         current_line = []
-    
+
             # parse step to generate dummy format
             for ttype, value in tokensource:
                 outfile.write(value)
 
 
-## \param function_name - the edge label string 
+## \param function_name - the edge label string
 #  \return true if the input function is an MPI function
 #
 #  \n
@@ -190,8 +190,8 @@ def is_MPI(function_name):
     return False
 
 
-## \param label - the edge label string 
-#  \return a list of integer ranks 
+## \param label - the edge label string
+#  \return a list of integer ranks
 #
 #  \n
 def get_task_list(label):
@@ -223,7 +223,7 @@ def get_task_list(label):
     return task_list
 
 
-## \param label - the edge label string 
+## \param label - the edge label string
 #  \return the number of tasks
 #
 #  \n
@@ -303,7 +303,7 @@ def decompose_node(input, item = None):
     sourceLine = ''
     iter_string = ''
     if has_source_and_not_collapsed(input):
-        function_name = input[:input.find('@')] 
+        function_name = input[:input.find('@')]
         if input.find('$') != -1:
             sourceLine = input[input.find('@') + 1:input.find('$')]
             iter_string = input[input.find('$') + 1:]
@@ -332,7 +332,7 @@ def decompose_node(input, item = None):
 #  \n
 def var_spec_to_string(var_spec):
     """Translates a variable specificaiton list into a string."""
-    if var_spec == []:  
+    if var_spec == []:
         return 'NULL'
     ret = '%d#' %len(var_spec)
     for file, line, depth, var in var_spec:

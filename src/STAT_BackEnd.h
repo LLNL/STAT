@@ -57,13 +57,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #define GROUP_OPS
 #endif
 
-#ifndef BGL    
+#ifndef BGL
   #include "Variable.h"
   #include "Function.h"
-#endif    
-#ifdef PROTOTYPE    
+#endif
+#ifdef PROTOTYPE
   #include "local_var.h"
-#endif    
+#endif
 
 #include <sys/select.h>
 #include <errno.h>
@@ -109,7 +109,7 @@ typedef struct
 /*!
     \param buf - the input buffer
     \param bufLen - the length of the input buffer
-    \param[out] data - the return data 
+    \param[out] data - the return data
     \return 0 on success
 */
 int Unpack_STAT_BE_info(void *buf, int bufLen, void *data);
@@ -176,7 +176,7 @@ class STAT_BackEnd
         //! Connect to the MRNet tree
         /*!
             \return STAT_OK on success
-        
+
             Receive the connection information from the frontend and broadcast it to all
             the daemons.  Call the MRNet Network constructor with this daemon's MRNet
             personality.
@@ -186,7 +186,7 @@ class STAT_BackEnd
         //! Receives messages from FE and executes the requests
         /*!
             \return STAT_OK on success
-        
+
             Loops on MRNet receive and executes the requested command
         */
         StatError_t mainLoop();
@@ -212,7 +212,7 @@ class STAT_BackEnd
         //! Write MRNet connection information to a named fifo
         /*!
             \return STAT_OK on success
-        
+
             Called by the helper daemon to write MRNet connection information for the
             STATBench daemon emulators to a fifo.
         */
@@ -221,7 +221,7 @@ class STAT_BackEnd
         //! Connects to the MRNet tree
         /*!
             \return STAT_OK on success
-        
+
             Reads in connection information from the named fifo and uses it to derrive
             this daemon emulator's MRNet personality, which is then passed to the MRNet
             Network constructor.
@@ -264,7 +264,7 @@ class STAT_BackEnd
         /*!
             \param nTraces - the number of traces to gather per process
             \param traceFrequency - the time to wait between samples
-            \param nRetries - the number of attempts to try to get a complete stack 
+            \param nRetries - the number of attempts to try to get a complete stack
                 trace
             \param retryFrequency - the time to wait between retries
             \param withThreads - whether to gather thread stack traces too
@@ -283,17 +283,11 @@ class STAT_BackEnd
         */
         StatError_t mergeIntoGraphs(graphlib_graph_p currentGraph, bool last_trace);
 
-        //! Create a new graphlib graph containing only the root node
-        /*!
-          \return A new graphlib graph
-        */
-        graphlib_graph_p createRootedGraph();
-
 #if defined GROUP_OPS
         //! Get a stack trace from every process
         /*!
             \param[out] retGraph - the return graph
-            \param nRetries - the number of attempts to try to get a complete stack 
+            \param nRetries - the number of attempts to try to get a complete stack
                 trace
             \param retryFrequency - the time to wait between retries
             \param withThreads - whether to gather thread stack traces too
@@ -317,7 +311,7 @@ class STAT_BackEnd
             \param[out] retGraph - the return graph
             \param proc - the current process
             \param rank - the current process rank
-            \param nRetries - the number of attempts to try to get a complete stack 
+            \param nRetries - the number of attempts to try to get a complete stack
                 trace
             \param retryFrequency - the time to wait between retries
             \param withThreads - whether to gather thread stack traces too
@@ -353,7 +347,7 @@ class STAT_BackEnd
           \return The name to use for this frame
          */
         std::string getFrameName(const Dyninst::Stackwalker::Frame &frame, bool is_final_frame);
-        
+
         //! Initialize the nodeattr's name field with the given string
         /*!
           \param s - The name to use
@@ -367,12 +361,12 @@ class STAT_BackEnd
             \param[out] outBuf - the output list of variables
             \param[out] nVariables - the number of variables
             \return STAT_OK on success
-            
-            Parse the variable specification to get individual variables and frame 
-            references variableSpecification is of the form: 
-        
+
+            Parse the variable specification to get individual variables and frame
+            references variableSpecification is of the form:
+
             "num_elements#filename:line.depth$var[,filename:line.depth$var]*"
-        
+
             i.e., "1#foo.C:1.2$i" or "2#foo.C:1.2$i,bar.C:3.4$j"
         */
         StatError_t parseVariableSpecification(char *variableSpecification, statVariable_t **outBuf, int *nVariables);

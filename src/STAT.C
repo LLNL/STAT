@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     int i, j, samples = 1, traces;
     STAT_FrontEnd *STAT;
     StatError_t statError, retval;
-    string invocationString; 
+    string invocationString;
 
     /* Parse arguments and fill in class variables */
     STAT = new STAT_FrontEnd();
@@ -151,7 +151,7 @@ int main(int argc, char **argv)
         traces = 1;
     else
         traces = nTraces;
-        
+
     if (comprehensive)
         samples = 4;
     for (i = 0; i < samples; i++)
@@ -206,7 +206,7 @@ int main(int argc, char **argv)
                 delete STAT;
                 return -1;
             }
-    
+
             /* Sample the traces */
             statError = STAT->sampleStackTraces(sampleType, withThreads, clearOnSample, 1, traceFrequency, nRetries, retryFrequency);
             if (statError != STAT_OK)
@@ -218,7 +218,7 @@ int main(int argc, char **argv)
                 delete STAT;
                 return -1;
             }
-    
+
             if (individualSamples == true)
             {
                 /* Gather the trace */
@@ -231,7 +231,7 @@ int main(int argc, char **argv)
                     return -1;
                 }
             }
-    
+
             /* Resume the application */
             if (comprehensive == false or i == 3)
             {
@@ -343,11 +343,11 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         {"comprehensive", no_argument, 0, 'c'},
         {"withthreads", no_argument, 0, 'w'},
         {"autotopo", no_argument, 0, 'a'},
-        {"create", no_argument, 0, 'C'}, 
-        {"appnodes", no_argument, 0, 'A'}, 
-        {"sampleindividual", no_argument, 0, 'S'}, 
-        {"mrnetprintf", no_argument, 0, 'M'}, 
-        {"countrep", no_argument, 0, 'U'}, 
+        {"create", no_argument, 0, 'C'},
+        {"appnodes", no_argument, 0, 'A'},
+        {"sampleindividual", no_argument, 0, 'S'},
+        {"mrnetprintf", no_argument, 0, 'M'},
+        {"countrep", no_argument, 0, 'U'},
         {"fanout", required_argument, 0, 'f'},
         {"nodes", required_argument, 0, 'n'},
         {"procs", required_argument, 0, 'p'},
