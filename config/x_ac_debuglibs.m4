@@ -4,7 +4,8 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
       [Add the compile and link search paths for stackwalker]
     )],
     [CXXFLAGS="$CXXFLAGS -I${withval}/include"
-     LDFLAGS="$LDFLAGS -L${withval}/lib -Wl,-rpath=${withval}/lib"],
+     LDFLAGS="$LDFLAGS -L${withval}/lib"
+     RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"],
     [CXXFLAGS="$CXXFLAGS"]
   )
   AC_ARG_WITH(libdwarf, 
@@ -12,7 +13,8 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
       [Add the compile and link search paths for libdwarf]
     )],
     [CXXFLAGS="$CXXFLAGS -I${withval}/include"
-     LDFLAGS="$LDFLAGS -L${withval}/lib -Wl,-rpath=${withval}/lib"],
+     LDFLAGS="$LDFLAGS -L${withval}/lib"
+     RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"],
     [CXXFLAGS="$CXXFLAGS"]
   )
 

@@ -6,7 +6,8 @@ AC_DEFUN([X_AC_MRNET], [
     )],
     [CXXFLAGS="$CXXFLAGS -I${withval}/include"
       MRNETPREFIX="${withval}"
-      LDFLAGS="$LDFLAGS -L${withval}/lib -Wl,-rpath=${withval}/lib"
+      LDFLAGS="$LDFLAGS -L${withval}/lib"
+      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"
     ],
     [CXXFLAGS="$CXXFLAGS"
       MRNETPREFIX=""

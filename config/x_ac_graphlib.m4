@@ -5,7 +5,8 @@ AC_DEFUN([X_AC_GRAPHLIB], [
       [Add the compile and link search paths for graphlib]
     )],
     [CXXFLAGS="$CXXFLAGS -I${withval}/include"
-      LDFLAGS="$LDFLAGS -L${withval}/lib -Wl,-rpath=${withval}/lib"
+      LDFLAGS="$LDFLAGS -L${withval}/lib"
+      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"
       GRAPHLIBPREFIX=${withval}
     ],
     [CXXFLAGS="$CXXFLAGS"]

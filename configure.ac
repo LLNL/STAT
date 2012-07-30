@@ -39,17 +39,28 @@ AC_TYPE_SIZE_T
 AC_HEADER_TIME
 X_AC_ENABLE_DEBUG
 
+AC_ARG_ENABLE(rpath,
+  [AS_HELP_STRING([--enable-rpath],[Enable the use of rpaths, default=yes])],
+  [WITH_RPATH=$enableval],
+  [WITH_RPATH=yes]
+)  
+if test "$WITH_RPATH" = "yes"
+then
+  LDFLAGS="$LDFLAGS $RPATH_FLAGS"
+else
+  LDFLAGS="$LDFLAGS"
+fi
 AC_ARG_ENABLE(statbench,
   [AS_HELP_STRING([--enable-statbench],[Enable the compilation of STATBench, the STAT performance emulator])],
   [WITH_STATBENCH=$enableval],
   [WITH_STATBENCH=no]
 )  
+AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
 AC_ARG_ENABLE(to,
   [AS_HELP_STRING([--enable-to],[Enable the use of temporal ordering])],
   [CXXFLAGS="-DPROTOTYPE $CXXFLAGS"],
   [CXXFLAGS="$CXXFLAGS"]
 )  
-AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
 AC_ARG_WITH(procspernode,
   [AS_HELP_STRING([--with-procspernode=num],[Set the maximum number of communication processes per node equal to num, defaults to 1 if not specified])],
   [AC_DEFINE_UNQUOTED([STAT_PROCS_PER_NODE], [$withval], [The max number of CPs per node])],

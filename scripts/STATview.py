@@ -3712,7 +3712,6 @@ def STATview_main(argv):
             i += 1
             try:
                 with open(filename, 'r') as f:
-#                f = file(filename, 'rt')
                     if i != 0:
                         window.create_new_tab()
                     stat_wait_dialog.show_wait_dialog_and_run(window.set_dotcode, (f.read(), filename, i), ['Opening DOT file'], window)

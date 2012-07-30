@@ -6,7 +6,8 @@ AC_DEFUN([X_AC_FGFS], [
     [CXXFLAGS="$CXXFLAGS -I${withval}/include -DSTAT_FGFS"
       FGFSPREFIX="${withval}"
       WITH_FGFS=yes
-      LDFLAGS="$LDFLAGS -L${withval}/lib -Wl,-rpath=${withval}/lib"
+      LDFLAGS="$LDFLAGS -L${withval}/lib"
+      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"
     ],
     [CXXFLAGS="$CXXFLAGS"
       WITH_FGFS=no

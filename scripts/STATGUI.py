@@ -90,7 +90,7 @@ class STATGUI(STATDotWindow):
         self.types = { 'Topology Type'     : ['automatic', 'depth', 'max fanout', 'custom'],
                        'Verbosity Type'    : ['error', 'stdout', 'full'],
                        'Sample Type'       : ['function only', 'function and pc', 'function and line'],
-                       'Edge Type'       : ['full list', 'count and representative'],
+                       'Edge Type'         : ['full list', 'count and representative'],
                        'Remote Host Shell' : ['rsh', 'ssh'] }
         self.options = { 'Remote Host'                      : "localhost",
                          'Remote Host Shell'                : "rsh",
@@ -145,9 +145,9 @@ class STATGUI(STATDotWindow):
                             option = string.lstrip(string.rstrip(split_line[0]))
                             value = string.lstrip(string.rstrip(split_line[1]))
                             if option in self.options.keys():
-                                if type(self.options[option]) == type(1):
+                                if type(self.options[option]) == int:
                                     value = int(value)
-                                elif type(self.options[option]) == type(True):
+                                elif type(self.options[option]) == bool:
                                     if string.lower(value) == 'true':
                                         value = True
                                     elif string.lower(value) == 'false':
