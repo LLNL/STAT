@@ -30,6 +30,7 @@ import math
 import re
 import subprocess
 import traceback
+import shelve
 from collections import defaultdict
 #import inspect
 
@@ -159,10 +160,9 @@ def list_to_string(task_list):
 #  \return the created temporary dot file name
 #
 #  \n
-def create_temp(dot_filename):
+def create_temp(dot_filename, truncate, max_node_name):
     """Create a temporary dot file with "..." truncated edge labels."""
     # TODO we really should use the xdot parser to do this, instead of this ad hoc one!
-    MAX_NODE_NAME = 64
     temp_dot_filename = '_temp.dot'
     try:
         temp_dot_file = open(temp_dot_filename, 'w')
@@ -196,12 +196,18 @@ def create_temp(dot_filename):
                             if iter_string != '':
                                 iter_string = '$' + iter_string
                             label = "%s@%s:%d%s" %(function_name, source, cur_lineNum, iter_string)
-                    if len(label) > MAX_NODE_NAME:
+                    if len(label) > max_node_name and truncate == "front":
                         # clip long node names at the front (preserve most significant characters)
-                        if label[2-MAX_NODE_NAME] == '\\':
-                            label = '...\\%s' %label[3-MAX_NODE_NAME:]
+                        if label[2-max_node_name] == '\\':
+                            label = '...\\%s' %label[3-max_node_name:]
                         else:
-                            label = '...%s' %label[3-MAX_NODE_NAME:]
+                            label = '...%s' %label[3-max_node_name:]
+                    if len(label) > max_node_name and truncate == "rear":
+                        # clip long node names at the rear (preserve least significant characters)
+                        if label[max_node_name-1] == '\\':
+                            label = '%s' %label[:max_node_name-2]
+                        else:
+                            label = '%s...' %label[:max_node_name-3]
                     temp_dot_file.write(label)
                     temp_dot_file.write(line[line.find('fillcolor') - 3:])
                 elif line.find('->') > -1:
@@ -245,7 +251,7 @@ def create_temp(dot_filename):
         show_error_dialog('Failed to open dot file %s' %dot_filename, exception = e)
         return None
     except Exception as e:
-        show_error_dialog('Failed to create temporary dot file %s\n %d' %(dot_filename, repr(e)), exception = e)
+        show_error_dialog('Failed to create temporary dot file %s\n %s' %(dot_filename, repr(e)), exception = e)
         return None
     finally:
         temp_dot_file.write('}\n')
@@ -1706,24 +1712,40 @@ class STATGraph(xdot.Graph):
 
     def hide_mpi(self):
         """Hide the MPI implementation frames."""
+        return self.hide_generic(is_MPI)
+
+    def re_search(self, function_name, (search_text, match_case)):
+        """Function to test whether a search string matches a re"""
+        #print args
+        #(search_text, match_case) = args
+        if match_case == False:
+            search_text = string.lower(search_text)
+            function_name = string.lower(function_name)
+        if re.search(search_text, function_name) != None:
+            return True
+        return False
+
+    def hide_re(self, search_text, match_case):
+        return self.hide_generic(self.re_search, (search_text, match_case))
+    
+    def hide_generic(self, func, *args):
+        """Hide frames that match the specified function."""
         modified = False
         for node in self.nodes:
-#            name = node.label
             frames = decompose_node(node.label, -1)
             if (type(frames) == tuple):
                 frames = [frames]
             for function_name, sourceLine, iter_string in frames:
-                if is_MPI(function_name):
+                if args != ():
+                    print args
+                    hide = func(function_name, args)
+                else:
+                    hide = func(function_name)
+                if hide == True:
                     ret = self.collapse(node, True)
                     if ret == True:
                         modified = True
                         break
-#            if has_source_and_not_collapsed(name):
-#                name, sourceLine, iter_string = decompose_node(name)
-#            if is_MPI(name):
-#                ret = self.collapse(node, True)
-#                if ret == True:
-#                    modified = True
         return modified
 
     def traverse(self, widget, traversal_depth):
@@ -2358,7 +2380,7 @@ class STATDotWidget(xdot.DotWidget):
         self.graph = STATGraph()
         self.drag_action = STATNullAction(self)
 
-    def set_dotcode(self, dotcode, filename='<stdin>'):
+    def set_dotcode(self, dotcode, filename='<stdin>', truncate = "front", max_node_name = 64):
         """Set the dotcode for the widget.
 
         Create a temporary dot file with truncated edge labels from the
@@ -2381,7 +2403,7 @@ class STATDotWidget(xdot.DotWidget):
                 label = tokens[3][8:-2]
                 self.label_map[dst] = label
         if filename != '<stdin>':
-            temp_dot_filename = create_temp(filename)
+            temp_dot_filename = create_temp(filename, truncate, max_node_name)
             if temp_dot_filename is None:
                 return False
         try:
@@ -2592,6 +2614,10 @@ class STATDotWindow(xdot.DotWindow):
     ui += '            <menuitem action="Open"/>\n'
     ui += '            <menuitem action="SaveAs"/>\n'
     ui += '            <separator/>\n'
+    ui += '            <menuitem action="Prefs"/>\n'
+    ui += '            <menuitem action="SavePrefs"/>\n'
+    ui += '            <menuitem action="LoadPrefs"/>\n'
+    ui += '            <separator/>\n'
     ui += '            <menuitem action="SearchPath"/>\n'
     ui += '            <separator/>\n'
     ui += '            <menuitem action="NewTab"/>\n'
@@ -2624,6 +2650,7 @@ class STATDotWindow(xdot.DotWindow):
     ui += '        <toolitem action="OriginalGraph"/>\n'
     ui += '        <toolitem action="ResetLayout"/>\n'
     ui += '        <toolitem action="HideMPI"/>\n'
+    ui += '        <toolitem action="HideText"/>\n'
     ui += '        <toolitem action="Join"/>\n'
     ui += '        <toolitem action="TraverseGraph"/>\n'
     ui += '        <toolitem action="ShortestPath"/>\n'
@@ -2654,6 +2681,9 @@ class STATDotWindow(xdot.DotWindow):
         actions.append(('HelpMenu', None, '_Help'))
         actions.append(('Open', gtk.STOCK_OPEN, '_Open', '<control>O', 'Open a file', self.on_open))
         actions.append(('SaveAs', gtk.STOCK_SAVE_AS, '_SaveAs', '<control>S', 'Save current view as a file', self.on_save_as))
+        actions.append(('Prefs', gtk.STOCK_PROPERTIES, 'Preferences', '<control>P', 'Load saved preference settings', self.on_prefs))
+        actions.append(('SavePrefs', gtk.STOCK_SAVE_AS, 'Save Pr_eferences', '<control>E', 'Load saved preference settings', self.on_save_prefs))
+        actions.append(('LoadPrefs', gtk.STOCK_OPEN, '_Load Preferences', '<control>L', 'Save current preference settings', self.on_load_prefs))
         actions.append(('SearchPath', gtk.STOCK_ADD, '_Add Search Paths', '<control>A', 'Add search paths for application source and header files', self.on_modify_search_paths))
         actions.append(('NewTab', gtk.STOCK_NEW, '_New Tab', '<control>T', 'Create new tab', lambda x: self.menu_item_response(gtk.STOCK_NEW, 'New Tab')))
         actions.append(('CloseTab', gtk.STOCK_CLOSE, 'Close Tab', '<control>W', 'Close current tab', lambda x: self.menu_item_response(None, 'Close Tab')))
@@ -2671,6 +2701,7 @@ class STATDotWindow(xdot.DotWindow):
         actions.append(('ShortestPath', gtk.STOCK_GOTO_TOP, 'Path', None, 'Traverse the [next] shortest path', self.on_shortest_path))
         actions.append(('LongestPath', gtk.STOCK_GOTO_BOTTOM, 'Path', None, 'Traverse the [next] longest path', self.on_longest_path))
         actions.append(('Search', gtk.STOCK_FIND, 'Search', None, 'Search for callpaths by text, tasks, or hosts', self.on_search))
+        actions.append(('HideText', gtk.STOCK_CUT, 'Text', None, 'Cut the call graph based on a regular expression', self.on_hide_text))
         actions.append(('LeastTasks', gtk.STOCK_GOTO_FIRST, 'Tasks', None, 'Traverse the path with the [next] least tasks visited', self.on_least_tasks))
         actions.append(('MostTasks', gtk.STOCK_GOTO_LAST, 'Tasks', None, 'Traverse the path with the [next] most tasks visited', self.on_most_tasks))
         actions.append(('IdentifyEqClasses', gtk.STOCK_SELECT_COLOR, 'Eq C', None, 'Identify the equivalence classes of the current graph', self.on_identify_num_eq_classes))
@@ -2732,7 +2763,227 @@ of tasks.  Example task lists:
 specified text, which may be
 entered as a regular expression"""
         self.search_types.append(('text', self.search_text, 'Search for callpaths containing the\nspecified text, which may be\nentered as a regular expression'))
+        if not hasattr(self, "types"):
+            self.types = {}
+        self.types["truncate"] = ["front", "rear"]
+        if not hasattr(self, "options"):
+            self.options = {}
+        self.options["truncate"] = "front"
+        self.options["max node name"] = 64
+        self.combo_boxes = {}
+        self.spinners = {}
+        self.entries = {}
         self.show_all()
+
+    def update_option(self, w, label, parent_window, option):
+        """Generate text entry dialog to update the specified option."""
+        dialog = gtk.Dialog('Update %s' %option, parent_window)
+        entry = gtk.Entry()
+        entry.set_max_length(1024)
+        entry.set_text(self.options[option])
+        entry.connect("activate", lambda w: self.on_update_option(w, entry, label, dialog, option))
+        dialog.vbox.pack_start(entry, True, True, 0)
+        hbox = gtk.HButtonBox()
+        button = gtk.Button(stock = gtk.STOCK_CANCEL)
+        button.connect("clicked", lambda w: dialog.destroy())
+        hbox.pack_start(button, False, False, 0)
+        button = gtk.Button(stock = gtk.STOCK_OK)
+        button.connect("clicked", lambda w: self.on_update_option(w, entry, label, dialog, option))
+        hbox.pack_start(button, False, False, 0)
+        dialog.vbox.pack_start(hbox, False, False, 0)
+        dialog.show_all()
+        dialog.run()
+
+    def on_update_option(self, w, entry, label, dialog, option):
+        """Callback to update the specified option."""
+        self.options[option] = entry.get_text()
+        entry.set_text('')
+        label.set_text('%s: %s' %(option, self.options[option]))
+        dialog.destroy()
+
+    def pack_entry_and_button(self, entry_text, function, frame, dialog, button_text, box, fill=False, center=False, pad=0):
+        """Generates a text entry and activation button."""
+        hbox = gtk.HBox()
+        entry = gtk.Entry()
+        entry.set_max_length(1024)
+        entry.set_text(entry_text)
+        entry.connect("activate", lambda w: apply(function, (w, frame, dialog, entry)))
+        hbox.pack_start(entry, True, True, 0)
+        button = gtk.Button(button_text)
+        button.connect("clicked", lambda w: apply(function, (w, frame, dialog, entry)))
+        hbox.pack_start(button, False, False, 0)
+        box.pack_start(hbox, fill, center, pad)
+        return entry
+
+    def pack_radio_buttons(self, box, option):
+        """Pack a set of radio buttons for a specified option."""
+        for type in self.types[option]:
+            if type == self.types[option][0]:
+                radio_button = gtk.RadioButton(None, type)
+            else:
+                radio_button = gtk.RadioButton(radio_button, type)
+            if type == self.options[option]:
+                radio_button.set_active(True)
+                self.toggle_radio_button(None, (option, type))
+            radio_button.connect('toggled', self.toggle_radio_button, (option, type))
+            box.pack_start(radio_button, False, False, 0)
+
+    def toggle_radio_button(self, action, data):
+        """Callback to toggle on/off a radio button."""
+        option, type = data
+        self.options[option] = type
+
+    def pack_spinbutton(self, box, option):
+        """Pack a spin button into the spcified box for the specified option."""
+        hbox = gtk.HBox()
+        label = gtk.Label(option)
+        hbox.pack_start(label, False, False, 0)
+        adj = gtk.Adjustment(1.0, 0.0, 1000000.0, 1.0, 100.0, 0.0)
+        spinner = gtk.SpinButton(adj, 0, 0)
+        spinner.set_value(self.options[option])
+        hbox.pack_start(spinner, False, False, 0)
+        box.pack_start(hbox, False, False, 10)
+        self.spinners[option] = spinner
+
+    def pack_combo_box(self, box, option):
+        """Pack a combo box into the spcified box for the specified option."""
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label("Specify %s:" %option), False, False, 0)
+        combo_box = gtk.combo_box_new_text()
+        for type in self.types[option]:
+            combo_box.append_text(type)
+        combo_box.set_active(self.types[option].index(self.options[option]))
+        hbox.pack_start(combo_box, False, False, 10)
+        self.combo_boxes[option] = combo_box
+        box.pack_start(hbox, False, False, 0)
+
+    def pack_check_button(self, box, option, center=False, expand=False, pad=0):
+        """Pack a check button into the specified box for the specified option."""
+        check_button = gtk.CheckButton(option)
+        if self.options[option] == True:
+            check_button.set_active(True)
+        else:
+            check_button.set_active(False)
+        check_button.connect('toggled', lambda w: self.on_toggle_check_button(w, option))
+        box.pack_start(check_button, center, expand, pad)
+
+    def on_toggle_check_button(self, widget, option):
+        """Callback to toggle on/off a check button."""
+        if self.options[option] == True:
+            self.options[option] = False
+        else:
+            self.options[option] = True
+
+    def pack_string_option(self, box, option, parent_window):
+        """Pack a button into the specified box that generates a text entry dialog for the specified option."""
+        hbox = gtk.HBox()
+        label =  gtk.Label('%s: %s' %(option, self.options[option]))
+        hbox.pack_start(label, False, False, 0)
+        box.pack_start(hbox, False, False, 10)
+        button = gtk.Button('Modify %s' %option)
+        button.connect("clicked", lambda w: self.update_option(w, label, parent_window, option))
+        box.pack_start(button, False, False, 0)
+
+    def update_prefs_cb(self, w, dialog):
+        dialog.destroy()
+        try:
+            self.options['max node name'] = int(self.spinners['max node name'].get_value())
+        except:
+            pass
+
+    def on_prefs(self, action):
+        dialog = gtk.Dialog('Preferences', self)
+        options = ["truncate", "max node name"]
+        for option in options:
+            if type(self.options[option]) == int:
+                self.pack_spinbutton(dialog.vbox, option)                
+            elif type(self.options[option]) == str:
+                if option in self.types:
+                    self.pack_combo_box(dialog.vbox, option)
+                else:
+                    self.pack_string_option(dialog.vbox, option, dialog)
+        hbox = gtk.HButtonBox()
+        button = gtk.Button(stock = gtk.STOCK_CANCEL)
+        button.connect("clicked", lambda w: dialog.destroy())
+        hbox.pack_start(button, False, True, 0)
+        button = gtk.Button(stock = gtk.STOCK_OK)
+        button.connect("clicked", lambda w: self.update_prefs_cb(w, dialog))
+        hbox.pack_start(button, False, True, 0)
+        dialog.vbox.pack_start(hbox, False, False, 0)
+        dialog.show_all()
+        dialog.run()
+
+    def on_load_prefs(self, action):
+        """Load user-saved preferences from a file."""
+        chooser = gtk.FileChooserDialog(title = "Load Preferences", action = gtk.FILE_CHOOSER_ACTION_OPEN, buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
+        chooser.set_default_response(gtk.RESPONSE_OK)
+        filter = gtk.FileFilter()
+        filter.set_name('STAT Prefs File')
+        filter.add_pattern("*.SPF")
+        chooser.add_filter(filter)
+        filter = gtk.FileFilter()
+        filter.set_name('All files')
+        filter.add_pattern("*")
+        chooser.add_filter(filter)
+        chooser.set_current_folder('%s/.STAT' %os.environ['HOME'])
+        if chooser.run() == gtk.RESPONSE_OK:
+            filename = chooser.get_filename()
+            try:
+                shelf = shelve.open(filename)
+                for key in self.options.keys():
+                    self.options[key] = shelf[key]
+                shelf.close()
+            except IOError as e:
+                show_error_dialog('%s\nFailed to load preferences file %s\n' %(repr(e), filename), self)
+            except Exception as e:
+                show_error_dialog('%s\nFailed to process preferences file %s\n' %(repr(e), filename), self)
+        chooser.destroy()
+
+    def on_save_prefs(self, action):
+        """Save user preferences to a file."""
+        chooser = gtk.FileChooserDialog(title = "Save Preferences", action = gtk.FILE_CHOOSER_ACTION_SAVE, buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
+        chooser.set_default_response(gtk.RESPONSE_OK)
+        chooser.set_do_overwrite_confirmation(True)
+        filter = gtk.FileFilter()
+        filter.set_name('STAT Prefs File')
+        filter.add_pattern("*.SPF")
+        chooser.add_filter(filter)
+        filter = gtk.FileFilter()
+        filter.set_name('All files')
+        filter.add_pattern("*")
+        chooser.add_filter(filter)
+        chooser.set_current_folder('%s/.STAT' %os.environ['HOME'])
+        if chooser.run() == gtk.RESPONSE_OK:
+            filter = chooser.get_filter()
+            ext = ''
+            if filter.get_name() == 'STAT Prefs File':
+                ext = '.SPF'
+            filename = chooser.get_filename()
+            if filename[-4:] != ".SPF":
+                filename = filename + ext
+            saved_options = {}
+            if os.path.exists(filename):
+                # do not delete options that aren't currently set
+                try:
+                    shelf = shelve.open(filename)
+                    for key in self.options.keys():
+                        if not key in self.options:
+                            saved_options[key] = shelf[key]
+                    shelf.close()
+                except:
+                    pass
+            try:
+                shelf = shelve.open(filename)
+                for key in saved_options.keys():
+                    shelf[key] = self.options[key]
+                for key in self.options.keys():
+                    shelf[key] = self.options[key]
+                shelf.close()
+            except IOError as e:
+                show_error_dialog('%s\nFailed to save preferences file %s\n' %(repr(e), filename), self)
+            except Exception as e:
+                show_error_dialog('%s\nFailed to save preferences file %s\n' %(repr(e), filename), self)
+        chooser.destroy()
 
     def on_destroy(self, action):
         """Destroy the window."""
@@ -2849,7 +3100,7 @@ entered as a regular expression"""
 
     def set_dotcode(self, dotcode, filename='<stdin>', page=-1):
         """Set the dotcode of the specified tab's widget."""
-        if self.tabs[page].widget.set_dotcode(dotcode, filename):
+        if self.tabs[page].widget.set_dotcode(dotcode, filename, self.options["truncate"], self.options["max node name"]):
             self.tabs[page].label.set_text(os.path.basename(filename))
             self.tabs[page].widget.zoom_to_fit()
 
@@ -3265,6 +3516,51 @@ entered as a regular expression"""
         hbox.pack_start(button, False, False, 0)
         button = gtk.Button(stock=gtk.STOCK_OK)
         button.connect("clicked", self.on_search_enter_cb, (entry, combo_box, match_case_check_box))
+        hbox.pack_start(button, False, False, 0)
+        self.task_dialog.vbox.pack_end(hbox, False, False, 0)
+        self.task_dialog.show_all()
+        return True
+
+
+    def on_hide_text_enter_cb(self, widget, arg):
+        """Callback to handle activation of focus task text entry."""
+        entry, match_case_check_box = arg
+        text = entry.get_text()
+        self.get_current_graph().set_undo_list()
+        self.get_current_graph().action_history.append('Cut %s' %(text))
+        self.update_history()
+        self.get_current_graph().hide_re(text, match_case_check_box.get_active())
+        self.get_current_graph().adjust_dims()
+        self.get_current_widget().zoom_to_fit()
+        self.task_dialog.destroy()
+        return True
+
+    def on_hide_text(self, action):
+        """Callback to handle pressing of cut text button."""
+        if self.get_current_graph().cur_filename == '':
+            return False
+        self.task_dialog = gtk.Dialog('Cut', self)
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label("Cut below:"), False, False, 0)
+        label = gtk.Label()
+        match_case_check_box = gtk.CheckButton("Match Case")
+        match_case_check_box.set_active(True)
+        match_case_check_box.connect('toggled', lambda x: x)
+        entry = gtk.Entry()
+        entry.set_max_length(65536)
+        entry.connect("activate", self.on_hide_text_enter_cb, (entry, match_case_check_box))
+        self.task_dialog.vbox.pack_start(entry, False, False, 0)
+        self.task_dialog.vbox.pack_start(match_case_check_box, False, False, 0)
+#        separator = gtk.HSeparator()
+#        self.task_dialog.vbox.pack_start(separator, False, False, 0)
+#        label.set_text(search_help)
+#        self.task_dialog.vbox.pack_start(label, True, True, 0)
+        hbox = gtk.HButtonBox()
+        button = gtk.Button(stock=gtk.STOCK_CANCEL)
+        button.connect("clicked", lambda w: self.task_dialog.destroy())
+        hbox.pack_start(button, False, False, 0)
+        button = gtk.Button(stock=gtk.STOCK_OK)
+        button.connect("clicked", self.on_hide_text_enter_cb, (entry, match_case_check_box))
         hbox.pack_start(button, False, False, 0)
         self.task_dialog.vbox.pack_end(hbox, False, False, 0)
         self.task_dialog.show_all()

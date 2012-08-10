@@ -1,3 +1,13 @@
+2012-08-10 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added menuitem to modify select preferences
+	* scripts/STATview.py, scripts/STATGUI.py : added/moved
+	options/preferences to STATview.py
+	* scripts/STATview.py : option to modify truncation of nodes in front or
+	back and to set max length
+
+2012-08-09 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added ability to cut based on a regex
+
 2012-07-30 Gregory L. Lee <lee218@llnl.gov>
 	* configure.ac, config/*.m4 : added ability to disable rpath (on by
 	default)

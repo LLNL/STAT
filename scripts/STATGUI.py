@@ -82,47 +82,55 @@ class STATGUI(STATDotWindow):
         self.proctab = None
         self.attached = False
         self.reattach = False
-        self.combo_boxes = {}
-        self.spinners = {}
+#        self.combo_boxes = {}
+#        self.spinners = {}
         self.sample_task_list = ['Sample Stack Traces', 'Gather Stack Traces', 'Render Stack Traces']
         self.attach_task_list = ['Launch Daemons', 'Connect to Daemons', 'Attach to Application']
         self.attach_task_list += self.sample_task_list
-        self.types = { 'Topology Type'     : ['automatic', 'depth', 'max fanout', 'custom'],
-                       'Verbosity Type'    : ['error', 'stdout', 'full'],
-                       'Sample Type'       : ['function only', 'function and pc', 'function and line'],
-                       'Edge Type'         : ['full list', 'count and representative'],
-                       'Remote Host Shell' : ['rsh', 'ssh'] }
-        self.options = { 'Remote Host'                      : "localhost",
-                         'Remote Host Shell'                : "rsh",
-                         'PID'                              : None,
-                         'Launcher Exe'                     : '',
-                         'Topology Type'                    : 'automatic',
-                         'Topology'                         : '1',
-                         'Share App Nodes'                  : True,
-                         'Tool Daemon Path'                 : self.STAT.getToolDaemonExe(),
-                         'Filter Path'                      : self.STAT.getFilterPath(),
-                         'Job Launcher'                     : 'mpirun|srun|orterun',
-                         'Log Dir'                          : os.environ['HOME'],
-                         'Log Frontend'                     : False,
-                         'Log Backend'                      : False,
-                         'Log CP'                           : False,
-                         'Use MRNet Printf'                 : False,
-                         'Verbosity Type'                   : 'error',
-                         'Communication Nodes'              : '',
-                         'Communication Processes per Node' : 8,
-                         'Num Traces'                       : 10,
-                         'Trace Frequency (ms)'             : 1000,
-                         'Num Retries'                      : 5,
-                         'Retry Frequency (ms)'             : 10,
-                         'With Threads'                     : False,
-                         'Clear On Sample'                  : True,
-                         'Gather Individual Samples'        : False,
-                         'Run Time Before Sample (sec)'     : 0,
-                         'Sample Type'                      : 'function only',
-                         'Edge Type'                        : 'full list',
-                         'DDT Path'                         : STAThelper._which('ddt'),
-                         'DDT LaunchMON Prefix'             : '/usr/local',
-                         'TotalView Path'                   : STAThelper._which('totalview') }
+        types = { 'Topology Type'     : ['automatic', 'depth', 'max fanout', 'custom'],
+                  'Verbosity Type'    : ['error', 'stdout', 'full'],
+                  'Sample Type'       : ['function only', 'function and pc', 'function and line'],
+                  'Edge Type'         : ['full list', 'count and representative'],
+                  'Remote Host Shell' : ['rsh', 'ssh'] }
+        if not hasattr(self, "types"):
+            self.types = {}
+        for type in types:
+            self.types[type] = types[type]
+        options = { 'Remote Host'                      : "localhost",
+                    'Remote Host Shell'                : "rsh",
+                    'PID'                              : None,
+                    'Launcher Exe'                     : '',
+                    'Topology Type'                    : 'automatic',
+                    'Topology'                         : '1',
+                    'Share App Nodes'                  : True,
+                    'Tool Daemon Path'                 : self.STAT.getToolDaemonExe(),
+                    'Filter Path'                      : self.STAT.getFilterPath(),
+                    'Job Launcher'                     : 'mpirun|srun|orterun',
+                    'Log Dir'                          : os.environ['HOME'],
+                    'Log Frontend'                     : False,
+                    'Log Backend'                      : False,
+                    'Log CP'                           : False,
+                    'Use MRNet Printf'                 : False,
+                    'Verbosity Type'                   : 'error',
+                    'Communication Nodes'              : '',
+                    'Communication Processes per Node' : 8,
+                    'Num Traces'                       : 10,
+                    'Trace Frequency (ms)'             : 1000,
+                    'Num Retries'                      : 5,
+                    'Retry Frequency (ms)'             : 10,
+                    'With Threads'                     : False,
+                    'Clear On Sample'                  : True,
+                    'Gather Individual Samples'        : False,
+                    'Run Time Before Sample (sec)'     : 0,
+                    'Sample Type'                      : 'function only',
+                    'Edge Type'                        : 'full list',
+                    'DDT Path'                         : STAThelper._which('ddt'),
+                    'DDT LaunchMON Prefix'             : '/usr/local',
+                    'TotalView Path'                   : STAThelper._which('totalview') }
+        if not hasattr(self, "options"):
+            self.options = {}
+        for option in options:
+            self.options[option] = options[option]
         if 'STAT_LMON_DEBUG_BES' in os.environ:
             self.options['Debug Backends'] = True
         else:
@@ -202,17 +210,12 @@ class STATGUI(STATDotWindow):
             count += 1
             if line.find('menuitem action="SaveAs') != -1:
                 break
-        lines.insert(count, '            <menuitem action="SavePrefs"/>')
-        lines.insert(count, '            <menuitem action="LoadPrefs"/>')
-        lines.insert(count, '            <separator/>')
         lines.insert(count, '            <menuitem action="Properties"/>')
         lines.insert(count, '            <separator/>')
         STATDotWindow.ui = ''
         for line in lines:
             STATDotWindow.ui += line + '\n'
         menu_actions = []
-        menu_actions.append(('LoadPrefs', gtk.STOCK_OPEN, '_Load Preferences', '<control>L', 'Save current preference settings', self.on_load_prefs))
-        menu_actions.append(('SavePrefs', gtk.STOCK_SAVE_AS, 'Save _Preferences', '<control>P', 'Load saved preference settings', self.on_save_prefs))
         menu_actions.append(('Properties', gtk.STOCK_PROPERTIES, 'P_roperties', '<control>R', 'View application properties', self.on_properties))
         menu_actions.append(('About', gtk.STOCK_ABOUT, None, None, None, self.on_about))
         STATDotWindow.__init__(self, menu_actions)
@@ -297,63 +300,6 @@ host[1-10,12,15-20];otherhost[30]
                 action.set_sensitive(False)
             elif state == 'busy':
                 action.set_sensitive(False)
-
-    def on_load_prefs(self, action):
-        """Load user-saved preferences from a file."""
-        chooser = gtk.FileChooserDialog(title = "Load Preferences", action = gtk.FILE_CHOOSER_ACTION_OPEN, buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
-        chooser.set_default_response(gtk.RESPONSE_OK)
-        filter = gtk.FileFilter()
-        filter.set_name('STAT Prefs File')
-        filter.add_pattern("*.SPF")
-        chooser.add_filter(filter)
-        filter = gtk.FileFilter()
-        filter.set_name('All files')
-        filter.add_pattern("*")
-        chooser.add_filter(filter)
-        chooser.set_current_folder('%s/.STAT' %os.environ['HOME'])
-        if chooser.run() == gtk.RESPONSE_OK:
-            filename = chooser.get_filename()
-            try:
-                shelf = shelve.open(filename)
-                for key in self.options.keys():
-                    self.options[key] = shelf[key]
-                shelf.close()
-            except IOError as e:
-                show_error_dialog('%s\nFailed to load preferences file %s\n' %(repr(e), filename), self)
-            except Exception as e:
-                show_error_dialog('%s\nFailed to process preferences file %s\n' %(repr(e), filename), self)
-        chooser.destroy()
-
-    def on_save_prefs(self, action):
-        """Save user preferences to a file."""
-        chooser = gtk.FileChooserDialog(title = "Save Preferences", action = gtk.FILE_CHOOSER_ACTION_SAVE, buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
-        chooser.set_default_response(gtk.RESPONSE_OK)
-        chooser.set_do_overwrite_confirmation(True)
-        filter = gtk.FileFilter()
-        filter.set_name('STAT Prefs File')
-        filter.add_pattern("*.SPF")
-        chooser.add_filter(filter)
-        filter = gtk.FileFilter()
-        filter.set_name('All files')
-        filter.add_pattern("*")
-        chooser.add_filter(filter)
-        chooser.set_current_folder('%s/.STAT' %os.environ['HOME'])
-        if chooser.run() == gtk.RESPONSE_OK:
-            filter = chooser.get_filter()
-            ext = ''
-            if filter.get_name() == 'STAT Prefs File':
-                ext = '.SPF'
-            filename = chooser.get_filename() + ext
-            try:
-                shelf = shelve.open(filename)
-                for key in self.options.keys():
-                    shelf[key] = self.options[key]
-                shelf.close()
-            except IOError as e:
-                show_error_dialog('%s\nFailed to save preferences file %s\n' %(repr(e), filename), self)
-            except Exception as e:
-                show_error_dialog('%s\nFailed to save preferences file %s\n' %(repr(e), filename), self)
-        chooser.destroy()
 
     def on_properties(self, action):
         """Display a window with application properties."""
@@ -1614,64 +1560,6 @@ host[1-10,12,15-20];otherhost[30]
         subprocess.call(arg_list)
         sys.exit(0)
 
-    def update_option(self, w, label, parent_window, option):
-        """Generate text entry dialog to update the specified option."""
-        dialog = gtk.Dialog('Update %s' %option, parent_window)
-        entry = gtk.Entry()
-        entry.set_max_length(1024)
-        entry.set_text(self.options[option])
-        entry.connect("activate", lambda w: self.on_update_option(w, entry, label, dialog, option))
-        dialog.vbox.pack_start(entry, True, True, 0)
-        hbox = gtk.HButtonBox()
-        button = gtk.Button(stock = gtk.STOCK_CANCEL)
-        button.connect("clicked", lambda w: dialog.destroy())
-        hbox.pack_start(button, False, False, 0)
-        button = gtk.Button(stock = gtk.STOCK_OK)
-        button.connect("clicked", lambda w: self.on_update_option(w, entry, label, dialog, option))
-        hbox.pack_start(button, False, False, 0)
-        dialog.vbox.pack_start(hbox, False, False, 0)
-        dialog.show_all()
-        dialog.run()
-
-    def on_update_option(self, w, entry, label, dialog, option):
-        """Callback to update the specified option."""
-        self.options[option] = entry.get_text()
-        entry.set_text('')
-        label.set_text('%s: %s' %(option, self.options[option]))
-        dialog.destroy()
-
-    def pack_entry_and_button(self, entry_text, function, frame, dialog, button_text, box, fill=False, center=False, pad=0):
-        """Generates a text entry and activation button."""
-        hbox = gtk.HBox()
-        entry = gtk.Entry()
-        entry.set_max_length(1024)
-        entry.set_text(entry_text)
-        entry.connect("activate", lambda w: apply(function, (w, frame, dialog, entry)))
-        hbox.pack_start(entry, True, True, 0)
-        button = gtk.Button(button_text)
-        button.connect("clicked", lambda w: apply(function, (w, frame, dialog, entry)))
-        hbox.pack_start(button, False, False, 0)
-        box.pack_start(hbox, fill, center, pad)
-        return entry
-
-    def pack_radio_buttons(self, box, option):
-        """Pack a set of radio buttons for a specified option."""
-        for type in self.types[option]:
-            if type == self.types[option][0]:
-                radio_button = gtk.RadioButton(None, type)
-            else:
-                radio_button = gtk.RadioButton(radio_button, type)
-            if type == self.options[option]:
-                radio_button.set_active(True)
-                self.toggle_radio_button(None, (option, type))
-            radio_button.connect('toggled', self.toggle_radio_button, (option, type))
-            box.pack_start(radio_button, False, False, 0)
-
-    def toggle_radio_button(self, action, data):
-        """Callback to toggle on/off a radio button."""
-        option, type = data
-        self.options[option] = type
-
     def pack_sample_options(self, vbox, multiple, attach=False):
         """Pack the sample options into the specified vbox."""
         frame = gtk.Frame('Per Sample Options')
@@ -1709,57 +1597,6 @@ host[1-10,12,15-20];otherhost[30]
             self.pack_check_button(vbox2, 'Clear On Sample')
             frame.add(vbox2)
             vbox.pack_start(frame, False, False, 5)
-
-    def pack_spinbutton(self, box, option):
-        """Pack a spin button into the spcified box for the specified option."""
-        hbox = gtk.HBox()
-        label = gtk.Label(option)
-        hbox.pack_start(label, False, False, 0)
-        adj = gtk.Adjustment(1.0, 0.0, 1000000.0, 1.0, 100.0, 0.0)
-        spinner = gtk.SpinButton(adj, 0, 0)
-        spinner.set_value(self.options[option])
-        hbox.pack_start(spinner, False, False, 0)
-        box.pack_start(hbox, False, False, 10)
-        self.spinners[option] = spinner
-
-    def pack_combo_box(self, box, option):
-        """Pack a combo box into the spcified box for the specified option."""
-        hbox = gtk.HBox()
-        hbox.pack_start(gtk.Label("Specify %s:" %option), False, False, 0)
-        combo_box = gtk.combo_box_new_text()
-        for type in self.types[option]:
-            combo_box.append_text(type)
-        combo_box.set_active(self.types[option].index(self.options[option]))
-        hbox.pack_start(combo_box, False, False, 10)
-        self.combo_boxes[option] = combo_box
-        box.pack_start(hbox, False, False, 0)
-
-    def pack_check_button(self, box, option, center=False, expand=False, pad=0):
-        """Pack a check button into the specified box for the specified option."""
-        check_button = gtk.CheckButton(option)
-        if self.options[option] == True:
-            check_button.set_active(True)
-        else:
-            check_button.set_active(False)
-        check_button.connect('toggled', lambda w: self.on_toggle_check_button(w, option))
-        box.pack_start(check_button, center, expand, pad)
-
-    def on_toggle_check_button(self, widget, option):
-        """Callback to toggle on/off a check button."""
-        if self.options[option] == True:
-            self.options[option] = False
-        else:
-            self.options[option] = True
-
-    def pack_string_option(self, box, option, parent_window):
-        """Pack a button into the specified box that generates a text entry dialog for the specified option."""
-        hbox = gtk.HBox()
-        label =  gtk.Label('%s: %s' %(option, self.options[option]))
-        hbox.pack_start(label, False, False, 0)
-        box.pack_start(hbox, False, False, 10)
-        button = gtk.Button('Modify %s' %option)
-        button.connect("clicked", lambda w: self.update_option(w, label, parent_window, option))
-        box.pack_start(button, False, False, 0)
 
 def STATGUI_main(argv):
     """The STATGUI main."""
