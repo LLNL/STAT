@@ -94,8 +94,8 @@ class STATGUI(STATDotWindow):
                   'Remote Host Shell' : ['rsh', 'ssh'] }
         if not hasattr(self, "types"):
             self.types = {}
-        for type in types:
-            self.types[type] = types[type]
+        for opt in types:
+            self.types[opt] = types[opt]
         options = { 'Remote Host'                      : "localhost",
                     'Remote Host Shell'                : "rsh",
                     'PID'                              : None,
@@ -180,6 +180,8 @@ class STATGUI(STATDotWindow):
                     sys.stderr.write('%s\nfailed to open preferences file %s\n' %(repr(e), path))
                     continue
                 except Exception as e:
+                    import traceback
+                    traceback.print_exc()
                     sys.stderr.write('%s\nfailed to process preferences file %s\n' %(repr(e), path))
                     continue
 

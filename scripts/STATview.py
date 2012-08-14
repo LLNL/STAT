@@ -1716,8 +1716,6 @@ class STATGraph(xdot.Graph):
 
     def re_search(self, function_name, (search_text, match_case)):
         """Function to test whether a search string matches a re"""
-        #print args
-        #(search_text, match_case) = args
         if match_case == False:
             search_text = string.lower(search_text)
             function_name = string.lower(function_name)
@@ -1726,7 +1724,7 @@ class STATGraph(xdot.Graph):
         return False
 
     def hide_re(self, search_text, match_case):
-        return self.hide_generic(self.re_search, (search_text, match_case))
+        return self.hide_generic(self.re_search, search_text, match_case)
     
     def hide_generic(self, func, *args):
         """Hide frames that match the specified function."""
@@ -1737,7 +1735,6 @@ class STATGraph(xdot.Graph):
                 frames = [frames]
             for function_name, sourceLine, iter_string in frames:
                 if args != ():
-                    print args
                     hide = func(function_name, args)
                 else:
                     hide = func(function_name)
@@ -2888,6 +2885,7 @@ entered as a regular expression"""
         dialog.destroy()
         try:
             self.options['max node name'] = int(self.spinners['max node name'].get_value())
+            self.options['truncate'] = self.types["truncate"][self.combo_boxes['truncate'].get_active()]
         except:
             pass
 
@@ -3527,7 +3525,7 @@ entered as a regular expression"""
         entry, match_case_check_box = arg
         text = entry.get_text()
         self.get_current_graph().set_undo_list()
-        self.get_current_graph().action_history.append('Cut %s' %(text))
+        self.get_current_graph().action_history.append('Cut text: %s' %(text))
         self.update_history()
         self.get_current_graph().hide_re(text, match_case_check_box.get_active())
         self.get_current_graph().adjust_dims()
@@ -3542,7 +3540,6 @@ entered as a regular expression"""
         self.task_dialog = gtk.Dialog('Cut', self)
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label("Cut below:"), False, False, 0)
-        label = gtk.Label()
         match_case_check_box = gtk.CheckButton("Match Case")
         match_case_check_box.set_active(True)
         match_case_check_box.connect('toggled', lambda x: x)
@@ -3551,10 +3548,15 @@ entered as a regular expression"""
         entry.connect("activate", self.on_hide_text_enter_cb, (entry, match_case_check_box))
         self.task_dialog.vbox.pack_start(entry, False, False, 0)
         self.task_dialog.vbox.pack_start(match_case_check_box, False, False, 0)
-#        separator = gtk.HSeparator()
-#        self.task_dialog.vbox.pack_start(separator, False, False, 0)
-#        label.set_text(search_help)
-#        self.task_dialog.vbox.pack_start(label, True, True, 0)
+        help_string = """Cut the tree below frames matching
+the specified text, which may be
+enterered as a regular expression.
+        """
+        separator = gtk.HSeparator()
+        self.task_dialog.vbox.pack_start(separator, False, False, 0)
+        label = gtk.Label()
+        label.set_text(help_string)
+        self.task_dialog.vbox.pack_start(label, True, True, 0)
         hbox = gtk.HButtonBox()
         button = gtk.Button(stock=gtk.STOCK_CANCEL)
         button.connect("clicked", lambda w: self.task_dialog.destroy())
