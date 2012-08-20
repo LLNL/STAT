@@ -65,7 +65,15 @@ The toolbar operations are defined as follows:
     <term><GUIbutton>[Cut] MPI</GUIbutton></term>
     <listitem>
         <para>
-        Collapse the MPI implementation frames below the MPI function call
+        Collapse the MPI implementation frames below the MPI function call.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Cut] Text</GUIbutton></term>
+    <listitem>
+        <para>
+        Collapse the frames below the specified text, which can be entered as a regular expression.
         </para>
     </listitem>
 </varlistentry>

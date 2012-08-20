@@ -83,6 +83,7 @@ have_tomod = True
 try:
     import tomod
 except Exception as e:
+    print e
     have_tomod = False
 
 ## The location of the STAT logo image

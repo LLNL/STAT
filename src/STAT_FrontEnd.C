@@ -1000,8 +1000,6 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     isConnected_ = true;
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Tool daemons launched and connected!\n");
 
-    /* TODO: can use merge stream to send CP log dir... CPs pick up in filter on ack from BEs */
-
     /* Make sure all daemons have the same version number as the FE */
     statError = checkVersion();
     if (statError != STAT_OK)
@@ -1168,13 +1166,13 @@ StatError_t STAT_FrontEnd::sendFileReqStream()
     return STAT_OK;
 }
 
-// KUMAR ADDED:  This function waits for BEs openSymbolReader messages and replies with its contents of library files
+// This function waits for BEs openSymbolReader messages and replies with its contents of library files
 StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
                                                int *returnTag,
                                                PacketPtr &packetPtr,
                                                int &retval)
 {
-    int tag;
+    int tag, ret;
     long signedFileSize;
     unsigned long fileSize;
     char *receiveFile;
@@ -1233,8 +1231,13 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
         }
         else
         {
-            //TODO: Check return codes!
-            fseek(fp, 0, SEEK_END);
+            ret = fseek(fp, 0, SEEK_END);
+            if (ret == -1)
+            {
+                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: failed to fseek %s\n", strerror(errno), filePath.c_str());
+                fclose(fp);
+                return STAT_FILE_ERROR;
+            }
             signedFileSize = ftell(fp);
             if (signedFileSize < 0)
             {
@@ -1243,7 +1246,13 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
                 return STAT_ALLOCATE_ERROR;
             }
             fileSize = signedFileSize;
-            fseek(fp, 0, SEEK_SET);
+            ret = fseek(fp, 0, SEEK_SET);
+            if (ret == -1)
+            {
+                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: failed to fseek %s\n", strerror(errno), filePath.c_str());
+                fclose(fp);
+                return STAT_FILE_ERROR;
+            }
             fileContents = (char *)malloc(fileSize * sizeof(char));
             if (fileContents == NULL)
             {
@@ -1252,6 +1261,13 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
                 return STAT_ALLOCATE_ERROR;
             }
             fread(fileContents, fileSize, 1, fp);
+            ret = ferror(fp);
+            if (ret == -1)
+            {
+                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: ferror returned %d on fread of %s\n", strerror(errno), ret, filePath.c_str());
+                fclose(fp);
+                return STAT_FILE_ERROR;
+            }
             fclose(fp);
             tag = PROT_LIB_REQ_RESP;
         }

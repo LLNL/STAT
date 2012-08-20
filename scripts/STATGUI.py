@@ -1490,7 +1490,6 @@ host[1-10,12,15-20];otherhost[30]
             ddt_lmon_launchmon = '%s/bin/launchmon' %(ddt_lmon_prefix)
             if not ddt_lmon_launchmon or not os.access(ddt_lmon_launchmon, os.X_OK) or not ddt_lmon_lib:
                 # DDT 2.4 / DDT 2.5+ w/o LanchMON
-                print ddt_lmon_launchmon, ddt_lmon_lib, os.access(ddt_lmon_launchmon, os.X_OK)
                 arg_list.append(filepath)
                 arg_list.append('-attach')
                 arg_list.append(executable_path)
