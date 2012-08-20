@@ -1,3 +1,9 @@
+2012-08-20 Gregory L. Lee <lee218@llnl.gov>
+	* doc/src/* : updated man pages and command references to lowercase
+	versions
+	* doc/src/stat_changelog.sgml : new documentation section to highlight
+	changes
+
 2012-08-10 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATview.py : added menuitem to modify select preferences
 	* scripts/STATview.py, scripts/STATGUI.py : added/moved

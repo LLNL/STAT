@@ -3,7 +3,7 @@ The main window also has several tree manipulation options <![%userguide[(<xref 
 </para>
 <![%userguide[
 <figure id="statview_toolbar">
-    <title>The STATview tree manipulation toolbar.</title>
+    <title>The stat-view tree manipulation toolbar.</title>
     <screenshot><mediaobject><imageobject>
     <imagedata scale="40" fileref="figs/statview_toolbar.png">
     </imageobject></mediaobject></screenshot>
@@ -25,7 +25,7 @@ The toolbar operations are defined as follows:
     <term><GUIbutton>Save As</GUIbutton></term>
     <listitem>
         <para>
-        Save the current graph in .dot format, which can be displayed by STATview or in an image format, such as PNG or PDF, which can be viewed on any computer with an image viewer
+        Save the current graph in .dot format, which can be displayed by stat-view or in an image format, such as PNG or PDF, which can be viewed on any computer with an image viewer
         </para>
     </listitem>
 </varlistentry>

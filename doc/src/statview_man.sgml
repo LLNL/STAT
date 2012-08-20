@@ -12,12 +12,12 @@
     <date>2010-03-25</date>
 </refentryinfo>
 <refmeta>
-    <refentrytitle><application>STATview</application></refentrytitle>
+    <refentrytitle><application>stat-view</application></refentrytitle>
     <manvolnum>1</manvolnum>
 </refmeta>
 <refnamediv>
     <refname>
-        <application>STATview</application>
+        <application>stat-view</application>
     </refname>
     <refpurpose>
     invoke the Stack Trace Analysis Tool viewer.
@@ -25,7 +25,7 @@
 </refnamediv>
 <refsynopsisdiv>
     <cmdsynopsis>
-    <command>STATview</command> <arg rep="repeat"><replaceable class="option">file.dot</replaceable></arg> 
+    <command>stat-view</command> <arg rep="repeat"><replaceable class="option">file.dot</replaceable></arg> 
     </cmdsynopsis>
     <para>
     where
@@ -63,7 +63,7 @@
 <refsect1>
     <title>SEE ALSO</title>
     <para>
-    <command>STAT</command>(1), <command>STATGUI</command>(1), <command>STATBench</command>(1)
+    <command>stat-cl</command>(1), <command>stat-gui</command>(1), <command>stat-bench</command>(1)
     </para>
 </refsect1>
 </refentry>

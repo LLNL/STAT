@@ -2,13 +2,13 @@
 First run configure.  You will need to use the --with-package options to specify the install prefix for mrnet, graphlib, launchmon, libdwarf, and stackwalker.  These options will add the necessary includes and library search paths to the compile options.  Refer to configure --help for exact options.  You may also wish to specify the maximum number of communication processes to launch per node with the option --with-procspernode=number, generally set to the number of cores per node. 
 </para>
 <para>
-STAT creates wrapper scripts for the STAT command line and STATGUI commands.  These wrappers set appropriate paths for the launchmon and mrnet_commnode executables, based on the the --with-launchmon and --with-mrnet configure options, thus it is important to specify both of these even if they share a prefix.
+STAT creates wrapper scripts for the stat-cl command line and stat-gui commands.  These wrappers set appropriate paths for the launchmon and mrnet_commnode executables, based on the the --with-launchmon and --with-mrnet configure options, thus it is important to specify both of these even if they share a prefix.
 </para>
 <para>
 STAT will use StackWalker by default.  However, it can use Dyninst instead if you specify --with-dyninst to the configure script.
 </para>
 <para>
-STAT will try to build the GUI by default.  If you need to modify your PYTHONPATH envirnment variable to search for side installed site-packages, you can do this by specifying STAT_PYTHONPATH=path during configure.  This will add the appropriate directory to the $PYTHONPATH environment variable within the STATGUI script.  To disable the building of the GUI, use the --enable-gui=no configure option.
+STAT will try to build the GUI by default.  If you need to modify your PYTHONPATH envirnment variable to search for side installed site-packages, you can do this by specifying STAT_PYTHONPATH=path during configure.  This will add the appropriate directory to the $PYTHONPATH environment variable within the stat-gui script.  To disable the building of the GUI, use the --enable-gui=no configure option.
 </para>
 <para>
 On BlueGene systems, also be sure to configure --with-bluegene.  This will enable the BGL macro for BlueGene specific compilation.  Similarly, to compile on Cray XT systems, specify --with-cray-xt.

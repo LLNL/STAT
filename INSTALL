@@ -43,8 +43,8 @@ Installation
    --with-procspernode=number, generally set to the number of
    cores per node.
 
-   STAT creates wrapper scripts for the STAT command line and
-   STATGUI commands. These wrappers set appropriate paths for the
+   STAT creates wrapper scripts for the stat-cl command line and
+   stat-gui commands. These wrappers set appropriate paths for the
    launchmon and mrnet_commnode executables, based on the the
    --with-launchmon and --with-mrnet configure options, thus it is
    important to specify both of these even if they share a prefix.
@@ -58,7 +58,7 @@ Installation
    installed site-packages, you can do this by specifying
    STAT_PYTHONPATH=path during configure. This will add the
    appropriate directory to the $PYTHONPATH environment variable
-   within the STATGUI script. To disable the building of the GUI,
+   within the stat-gui script. To disable the building of the GUI,
    use the --enable-gui=no configure option.
 
    On BlueGene systems, also be sure to configure --with-bluegene.

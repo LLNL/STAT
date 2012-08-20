@@ -59,7 +59,7 @@
     <term>-D, --daemon <replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
-        Specify the full path <replaceable class="parameter">path</replaceable> to the STATBench daemon executable.  Use this only if you wish to override the default.
+        Specify the full path <replaceable class="parameter">path</replaceable> to the STATBenchD daemon executable.  Use this only if you wish to override the default.
         </para>
     </listitem>
 </varlistentry>
@@ -67,7 +67,7 @@
     <term>-F, --filter <replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
-        Specify the full path <replaceable class="parameter">path</replaceable> to the STATBench filter shared object.  Use this only if you wish to override the default.
+        Specify the full path <replaceable class="parameter">path</replaceable> to the stat-bench filter shared object.  Use this only if you wish to override the default.
         </para>
     </listitem>
 </varlistentry>
