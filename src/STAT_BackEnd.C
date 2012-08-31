@@ -31,9 +31,9 @@ using namespace Dyninst::SymtabAPI;
 
 
 #ifdef STAT_FGFS
-    using namespace FastGlobalFileStat;
-    using namespace FastGlobalFileStat::MountPointAttribute;
-    using namespace FastGlobalFileStat::CommLayer;
+    using namespace FastGlobalFileStatus;
+    using namespace FastGlobalFileStatus::MountPointAttribute;
+    using namespace FastGlobalFileStatus::CommLayer;
 #endif
 
 #ifdef GRAPHLIB20
@@ -401,7 +401,7 @@ StatError_t STAT_BackEnd::Connect()
 StatError_t STAT_BackEnd::mainLoop()
 {
     int tag = 0, retval, nEqClasses, swNotificationFd, mrnNotificationFd, max_fd, iCountRep, nodeId;
-    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, withThreads, clearOnSample;
+    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, withThreads, clearOnSample, withPython;
 #ifdef GRAPHLIB20
     int bitVectorLength;
     StatSample_t previousSampleType;
@@ -573,7 +573,7 @@ StatError_t STAT_BackEnd::mainLoop()
             case PROT_SAMPLE_TRACES:
                 /* Unpack the message */
                 previousSampleType = sampleType_;
-                if (packet->unpack("%ud %ud %ud %ud %ud %ud %ud %s", &nTraces, &traceFrequency, &nRetries, &retryFrequency, &sampleType_, &withThreads, &clearOnSample, &variableSpecification) == -1)
+                if (packet->unpack("%ud %ud %ud %ud %ud %ud %ud %ud %s", &nTraces, &traceFrequency, &nRetries, &retryFrequency, &sampleType_, &withThreads, &clearOnSample, &withPython, &variableSpecification) == -1)
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_SAMPLE_TRACES) failed\n");
                     if (sendAck(stream, PROT_SAMPLE_TRACES_RESP, retval) != STAT_OK)
@@ -588,7 +588,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to sample %d traces each %d us with %d retries every %d us\n", nTraces, traceFrequency, nRetries, retryFrequency);
 
                 /* Gather stack traces */
-                statError = sampleStackTraces(nTraces, traceFrequency, nRetries, retryFrequency, withThreads, clearOnSample, variableSpecification);
+                statError = sampleStackTraces(nTraces, traceFrequency, nRetries, retryFrequency, withThreads, clearOnSample, variableSpecification, withPython);
                 if (statError == STAT_OK)
                     retval = 0;
 
@@ -917,10 +917,10 @@ StatError_t STAT_BackEnd::mainLoop()
                     return STAT_MRNET_ERROR;
                 }
                 fgfsCommFabric_ = new MRNetCommFabric();
-                ret = AsyncGlobalFileStat::initialize(fgfsCommFabric_);
+                ret = AsyncGlobalFileStatus::initialize(fgfsCommFabric_);
                 if (ret == false)
                 {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize AsyncGlobalFileStat\n");
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize AsyncGlobalFileStatus\n");
                     return STAT_MRNET_ERROR;
                 }
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "FGFS setup complete\n");
@@ -1260,7 +1260,7 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
 
 StatError_t STAT_BackEnd::getVariable(vector<Frame> swalk, unsigned int frame, char *variableName, char *outBuf)
 {
-#ifdef PROTOTYPE
+#ifdef PROTOTYPE_TO
     int result;
     bool ret;
     char buf[BUFSIZE];
@@ -1348,7 +1348,7 @@ StatError_t STAT_BackEnd::mergeIntoGraphs(graphlib_graph_p currentGraph, bool la
    return STAT_OK;
 }
 
-StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification)
+StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification, unsigned int withPython)
 {
     int j, retval;
     unsigned int i;
@@ -1516,7 +1516,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
 
               /* Get the stack trace */
               ret = getStackTrace(currentGraph, iter->second, j, nRetries, retryFrequency,
-                                  withThreads);
+                                  withThreads, withPython);
               if (ret != STAT_OK)
               {
                  printMsg(ret, __FILE__, __LINE__, "Error getting graph %d of %d\n", i+1, nTraces);
@@ -1643,13 +1643,13 @@ void STAT_BackEnd::fillInName(const string &s, graphlib_nodeattr_t &nodeattr)
 #endif
 }
 
-StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads)
+StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int withPython)
 {
     int nodeId, prevId, i, j, k, partialVal, pos;
     bool ret;
     string name, path, tester;
     vector<Frame> swalk, partial;
-    vector<string> trace;
+    vector<string> trace, outTrace;
     graphlib_error_t graphlibError;
 #ifdef GRAPHLIB20
     StatCountRepEdge_t *countRepEdge;
@@ -1660,6 +1660,10 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
     graphlib_graph_p currentGraph = NULL;
     vector<Dyninst::THR_ID> threads;
     ProcDebug *processState = NULL;
+    bool isPyTrace = false;
+    char *pyFun = NULL, *pySource = NULL, outLine[BUFSIZE];
+    int pyLineNo;
+    StatError_t ret2;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d\n", rank);
 
@@ -1859,9 +1863,47 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
             }
 
             /* Add the node and edge to the graph */
-            path += trace[i].c_str();
+            if (withPython != 0)
+            {
+                if (trace[i].find("PyCFunction_Call") != string::npos)
+                {
+                    isPyTrace = false;
+                    continue;
+                }
+                if (trace[i].find("PyEval_EvalFrameEx") != string::npos)
+                {
+                    ret2 = getPythonFrameInfo(proc, swalk, trace.size() - 1 - i, &pyFun, &pySource, &pyLineNo);
+                    if (ret2 == STAT_OK && pyFun != NULL && pySource != NULL)
+                    {
+                        if (isPyTrace == false)
+                        {
+                            outTrace.clear();
+                            isPyTrace = true;
+                        }
+                        if (trace[i].find("@") != string::npos)
+                        {
+                            snprintf(outLine, BUFSIZE, "%s@%s:%d", pyFun, pySource, pyLineNo);
+                            trace[i] = outLine;
+                        }
+                        else
+                            trace[i] = pyFun;
+                        outTrace.push_back(trace[i]);
+                        free(pyFun);
+                        free(pySource);
+                    }
+                    else if (ret2 != STAT_OK)
+                        printMsg(ret2, __FILE__, __LINE__, "Error in getPythonFrameInfo for frame %s, pyFun = %s, pySource = %s\n", trace[i].c_str(), pyFun, pySource);
+                }
+            }
+            if (isPyTrace == false)
+                outTrace.push_back(trace[i]);
+        }
+
+        for (i = 0; i < outTrace.size(); i++)
+        {
+            path += outTrace[i].c_str();
             nodeId = statStringHash(path.c_str());
-            fillInName(trace[i], nodeattr);
+            fillInName(outTrace[i], nodeattr);
             graphlibError = graphlib_addNode(currentGraph, nodeId, &nodeattr);
 
             if (GRL_IS_FATALERROR(graphlibError))
@@ -2353,6 +2395,328 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
             fflush(statOutFp);
         }
     }
+}
+
+StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, std::vector<Frame> &swalk, unsigned int frame, char **pyFun, char **pySource, int *pyLineNo)
+{
+#ifdef PROTOTYPE_PY
+    bool ret;
+    int found = 0, fLastIVal = -1, result, address, lineNo, firstLineNo;
+    unsigned long baseAddr, pyCodeObjectBaseAddr;
+    unsigned int j;
+    char buffer[BUFSIZE];
+    long length, pAddr;
+    static int coNameOffset = -1, coFileNameOffset = -1, obSizeOffset = -1, obSvalOffset = -1, coFirstLineNoOffset = -1, coLnotabOffset = -1, fLastIOffset = -1;
+    Function *function;
+    Symtab *symtab = NULL;
+    localVar *var;
+    std::vector<localVar *> vars;
+    std::vector<localVar *>::iterator iter;
+    Type *type;
+    typeTypedef *tt;
+    typeStruct *ts;
+    std::vector<Field *> *components;
+    Field *field;
+    ProcDebug *processState = NULL;
+
+    /* Find all necessary variable field offsets */
+    if (coNameOffset == -1 || coFileNameOffset == -1 || obSizeOffset == -1 || obSvalOffset == -1 || coFirstLineNoOffset == -1 || coLnotabOffset == -1 || fLastIOffset == -1)
+    {
+        ret = Symtab::openFile(symtab, proctab_[0].pd.executable_name);
+        if (ret == false)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "openFile returned false for %s\n", proctab_[0].pd.executable_name);
+            return STAT_STACKWALKER_ERROR;
+        }
+      
+        ret = symtab->findType(type, "PyFrameObject");
+        if (ret == false)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "findType returned false\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+      
+        tt = type->getTypedefType();
+        if (tt == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getTypeDefType returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+      
+        type = tt->getConstituentType();
+        if (type == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getConstituentType returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+      
+        ts = type->getStructType();
+        if (ts == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getStructType returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+      
+        components = ts->getComponents();
+        if (components == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getComponents returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+      
+        for (j = 0; j < components->size(); j++)
+        {
+            field = (*components)[j];
+            if (strcmp(field->getName().c_str(), "f_lasti") == 0)
+            {
+                fLastIOffset = field->getOffset() / 8;
+                break;
+            }
+        }
+     
+        ret = symtab->findType(type, "PyCodeObject");
+        if (ret == false)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "findType returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+     
+        tt = type->getTypedefType();
+        if (tt == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getTypeDefType returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+     
+        type = tt->getConstituentType();
+        if (type == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getConstituentType returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+     
+        ts = type->getStructType();
+        if (ts == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getStructType returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+     
+        components = ts->getComponents();
+        if (components == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getComponents returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+     
+        found = 0;
+        for (j = 0; j < components->size(); j++)
+        {
+            if (found == 4)
+                break;
+            field = (*components)[j];
+            if (strcmp(field->getName().c_str(), "co_firstlineno") == 0)
+            {
+                coFirstLineNoOffset = field->getOffset() / 8;
+                found++;
+            }
+            else if (strcmp(field->getName().c_str(), "co_lnotab") == 0)
+            {
+                coLnotabOffset = field->getOffset() / 8;
+                found++;
+            }
+            else if (strcmp(field->getName().c_str(), "co_filename") == 0)
+            {
+                coFileNameOffset = field->getOffset() / 8;
+                found++;
+            }
+            else if (strcmp(field->getName().c_str(), "co_name") == 0)
+            {
+                coNameOffset = field->getOffset() / 8;
+                found++;
+            }
+        }
+        
+        ret = symtab->findType(type, "PyStringObject");
+        if (ret == false)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "findType returned false\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+     
+        tt = type->getTypedefType();
+        if (tt == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getTypeDefType returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+     
+        type = tt->getConstituentType();
+        if (type == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getConstituentType returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+     
+        ts = type->getStructType();
+        if (ts == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getStructType returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+     
+        components = ts->getComponents();
+        if (components == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getComponents returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+     
+        found = 0;
+        for (j = 0; j < components->size(); j++)
+        {
+            if (found == 2)
+                break;
+            field = (*components)[j];
+            if (strcmp(field->getName().c_str(), "ob_sval") == 0)
+            {
+                obSvalOffset = field->getOffset() / 8;
+                found++;
+            }
+            else if (strcmp(field->getName().c_str(), "ob_size") == 0)
+            {
+                obSizeOffset = field->getOffset() / 8;
+                found++;
+            }
+        }
+    }
+    if (coNameOffset == -1 || coFileNameOffset == -1 || obSizeOffset == -1 || obSvalOffset == -1 || coFirstLineNoOffset == -1 || coLnotabOffset == -1 || fLastIOffset == -1)
+    {
+         printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find offsets for Python script source and line info %d %d %d %d %d %d %d\n", coNameOffset, coFileNameOffset, obSizeOffset, obSvalOffset, coFirstLineNoOffset, coLnotabOffset, fLastIOffset);
+         return STAT_STACKWALKER_ERROR;
+    }
+
+    processState = dynamic_cast<ProcDebug *>(proc->getProcessState());
+    if (processState == NULL)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "dynamic_cast returned NULL\n");
+        return STAT_STACKWALKER_ERROR;
+    }
+    
+    function = getFunctionForFrame(swalk[frame]);
+    if (function == NULL) 
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getFunctionForFrame returned false for RA %p\n", swalk[frame].getRA());
+        return STAT_STACKWALKER_ERROR;
+    }
+
+    /* Get f_lasti value for line number calculation */
+    ret = function->getParams(vars);
+    if (ret == false)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getParams returned NULL for %s\n", function->getAllMangledNames()[0].c_str());
+        return STAT_STACKWALKER_ERROR;
+    }
+    var = NULL;
+    for (iter = vars.begin(); iter != vars.end(); iter++)
+    {
+        if (strcmp((*iter)->getName().c_str(), "f") == 0)
+        {
+            var = *iter;
+            break;
+        }
+    }
+    if (var == NULL)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find parameter f, vars.size = %d\n", vars.size());
+        return STAT_STACKWALKER_ERROR;
+    }
+    result = getLocalVariableValue(var, swalk, frame, buffer, BUFSIZE);
+    if (result != glvv_Success)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "%d: Failed to get Local Variable Value for f\n", result);
+        return STAT_STACKWALKER_ERROR;
+    }
+    pyCodeObjectBaseAddr = *((unsigned long long *)buffer);
+    processState->readMem(buffer, pyCodeObjectBaseAddr + fLastIOffset, sizeof(int));
+    fLastIVal = *((int *)buffer);
+
+    /* Get the base address for the co variable */
+    ret = function->getLocalVariables(vars);
+    if (ret == false) 
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getLocalVariables returned false for %s\n", function->getAllMangledNames()[0].c_str());
+        return STAT_STACKWALKER_ERROR;
+    }
+    var = NULL;
+    for (iter = vars.begin(); iter != vars.end(); iter++)
+    {
+        if (strcmp((*iter)->getName().c_str(), "co") == 0)
+        {
+            var = *iter;
+            break;
+        }
+    }
+    if (var == NULL)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find parameter f, vars.size = %d\n", vars.size());
+        return STAT_STACKWALKER_ERROR;
+    }
+    result = getLocalVariableValue(var, swalk, frame, buffer, BUFSIZE);
+    if (result != glvv_Success)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "%d: Failed to get Local Variable Value for co\n", result);
+        return STAT_STACKWALKER_ERROR;
+    }
+    pyCodeObjectBaseAddr = *((unsigned long long *)buffer);
+
+    /* Get the Python function name */
+    processState->readMem(buffer, pyCodeObjectBaseAddr + coNameOffset, sizeof(unsigned long long));
+    baseAddr = *((unsigned long long *)buffer);
+    processState->readMem(buffer, baseAddr + obSizeOffset, sizeof(unsigned long long));
+    length = *((long *)buffer);
+    if (length > BUFSIZE)
+        length = BUFSIZE - 1;
+    buffer[length] = '\0';
+    processState->readMem(buffer, baseAddr + obSvalOffset, length);
+    *pyFun = strdup(buffer);
+    
+    /* Get the Python source file name */
+    processState->readMem(buffer, pyCodeObjectBaseAddr + coFileNameOffset, sizeof(unsigned long long));
+    baseAddr = *((unsigned long long *)buffer);
+
+    processState->readMem(buffer, baseAddr + obSizeOffset, sizeof(unsigned long long));
+    length = *((long *)buffer);
+    if (length > BUFSIZE)
+        length = BUFSIZE - 1;
+    buffer[length] = '\0';
+    processState->readMem(buffer, baseAddr + obSvalOffset, length);
+    *pySource = strdup(buffer);
+    
+    /* Get the Python source line number */
+    processState->readMem(buffer, pyCodeObjectBaseAddr + coFirstLineNoOffset, sizeof(unsigned long long));
+    baseAddr = *((unsigned long long *)buffer);
+    processState->readMem(buffer, baseAddr + obSvalOffset, sizeof(int));
+    firstLineNo = *((int *)buffer);
+    processState->readMem(buffer, pyCodeObjectBaseAddr + coLnotabOffset, sizeof(unsigned long long));
+    baseAddr = *((unsigned long long *)buffer);
+    processState->readMem(buffer, baseAddr + obSizeOffset, sizeof(unsigned long long));
+    length = *((long *)buffer);
+    pAddr = baseAddr + obSvalOffset;
+    processState->readMem(buffer, pAddr, length * sizeof(unsigned char));
+    address = 0;
+    lineNo = firstLineNo;
+    for (j = 0; j < length; j = j + 2)
+    {
+        address += buffer[j];
+        if (address > fLastIVal)
+            break;
+        lineNo += buffer[j + 1];
+    }
+    *pyLineNo = lineNo;
+#endif
+ 
+    return STAT_OK;
 }
 
 
@@ -2942,4 +3306,5 @@ graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsig
         generated_graphs.push_back(retGraph);
     return retGraph;
 }
+
 

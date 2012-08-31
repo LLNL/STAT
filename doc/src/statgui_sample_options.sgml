@@ -22,6 +22,14 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term><GUIbutton>Gather Python Traces</GUIbutton></term>
+    <listitem>
+        <para>
+        Where applicable, gather Python script level stack traces, rather than show the Python interpreter stack traces.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>function only</GUIbutton> | <GUIbutton>function and pc</GUIbutton> | <GUIbutton>function and line</GUIbutton></term>
     <listitem>
         <para>

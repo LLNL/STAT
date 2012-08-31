@@ -119,6 +119,7 @@ class STATGUI(STATDotWindow):
                     'Num Retries'                      : 5,
                     'Retry Frequency (ms)'             : 10,
                     'With Threads'                     : False,
+                    'Gather Python Traces'             : False,
                     'Clear On Sample'                  : True,
                     'Gather Individual Samples'        : False,
                     'Run Time Before Sample (sec)'     : 0,
@@ -1006,7 +1007,7 @@ host[1-10,12,15-20];otherhost[30]
             sample_type = STAT_FUNCTION_AND_LINE if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_LINE
         else:
             sample_type = STAT_FUNCTION_NAME_ONLY if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_NAME_ONLY
-        ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 1, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
+        ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Gather Python Traces'], self.options['Clear On Sample'], 1, 1, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
         if ret != STAT_OK:
             show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -1084,7 +1085,7 @@ host[1-10,12,15-20];otherhost[30]
                 sample_type = STAT_FUNCTION_AND_LINE if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_LINE
             else:
                 sample_type = STAT_FUNCTION_NAME_ONLY if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_NAME_ONLY
-            ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 0, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
+            ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Gather Python Traces'], self.options['Clear On Sample'], 1, 0, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
             if ret != STAT_OK:
                 if ret == STAT_APPLICATION_EXITED:
                     ret_val = STAT_APPLICATION_EXITED
@@ -1566,6 +1567,7 @@ host[1-10,12,15-20];otherhost[30]
         frame = gtk.Frame('Per Sample Options')
         vbox2 = gtk.VBox()
         self.pack_check_button(vbox2, 'With Threads', False, False, 5)
+        self.pack_check_button(vbox2, 'Gather Python Traces', False, False, 5)
         frame2 = gtk.Frame('Node Sample Options')
         vbox3 = gtk.VBox()
         self.pack_radio_buttons(vbox3, 'Sample Type')

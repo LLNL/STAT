@@ -83,7 +83,6 @@ have_tomod = True
 try:
     import tomod
 except Exception as e:
-    print e
     have_tomod = False
 
 ## The location of the STAT logo image
@@ -704,6 +703,21 @@ class STATNode(STATElement):
             else:
                 self.num_leaf_tasks = 0
         return self.num_leaf_tasks
+
+    ## \param node - the input node
+    #  \return the task count
+    #
+    #  \n
+    def get_num_visual_leaf_tasks(self):
+        """Get the number of tasks that ended on this node."""
+        out_sum = 0
+        for edge in self.out_edges:
+            if edge.hide == False:
+                out_sum += get_num_tasks(edge.label)
+        if out_sum < get_num_tasks(self.edge_label):
+            return get_num_tasks(self.edge_label) - out_sum
+        else:
+            return 0
 
     def can_join_eq_c(self):
         if self.hide == True:
@@ -2218,12 +2232,22 @@ class STATGraph(xdot.Graph):
         """Determine if the node is an eq class leaf of the visible tree."""
         if node.hide == True or node.node_name == '0':
             return False
-
-        num_leaf_tasks = node.get_num_leaf_tasks()
-        if num_leaf_tasks != 0:
-            return True
+        
+        task_list = []
+        if node.edge_label.find(':') != -1:
+            num_leaf_tasks = node.get_num_visual_leaf_tasks()
+            if num_leaf_tasks != 0:
+                return True
+            else:
+                return False
         else:
-            return False
+            for edge in node.out_edges:
+                if edge.dst.hide == False:
+                    task_list += edge.dst.get_node_task_list()
+            if set(node.get_node_task_list()) == set(task_list):
+                return False
+            return True
+
 
     def identify_num_eq_classes(self, widget):
         """Find all equivalence classes (based on color) of the call tree."""

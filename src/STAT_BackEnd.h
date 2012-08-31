@@ -50,18 +50,22 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "Type.h"
 
 #ifdef SW_VERSION_8_0_0
-  #include "Process.h"
   #include "PlatFeatures.h"
   #include "ProcessSet.h"
   #include "PCErrors.h"
-  #define GROUP_OPS
+  #if !defined(PROTOTYPE_PY) && !defined(PROTOTYPE_TO)
+    #define GROUP_OPS
+  #endif
 #endif
 
 #ifndef BGL
   #include "Variable.h"
   #include "Function.h"
 #endif
-#ifdef PROTOTYPE
+#ifdef PROTOTYPE_TO
+  #include "local_var.h"
+#endif
+#ifdef PROTOTYPE_PY
   #include "local_var.h"
 #endif
 
@@ -273,7 +277,7 @@ class STAT_BackEnd
             \param variableSpecification - the specification of variables to extract
             \return STAT_OK on success
         */
-        StatError_t sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification);
+        StatError_t sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification, unsigned int withPython);
 
         //! Merge the given graph into the 2d and 3d graphs
         /*!
@@ -319,7 +323,7 @@ class STAT_BackEnd
             \param nVariables - the number of variables to extract
             \return STAT_OK on success
         */
-        StatError_t getStackTrace(graphlib_graph_p retGraph, Dyninst::Stackwalker::Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads);
+        StatError_t getStackTrace(graphlib_graph_p retGraph, Dyninst::Stackwalker::Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int withPython);
 
         //! Translates an address into a source file and line number
         /*!
@@ -391,6 +395,18 @@ class STAT_BackEnd
         */
         StatError_t sendAck(MRN::Stream *stream, int tag, int val);
 
+        //! Get Python script level frame info
+        /*!
+            \param proc - the Walker object for this process
+            \param swalk - the currnet stack frames
+            \param frame - the index for the current frame
+            \param [out] pyFun - the Python function name
+            \param [out] pySource - the Python source file
+            \param [out] pyLineNo - the current Python line number
+            \return STAT_OK on success
+        */
+        StatError_t getPythonFrameInfo(Dyninst::Stackwalker::Walker *proc, std::vector<Dyninst::Stackwalker::Frame> &swalk, unsigned int frame, char **pyFun, char **pySource, int *pyLineNo);
+
         //! Creates stack traces
         /*!
             \param maxDepth - the maximum call path to generate
@@ -453,7 +469,7 @@ class STAT_BackEnd
 
         MRN::Stream *broadcastStream_;          /*!< the main broadcast/acknowledgement stream */
 #ifdef STAT_FGFS
-        FastGlobalFileStat::CommLayer::CommFabric *fgfsCommFabric_;
+        FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_;
 #endif
 
 };

@@ -52,6 +52,7 @@ bool individualSamples = false;         /*!< whether to gather individual sample
 bool comprehensive = false;             /*!< whether to gather a comprehensive set of samples */
 bool countRep = false;                  /*!< whether to gather just a count and representative */
 bool withThreads = false;               /*!< whether to gather samples from helper threads */
+bool withPython = false;                /*!< whether to gather samples at the Python script level */
 bool clearOnSample = true;              /*!< whether to clear accumulated traces when sampling */
 bool shareAppNodes = false;             /*!< whether to use the application nodes to run communication processes */
 StatLaunch_t applicationOption;         /*!< attach or launch case */
@@ -208,7 +209,7 @@ int main(int argc, char **argv)
             }
 
             /* Sample the traces */
-            statError = STAT->sampleStackTraces(sampleType, withThreads, clearOnSample, 1, traceFrequency, nRetries, retryFrequency);
+            statError = STAT->sampleStackTraces(sampleType, withThreads, withPython, clearOnSample, 1, traceFrequency, nRetries, retryFrequency);
             if (statError != STAT_OK)
             {
                 if (statError == STAT_APPLICATION_EXITED)
@@ -300,6 +301,7 @@ void printUsage(int argc, char **argv)
     fprintf(stderr, "  -c, --comprehensive\t\tgather 4 traces: function only; function + line;\n\t\t\t\tfunction + pc; and 3D function only\n");
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
+    fprintf(stderr, "  -y, --pythontrace\t\tgather Python script level stack traces\n");
     fprintf(stderr, "  -s, --sleep <time>\t\tsleep time before attaching and gathering traces\n");
     fprintf(stderr, "\nTopology options:\n");
     fprintf(stderr, "  -a, --autotopo\t\tlet STAT automatically create topology\n");
@@ -342,6 +344,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         {"withline", no_argument, 0, 'i'},
         {"comprehensive", no_argument, 0, 'c'},
         {"withthreads", no_argument, 0, 'w'},
+        {"pythontrace", no_argument, 0, 'y'},
         {"autotopo", no_argument, 0, 'a'},
         {"create", no_argument, 0, 'C'},
         {"appnodes", no_argument, 0, 'A'},
@@ -377,7 +380,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvPicwaCASMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPicwyaCASMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'C')
@@ -400,6 +403,9 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'w':
             withThreads = true;
+            break;
+        case 'y':
+            withPython = true;
             break;
         case 'P':
             sampleType = STAT_FUNCTION_AND_PC;

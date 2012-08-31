@@ -117,7 +117,7 @@ class STAT_FrontEnd
         StatError_t pause(bool blocking = true);
         StatError_t resume(bool blocking = true);
         bool isRunning();
-        StatError_t sampleStackTraces(StatSample_t sampleType, bool withThreads, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(StatSample_t sampleType, bool withThreads, bool withPython, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
         StatError_t gatherLastTrace(bool blocking = true);
         StatError_t gatherTraces(bool blocking = true);
         char *getLastDotFilename();

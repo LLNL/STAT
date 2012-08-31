@@ -23,10 +23,10 @@ using namespace std;
 using namespace MRN;
 
 #ifdef STAT_FGFS
-    using namespace FastGlobalFileStat;
-    using namespace FastGlobalFileStat::MountPointAttribute;
-    using namespace FastGlobalFileStat::CommLayer;
-    using namespace FastGlobalFileStat::MountPointAttribute;
+    using namespace FastGlobalFileStatus;
+    using namespace FastGlobalFileStatus::MountPointAttribute;
+    using namespace FastGlobalFileStatus::CommLayer;
+    using namespace FastGlobalFileStatus::MountPointAttribute;
 #endif
 
 /* Externals from STAT's graphlib routines */
@@ -1063,10 +1063,10 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
         return STAT_MRNET_ERROR;
     }
     fgfsCommFabric_ = new MRNetCommFabric();
-    ret = AsyncGlobalFileStat::initialize(fgfsCommFabric_);
+    ret = AsyncGlobalFileStatus::initialize(fgfsCommFabric_);
     if (ret == false)
     {
-        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize AsyncGlobalFileStat\n");
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize AsyncGlobalFileStatus\n");
         return STAT_MRNET_ERROR;
     }
 
@@ -2471,7 +2471,7 @@ bool STAT_FrontEnd::isRunning()
     return isRunning_;
 }
 
-StatError_t STAT_FrontEnd::sampleStackTraces(StatSample_t sampleType, bool withThreads, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, char *variableSpecification)
+StatError_t STAT_FrontEnd::sampleStackTraces(StatSample_t sampleType, bool withThreads, bool withPython, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, char *variableSpecification)
 {
     StatError_t ret;
 
@@ -2511,7 +2511,7 @@ StatError_t STAT_FrontEnd::sampleStackTraces(StatSample_t sampleType, bool withT
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d traces with %d frequency, %d retries with %d frequency\n", nTraces, traceFrequency, nRetries, retryFrequency);
 
     /* Send request to daemons to gather stack traces and wait for confirmation */
-    if (broadcastStream_->send(PROT_SAMPLE_TRACES, "%ud %ud %ud %ud %ud %ud %ud %s", nTraces, traceFrequency, nRetries, retryFrequency, sampleType, withThreads, clearOnSample, variableSpecification) == -1)
+    if (broadcastStream_->send(PROT_SAMPLE_TRACES, "%ud %ud %ud %ud %ud %ud %ud %ud %s", nTraces, traceFrequency, nRetries, retryFrequency, sampleType, withThreads, clearOnSample, withPython, variableSpecification) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send request to sample\n");
         return STAT_MRNET_ERROR;

@@ -107,7 +107,7 @@
     <term>-U, --countrep</term>
     <listitem>
         <para>
-        only gather count and a single representative
+        Only gather count and a single representative
         </para>
     </listitem>
 </varlistentry>
@@ -116,6 +116,14 @@
     <listitem>
         <para>
         Sample helper threads in addition to the main thread.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-y, --withpython</term>
+    <listitem>
+        <para>
+        Where applicable, gather Python script level stack traces, rather than show the Python interpreter stack traces.
         </para>
     </listitem>
 </varlistentry>

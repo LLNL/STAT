@@ -268,7 +268,7 @@ class STAT_FrontEnd
             \param variableSpecification - a list of variables to gather along with the traces
             \return STAT_OK on success
         */
-        StatError_t sampleStackTraces(StatSample_t sampleType, bool withThreads, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(StatSample_t sampleType, bool withThreads, bool withPython, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
 
         //! Collect the last stack trace from all daemons
         /*!
@@ -835,7 +835,7 @@ class STAT_FrontEnd
         MRN::Stream *perfStream_;
         MRN::Stream *fileRequestStream_;
         MRN::Stream *fgfsStream_;
-        FastGlobalFileStat::CommLayer::CommFabric *fgfsCommFabric_;
+        FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_;
 #endif
 };
 

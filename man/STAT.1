@@ -74,10 +74,13 @@ Sample source line number in addition to function names.
 Gather 4 traces: function only; function + line; function + PC; and 3D function only.
 .TP
 \fB-U, --countrep\fR
-only gather count and a single representative
+Only gather count and a single representative
 .TP
 \fB-w, --withthreads\fR
 Sample helper threads in addition to the main thread.
+.TP
+\fB-y, --withpython\fR
+Where applicable, gather Python script level stack traces, rather than show the Python interpreter stack traces.
 .TP
 \fB-t, --traces \fIcount\fB\fR
 Gather \fIcount\fR traces per process.

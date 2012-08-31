@@ -27,8 +27,8 @@ AC_DEFUN([X_AC_FGFS], [
     TMP_LDFLAGS=$LDFLAGS
     LDFLAGS="$LDFLAGS -lfgfs_mrnet"
     AC_LINK_IFELSE([AC_LANG_PROGRAM(#include "AsyncFastGlobalFileStat.h"
-      using namespace FastGlobalFileStat;
-      GlobalFileStatBase *ptr;)],
+      using namespace FastGlobalFileStatus;
+      GlobalFileStatusBase *ptr;)],
       [libfgfs_mrnet_found=yes],
       [libfgfs_mrnet_found=no]
     )

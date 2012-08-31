@@ -29,9 +29,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 using namespace Dyninst;
 using namespace MRN;
-using namespace FastGlobalFileStat;
-using namespace FastGlobalFileStat::MountPointAttribute;
-using namespace FastGlobalFileStat::CommLayer;
+using namespace FastGlobalFileStatus;
+using namespace FastGlobalFileStatus::MountPointAttribute;
+using namespace FastGlobalFileStatus::CommLayer;
 
 extern int CUR_OUTPUT_LEVEL;
 #define mrn_dbg(x, y) \
@@ -136,7 +136,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
         mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader", statOutFp,
                 "no existing reader for %s\n", pathStr));
 
-        AsyncGlobalFileStat myStat(pathStr);
+        AsyncGlobalFileStatus myStat(pathStr);
         if (IS_YES(myStat.isUnique()))
         {
             localLib = false;
