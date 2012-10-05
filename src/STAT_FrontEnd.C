@@ -154,6 +154,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     }
 
 #ifdef STAT_FGFS
+    fgfsCommFabric_ = NULL;
     envValue = getenv("STAT_FGFS_FILTER_PATH");
     if (envValue != NULL)
     {
@@ -250,6 +251,8 @@ STAT_FrontEnd::~STAT_FrontEnd()
     if (filterPath_ != NULL)
         free(filterPath_);
 #ifdef STAT_FGFS
+    if (fgfsCommFabric_ != NULL)
+        delete fgfsCommFabric_;
     if (fgfsFilterPath_ != NULL)
         free(fgfsFilterPath_);
 #endif
