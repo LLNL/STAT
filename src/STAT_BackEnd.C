@@ -198,6 +198,9 @@ STAT_BackEnd::~STAT_BackEnd()
         }
         free(proctab_);
     }
+    graphlibError = graphlib_Finish();
+    if (GRL_IS_FATALERROR(graphlibError))
+        fprintf(stderr, "Failed to finish graphlib\n");
     statFreeReorderFunctions();
     statFreeBitVectorFunctions();
     statFreeCountRepFunctions();
@@ -407,7 +410,7 @@ StatError_t STAT_BackEnd::mainLoop()
     StatSample_t previousSampleType;
 #endif
 #ifdef GRAPHLIB16
-    unsigned long obyteArrayLen;
+    uint64_t obyteArrayLen;
 #else
     unsigned int obyteArrayLen;
 #endif
@@ -2402,7 +2405,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, std::vector<Frame> &s
 #ifdef PROTOTYPE_PY
     bool ret;
     int found = 0, fLastIVal = -1, result, address, lineNo, firstLineNo;
-    unsigned long baseAddr, pyCodeObjectBaseAddr;
+    unsigned long long baseAddr, pyCodeObjectBaseAddr;
     unsigned int j;
     char buffer[BUFSIZE];
     long length, pAddr;

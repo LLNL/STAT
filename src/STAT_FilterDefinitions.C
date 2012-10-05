@@ -265,11 +265,11 @@ void statMerge(vector<PacketPtr> &inputPackets,
 #endif
     int nChildren, *edgeLabelWidths, rank, inputRank, outputRank, child, tag;
 #ifdef GRAPHLIB16
-    unsigned long outputByteArrayLen;
+    uint64_t outputByteArrayLen;
 #else
     unsigned int outputByteArrayLen;
 #endif
-    unsigned long byteArrayLen;
+    uint64_t byteArrayLen;
     unsigned int i;
     char *byteArray;
     map<int, int> childrenOrder;
@@ -507,6 +507,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
     PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), tag, "%ac %d %d %ud", outputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
 #endif
     outputPackets.push_back(newPacket);
+    cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STAT filter completed\n");
 }
 
 #ifdef STAT_FGFS

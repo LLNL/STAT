@@ -253,7 +253,7 @@ static PyObject *py_Serialize_Graph(PyObject *self, PyObject *args)
 {
     char *buf, *filename;
     int handle, ret;
-    unsigned long buf_len;
+    uint64_t buf_len;
     FILE *f;
     graphlib_graph_p graph_ptr = NULL;
     graphlib_error_t gl_err;

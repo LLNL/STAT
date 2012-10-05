@@ -25,7 +25,7 @@ AC_DEFUN([X_AC_MRNET], [
     using namespace std;
     int main()
     {
-      unsigned long bufLength;
+      uint64_t bufLength;
       DataType type;
       DataElement pkt;
       pkt.get_array(&type, &bufLength);

@@ -17257,7 +17257,7 @@ $as_echo_n "checking Checking MRNet Version... " >&6; }
     using namespace std;
     int main()
     {
-      unsigned long bufLength;
+      uint64_t bufLength;
       DataType type;
       DataElement pkt;
       pkt.get_array(&type, &bufLength);

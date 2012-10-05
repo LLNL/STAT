@@ -538,7 +538,7 @@ char *statCountRepEdgeToText(const void *edge)
 
     e = (StatCountRepEdge_t *)edge;
     ret = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
-    snprintf(ret, STAT_GRAPH_CHUNK, "%ld:[%ld](%ld)", e->count, e->representative, e->checksum);
+    snprintf(ret, STAT_GRAPH_CHUNK, "%lld:[%lld](%lld)", e->count, e->representative, e->checksum);
     return ret;
 }
 

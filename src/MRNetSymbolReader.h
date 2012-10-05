@@ -108,8 +108,9 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
 {
     const char *pathStr = pathName.c_str();
     bool localLib = true;
-    int tag = PROT_LIB_REQ, ret, size;
-    unsigned long fileContentsLength;
+    int tag = PROT_LIB_REQ, ret;
+    long size;
+    uint64_t fileContentsLength;
     char *fileName, *fileContents;
     FILE *fp;
     PacketPtr packet;
@@ -197,6 +198,12 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
 
             fseek(fp, 0, SEEK_END);
             size = ftell(fp);
+            if (size == -1)
+            {
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "%s: File %s ftell returned -1\n", strerror(errno), pathStr));
+                return NULL;
+            }
             fseek(fp, 0, SEEK_SET);
             fileContents = (char *)malloc(size * sizeof(char));
             if (fileContents == NULL)

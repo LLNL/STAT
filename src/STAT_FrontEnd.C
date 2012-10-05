@@ -284,15 +284,15 @@ STAT_FrontEnd::~STAT_FrontEnd()
             free(iter->second);
         }
     }
+    graphlibError = graphlib_Finish();
+    if (GRL_IS_FATALERROR(graphlibError))
+        fprintf(stderr, "Failed to finish graphlib\n");
     statFreeReorderFunctions();
     statFreeBitVectorFunctions();
     statFreeCountRepFunctions();
     statFreeMergeFunctions();
     isAttached_ = false;
     isConnected_ = false;
-    graphlibError = graphlib_Finish();
-    if (GRL_IS_FATALERROR(graphlibError))
-        fprintf(stderr, "Failed to finish graphlib\n");
 }
 
 StatError_t STAT_FrontEnd::attachAndSpawnDaemons(unsigned int pid, char *remoteNode)
@@ -1174,7 +1174,7 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
 {
     int tag, ret;
     long signedFileSize;
-    unsigned long fileSize;
+    uint64_t fileSize;
     char *receiveFile;
     size_t pos;
     char *fileContents = NULL;
@@ -2646,7 +2646,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 {
     static int mergeCount2d = -1, mergeCount3d = -1;
     int tag, totalWidth, retval, dummyRank, offset, mergeCount, nodeId;
-    unsigned long byteArrayLen;
+    uint64_t byteArrayLen;
     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray;
     list<int>::iterator ranksIter;
     graphlib_graph_p stackTraces, sortedStackTraces;
@@ -2952,7 +2952,7 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
 {
     int tag, retval, totalWidth, dummyRank, offset = 0;
     char *byteArray, *edgeLabel;
-    unsigned long byteArrayLen;
+    uint64_t byteArrayLen;
     StatError_t ret;
     PacketPtr packet;
     StatBitVectorEdge_t *unorderedEdge, *orderedEdge;
