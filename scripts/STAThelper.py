@@ -304,7 +304,7 @@ def decompose_node(input, item = None):
     iter_string = ''
     if has_source_and_not_collapsed(input):
         function_name = input[:input.find('@')]
-        if input.find('$') != -1:
+        if input.find('$') != -1 and input.find('$$') == -1: # and clause for name mangling of C++ on BG/Q example
             sourceLine = input[input.find('@') + 1:input.find('$')]
             iter_string = input[input.find('$') + 1:]
         else:
