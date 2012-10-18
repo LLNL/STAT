@@ -2938,7 +2938,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         }
     }
 
-    if (sampleType == STAT_FUNCTION_NAME_ONLY || sampleType == STAT_FUNCTION_AND_PC || sampleType == STAT_FUNCTION_AND_LINE)
+    if (sortedStackTraces != NULL)
     {
         graphlibError = graphlib_delGraph(sortedStackTraces);
         if (GRL_IS_FATALERROR(graphlibError))

@@ -33,7 +33,7 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   )
   AC_MSG_CHECKING(for libstackwalk)
   TMP_LDFLAGS=$LDFLAGS
-  LDFLAGS="$LDFLAGS -lstackwalk -lpcontrol -lparseAPI -linstructionAPI -lsymtabAPI -lcommon -ldwarf -lelf -liberty -lpthread"
+  LDFLAGS="$LDFLAGS -lstackwalk -lpcontrol -lparseAPI -linstructionAPI -lsymtabAPI -lcommon -ldynElf -ldynDwarf -lsymLite -ldwarf -lelf -liberty -lpthread"
   AC_LINK_IFELSE([AC_LANG_PROGRAM(#include "walker.h"
     using namespace Dyninst;
     using namespace Dyninst::Stackwalker;
@@ -43,9 +43,9 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   )
   LDFLAGS=$TMP_LDFLAGS
   if test "$libstackwalk_found" = yes; then
-    BELIBS="-lstackwalk -lpcontrol -lparseAPI -linstructionAPI -lsymtabAPI -lcommon -liberty $BELIBS"
+    BELIBS="-lstackwalk -lpcontrol -lparseAPI -linstructionAPI -lsymtabAPI -lcommon -ldynElf -ldynDwarf -lsymLite -liberty $BELIBS"
   else
-    LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lcommon -ldwarf -lelf -liberty -lpthread"
+    LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lpcontrol -lparseAPI -linstruction -lcommon -ldwarf -lelf -liberty -lpthread"
     AC_LINK_IFELSE([AC_LANG_PROGRAM(#include "walker.h"
       using namespace Dyninst;
       using namespace Dyninst::Stackwalker;
@@ -55,9 +55,22 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     )
     LDFLAGS=$TMP_LDFLAGS
     if test "$libstackwalk_found" = yes; then
-      BELIBS="-lstackwalk -lsymtabAPI -lcommon -liberty $BELIBS"
+      BELIBS="-lstackwalk -lsymtabAPI -lpcontrol -lparseAPI -linstruction -lcommon -liberty $BELIBS"
     else
-      AC_MSG_ERROR([libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker])
+      LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lcommon -ldwarf -lelf -liberty -lpthread"
+      AC_LINK_IFELSE([AC_LANG_PROGRAM(#include "walker.h"
+        using namespace Dyninst;
+        using namespace Dyninst::Stackwalker;
+        Walker *walker;)],
+        [libstackwalk_found=yes],
+        [libstackwalk_found=no]
+      )
+      LDFLAGS=$TMP_LDFLAGS
+      if test "$libstackwalk_found" = yes; then
+        BELIBS="-lstackwalk -lsymtabAPI -lcommon -liberty $BELIBS"
+      else
+        AC_MSG_ERROR([libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker])
+      fi
     fi
   fi
   AC_MSG_RESULT($libstackwalk_found)

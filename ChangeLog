@@ -1,3 +1,7 @@
+2012-10-18 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : fixed memory bug in receiveStackTraces
+	* config/x_ac_debuglibs.m4 : added additional StackWalker version support
+
 2012-08-20 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.[C,h], src/STAT_BackEnd.[C,h], scripts/STATGUI.py,
 	doc/src/* configure.ac src/STAT.[i,C] : added prototype feature to 

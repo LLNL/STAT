@@ -988,7 +988,7 @@ StatError_t STAT_BackEnd::Attach()
        ainfo.reserve(proctabSize_);
        for (i = 0; i < proctabSize_; i++)
        {
-          printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes proces %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+          printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
           ProcessSet::AttachInfo pattach;
           pattach.pid = proctab_[i].pd.pid;
           pattach.executable = proctab_[i].pd.executable_name;
