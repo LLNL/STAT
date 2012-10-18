@@ -1,4 +1,5 @@
 2012-10-18 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : fixed bug in thread stack traces
 	* src/STAT_FrontEnd.C : fixed memory bug in receiveStackTraces
 	* config/x_ac_debuglibs.m4 : added additional StackWalker version support
 

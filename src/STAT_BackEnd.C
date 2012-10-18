@@ -1930,6 +1930,9 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
             }
             prevId = nodeId;
         }
+        outTrace.clear();
+
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Added %s\n", path.c_str());
 
         /* Merge cur graph into retGraph */
 #ifdef GRAPHLIB20
