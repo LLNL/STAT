@@ -53,7 +53,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #include "PlatFeatures.h"
   #include "ProcessSet.h"
   #include "PCErrors.h"
-  #if !defined(PROTOTYPE_PY) && !defined(PROTOTYPE_TO)
+  #if !defined(PROTOTYPE_PY) && !defined(PROTOTYPE_TO) && defined(BGL)
     #define GROUP_OPS
   #endif
 #endif
@@ -458,7 +458,8 @@ class STAT_BackEnd
         statVariable_t *extractVariables;       /*!< a list of variables to extract for the current sample */
         int nVariables;                         /*!< the number of variables to extract */
 
-        std::map<int, StatBitVectorEdge_t *> nodeInEdgeMap_;          /*!< a record of edge labels */
+        std::map<int, StatBitVectorEdge_t *> nodeInEdgeMap2d_;          /*!< a record of edge labels */
+        std::map<int, StatBitVectorEdge_t *> nodeInEdgeMap3d_;          /*!< a record of edge labels */
         std::map<int, Dyninst::Stackwalker::Walker *> processMap_;    /*!< the debug process objects */
         std::map<Dyninst::Stackwalker::Walker *, int> procsToRanks_;  /*!< Turn a process into a rank */
 

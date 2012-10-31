@@ -27,8 +27,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "STAT_IncMRNet.h"
 
-FILE *statOutFp = NULL;
-
 //! An enum to determine which messages to log
 enum StatLogOptions_t {
     STAT_LOG_NONE = 0x00,

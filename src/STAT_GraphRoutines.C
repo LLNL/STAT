@@ -232,12 +232,12 @@ void statDeserializeNode(void **node, const char *buf, unsigned int bufLength)
 
 char *statNodeToText(const void *node)
 {
-    return (char *)node;
+    return strdup((char *)node);
 }
 
-void statMergeNode(void *node1, const void *node2)
+void *statMergeNode(void *node1, const void *node2)
 {
-    // No Op
+    return node1;
 }
 
 void *statCopyNode(const void *node)
@@ -383,7 +383,7 @@ char *statEdgeToText(const void *edge)
     return ret;
 }
 
-void statMergeEdge(void *edge1, const void *edge2)
+void *statMergeEdge(void *edge1, const void *edge2)
 {
     unsigned int i;
     size_t length;
@@ -393,6 +393,7 @@ void statMergeEdge(void *edge1, const void *edge2)
         length = e2->length;
     for (i = 0; i < e1->length; i++)
         e1->bitVector[i] |= e2->bitVector[i];
+    return edge1;
 }
 
 void *statCopyEdge(const void *edge)
@@ -494,7 +495,7 @@ int bitVectorContains(StatBitVector_t *vec, int val)
     return !!(vec[val / STAT_BITVECTOR_BITS] & STAT_GRAPH_BIT(val % STAT_BITVECTOR_BITS));
 }
 
-void statMergeEdgeOrdered(void *edge1, const void *edge2)
+void *statMergeEdgeOrdered(void *edge1, const void *edge2)
 {
     unsigned int i;
     int bit, byte;
@@ -510,6 +511,7 @@ void statMergeEdgeOrdered(void *edge1, const void *edge2)
             e1->bitVector[byte] |= STAT_GRAPH_BIT(bit);
         }
     }
+    return edge1;
 }
 
 void statSerializeCountRepEdge(char *buf, const void *edge)
@@ -542,7 +544,7 @@ char *statCountRepEdgeToText(const void *edge)
     return ret;
 }
 
-void statMergeCountRepEdge(void *edge1, const void *edge2)
+void *statMergeCountRepEdge(void *edge1, const void *edge2)
 {
     StatCountRepEdge_t *e1, *e2;
 
@@ -552,6 +554,7 @@ void statMergeCountRepEdge(void *edge1, const void *edge2)
     e1->checksum += e2->checksum;
     if (e2->representative < e1->representative)
         e1->representative = e2->representative;
+    return edge1;
 }
 
 void *statCopyCountRepEdge(const void *edge)

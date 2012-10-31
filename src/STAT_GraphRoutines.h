@@ -129,7 +129,7 @@ char *statNodeToText(const void *node);
     \param[inout] node1 - the node to merge into
     \param node2 - the node to merge in
 */
-void statMergeNode(void *node1, const void *node2);
+void *statMergeNode(void *node1, const void *node2);
 
 //! Copy a STAT node object
 /*!
@@ -178,7 +178,7 @@ char *statEdgeToText(const void *edge);
     \param[inout] edge1 - the edge to merge into
     \param edge2 - the edge to merge in
 */
-void statMergeEdge(void *edge1, const void *edge2);
+void *statMergeEdge(void *edge1, const void *edge2);
 
 //! Copy a STAT edge object
 /*!
@@ -221,7 +221,7 @@ void *statCopyEdgeInitializeEmpty(const void *edge);
     \param[inout] edge1 - the edge to merge into
     \param edge2 - the edge to merge in
 */
-void statMergeEdgeOrdered(void *edge1, const void *edge2);
+void *statMergeEdgeOrdered(void *edge1, const void *edge2);
 
 //! Serialize a STAT count + rep edge object into a buffer
 /*!
@@ -257,7 +257,7 @@ char *statCountRepEdgeToText(const void *edge);
     \param[inout] edge1 - the edge to merge into
     \param edge2 - the edge to merge in
 */
-void statMergeCountRepEdge(void *edge1, const void *edge2);
+void *statMergeCountRepEdge(void *edge1, const void *edge2);
 
 //! Copy a STAT count + rep edge
 /*!

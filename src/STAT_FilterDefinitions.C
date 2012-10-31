@@ -60,6 +60,8 @@ const char *statMerge_format_string = "%ac %d %d %ud";
 //! The MRNet format string for the STAT version check
 const char *STAT_checkVersion_format_string = "%d %d %d %d %d";
 
+FILE *statOutFp = NULL;
+
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
 //! Increases nofile and nproc limits to maximum
 /*!

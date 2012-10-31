@@ -1532,6 +1532,10 @@ host[1-10,12,15-20];otherhost[30]
         node.edge_label = edge_label
         task_list = get_task_list(edge_label)
         node.num_leaf_tasks = -1
+        try:
+            print self.get_current_graph().cur_filename
+        except:
+            print 'nope'
         if node.edge_label_id in STATview.task_label_id_to_list:
             STATview.task_label_id_to_list[node.edge_label_id] = task_list
         if old_label in STATview.task_label_to_list:

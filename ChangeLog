@@ -1,3 +1,14 @@
+2012-10-31 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_GraphRoutines.C : merge functions return void *
+	* src/STAT_GraphRoutines.C : statNodeToText return strdup
+
+2012-10-24 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.h src/STAT_FrontEnd.C, src/STAT_BackEnd.C
+	src/STAT_FilterDefinitions.C : define statOutFp in .C files
+
+2012-10-19 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : use getpwuid() instead of getlogin()	
+
 2012-10-18 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C : fixed bug in thread stack traces
 	* src/STAT_FrontEnd.C : fixed memory bug in receiveStackTraces

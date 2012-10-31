@@ -42,6 +42,8 @@ extern graphlib_functiontable_p statBitVectorFunctions;
 extern graphlib_functiontable_p statCountRepFunctions;
 #endif
 
+FILE *statOutFp = NULL;
+
 StatError_t statInit(int *argc, char ***argv)
 {
     lmon_rc_e rc;
@@ -167,6 +169,7 @@ STAT_BackEnd::~STAT_BackEnd()
 {
     int i;
     graphlib_error_t graphlibError;
+    map<int, StatBitVectorEdge_t *>::iterator iter;
 
     /* delete exisitng graphs */
     if (prefixTree3d_ != NULL)
@@ -181,6 +184,11 @@ STAT_BackEnd::~STAT_BackEnd()
         if (GRL_IS_FATALERROR(graphlibError))
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
     }
+
+    /* delete any stored edge labels */
+    for (iter = nodeInEdgeMap2d_.begin(); iter != nodeInEdgeMap2d_.end(); iter++)
+        statFreeEdge((void *)iter->second);
+    nodeInEdgeMap2d_.clear();
 
     /* free the parent hostname */
     if (parentHostName_ != NULL)
@@ -729,8 +737,8 @@ StatError_t STAT_BackEnd::mainLoop()
                 }
 
                 /* Find the requested edge label or create an empty dummy one */
-                if (nodeInEdgeMap_.find(nodeId) != nodeInEdgeMap_.end())
-                    edge = nodeInEdgeMap_[nodeId];
+                if (nodeInEdgeMap2d_.find(nodeId) != nodeInEdgeMap2d_.end())
+                    edge = nodeInEdgeMap2d_[nodeId];
                 else
                 {
                     edge = initializeBitVectorEdge(proctabSize_);
@@ -748,7 +756,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 statSerializeEdge(obyteArray, edge);
 
                 /* Free the dummy edge label */
-                if (nodeInEdgeMap_.find(nodeId) == nodeInEdgeMap_.end())
+                if (nodeInEdgeMap2d_.find(nodeId) == nodeInEdgeMap2d_.end())
                     statFreeEdge(edge);
 
                 /* Send */
@@ -1444,9 +1452,9 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
         graphlibError = graphlib_newGraph(&prefixTree2d_, statCountRepFunctions);
 
         /* delete previous edge labels */
-        for (iter2 = nodeInEdgeMap_.begin(); iter2 != nodeInEdgeMap_.end(); iter2++)
+        for (iter2 = nodeInEdgeMap2d_.begin(); iter2 != nodeInEdgeMap2d_.end(); iter2++)
             statFreeEdge((void *)iter2->second);
-        nodeInEdgeMap_.clear();
+        nodeInEdgeMap2d_.clear();
     }
     else
         graphlibError = graphlib_newGraph(&prefixTree2d_, statBitVectorFunctions);
@@ -1923,16 +1931,14 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
 
             if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
             {
-                if (nodeInEdgeMap_.find(nodeId) != nodeInEdgeMap_.end())
-                    statMergeEdge(nodeInEdgeMap_[nodeId], edge);
+                if (nodeInEdgeMap2d_.find(nodeId) != nodeInEdgeMap2d_.end())
+                    statMergeEdge(nodeInEdgeMap2d_[nodeId], edge);
                 else
-                    nodeInEdgeMap_[nodeId] = (StatBitVectorEdge_t *)statCopyEdge((void *)edge);
+                    nodeInEdgeMap2d_[nodeId] = (StatBitVectorEdge_t *)statCopyEdge((void *)edge);
             }
             prevId = nodeId;
         }
         outTrace.clear();
-
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Added %s\n", path.c_str());
 
         /* Merge cur graph into retGraph */
 #ifdef GRAPHLIB20
@@ -2129,10 +2135,10 @@ bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
 
          if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)
          {
-            if (nodeInEdgeMap_.find(newchild) != nodeInEdgeMap_.end())
-               statMergeEdge(nodeInEdgeMap_[newchild], edge);
+            if (nodeInEdgeMap2d_.find(newchild) != nodeInEdgeMap2d_.end())
+               statMergeEdge(nodeInEdgeMap2d_[newchild], edge);
             else
-               nodeInEdgeMap_[newchild] = (StatBitVectorEdge_t *)statCopyEdge((void *)edge);
+               nodeInEdgeMap2d_[newchild] = (StatBitVectorEdge_t *)statCopyEdge((void *)edge);
          }
 #ifdef GRAPHLIB20
          if (sampleType_ == STAT_CR_FUNCTION_NAME_ONLY || sampleType_ == STAT_CR_FUNCTION_AND_PC || sampleType_ == STAT_CR_FUNCTION_AND_LINE)

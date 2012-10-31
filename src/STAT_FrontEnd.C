@@ -43,6 +43,8 @@ static int lmonState = 0;
 const char *errorLabel = "daemon error";
 STAT_timer totalStart, totalEnd, startTime, endTime;
 
+FILE *statOutFp = NULL;
+
 STAT_FrontEnd::STAT_FrontEnd()
 {
     int ret;
@@ -3171,6 +3173,8 @@ StatError_t STAT_FrontEnd::dumpPerf()
     struct timeval timeStamp;
     time_t currentTime;
     char timeBuf[BUFSIZE], *userName;
+    uid_t uid;
+    struct passwd *pw;
     for (i = 0; i < size; i++)
     {
         if (performanceData_[i].first.find("Total MRNet Launch Time") != string::npos)
@@ -3195,13 +3199,16 @@ StatError_t STAT_FrontEnd::dumpPerf()
     gettimeofday(&timeStamp, NULL);
     currentTime = timeStamp.tv_sec;
     strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtime(&currentTime));
-    userName = getlogin();
+    uid = getuid();
+    pw = getpwuid(uid);
+    if (pw == NULL)
+        userName = "NULL";
+    userName = pw->pw_name; /*userName = getlogin(); */
     if (userName == NULL)
     {
         userName = getenv("USER");
         if (userName == NULL)
             userName = "NULL";
-
     }
     fprintf(perfFile, "%s %s %s %d.%d.%d %d %d %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf\n", timeBuf, hostname_, userName, STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION, nApplNodes_, nApplProcs_, launchTime, attachTime, sampleTime, mergeTime, orderTime, exportTime);
     fclose(perfFile);

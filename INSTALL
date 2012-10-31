@@ -76,7 +76,9 @@ Installation
 --prefix=/tmp/work/lee218/install --with-cray-xt \
 MPICC=cc MPICXX=CC MPIF77=ftn --enable-shared LD=/usr/bin/ld.x
 
-   Next you just need to run:
+   Note that specifying LD=/usr/bin/ld.x is only advised on Cray
+   systems, as doing so on other systems may inhibit the abililty
+   to generate shared libraries. Next you just need to run:
 
 make
 make install
