@@ -991,6 +991,8 @@ StatError_t STAT_BackEnd::Attach()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
 #if defined(GROUP_OPS)
+    ThreadTracking::setDefaultTrackThreads(false);
+    LWPTracking::setDefaultTrackLWPs(false);
     vector<ProcessSet::AttachInfo> ainfo;
     if (doGroupOps_) {
        ainfo.reserve(proctabSize_);
@@ -1611,7 +1613,6 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, bool is_final_frame)
          snprintf(buf, BUFSIZE, ":%d", lineNum);
          name += buf;
       }
-#warning TODO: Re-enable variables
       /*if (extractVariables != NULL)
       {
          for (k = 0; k < nVariables; k++)
@@ -1985,10 +1986,11 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
 
 #if defined(GROUP_OPS)
 
-#warning TODO: Remove bitvec internal calls after merging graphlib cleanup
+#if !defined(GRAPHLIB20)
 extern int bitvec_initialize(int longsize, int edgelabelwidth);
 extern void bitvec_insert(void *vec, int val);
 extern void *bitvec_allocate();
+#endif
 
 bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph,
                                    graphlib_node_t gl_node, FrameNode *sw_node,
@@ -2162,8 +2164,11 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
                                                unsigned int /*nRetries*/, unsigned int /*retryFrequency*/,
                                                unsigned int /*withThreads*/)
 {
-   CallTree tree(frame_lib_offset_cmp);
+   if (procset->getLWPTracking()) {
+      procset->getLWPTracking()->refreshLWPs();
+   }
 
+   CallTree tree(frame_lib_offset_cmp);
    bool result = walkerset->walkStacks(tree);
    if (!result) {
 #warning TODO: Start handling partial call stacks in group walks
