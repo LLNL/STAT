@@ -41,6 +41,8 @@ do { \
     }                                           \
 } while(0)
 
+extern FILE *statOutFp;
+
 class Elf_X;
 
 class MRNetSymbolReader :public Dyninst::SymReader
