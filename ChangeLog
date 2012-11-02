@@ -1,4 +1,5 @@
 2012-11-02 Gregory L. Lee <lee218@llnl.gov>
+	* doc/src/* : updated documentation
 	* src/STAT_*.[C,h], config/x_ac_graphlib.m4 : removed graphlib 1.X support
 	* src/STAT_*.[C,h], config/x_ac_mrnet.m4 : removed MRNet 2.X support
 

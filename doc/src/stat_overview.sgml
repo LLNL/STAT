@@ -4,7 +4,7 @@ STAT, the Stack Trace Analysis Tool, helps isolate bugs by gathering stack trace
 <figure id="merged_traces">
     <title>A single stack trace (left) and a STAT merged call prefix tree (right)</title>
     <mediaobject><imageobject>
-    <imagedata scale="50" fileref="figs/trace_and_merge.png">
+    <imagedata fileref="figs/trace_and_merge.png">
     </imageobject></mediaobject>
 </figure>
 <para>
