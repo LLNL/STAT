@@ -131,7 +131,6 @@ int lmonStatusCb(int *status);
 StatError_t increaseSysLimits();
 #endif
 
-#ifdef MRNET3
 //! Callback for MRNet BE connections
 /*!
     \param event - the event type
@@ -158,7 +157,6 @@ void nodeRemovedCb(MRN::Event *event, void *dummy);
     Handle the change of the tree topology, reconfigure the bit vectors
 */
 void topologyChangeCb(MRN::Event *event, void *dummy);
-#endif
 
 //! The STAT FrontEnd object is used to Launch STAT daemons and gather and merge stack traces
 class STAT_FrontEnd

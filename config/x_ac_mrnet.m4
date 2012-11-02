@@ -33,8 +33,6 @@ AC_DEFUN([X_AC_MRNET], [
     [AC_DEFINE([MRNET40], [], [MRNet 4.0])
       AC_DEFINE([MRNET31], [], [MRNet 3.1])
       AC_DEFINE([MRNET3], [], [MRNet 3.X]) 
-      AC_DEFINE([MRNET22], [], [MRNet 2.2]) 
-      AC_DEFINE([MRNET2], [], [MRNet 2.X])
       mrnet_vers=4.0
     ]
   )
@@ -51,8 +49,6 @@ AC_DEFUN([X_AC_MRNET], [
       }],
       [AC_DEFINE([MRNET31], [], [MRNet 3.1])
         AC_DEFINE([MRNET3], [], [MRNet 3.X]) 
-        AC_DEFINE([MRNET22], [], [MRNet 2.2]) 
-        AC_DEFINE([MRNET2], [], [MRNet 2.X])
         mrnet_vers=3.1
       ]
     )
@@ -66,27 +62,8 @@ AC_DEFUN([X_AC_MRNET], [
         net->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_ADD_BE, NULL, NULL);
       }],
       [AC_DEFINE([MRNET3], [], [MRNet 3.X])
-        AC_DEFINE([MRNET22], [], [MRNet 2.2]) 
-        AC_DEFINE([MRNET2], [], [MRNet 2.X])
         mrnet_vers=3.X
       ]
-    )
-  fi
-  if test $mrnet_vers = -1; then
-    AC_COMPILE_IFELSE([#include "mrnet/MRNet.h"
-      using namespace MRN;
-      Network *net=Network::CreateNetworkFE(NULL, NULL, NULL);],
-      [AC_DEFINE([MRNET22], [], [MRNet 2.2]) 
-        AC_DEFINE([MRNET2], [], [MRNet 2.X])
-        mrnet_vers=2.2
-      ]
-    )
-  fi
-  if test $mrnet_vers = -1; then
-    AC_COMPILE_IFELSE([#include "mrnet/MRNet.h"
-      using namespace MRN;
-      NetworkTopology *topo;],
-      [AC_DEFINE([MRNET2], [], [MRNet 2.X]) mrnet_vers=2.X]
     )
   fi
   AC_MSG_RESULT([$mrnet_vers])

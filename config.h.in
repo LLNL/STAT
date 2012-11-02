@@ -123,12 +123,6 @@
    */
 #undef LT_OBJDIR
 
-/* MRNet 2.X */
-#undef MRNET2
-
-/* MRNet 2.2 */
-#undef MRNET22
-
 /* MRNet 3.X */
 #undef MRNET3
 

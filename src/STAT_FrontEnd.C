@@ -593,7 +593,6 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
     return STAT_OK;
 }
 
-#ifdef MRNET3
 //! The number of BEs that have connected
 int nCallbacks;
 pthread_mutex_t mrnetCallbackMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -638,7 +637,6 @@ void topologyChangeCb(Event *event, void *dummy)
         pthread_mutex_unlock(&mrnetCallbackMutex);
     }
 }
-#endif
 
 StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, bool shareAppNodes, bool isStatBench)
 {
@@ -671,16 +669,15 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     /* Now that we have the topology configured, launch away */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tInitializing MRNet...\n");
     startTime.setTime();
-#ifdef MRNET22
- #ifdef CRAYXT
-  #ifdef MRNET31
+#ifdef CRAYXT
+    #ifdef MRNET31
     map<string, string> attrs;
     char apidString[BUFSIZE];
     snprintf(apidString, BUFSIZE, "%d", launcherPid_);
     attrs.insert(make_pair("CRAY_ALPS_APRUN_PID", apidString));
     attrs.insert(make_pair("CRAY_ALPS_STAGE_FILES", filterPath_));
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-  #else /* ifdef MRNET31 */
+    #else /* ifdef MRNET31 */
     map<string, string> attrs;
     char apidString[BUFSIZE], *emsg;
     int nid;
@@ -700,13 +697,10 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     snprintf(apidString, BUFSIZE, "%d", apid);
     attrs["apid"] = apidString;
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-  #endif /* ifdef MRNET31 */
- #else /* ifdef CRAYXT */
+    #endif /* ifdef MRNET31 */
+#else /* ifdef CRAYXT */
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
- #endif /* ifdef CRAYXT */
-#else /* ifdef MRNET22 */
-    network_ = new Network(topologyFileName, NULL, NULL);
-#endif /* ifdef MRNET22 */
+#endif /* ifdef CRAYXT */
     if (network_ == NULL)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Network initialization failure\n");
@@ -726,7 +720,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     addPerfData("\tMRNet Constructor Time", (endTime - startTime).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tMRNet initialized\n");
 
-#ifdef MRNET3
     /* Register the BE connect callback function with MRNet */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering topology event callback with MRNet\n");
     nCallbacks = 0;
@@ -737,7 +730,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         return STAT_MRNET_ERROR;
     }
 
-  #ifndef STAT_FGFS
+#ifndef STAT_FGFS
     /* Register the node removed callback function with MRNet */
     ret = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_REMOVE_NODE, nodeRemovedCb, (void *)this);
     if (ret == false)
@@ -753,7 +746,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to register MRNet topology change callback\n");
         return STAT_MRNET_ERROR;
     }
-  #endif
 #endif
 
     /* Get the topology information from the Network */
@@ -851,11 +843,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
         }
         if (i < connectTimeout * 100)
         {
-#ifdef MRNET3
             if (nCallbacks < nApplNodes_)
-#else
-            if (leafInfo_.networkTopology->get_NumNodes() < topologySize_ + nApplNodes_)
-#endif
             {
                 usleep(10000);
                 return STAT_PENDING_ACK;
@@ -871,19 +859,13 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
                 printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
                 return STAT_DAEMON_ERROR;
             }
-#ifdef MRNET3
             if (nCallbacks == nApplNodes_)
                 break;
-#else
-            if (leafInfo_.networkTopology->get_NumNodes() >= topologySize_ + nApplNodes_)
-                break;
-#endif
             usleep(10000);
         }
     }
 
     /* Make sure all expected BEs registered within timeout limit */
-#ifdef MRNET3
     if (i >= connectTimeout * 100 || nCallbacks < nApplNodes_)
     {
             printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.\n", i/100, connectTimeout, nCallbacks, nApplNodes_);
@@ -891,15 +873,6 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
             return STAT_DAEMON_ERROR;
         printMsg(STAT_WARNING, __FILE__, __LINE__, "Continuing with available subset.\n");
     }
-#else
-    if (i >= connectTimeout * 100 || leafInfo_.networkTopology->get_NumNodes() < topologySize_ + nApplNodes_)
-    {
-        printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.\n", i/100, connectTimeout, leafInfo_.networkTopology->get_NumNodes() - topologySize_, nApplNodes_);
-        if (leafInfo_.networkTopology->get_NumNodes() <= topologySize_)
-            return STAT_DAEMON_ERROR;
-        printMsg(STAT_WARNING, __FILE__, __LINE__, "Continuing with available subset.\n");
-    }
-#endif
 
     endTime.setTime();
     addPerfData("\tConnect to Daemons Time", (endTime - startTime).getDoubleTime());
@@ -3336,10 +3309,6 @@ StatError_t STAT_FrontEnd::shutdownMrnetTree()
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to flush message\n");
         return STAT_MRNET_ERROR;
     }
-
-#ifndef MRNET22
-    network_->shutdown_Network();
-#endif
 
     return STAT_OK;
 }

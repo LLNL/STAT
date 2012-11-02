@@ -221,10 +221,8 @@ STAT_BackEnd::~STAT_BackEnd()
     /* clean up MRNet */
     if (network_ != NULL)
     {
-#ifdef MRNET3
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waiting for shutdown\n");
         network_->waitfor_ShutDown();
-#endif
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "deleting network\n");
         delete network_;
     }
@@ -378,7 +376,6 @@ StatError_t STAT_BackEnd::Connect()
 
     /* Connect to the MRNet Network */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Connecting to MRNet network\n");
-#ifdef MRNET22
     char *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
     snprintf(parentPort, BUFSIZE, "%d", parentPort_);
     snprintf(parentRank, BUFSIZE, "%d", parentRank_);
@@ -392,9 +389,6 @@ StatError_t STAT_BackEnd::Connect()
     printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"Calling CreateNetworkBE\n");
     network_ = Network::CreateNetworkBE(6, param);
     printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"End of create network be\n");
-#else
-    network_ = new Network(parentHostName_, parentPort_, parentRank_, localHostName_, myRank_);
-#endif
     if(network_ == NULL)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "backend_init() failed\n");
@@ -449,11 +443,7 @@ StatError_t STAT_BackEnd::mainLoop()
         if (swNotificationFd != -1)
         {
             /* set the MRNet notification FD if StackWalker FD set, otherwise we can just use blocking receives */
-#ifdef MRNET3
            mrnNotificationFd = network_->get_EventNotificationFd(MRN::Event::DATA_EVENT);
-#else
-            mrnNotificationFd = network_->get_EventNotificationFd(DATA_EVENT);
-#endif
             /* setup the select call for the MRNet and SW FDs */
             if (mrnNotificationFd > swNotificationFd)
                 max_fd = mrnNotificationFd + 1;
@@ -476,11 +466,7 @@ StatError_t STAT_BackEnd::mainLoop()
             if (FD_ISSET(mrnNotificationFd, &readfds))
             {
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Handling MRNet event on FD %d\n", mrnNotificationFd);
-#ifdef MRNET3
                 network_->clear_EventNotificationFd(MRN::Event::DATA_EVENT);
-#else
-                network_->clear_EventNotificationFd(DATA_EVENT);
-#endif
             }
             else if (FD_ISSET(swNotificationFd, &readfds))
             {
@@ -2943,7 +2929,6 @@ StatError_t STAT_BackEnd::statBenchConnect()
     }
 
     /* Connect to the MRNet Network */
-#ifdef MRNET22
     char *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
     snprintf(parentPort, BUFSIZE, "%d", parentPort_);
     snprintf(parentRank, BUFSIZE, "%d", parentRank_);
@@ -2955,9 +2940,6 @@ StatError_t STAT_BackEnd::statBenchConnect()
     param[4] = localHostName_;
     param[5] = myRank;
     network_ = Network::CreateNetworkBE(6, param);
-#else
-    network_ = new Network(parentHostName_, parentPort_, parentRank_, localHostName_, myRank_);
-#endif
     if(network_ == NULL)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "backend_init() failed\n");

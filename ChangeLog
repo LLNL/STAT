@@ -1,3 +1,9 @@
+2012-11-02 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_*.[C,h], config/x_ac_mrnet.m4 : removed MRNet 2.X support
+
+2012-11-01 Gregory L. Lee <lee218@llnl.gov>
+	* src/MRNetSymbolReader.h : extern FILE *statOutFp
+
 2012-10-31 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_GraphRoutines.C : merge functions return void *
 	* src/STAT_GraphRoutines.C : statNodeToText return strdup
