@@ -11,15 +11,17 @@ Dependent Packages
    STAT has several dependencies
 
    Table 1. STAT Dependent Packages
-   Package     What It Does
+   Package What It Does
    Package Web Page
-   Graphlib    Graph creation, merging, and export
+   Graphlib version 2.0 or greater Graph creation, merging, and
+   export
    https://outreach.scidac.gov/projects/stat/
-   Launchmon   Scalable daemon co-location
+   Launchmon Scalable daemon co-location
    http://sourceforge.net/projects/launchmon/
-   Libdwarf    Debug information parsing (Required by StackWalker)
+   Libdwarf Debug information parsing (Required by StackWalker)
    http://reality.sgiweb.org/davea/dwarf.html
-   MRNet       Scalable multicast and reduction network
+   MRNet version 3.0 or greater Scalable multicast and reduction
+   network
    http://www.paradyn.org/mrnet/
    StackWalker Lightweight stack trace sampling
    http://www.paradyn.org/html/downloads.html

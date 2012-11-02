@@ -16,7 +16,7 @@ STAT has several dependencies
 </thead>
 <tbody>
 <row rowsep="0">
-    <entry>Graphlib</entry>
+    <entry>Graphlib version 2.0 or greater</entry>
     <entry>Graph creation, merging, and export</entry>
 </row>
 <row rowsep="1">
@@ -37,7 +37,7 @@ STAT has several dependencies
     <entry namest="c1" nameend="c2"><ulink url="http://reality.sgiweb.org/davea/dwarf.html"></ulink></entry>
 </row>
 <row>
-    <entry>MRNet</entry>
+    <entry>MRNet version 3.0 or greater</entry>
     <entry>Scalable multicast and reduction network</entry>
 </row>
 <row rowsep="1">

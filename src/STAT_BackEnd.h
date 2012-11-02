@@ -36,9 +36,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "STAT.h"
 #include "STAT_timer.h"
-#ifdef GRAPHLIB20
 #include "STAT_GraphRoutines.h"
-#endif
 #include "graphlib.h"
 #include "lmon_api/lmon_be.h"
 

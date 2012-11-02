@@ -9,9 +9,6 @@
 /* Define DEBUG flag */
 #undef DEBUG
 
-/* Graphlib 1.6 */
-#undef GRAPHLIB16
-
 /* Graphlib 2.0 */
 #undef GRAPHLIB20
 
