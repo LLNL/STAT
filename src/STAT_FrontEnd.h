@@ -550,6 +550,13 @@ class STAT_FrontEnd
         */
         StatError_t addPerfData(const char *buf, double time);
 
+
+        //! Sets the file to use when reading node list
+        /*!
+            \param nodeListFile - the File to read from
+        */
+        void setNodeListFile(char *nodeListFile);
+
         //! Gets the STAT install prefix
         /*!
             First use the STAT_PREFIX environment variable if it is defined,
@@ -802,6 +809,7 @@ class STAT_FrontEnd
         char *applExe_;                                     /*!< the name of the application executable */
         char *filterPath_;                                  /*!< the path to the STAT_FilterDefinitions.so filter file */
         char *remoteNode_;                                  /*!< the hostname of the remote node running the job launcher */
+        char *nodeListFile_;                                /*!< The file to containing the nodelist */
         char lastDotFileName_[BUFSIZE];                     /*!< the path to the last generated .dot file */
         char outDir_[BUFSIZE];                              /*!< the output directory */
         char logOutDir_[BUFSIZE];                           /*!< the directory for log files */

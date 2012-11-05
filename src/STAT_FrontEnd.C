@@ -217,6 +217,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     proctabSize_ = 0;
     proctab_ = NULL;
     remoteNode_ = NULL;
+    nodeListFile_ = NULL;
     isRunning_ = false;
     snprintf(outDir_, BUFSIZE, "NULL");
     snprintf(logOutDir_, BUFSIZE, "NULL");
@@ -1298,6 +1299,11 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
 
 #endif //STAT_FGFS
 
+void STAT_FrontEnd::setNodeListFile(char *nodeListFile)
+{
+   nodeListFile_ = nodeListFile;
+}
+
 char *STAT_FrontEnd::getLastErrorMessage()
 {
     return lastErrorMessage_;
@@ -1346,8 +1352,8 @@ StatError_t STAT_FrontEnd::dumpProctab()
     for (i = 0; i < nApplProcs_; i++)
     {
         fprintf(f, "%d %s:%d %s\n", proctab_[i].mpirank, proctab_[i].pd.host_name, proctab_[i].pd.pid, proctab_[i].pd.executable_name);
-        if (verbose_ == STAT_VERBOSE_FULL || logging_ & STAT_LOG_FE)
-            printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "%s: %s, pid: %d, MPI rank: %d\n", proctab_[i].pd.host_name, proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+/*        if (verbose_ == STAT_VERBOSE_FULL || logging_ & STAT_LOG_FE)
+            printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "%s: %s, pid: %d, MPI rank: %d\n", proctab_[i].pd.host_name, proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);*/
     }
 
     fclose(f);
@@ -1573,7 +1579,7 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
     j = 0;
     for (iter = tempMap.begin(); iter != tempMap.end(); iter++)
     {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemon %s, ranks:", iter->first.c_str());
+       /*printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemon %s, ranks:", iter->first.c_str());*/
         sort((iter->second).begin(), (iter->second).end());
         daemonRanks = (IntList_t *)malloc(sizeof(IntList_t));
         if (daemonRanks == NULL)
@@ -1590,11 +1596,11 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
         }
         for (i = 0; i < (iter->second).size(); i++)
         {
-            printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%d, ", (iter->second)[i]);
+           /*printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%d, ", (iter->second)[i]);*/
             daemonRanks->list[i] = (iter->second)[i];
         }
         mrnetRankToMPIRanksMap_[topologySize_ + j] = daemonRanks;
-        printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");
+        /*printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");*/
         j++;
     }
 
@@ -3511,12 +3517,19 @@ StatError_t STAT_FrontEnd::setNodeListFromConfigFile(char **nodeList)
 {
     FILE *f;
     char fileName[BUFSIZE], input[BUFSIZE];
+    char *nodefile;
     string nodes;
     int count = 0;
 
-    snprintf(fileName, BUFSIZE, "%s/etc/STAT/nodes.txt", getInstallPrefix());
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting node list from file %s\n", fileName);
-    f = fopen(fileName, "r");
+    if (nodeListFile_ == NULL) {
+       snprintf(fileName, BUFSIZE, "%s/etc/STAT/nodes.txt", getInstallPrefix());
+       nodefile = fileName;
+    }
+    else {
+       nodefile = nodeListFile_;
+    }
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting node list from file %s\n", nodefile);
+    f = fopen(nodefile, "r");
     if (f != NULL)
     {
         while (fscanf(f, "%s", input) != EOF)
@@ -3540,7 +3553,7 @@ StatError_t STAT_FrontEnd::setNodeListFromConfigFile(char **nodeList)
         fclose(f);
     }
     else
-        printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "No config file %s\n", fileName);
+        printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "No config file %s\n", nodefile);
 
     return STAT_OK;
 }
