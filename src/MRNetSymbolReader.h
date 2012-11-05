@@ -140,7 +140,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                 "no existing reader for %s\n", pathStr));
 
         AsyncGlobalFileStatus myStat(pathStr);
-        if (IS_YES(myStat.isUnique()))
+        if (IS_YES(myStat.isUnique()) || 1)
         {
             localLib = false;
 
