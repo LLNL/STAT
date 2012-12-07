@@ -129,9 +129,10 @@ unsigned int string_hash(const char *str);
 /*!
     \param[in,out] argc - the number of arguments
     \param[in,out] argv - the argument list
+    \param[in] mrnetLaunch - whether the daemon was launched by MRNet
     \return STAT_OK on success
 */
-StatError_t statInit(int *argc, char ***argv);
+StatError_t statInit(int *argc, char ***argv, bool mrnetLaunch = false);
 
 //! STAT finalization code
 /*!
@@ -175,15 +176,24 @@ class STAT_BackEnd
         */
         StatError_t Init();
 
+        //! Add a serial process to the process table
+        /*
+            \param pidString - the input hostname:pid string
+            \return STAT_OK on success
+        */
+        StatError_t addSerialProcess(const char *pidString);
+
         //! Connect to the MRNet tree
         /*!
+            \param argc - [optional] the arg count to pass to MRNet
+            \param argv - [optional] the arg list to pass to MRNet
             \return STAT_OK on success
 
             Receive the connection information from the frontend and broadcast it to all
             the daemons.  Call the MRNet Network constructor with this daemon's MRNet
             personality.
         */
-        StatError_t Connect();
+        StatError_t Connect(int argc = 0, char **argv = NULL);
 
         //! Receives messages from FE and executes the requests
         /*!
@@ -206,7 +216,8 @@ class STAT_BackEnd
         //! Creates the log file
         /*!
             \param logOutDir - the output log directory
-            \param useMrnetPrintf - whether to use MRNet's printf for STAT logging
+            \param useMrnetPrintf - [optional] whether to use MRNet's printf for STAT logging
+            \param mrnetOutputLevel - [optional] the MRNet logging output level
             \return STAT_OK on success
         */
         StatError_t startLog(char *logOutDir, bool useMrnetPrintf = false, int mrnetOutputLevel = 1);

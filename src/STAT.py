@@ -104,6 +104,7 @@ STAT_CR_FUNCTION_AND_PC = _STAT.STAT_CR_FUNCTION_AND_PC
 STAT_CR_FUNCTION_AND_LINE = _STAT.STAT_CR_FUNCTION_AND_LINE
 STAT_LAUNCH = _STAT.STAT_LAUNCH
 STAT_ATTACH = _STAT.STAT_ATTACH
+STAT_SERIAL_ATTACH = _STAT.STAT_SERIAL_ATTACH
 STAT_VERBOSE_ERROR = _STAT.STAT_VERBOSE_ERROR
 STAT_VERBOSE_STDOUT = _STAT.STAT_VERBOSE_STDOUT
 STAT_VERBOSE_FULL = _STAT.STAT_VERBOSE_FULL
@@ -154,8 +155,10 @@ class STAT_FrontEnd(_object):
     __del__ = lambda self : None;
     def attachAndSpawnDaemons(self, *args): return _STAT.STAT_FrontEnd_attachAndSpawnDaemons(self, *args)
     def launchAndSpawnDaemons(self, remoteNode = None, isStatBench = False): return _STAT.STAT_FrontEnd_launchAndSpawnDaemons(self, remoteNode, isStatBench)
+    def setupForSerialAttach(self): return _STAT.STAT_FrontEnd_setupForSerialAttach(self)
     def launchMrnetTree(self, *args): return _STAT.STAT_FrontEnd_launchMrnetTree(self, *args)
     def connectMrnetTree(self, blocking = True, isStatBench = False): return _STAT.STAT_FrontEnd_connectMrnetTree(self, blocking, isStatBench)
+    def setupConnectedMrnetTree(self, isStatBench = False): return _STAT.STAT_FrontEnd_setupConnectedMrnetTree(self, isStatBench)
     def attachApplication(self, blocking = True): return _STAT.STAT_FrontEnd_attachApplication(self, blocking)
     def pause(self, blocking = True): return _STAT.STAT_FrontEnd_pause(self, blocking)
     def resume(self, blocking = True): return _STAT.STAT_FrontEnd_resume(self, blocking)
@@ -192,10 +195,13 @@ class STAT_FrontEnd(_object):
     def getFilterPath(self): return _STAT.STAT_FrontEnd_getFilterPath(self)
     def getRemoteNode(self): return _STAT.STAT_FrontEnd_getRemoteNode(self)
     def addLauncherArgv(self, *args): return _STAT.STAT_FrontEnd_addLauncherArgv(self, *args)
+    def addSerialProcess(self, *args): return _STAT.STAT_FrontEnd_addSerialProcess(self, *args)
     def getLauncherArgv(self): return _STAT.STAT_FrontEnd_getLauncherArgv(self)
     def getLauncherArgc(self): return _STAT.STAT_FrontEnd_getLauncherArgc(self)
     def setVerbose(self, *args): return _STAT.STAT_FrontEnd_setVerbose(self, *args)
     def getVerbose(self): return _STAT.STAT_FrontEnd_getVerbose(self)
+    def setApplicationOption(self, *args): return _STAT.STAT_FrontEnd_setApplicationOption(self, *args)
+    def getApplicationOption(self): return _STAT.STAT_FrontEnd_getApplicationOption(self)
     def getLastErrorMessage(self): return _STAT.STAT_FrontEnd_getLastErrorMessage(self)
     def addPerfData(self, *args): return _STAT.STAT_FrontEnd_addPerfData(self, *args)
     def getInstallPrefix(self): return _STAT.STAT_FrontEnd_getInstallPrefix(self)

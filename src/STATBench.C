@@ -125,6 +125,14 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    statError = STAT->setupConnectedMrnetTree(true);
+    if (statError != STAT_OK)
+    {
+        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to setup connected MRNet tree\n");
+        delete STAT;
+        return -1;
+    }
+
     /* Generate the traces */
     statError = STAT->statBenchCreateStackTraces(maxDepth, nTasks, nTraces, functionFanout, nEqClasses, countRep);
     if (statError != STAT_OK)
@@ -262,6 +270,11 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'n':
             nodeList = strdup(optarg);
+            if (nodeList == NULL)
+            {
+                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to nodeList\n", strerror(errno), optarg);
+                return STAT_ALLOCATE_ERROR;
+            }
             break;
         case 'A':
             shareAppNodes = true;
@@ -312,6 +325,11 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'L':
             logOutDir = strdup(optarg);
+            if (logOutDir == NULL)
+            {
+                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
+                return STAT_ALLOCATE_ERROR;
+            }
             break;
         case 'M':
             logType |= STAT_LOG_MRN;

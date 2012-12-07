@@ -55,7 +55,8 @@ typedef enum {
 
 typedef enum {
     STAT_LAUNCH = 0,
-    STAT_ATTACH
+    STAT_ATTACH,
+    STAT_SERIAL_ATTACH
 } StatLaunch_t;
 
 typedef enum {
@@ -111,8 +112,10 @@ class STAT_FrontEnd
 
         StatError_t attachAndSpawnDaemons(unsigned int pid, char *remoteNode = NULL);
         StatError_t launchAndSpawnDaemons(char *remoteNode = NULL, bool isStatBench = false);
+        StatError_t setupForSerialAttach();
         StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false, bool isStatBench = false);
         StatError_t connectMrnetTree(bool blocking = true, bool isStatBench = false);
+        StatError_t setupConnectedMrnetTree(bool isStatBench = false);
         StatError_t attachApplication(bool blocking = true);
         StatError_t pause(bool blocking = true);
         StatError_t resume(bool blocking = true);
@@ -151,10 +154,13 @@ class STAT_FrontEnd
         const char *getFilterPath();
         const char *getRemoteNode();
         StatError_t addLauncherArgv(const char *launcherArg);
+        StatError_t addSerialProcess(const char *pidString);
         const char **getLauncherArgv();
         unsigned int getLauncherArgc();
         void setVerbose(StatVerbose_t verbose);
         StatVerbose_t getVerbose();
+        void setApplicationOption(StatLaunch_t applicationOption);
+        StatLaunch_t getApplicationOption();
         char *getLastErrorMessage();
         StatError_t addPerfData(const char *buf, double time);
         const char *getInstallPrefix();

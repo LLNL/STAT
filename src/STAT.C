@@ -92,14 +92,17 @@ int main(int argc, char **argv)
     STAT->addPerfData(invocationString.c_str(), -1.0);
 
     /* If we're just attaching, sleep here */
-    if (applicationOption == STAT_ATTACH)
+    if (applicationOption == STAT_ATTACH || applicationOption == STAT_SERIAL_ATTACH)
         mySleep();
 
     /* Launch the Daemons */
+    STAT->setApplicationOption(applicationOption);
     if (applicationOption == STAT_ATTACH)
         statError = STAT->attachAndSpawnDaemons(pid, remoteNode);
-    else
+    else if (applicationOption == STAT_LAUNCH)
         statError = STAT->launchAndSpawnDaemons(remoteNode);
+    else
+        statError = STAT->setupForSerialAttach();
     if (statError != STAT_OK)
     {
         STAT->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
@@ -109,11 +112,19 @@ int main(int argc, char **argv)
     }
 
     /* Launch the MRNet Tree */
-    statError = STAT->launchMrnetTree(topologyType, topologySpecification, nodeList, true, shareAppNodes);
+    statError = STAT->launchMrnetTree(topologyType, topologySpecification, nodeList, true, shareAppNodes, false);
     if (statError != STAT_OK)
     {
         STAT->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
         STAT->shutDown();
+        delete STAT;
+        return -1;
+    }
+
+    statError = STAT->setupConnectedMrnetTree(false);
+    if (statError != STAT_OK)
+    {
+        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to setup connected MRNet tree\n");
         delete STAT;
         return -1;
     }
@@ -290,6 +301,7 @@ void printUsage(int argc, char **argv)
     fprintf(stderr, "\nUsage:\n");
     fprintf(stderr, "\tSTAT [OPTIONS] <launcherPid_>\n");
     fprintf(stderr, "\tSTAT [OPTIONS] -C <application_launch_command>\n");
+    fprintf(stderr, "\tSTAT [OPTIONS] -I [<exe>@<host:pid>]+\n");
     fprintf(stderr, "\nStack trace sampling options:\n");
     fprintf(stderr, "  -t, --traces <count>\t\tnumber of traces per process\n");
     fprintf(stderr, "  -T, --tracefreq <frequency>\ttime between samples in milli-seconds\n");
@@ -314,6 +326,7 @@ void printUsage(int argc, char **argv)
     fprintf(stderr, "  -p, --procs <processes>\tthe maximum number of communication processes\n\t\t\t\tper node\n");
     fprintf(stderr, "\nMiscellaneous options:\n");
     fprintf(stderr, "  -C, --create [<args>]+\tlaunch the application under STAT's control.\n\t\t\t\tAll args after -C are used to launch the app.\n");
+    fprintf(stderr, "  -I, --serial [<args>]+\tattach to a list of serial processes.\n\t\t\t\tAll args after -I are interpreted as processes.\n\t\t\t\tIn the form: [exe@][hostname:]pid\n");
     fprintf(stderr, "  -D, --daemon <path>\t\tthe full path to the STAT daemon\n");
     fprintf(stderr, "  -F, --filter <path>\t\tthe full path to the STAT filter shared object\n");
     fprintf(stderr, "  -l, --log [FE|BE|CP]\t\tenable debug logging\n");
@@ -331,7 +344,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
     StatError_t statError;
     string nProcsOpt;
     int nProcs;
-    bool createJob = false;
+    bool createJob = false, serialJob = false;
     char *logOutDir = NULL;
     unsigned char logType = STAT_LOG_NONE;
 
@@ -347,6 +360,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         {"pythontrace", no_argument, 0, 'y'},
         {"autotopo", no_argument, 0, 'a'},
         {"create", no_argument, 0, 'C'},
+        {"serial", no_argument, 0, 'I'},
         {"appnodes", no_argument, 0, 'A'},
         {"sampleindividual", no_argument, 0, 'S'},
         {"mrnetprintf", no_argument, 0, 'M'},
@@ -380,13 +394,18 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvPicwyaCASMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPicwyaCIASMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'C')
         {
             createJob = true;
             break; /* All remaining args are for job launch */
+        }
+        else if (opt == 'I')
+        {
+            serialJob = true;
+            break; /* All remaining args are for serial attach */
         }
         switch(opt)
         {
@@ -439,6 +458,11 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'n':
             nodeList = strdup(optarg);
+            if (nodeList == NULL)
+            {
+                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to nodeList\n", strerror(errno), optarg);
+                return STAT_ALLOCATE_ERROR;
+            }
             break;
         case 'p':
             STAT->setProcsPerNode(atoi(optarg));
@@ -492,6 +516,11 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             break;
         case 'L':
             logOutDir = strdup(optarg);
+            if (logOutDir == NULL)
+            {
+                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
+                return STAT_ALLOCATE_ERROR;
+            }
             break;
         case 'M':
             logType |= STAT_LOG_MRN;
@@ -530,7 +559,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             sampleType = STAT_CR_FUNCTION_AND_LINE;
     }
 
-    if (optind == argc - 1 && createJob == false)
+    if (optind == argc - 1 && (createJob == false && serialJob == false))
     {
         applicationOption = STAT_ATTACH;
         remotePid = argv[optind++];
@@ -556,6 +585,12 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         applicationOption = STAT_LAUNCH;
         for (i = optind; i < argc; i++)
             STAT->addLauncherArgv(argv[i]);
+    }
+    else if (optind < argc && serialJob == true)
+    {
+        applicationOption = STAT_SERIAL_ATTACH;
+        for (i = optind; i < argc; i++)
+            STAT->addSerialProcess(argv[i]);
     }
     else
     {

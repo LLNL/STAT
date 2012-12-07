@@ -207,6 +207,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     launcherPid_ = 0;
     launcherArgv_ = NULL;
     launcherArgc_ = 1;
+    lmonSession_ = -1;
     logging_ = STAT_LOG_NONE;
     applExe_ = NULL;
     jobId_ = 0;
@@ -300,17 +301,24 @@ StatError_t STAT_FrontEnd::attachAndSpawnDaemons(unsigned int pid, char *remoteN
 {
     StatError_t statError;
 
-    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Attaching to job launcher and launching tool daemons...\n");
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Attaching to job launcher %s:%d and launching tool daemons...\n", remoteNode, pid);
 
     launcherPid_ = pid;
     if (remoteNode_ != NULL)
         free(remoteNode_);
     if (remoteNode != NULL)
+    {
         remoteNode_ = strdup(remoteNode);
+        if (remoteNode_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) for remoteNode_\n", strerror(errno), remoteNode);
+            return STAT_ALLOCATE_ERROR;
+        }
+    }
     else
         remoteNode_ = NULL;
 
-    statError = launchDaemons(STAT_ATTACH);
+    statError = launchDaemons();
     if (statError != STAT_OK)
     {
         printMsg(statError, __FILE__, __LINE__, "Failed to attach and spawn daemons\n");
@@ -324,16 +332,23 @@ StatError_t STAT_FrontEnd::launchAndSpawnDaemons(char *remoteNode, bool isStatBe
 {
     StatError_t statError;
 
-    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Launching applicaiton and tool daemons...\n");
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Launching application and tool daemons...\n");
 
     if (remoteNode_ != NULL)
         free(remoteNode_);
     if (remoteNode != NULL)
+    {
         remoteNode_ = strdup(remoteNode);
+        if (remoteNode_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) for remoteNode_\n", strerror(errno), remoteNode);
+            return STAT_ALLOCATE_ERROR;
+        }
+    }
     else
         remoteNode_ = NULL;
 
-    statError = launchDaemons(STAT_LAUNCH, isStatBench);
+    statError = launchDaemons(isStatBench);
     if (statError != STAT_OK)
     {
         printMsg(statError, __FILE__, __LINE__, "Failed to attach and spawn daemons\n");
@@ -343,7 +358,16 @@ StatError_t STAT_FrontEnd::launchAndSpawnDaemons(char *remoteNode, bool isStatBe
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool isStatBench)
+StatError_t STAT_FrontEnd::setupForSerialAttach()
+{
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Setting up environment for seral attach...\n");
+    lmonState = lmonState | 0x00000002;
+    nApplProcs_ = proctabSize_;
+
+    return launchDaemons(false);
+}
+
+StatError_t STAT_FrontEnd::launchDaemons(bool isStatBench)
 {
     int i;
     unsigned int proctabSize;
@@ -366,150 +390,173 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
 
     startTime.setTime();
 
-    /* Initialize LaunchMON */
-    if (firstRun == true)
+    if (applicationOption_ != STAT_SERIAL_ATTACH)
     {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Initializing LaunchMON\n");
-        rc = LMON_fe_init(LMON_VERSION);
+        /* Initialize LaunchMON */
+        if (firstRun == true)
+        {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Initializing LaunchMON\n");
+            rc = LMON_fe_init(LMON_VERSION);
+            if (rc != LMON_OK)
+            {
+                printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to initialize Launchmon\n");
+                return STAT_LMON_ERROR;
+            }
+        }
+        firstRun = false;
+
+        /* Create a LaunchMON session */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating LaunchMON session\n");
+        rc = LMON_fe_createSession(&lmonSession_);
         if (rc != LMON_OK)
         {
-            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to initialize Launchmon\n");
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to create Launchmon session\n");
             return STAT_LMON_ERROR;
         }
-    }
-    firstRun = false;
 
-    /* Create a LaunchMON session */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating LaunchMON session\n");
-    rc = LMON_fe_createSession(&lmonSession_);
-    if (rc != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to create Launchmon session\n");
-        return STAT_LMON_ERROR;
-    }
-
-    /* Register STAT's pack function */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering pack function with LaunchMON\n");
-    rc = LMON_fe_regPackForFeToBe(lmonSession_, statPack);
-    if (rc != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to register pack function\n");
-        return STAT_LMON_ERROR;
-    }
-
-    /* Register STAT's check status function */
-    lmonState = 0;
-    if (isStatBench == false)
-    {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering status CB function with LaunchMON\n");
-        rc = LMON_fe_regStatusCB(lmonSession_, lmonStatusCb);
+        /* Register STAT's pack function */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering pack function with LaunchMON\n");
+        rc = LMON_fe_regPackForFeToBe(lmonSession_, statPack);
         if (rc != LMON_OK)
         {
-            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to register status CB function\n");
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to register pack function\n");
             return STAT_LMON_ERROR;
         }
-    }
-    else
-        lmonState = lmonState | 0x00000002;
 
-    /* Make sure we know which daemon to launch */
-    if (toolDaemonExe_ == NULL)
-    {
-        printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Tool daemon path not set\n");
-        return STAT_ARG_ERROR;
-    }
-
-    /* If we're logging the daemons, pass the output directory as a command line arg */
-    if (logging_ & STAT_LOG_BE)
-    {
-        daemonArgv = (char **)malloc(6 * sizeof(char *));
-        if (daemonArgv == NULL)
+        /* Register STAT's check status function */
+        lmonState = 0;
+        if (isStatBench == false)
         {
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
-            return STAT_ALLOCATE_ERROR;
-        }
-        daemonArgv[0] = strdup("-L");
-        daemonArgv[1] = strdup(logOutDir_);
-        daemonArgv[2] = strdup("-o");
-        daemonArgv[3] = (char *)malloc(8 * sizeof(char));
-        snprintf(daemonArgv[3], 8, "%d", mrnetOutputLevel_);
-        if (logging_ & STAT_LOG_MRN)
-        {
-            daemonArgv[4] = strdup("-m");
-            daemonArgv[5] = NULL;
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering status CB function with LaunchMON\n");
+            rc = LMON_fe_regStatusCB(lmonSession_, lmonStatusCb);
+            if (rc != LMON_OK)
+            {
+                printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to register status CB function\n");
+                return STAT_LMON_ERROR;
+            }
         }
         else
-            daemonArgv[4] = NULL;
-    }
+            lmonState = lmonState | 0x00000002;
 
-    if (applicationOption == STAT_ATTACH)
-    {
-        /* Make sure the pid has been set */
-        if (launcherPid_ == 0)
+        /* Make sure we know which daemon to launch */
+        if (toolDaemonExe_ == NULL)
         {
-            printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Launcher PID not set\n");
+            printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Tool daemon path not set\n");
             return STAT_ARG_ERROR;
         }
 
-        /* Attach to launcher and spawn daemons */
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to job launcher and spawning daemons\n");
-        rc = LMON_fe_attachAndSpawnDaemons(lmonSession_, remoteNode_, launcherPid_, toolDaemonExe_, daemonArgv, NULL, NULL);
-        if (rc != LMON_OK)
+        /* If we're logging the daemons, pass the output directory as a command line arg */
+        if (logging_ & STAT_LOG_BE)
         {
-            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to attach to job launcher and spawn daemons\n");
-            return STAT_LMON_ERROR;
-        }
-    }
-    else
-    {
-        /* Launch the application and spawn daemons */
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launching the application and spawning daemons\n");
-        i = 0;
-        while(1)
-        {
-            if (launcherArgv_[i] == NULL)
-                break;
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launcher arg %d = %s\n", i, launcherArgv_[i]);
-            i++;
-        }
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "remote node = %s, daemon = %s\n", remoteNode_, toolDaemonExe_);
-        rc = LMON_fe_launchAndSpawnDaemons(lmonSession_, remoteNode_, launcherArgv_[0], launcherArgv_, toolDaemonExe_, daemonArgv, NULL, NULL);
-        if (rc != LMON_OK)
-        {
-            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to launch job and spawn daemons\n");
-            return STAT_LMON_ERROR;
+            daemonArgv = (char **)malloc(6 * sizeof(char *));
+            if (daemonArgv == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[0] = strdup("-L");
+            if (daemonArgv[0] == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[0]\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[1] = strdup(logOutDir_);
+            if (daemonArgv[1] == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) argv[1]\n", strerror(errno), logOutDir_);
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[2] = strdup("-o");
+            if (daemonArgv[2] == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[2]\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[3] = (char *)malloc(8 * sizeof(char));
+            snprintf(daemonArgv[3], 8, "%d", mrnetOutputLevel_);
+            if (logging_ & STAT_LOG_MRN)
+            {
+                daemonArgv[4] = strdup("-m");
+                if (daemonArgv[4] == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[4]\n", strerror(errno));
+                    return STAT_ALLOCATE_ERROR;
+                }
+                daemonArgv[5] = NULL;
+            }
+            else
+                daemonArgv[4] = NULL;
         }
 
-        /* Get the launcher PID */
-        rc = LMON_fe_getRMInfo(lmonSession_, &rmInfo);
+        if (applicationOption_ == STAT_ATTACH)
+        {
+            /* Make sure the pid has been set */
+            if (launcherPid_ == 0)
+            {
+                printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Launcher PID not set\n");
+                return STAT_ARG_ERROR;
+            }
+
+            /* Attach to launcher and spawn daemons */
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to job launcher and spawning daemons\n");
+            rc = LMON_fe_attachAndSpawnDaemons(lmonSession_, remoteNode_, launcherPid_, toolDaemonExe_, daemonArgv, NULL, NULL);
+            if (rc != LMON_OK)
+            {
+                printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to attach to job launcher and spawn daemons\n");
+                return STAT_LMON_ERROR;
+            }
+        }
+        else
+        {
+            /* Launch the application and spawn daemons */
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launching the application and spawning daemons\n");
+            i = 0;
+            while(1)
+            {
+                if (launcherArgv_[i] == NULL)
+                    break;
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launcher arg %d = %s\n", i, launcherArgv_[i]);
+                i++;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "remote node = %s, daemon = %s\n", remoteNode_, toolDaemonExe_);
+            rc = LMON_fe_launchAndSpawnDaemons(lmonSession_, remoteNode_, launcherArgv_[0], launcherArgv_, toolDaemonExe_, daemonArgv, NULL, NULL);
+            if (rc != LMON_OK)
+            {
+                printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to launch job and spawn daemons\n");
+                return STAT_LMON_ERROR;
+            }
+
+            /* Get the launcher PID */
+            rc = LMON_fe_getRMInfo(lmonSession_, &rmInfo);
+            if (rc != LMON_OK)
+            {
+                printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get resource manager info\n");
+                return STAT_LMON_ERROR;
+            }
+            launcherPid_ = rmInfo.rm_launcher_pid;
+        }
+
+        /* Gather the process table */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering the process table\n");
+        rc = LMON_fe_getProctableSize(lmonSession_, &proctabSize_);
         if (rc != LMON_OK)
         {
-            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get resource manager info\n");
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get Process Table Size\n");
             return STAT_LMON_ERROR;
         }
-        launcherPid_ = rmInfo.rm_launcher_pid;
-    }
-
-    /* Gather the process table */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering the process table\n");
-    rc = LMON_fe_getProctableSize(lmonSession_, &proctabSize_);
-    if (rc != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get Process Table Size\n");
-        return STAT_LMON_ERROR;
-    }
-    proctab_ = (MPIR_PROCDESC_EXT *)malloc(proctabSize_ * sizeof(MPIR_PROCDESC_EXT));
-    if (proctab_ == NULL)
-    {
-        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
-        return STAT_ALLOCATE_ERROR;
-    }
-    rc = LMON_fe_getProctable(lmonSession_, proctab_, &proctabSize, proctabSize_);
-    if (rc != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get Process Table\n");
-        return STAT_LMON_ERROR;
-    }
+        proctab_ = (MPIR_PROCDESC_EXT *)malloc(proctabSize_ * sizeof(MPIR_PROCDESC_EXT));
+        if (proctab_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
+            return STAT_ALLOCATE_ERROR;
+        }
+        rc = LMON_fe_getProctable(lmonSession_, proctab_, &proctabSize, proctabSize_);
+        if (rc != LMON_OK)
+        {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get Process Table\n");
+            return STAT_LMON_ERROR;
+        }
+    } // if (applicationOption_ != STAT_SERIAL_ATTACH)
 
     /* Gather application characteristics */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering application information\n");
@@ -518,10 +565,10 @@ StatError_t STAT_FrontEnd::launchDaemons(StatLaunch_t applicationOption, bool is
     applExe_ = strdup(proctab_[0].pd.executable_name);
     if (applExe_ == NULL)
     {
-        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to set applExe_ with strdup()\n");
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to set applExe_ with strdup()\n", strerror(errno));
         return STAT_ALLOCATE_ERROR;
     }
-    nApplProcs_ = proctabSize;
+    nApplProcs_ = proctabSize_;
     isLaunched_ = true;
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemons successfully launched\n");
 
@@ -695,7 +742,131 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
     #endif /* ifdef MRNET31 */
 #else /* ifdef CRAYXT */
-    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
+    if (applicationOption_ == STAT_SERIAL_ATTACH)
+    {
+        int daemonArgc, statArgc, i;
+        char **daemonArgv, temp[BUFSIZE];
+       
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\tSetting up daemon args for serial attach and MRNet launch\n");
+        statArgc = 3 + 2 * proctabSize_;
+        daemonArgc = statArgc;
+        daemonArgv = (char **)malloc(daemonArgc * sizeof(char *));
+        if (daemonArgv == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to allocate %d bytes for argv\n", strerror(errno), daemonArgc);
+            return STAT_ALLOCATE_ERROR;
+        }
+        daemonArgv[0] = strdup("-s");
+        if (daemonArgv[0] == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[0]\n", strerror(errno));
+            return STAT_ALLOCATE_ERROR;
+        }
+        for (i = 0; i < proctabSize_; i++)
+        {
+            daemonArgv[2 * i + 1] = strdup("-p");
+            if (daemonArgv[2 * i + 1] == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), 2 * i + 1);
+                return STAT_ALLOCATE_ERROR;
+            }
+            snprintf(temp, BUFSIZE, "%s@%s:%d", proctab_[i].pd.executable_name, proctab_[i].pd.host_name, proctab_[i].pd.pid);
+            daemonArgv[2 * i + 2] = strdup(temp);
+            if (daemonArgv[2 * i + 2] == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), 2 * i + 2);
+                return STAT_ALLOCATE_ERROR;
+            }
+        }
+
+        daemonArgv[daemonArgc - 2] = strdup("-M");
+        if (daemonArgv[daemonArgc - 2] == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), daemonArgc - 2);
+            return STAT_ALLOCATE_ERROR;
+        }
+        daemonArgv[daemonArgc - 1] = NULL;
+
+        if (logging_ & STAT_LOG_BE)
+        {
+            daemonArgc = daemonArgc + 5;
+            daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+            if (daemonArgv == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s realloc failed to allocate %d bytes for daemon argv\n", strerror(errno), daemonArgc);
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[statArgc + 4] = NULL;
+            daemonArgv[statArgc - 2] = strdup("-L");
+            if (daemonArgv[statArgc - 2] == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), statArgc - 2);
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[statArgc - 1] = strdup(logOutDir_);
+            if (daemonArgv[statArgc - 1] == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), statArgc - 1);
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[statArgc] = strdup("-o");
+            if (daemonArgv[statArgc] == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), statArgc);
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[statArgc + 1] = (char *)malloc(8 * sizeof(char));
+            if (daemonArgv[statArgc + 1] == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate 8 bytes for daemon argv[%d]\n", strerror(errno), statArgc + 1);
+                return STAT_ALLOCATE_ERROR;
+            }
+            snprintf(daemonArgv[statArgc + 1], 8, "%d", mrnetOutputLevel_);
+            if (logging_ & STAT_LOG_MRN)
+            {
+                daemonArgv[statArgc + 2] = strdup("-m");
+                if (daemonArgv[statArgc + 2] == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), statArgc + 2);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                daemonArgv[statArgc + 3] = strdup("-M");
+                if (daemonArgv[statArgc + 3] == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), statArgc + 3);
+                    return STAT_ALLOCATE_ERROR;
+                }
+            }
+            else
+            {
+                daemonArgv[statArgc + 2] = strdup("-M");
+                if (daemonArgv[statArgc + 2] == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), statArgc + 2);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                daemonArgv[statArgc + 3] = NULL;
+            }
+        }
+
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\tCalling CreateNetworkFE with %d args:\n", daemonArgc);
+        for (i = 0; i < daemonArgc; i++)
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\targv[%d] = %s\n", i, daemonArgv[i]);
+        network_ = Network::CreateNetworkFE(topologyFileName, toolDaemonExe_, (const char **)daemonArgv);
+        isConnected_ = true;
+        if (daemonArgv != NULL)
+        {
+            for (i = 0; daemonArgc;i++)
+            {
+                if (daemonArgv[i] == NULL)
+                    break;
+                free(daemonArgv[i]);
+            }
+            free(daemonArgv);
+        }
+    } // if (applicationOption_ == STAT_SERIAL_ATTACH)
+    else
+        network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
 #endif /* ifdef CRAYXT */
     if (network_ == NULL)
     {
@@ -753,11 +924,14 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         return STAT_MRNET_ERROR;
     }
     topologySize_ = leafInfo_.networkTopology->get_NumNodes();
+
+    if (applicationOption_ == STAT_SERIAL_ATTACH)
+        topologySize_ -= nApplNodes_;
+
     leafInfo_.daemons = applicationNodeMultiSet_;
 
     /* Send MRNet connection info to daemons */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tConnecting to daemons...\n");
-    startTime.setTime();
     if (isStatBench == false)
     {
         /* for STATbench we do this when creating traces since the proctab is modified */
@@ -774,23 +948,27 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 
     leafInfo_.networkTopology->get_Leaves(leafInfo_.leafCps);
 
-    statError = sendDaemonInfo();
-    if (statError != STAT_OK)
+    if (applicationOption_ != STAT_SERIAL_ATTACH)
     {
-        printMsg(statError, __FILE__, __LINE__, "Failed to Send Info to Daemons\n");
-        return statError;
-    }
-    endTime.setTime();
-    addPerfData("\tLaunchmon Send Time", (endTime - startTime).getDoubleTime());
-
-    /* If we're blocking, wait for all BEs to connect to MRNet tree */
-    if (blocking == true)
-    {
-        statError = connectMrnetTree(blocking, isStatBench);
+        startTime.setTime();
+        statError = sendDaemonInfo();
         if (statError != STAT_OK)
         {
-            printMsg(statError, __FILE__, __LINE__, "Failed to connect MRNet tree\n");
+            printMsg(statError, __FILE__, __LINE__, "Failed to Send Info to Daemons\n");
             return statError;
+        }
+        endTime.setTime();
+        addPerfData("\tLaunchmon Send Time", (endTime - startTime).getDoubleTime());
+
+        /* If we're blocking, wait for all BEs to connect to MRNet tree */
+        if (blocking == true)
+        {
+            statError = connectMrnetTree(blocking, isStatBench);
+            if (statError != STAT_OK)
+            {
+                printMsg(statError, __FILE__, __LINE__, "Failed to connect MRNet tree\n");
+                return statError;
+            }
         }
     }
 
@@ -800,14 +978,8 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
 {
     static int connectTimeout = -1, i = 0;
-    int filterId, retval, tag;
-    char *connectTimeoutString, fullTopologyFile[BUFSIZE];
+    char *connectTimeoutString;
     StatError_t statError;
-    PacketPtr packet;
-#ifdef STAT_FGFS
-    int filterId2;
-    bool ret;
-#endif
 
     /* Make sure the Network object has been created */
     if (network_ == NULL)
@@ -873,6 +1045,23 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
     endTime.setTime();
     addPerfData("\tConnect to Daemons Time", (endTime - startTime).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tDaemons connected\n");
+
+    return STAT_OK;
+}
+
+
+StatError_t STAT_FrontEnd::setupConnectedMrnetTree(bool isStatBench)
+{
+    int filterId, retval, tag;
+    char fullTopologyFile[BUFSIZE];
+    StatError_t statError;
+    PacketPtr packet;
+#ifdef STAT_FGFS
+    int filterId2;
+    bool ret;
+#endif
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting up STAT based on connected MRNet tree\n");
 
     /* Now that we're fully connected, determine the BE merge order */
     statError = setRanksList();
@@ -1528,6 +1717,12 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
     IntList_t *daemonRanks;
     map<string, vector<int> > tempMap;
     map<string, vector<int> >::iterator iter;
+    map<string, int> hostToMrnetRankMap;
+    set<NetworkTopology::Node *> backEndNodes;
+    set<NetworkTopology::Node *>::iterator backEndNodesIter;
+    NetworkTopology::Node *node;
+    string::size_type dotPos;
+    string tempString;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating daemon rank map\n");
 
@@ -1536,6 +1731,18 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
     {
         currentNode = proctab_[i].pd.host_name;
         tempMap[currentNode].push_back(proctab_[i].mpirank);
+    }
+
+    /* Next populate the hostToMrnetRankMap */
+    leafInfo_.networkTopology->get_BackEndNodes(backEndNodes);
+    for (backEndNodesIter = backEndNodes.begin(); backEndNodesIter != backEndNodes.end(); backEndNodesIter++)
+    {
+        node = *backEndNodesIter;
+        tempString = node->get_HostName();
+        dotPos = tempString.find_first_of(".");
+        if (dotPos != string::npos)
+            tempString = tempString.substr(0, dotPos);
+        hostToMrnetRankMap[tempString.c_str()] = node->get_Rank();
     }
 
     /* Next sort each daemon's rank list and store it in the IntList_t ranks map */
@@ -1562,7 +1769,10 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
             printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%d, ", (iter->second)[i]);
             daemonRanks->list[i] = (iter->second)[i];
         }
-        mrnetRankToMPIRanksMap_[topologySize_ + j] = daemonRanks;
+        if (hostToMrnetRankMap.size() == 0) /* MRNet BEs not connected */
+            mrnetRankToMPIRanksMap_[topologySize_ + j] = daemonRanks;
+        else /* MRNet BEs connected */
+            mrnetRankToMPIRanksMap_[hostToMrnetRankMap[iter->first]] = daemonRanks;
         printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");
         j++;
     }
@@ -1802,8 +2012,8 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
 {
     FILE *file;
     char tmp[BUFSIZE], *topology = NULL;
-    int parentCount, desiredDepth = 0, desiredMaxFanout = 0, procsNeeded = 0;
-    unsigned int i, j, counter, layer, parentIter, childIter;
+    int parentCount = 1, desiredDepth = 0, desiredMaxFanout = 0, procsNeeded = 0;
+    unsigned int i, j, counter, layer, parentIter = 0, childIter = 1;
     unsigned int depth = 0, fanout = 0;
     vector<string> treeList;
     set<string>::iterator communicationNodeSetIter;
@@ -2042,8 +2252,11 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
 
     /* Initialized vector iterators */
     if (topology == NULL) /* Flat topology */
-        fprintf(file, "%s;\n", treeList[0].c_str());
-    else if (strcmp(topology, "0") == 0) /* Flat topology */
+    {
+        if (applicationOption_ != STAT_SERIAL_ATTACH)
+            fprintf(file, "%s;\n", treeList[0].c_str());
+    }
+    else if (strcmp(topology, "0") == 0 && applicationOption_ != STAT_SERIAL_ATTACH) /* Flat topology */
         fprintf(file, "%s;\n", treeList[0].c_str());
     else
     {
@@ -2096,6 +2309,24 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
             if (lastPos >= topoIter.length())
                 break;
             topoIter = topoIter.substr(lastPos + 1);
+        }
+    }
+
+    if (applicationOption_ == STAT_SERIAL_ATTACH)
+    {
+        applicationNodeMultiSetIter = applicationNodeMultiSet_.begin();
+        for (i = 0; i < parentCount; i++)
+        {
+            fprintf(file, "%s =>", treeList[parentIter].c_str());
+            
+            /* Add the children for this layer */
+            for (j = 0; j < (applicationNodeMultiSet_.size() / parentCount) + (applicationNodeMultiSet_.size() % parentCount > i ? 1 : 0); j++)
+            {
+                fprintf(file, "\n\t%s:%d", (*applicationNodeMultiSetIter).c_str(), procsPerNode_ + 1);
+                applicationNodeMultiSetIter++;
+            }
+            fprintf(file, ";\n\n");
+            parentIter++;
         }
     }
 
@@ -3173,9 +3404,12 @@ void STAT_FrontEnd::shutDown()
     detached = !WIFBESPAWNED(lmonState);
     if (isLaunched_ == true && killed == 0 && detached == 0)
     {
-        rc = LMON_fe_detach(lmonSession_);
-        if (rc != LMON_OK)
-            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Launchmon failed to detach from launcher... have the daemons exited?\n");
+        if (lmonSession_ != -1)
+        {
+            rc = LMON_fe_detach(lmonSession_);
+            if (rc != LMON_OK)
+                printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Launchmon failed to detach from launcher... have the daemons exited?\n");
+        }
     }
 }
 
@@ -3467,6 +3701,11 @@ StatError_t STAT_FrontEnd::setNodeListFromConfigFile(char **nodeList)
             count++;
         }
         *nodeList = strdup(nodes.c_str());
+        if (*nodeList == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) for nodeList\n", strerror(errno), nodes.c_str());
+            return STAT_ALLOCATE_ERROR;
+        }
         fclose(f);
     }
     else
@@ -3603,6 +3842,85 @@ StatError_t STAT_FrontEnd::addLauncherArgv(const char *launcherArg)
 
     return STAT_OK;
 }
+        
+StatError_t STAT_FrontEnd::addSerialProcess(const char *pidString)
+{
+    unsigned int pid;
+    char *remoteNode = NULL;
+    string::size_type delimPos;
+    string remotePid = pidString, remoteHost;
+
+    proctabSize_++;
+    proctab_ = (MPIR_PROCDESC_EXT *)realloc(proctab_, proctabSize_ * sizeof(MPIR_PROCDESC_EXT));
+    if (proctab_ == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
+        return STAT_ALLOCATE_ERROR;
+    }
+        
+    delimPos = remotePid.find_first_of("@");
+    if (delimPos != string::npos)
+    {
+        proctab_[proctabSize_ - 1].pd.executable_name = strdup(remotePid.substr(0, delimPos).c_str());
+        if (proctab_[proctabSize_ - 1].pd.executable_name == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to set executable_name from %s\n", strerror(errno), remotePid.substr(0, delimPos).c_str());
+            return STAT_ALLOCATE_ERROR;
+        }
+        remotePid = remotePid.substr(delimPos + 1, remotePid.length());
+    }
+    else
+    {
+        proctab_[proctabSize_ - 1].pd.executable_name = strdup("output");
+        if (proctab_[proctabSize_ - 1].pd.executable_name == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to set executable_name\n", strerror(errno));
+            return STAT_ALLOCATE_ERROR;
+        }
+    }
+
+    delimPos = remotePid.find_first_of(":");
+    if (delimPos != string::npos)
+    {
+        remoteHost = remotePid.substr(0, delimPos);
+        remoteNode = strdup(remoteHost.c_str());
+        if (remoteNode == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup remote node from %s\n", strerror(errno), remotePid.c_str());
+            return STAT_ALLOCATE_ERROR;
+        }
+        pid = atoi((remotePid.substr(delimPos + 1, remotePid.length())).c_str());
+    }
+    else
+        pid = atoi(remotePid.c_str());
+
+    proctab_[proctabSize_ - 1].mpirank = proctabSize_ - 1;
+    proctab_[proctabSize_ - 1].cnodeid = proctabSize_ - 1;
+    if (remoteNode != NULL)
+        if (strcmp(remoteNode, "localhost") == 0 || strcmp(remoteNode, "") == 0)
+        {
+            proctab_[proctabSize_ - 1].pd.host_name = strdup(hostname_);
+            if (proctab_[proctabSize_ - 1].pd.host_name == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to host_name\n", strerror(errno), hostname_);
+                return STAT_ALLOCATE_ERROR;
+            }
+            free(remoteNode);
+        }
+        else
+            proctab_[proctabSize_ - 1].pd.host_name = remoteNode;
+    else
+    {
+        proctab_[proctabSize_ - 1].pd.host_name = strdup(hostname_);
+        if (proctab_[proctabSize_ - 1].pd.host_name == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to host_name\n", strerror(errno), hostname_);
+            return STAT_ALLOCATE_ERROR;
+        }
+    }
+    proctab_[proctabSize_ - 1].pd.pid = pid;
+    return STAT_OK;
+}
 
 const char **STAT_FrontEnd::getLauncherArgv()
 {
@@ -3622,6 +3940,16 @@ void STAT_FrontEnd::setVerbose(StatVerbose_t verbose)
 StatVerbose_t STAT_FrontEnd::getVerbose()
 {
     return verbose_;
+}
+
+void STAT_FrontEnd::setApplicationOption(StatLaunch_t applicationOption)
+{
+    applicationOption_ = applicationOption;
+}
+
+StatLaunch_t STAT_FrontEnd::getApplicationOption()
+{
+    return applicationOption_;
 }
 
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
@@ -4065,6 +4393,11 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
         {
             proctab_[i * nTasks + j].mpirank = i * nTasks + j;
             proctab_[i * nTasks + j].pd.host_name = strdup(name);
+            if (proctab_[i * nTasks + j].pd.host_name == NULL) 
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to strdup(%s) for proctab_[%d]\n", strerror(errno), name, i * nTasks + j);
+                return STAT_ALLOCATE_ERROR;
+            }
             proctab_[i * nTasks + j].pd.executable_name = NULL;
         }
     }

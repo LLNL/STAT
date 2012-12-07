@@ -28,7 +28,7 @@ import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
 import sys, DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_NONE, STAT_OK, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_FUNCTION_NAME_ONLY, STAT_FUNCTION_AND_PC, STAT_FUNCTION_AND_LINE, STAT_APPLICATION_EXITED, STAT_CR_FUNCTION_NAME_ONLY, STAT_CR_FUNCTION_AND_PC, STAT_CR_FUNCTION_AND_LINE
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_NONE, STAT_OK, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_FUNCTION_NAME_ONLY, STAT_FUNCTION_AND_PC, STAT_FUNCTION_AND_LINE, STAT_APPLICATION_EXITED, STAT_CR_FUNCTION_NAME_ONLY, STAT_CR_FUNCTION_AND_PC, STAT_CR_FUNCTION_AND_LINE, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH
 import commands
 import subprocess
 import shelve
@@ -46,6 +46,7 @@ class ProcTab(object):
         self.launcher_host = None
         self.launcher_pid = None
         self.executable_path = None
+        self.executable_paths = []
         self.process_list = []
 
 ## The STATGUI window adds STAT operations to the STATview window.
@@ -82,8 +83,8 @@ class STATGUI(STATDotWindow):
         self.proctab = None
         self.attached = False
         self.reattach = False
-#        self.combo_boxes = {}
-#        self.spinners = {}
+        self.serial_process_list = None
+        self.serial_attach = False
         self.sample_task_list = ['Sample Stack Traces', 'Gather Stack Traces', 'Render Stack Traces']
         self.attach_task_list = ['Launch Daemons', 'Connect to Daemons', 'Attach to Application']
         self.attach_task_list += self.sample_task_list
@@ -100,6 +101,9 @@ class STATGUI(STATDotWindow):
                     'Remote Host Shell'                : "rsh",
                     'PID'                              : None,
                     'Launcher Exe'                     : '',
+                    'Serial PID'                       : None,
+                    'Serial Exe'                       : '',
+                    'Serial Process List'              : '',
                     'Topology Type'                    : 'automatic',
                     'Topology'                         : '1',
                     'Share App Nodes'                  : True,
@@ -188,6 +192,7 @@ class STATGUI(STATDotWindow):
 
         self.var_spec = []
         self.filter_entry = None
+        self.serial_filter_entry = None
         uimanager = gtk.UIManager()
         self.actiongroup = gtk.ActionGroup('Commands')
         actions = []
@@ -256,7 +261,7 @@ host[1-10,12,15-20];otherhost[30]
         if ret == False:
             return False
         tasks = ''
-        for rank, host, pid in self.proctab.process_list:
+        for rank, host, pid, exe_index in self.proctab.process_list:
             if match_case_check_box.get_active() == False:
                 host = host.lower()
             if host in host_list:
@@ -325,8 +330,8 @@ host[1-10,12,15-20];otherhost[30]
         process_table = ''
         job_launcher = "%s:%d" %(self.proctab.launcher_host, self.proctab.launcher_pid)
         entries = range(len(self.proctab.process_list))
-        for rank, host, pid in self.proctab.process_list:
-            entries[rank] = '%d %s:%d\n' %(rank, host, pid)
+        for rank, host, pid, exe_index in self.proctab.process_list:
+            entries[rank] = '%d %s:%d %d\n' %(rank, host, pid, exe_index)
         for entry in entries:
             process_table += entry
 
@@ -335,10 +340,13 @@ host[1-10,12,15-20];otherhost[30]
         self.properties_window.connect('destroy', self.on_properties_destroy)
         vbox = gtk.VBox()
 
-        frame = gtk.Frame('Application Executable')
+        frame = gtk.Frame('Application Executable(s) (index:path)')
         text_view = gtk.TextView()
         text_buffer = gtk.TextBuffer()
-        text_buffer.set_text(appl_exe)
+        exes = ''
+        for i in range(len(self.proctab.executable_paths)):
+            exes += ('%d:%s\n' %(i, self.proctab.executable_paths[i]))
+        text_buffer.set_text(exes)
         text_view.set_buffer(text_buffer)
         text_view.set_wrap_mode(False)
         text_view.set_editable(False)
@@ -368,18 +376,19 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(text_view)
         vbox.pack_start(frame, False, False, 0)
 
-        frame = gtk.Frame('Job Launcher (host:PID)')
-        text_view = gtk.TextView()
-        text_buffer = gtk.TextBuffer()
-        text_buffer.set_text(job_launcher)
-        text_view.set_buffer(text_buffer)
-        text_view.set_wrap_mode(False)
-        text_view.set_editable(False)
-        text_view.set_cursor_visible(False)
-        frame.add(text_view)
-        vbox.pack_start(frame, False, False, 0)
+        if self.STAT.getApplicationOption() != STAT_SERIAL_ATTACH:
+            frame = gtk.Frame('Job Launcher (host:PID)')
+            text_view = gtk.TextView()
+            text_buffer = gtk.TextBuffer()
+            text_buffer.set_text(job_launcher)
+            text_view.set_buffer(text_buffer)
+            text_view.set_wrap_mode(False)
+            text_view.set_editable(False)
+            text_view.set_cursor_visible(False)
+            frame.add(text_view)
+            vbox.pack_start(frame, False, False, 0)
 
-        frame = gtk.Frame('Process Table (rank host:PID)')
+        frame = gtk.Frame('Process Table (rank host:PID exe_index)')
         text_view = gtk.TextView()
         text_view.set_size_request(400, 200)
         text_buffer = gtk.TextBuffer()
@@ -410,14 +419,28 @@ host[1-10,12,15-20];otherhost[30]
         self.options['PID'] = pid
         self.options['Launcher Exe'] = command
 
+    def serial_pid_toggle_cb(self, action, pid, command):
+        """A callback to modify the PID option."""
+        self.options['Serial PID'] = pid
+        self.options['Serial Exe'] = command
+
+    def on_add_serial_process(self, widget, attach_dialog, serial_process_list_entry):
+        text = serial_process_list_entry.get_text() 
+        text += ' %s@%s:%s ' %(self.options['Serial Exe'], self.options['Remote Host'], self.options['Serial PID'])
+        text = serial_process_list_entry.set_text(text) 
+        attach_dialog.show_all()
+
     def on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
         """Generate a wait dialog and search for user processes."""
         stat_wait_dialog.show_wait_dialog_and_run(self._on_update_process_listing, (widget, frame, attach_dialog, filter), [], attach_dialog)
 
-    def _on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
-        """Searche for user processes."""
+    def on_update_serial_process_listing(self, widget, frame, attach_dialog, filter=None):
+        """Generate a wait dialog and search for user processes."""
+        stat_wait_dialog.show_wait_dialog_and_run(self._on_update_serial_process_listing, (widget, frame, attach_dialog, filter), [], attach_dialog)
+
+    def _on_update_process_listing2(self, attach_dialog, filter, vbox, is_parallel):
+        """Search for user processes."""
         self.options['Remote Host Shell'] = self.types['Remote Host Shell'][self.combo_boxes['Remote Host Shell'].get_active()]
-        vbox = gtk.VBox()
         if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
             output = commands.getoutput('ps xw')
         else:
@@ -457,12 +480,24 @@ host[1-10,12,15-20];otherhost[30]
                 started = True
                 radio_button = gtk.RadioButton(None, text)
                 radio_button.set_active(True)
-                self.options['PID'] = int(line.split()[pid_index])
-                self.options['Launcher Exe'] = line.split()[command_index]
+                if is_parallel:
+                    self.options['PID'] = int(line.split()[pid_index])
+                    self.options['Launcher Exe'] = line.split()[command_index]
+                else:
+                    self.options['Serial PID'] = int(line.split()[pid_index])
+                    self.options['Serial Exe'] = line.split()[command_index]
             else:
                 radio_button = gtk.RadioButton(radio_button, text)
-            radio_button.connect("toggled", self.pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
+            if is_parallel:
+                radio_button.connect("toggled", self.pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
+            else:
+                radio_button.connect("toggled", self.serial_pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
             vbox.pack_start(radio_button, False, False, 0)
+
+    
+    def _on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
+        vbox = gtk.VBox()
+        self._on_update_process_listing2(attach_dialog, filter, vbox, True)
         try:
             if self.sw != None:
                 frame.remove(self.sw)
@@ -474,11 +509,31 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(self.sw)
         attach_dialog.show_all()
 
+    def _on_update_serial_process_listing(self, widget, frame, attach_dialog, filter=None):
+        vbox = gtk.VBox()
+        self._on_update_process_listing2(attach_dialog, filter, vbox, False)
+        try:
+            if self.serial_sw != None:
+                frame.remove(self.serial_sw)
+        except:
+            pass
+        self.serial_sw = gtk.ScrolledWindow()
+        self.serial_sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self.serial_sw.add_with_viewport(vbox)
+        frame.add(self.serial_sw)
+        attach_dialog.show_all()
+
     def on_update_remote_host(self, w, frame, attach_dialog, entry):
         """Callback to search a remote host for processes."""
         self.options['Remote Host'] = entry.get_text()
         entry.set_text(self.options['Remote Host'])
         self.on_update_process_listing(w, frame, attach_dialog, self.filter_entry)
+
+    def on_update_serial_remote_host(self, w, frame, attach_dialog, entry):
+        """Callback to search a remote host for processes."""
+        self.options['Remote Host'] = entry.get_text()
+        entry.set_text(self.options['Remote Host'])
+        self.on_update_serial_process_listing(w, frame, attach_dialog, self.serial_filter_entry)
 
     def on_cancel_attach(self, widget, dialog):
         """Callback to handle canceling of attach dialog."""
@@ -590,7 +645,14 @@ host[1-10,12,15-20];otherhost[30]
 
         Also gather a stack trace.
         """
-        self.attach_cb(None, None)
+        if self.serial_attach == True:
+            if self.STAT is None:
+                self.STAT = STAT_FrontEnd()
+            for process in self.process_list.split():
+                self.STAT.addSerialProcess(process)
+            self.attach_cb(None, False, True, STAT_SERIAL_ATTACH)
+        else:
+            self.attach_cb(None, False, False, STAT_ATTACH)
         return True
 
     def on_attach(self, action):
@@ -602,53 +664,108 @@ host[1-10,12,15-20];otherhost[30]
             self.STAT = STAT_FrontEnd()
         self.options['PID'] = None
         self.options['Launcher Exe'] = ''
+        self.options['Serial PID'] = None
+        self.options['Serial Exe'] = ''
         attach_dialog = gtk.Dialog('Attach', self)
         attach_dialog.set_default_size(400, 400)
         notebook = gtk.Notebook()
         notebook.set_tab_pos(gtk.POS_TOP)
         notebook.set_scrollable(False)
-        process_frame = gtk.Frame('Current Processes')
+
+        # parallel attach
+        process_frame = gtk.Frame('Current Process List')
         vbox = gtk.VBox()
-        self.pack_combo_box(vbox, 'Remote Host Shell')
-        self.pack_entry_and_button(self.options['Remote Host'], self.on_update_remote_host, process_frame, attach_dialog, "Search Remote Host", vbox)
-        vbox.pack_start(process_frame, True, True, 0)
         hbox = gtk.HBox()
-        button = gtk.Button(stock = gtk.STOCK_REFRESH)
-        button.connect("clicked", lambda w: self.on_update_process_listing(w, process_frame, attach_dialog, self.filter_entry))
-        hbox.pack_start(button, False, False, 10)
+        self.pack_entry_and_button(self.options['Remote Host'], self.on_update_remote_host, process_frame, attach_dialog, "Search Remote Host", hbox)
+        hbox.pack_start(gtk.VSeparator(), False, False, 5)
+        self.pack_combo_box(hbox, 'Remote Host Shell')
+        vbox.pack_start(hbox, False, False, 0)
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label('Filter Process List'), False, False, 5)
         self.filter_entry = self.pack_entry_and_button(self.options['Job Launcher'], self.on_update_process_listing, process_frame, attach_dialog, "Filter", hbox, True, True, 0)
         vbox.pack_start(hbox, False, False, 0)
-        vbox.pack_start(gtk.HSeparator(), False, False, 0)
-        hbox = gtk.HButtonBox()
+        vbox.pack_start(process_frame, True, True, 0)
+        hbox = gtk.HBox()
+        button = gtk.Button("Refresh Process List")
+        button.connect("clicked", lambda w: self.on_update_process_listing(w, process_frame, attach_dialog, self.filter_entry))
+        hbox.pack_start(button, True, True, 10)
+        vbox.pack_start(hbox, False, False, 0)
+        vbox.pack_start(gtk.HSeparator(), False, False, 10)
+        hbox = gtk.HBox()
         button = gtk.Button(stock = gtk.STOCK_CANCEL)
         button.connect("clicked", lambda w: self.on_cancel_attach(w, attach_dialog))
-        hbox.pack_end(button, False, False, 0)
+        hbox.pack_start(button, False, False, 0)
         button = gtk.Button("Attach")
-        button.connect("clicked", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.attach_cb, (w, attach_dialog), self.attach_task_list, attach_dialog))
-        hbox.pack_end(button, False, False, 0)
+        button.connect("clicked", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.attach_cb, (attach_dialog, False, False, STAT_ATTACH), self.attach_task_list, attach_dialog))
+        hbox.pack_start(button, True, True, 0)
         vbox.pack_start(hbox, False, False, 0)
         label = gtk.Label('Attach')
         notebook.append_page(vbox, label)
 
+        # launch
         vbox = gtk.VBox()
         hbox=gtk.HBox()
         hbox.pack_start(gtk.Label('Enter application launch string:'), False, False, 0)
         vbox.pack_start(hbox, False, False, 10)
         entry = gtk.Entry()
         entry.set_max_length(8192)
-        entry.connect("activate", lambda w: self.launch_application_cb(entry, w, attach_dialog))
+        entry.connect("activate", lambda w: self.launch_application_cb(entry, attach_dialog))
         vbox.pack_start(entry, False, False, 0)
         hbox = gtk.HButtonBox()
         button = gtk.Button(stock = gtk.STOCK_CANCEL)
         button.connect("clicked", lambda w: self.on_cancel_attach(w, attach_dialog))
         hbox.pack_end(button, False, False, 0)
         button = gtk.Button("Launch")
-        button.connect("clicked", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.launch_application_cb, (entry, w, attach_dialog), self.attach_task_list, attach_dialog))
+        button.connect("clicked", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.launch_application_cb, (entry, attach_dialog), self.attach_task_list, attach_dialog))
         hbox.pack_start(button, False, False, 0)
         vbox.pack_end(hbox, False, False, 0)
         label = gtk.Label('Launch')
         notebook.append_page(vbox, label)
 
+        # serial attach tab
+        serial_process_frame = gtk.Frame('Current Process List')
+        vbox = gtk.VBox()
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label('Search Host'), False, False, 5)
+        self.pack_entry_and_button(self.options['Remote Host'], self.on_update_serial_remote_host, serial_process_frame, attach_dialog, "Search", hbox)
+        hbox.pack_start(gtk.VSeparator(), False, False, 5)
+        self.pack_combo_box(hbox, 'Remote Host Shell')
+        vbox.pack_start(hbox, False, False, 0)
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label('Filter Process List'), False, False, 5)
+        self.serial_filter_entry = self.pack_entry_and_button("", self.on_update_serial_process_listing, serial_process_frame, attach_dialog, "Filter", hbox, True, True, 0)
+        vbox.pack_start(hbox, False, False, 0)
+        vbox.pack_start(serial_process_frame, True, True, 0)
+        hbox = gtk.HBox()
+        button = gtk.Button("Refresh Process List")
+        button.connect("clicked", lambda w: self.on_update_serial_process_listing(w, serial_process_frame, attach_dialog, self.serial_filter_entry))
+        hbox.pack_start(button, False, False, 10)
+        button = gtk.Button("Add Process to Attach List")
+        hbox.pack_start(button, True, True, 10)
+        self.serial_process_list_entry = gtk.Entry()
+        self.serial_process_list_entry.set_max_length(1024)
+        self.serial_process_list_entry.set_text(self.options['Serial Process List'])
+        button.connect("clicked", lambda w: self.on_add_serial_process(w, attach_dialog, self.serial_process_list_entry))
+        vbox.pack_start(hbox, False, False, 10)
+        hbox = gtk.HBox()
+        label = gtk.Label("Attach List")
+        hbox.pack_start(label, False, False, 10)
+        self.serial_process_list_entry.connect("activate", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.attach_serial_processes_cb, (self.serial_process_list_entry, attach_dialog), self.attach_task_list, attach_dialog))
+        hbox.pack_start(self.serial_process_list_entry, True, True, 0)
+        vbox.pack_start(hbox, False, False, 0)
+        vbox.pack_start(gtk.HSeparator(), False, False, 10)
+        hbox = gtk.HBox()
+        button = gtk.Button(stock = gtk.STOCK_CANCEL)
+        button.connect("clicked", lambda w: self.on_cancel_attach(w, attach_dialog))
+        hbox.pack_start(button, False, False, 10)
+        button = gtk.Button("Attach to Attach List")
+        button.connect("clicked", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.attach_serial_processes_cb, (self.serial_process_list_entry, attach_dialog), self.attach_task_list, attach_dialog))
+        hbox.pack_start(button, True, True, 0)
+        vbox.pack_start(hbox, False, False, 0)
+        label = gtk.Label('Serial Attach')
+        notebook.append_page(vbox, label)
+
+        # sample options
         vbox = gtk.VBox()
         self.pack_sample_options(vbox, False, True)
         hbox = gtk.HBox()
@@ -659,6 +776,7 @@ host[1-10,12,15-20];otherhost[30]
         label = gtk.Label('Sample Options')
         notebook.append_page(vbox, label)
 
+        # topology options
         vbox = gtk.VBox()
         frame = gtk.Frame('Topology Options')
         vbox2 = gtk.VBox()
@@ -677,6 +795,7 @@ host[1-10,12,15-20];otherhost[30]
         label = gtk.Label('Topology')
         notebook.append_page(vbox, label)
 
+        # misc options
         vbox = gtk.VBox()
         frame = gtk.Frame('Tool Paths')
         vbox2 = gtk.VBox()
@@ -708,22 +827,47 @@ host[1-10,12,15-20];otherhost[30]
         notebook.append_page(vbox, label)
 
         self.on_update_process_listing(None, process_frame, attach_dialog, self.filter_entry)
+        self.on_update_serial_process_listing(None, serial_process_frame, attach_dialog, self.serial_filter_entry)
         attach_dialog.vbox.pack_start(notebook, True, True, 0)
         attach_dialog.show_all()
         attach_dialog.run()
         self.sw = None
+        self.serial_sw = None
 
-    def launch_application_cb(self, entry, widget, attach_dialog):
+    def attach_serial_processes_cb(self, entry, attach_dialog):
+        """Callback to attach to serial processes."""
+        processes = entry.get_text()
+        self.serial_attach = True
+        self.process_list = processes
+        processes = processes.split()
+        if len(processes) <= 0:
+            show_error_dialog('No processes selected.  Please select processes\nto attach to by selecting the desired radio\nbuttons and clicking "Add Serial Process" or by\nmanually entering host:pid pairs in the text entry.', self)
+            return False
+        if self.STAT is None:
+            self.STAT = STAT_FrontEnd()
+        for process in processes:
+            self.STAT.addSerialProcess(process)
+        self.attach_cb(attach_dialog, False, True, STAT_SERIAL_ATTACH)
+
+    def launch_application_cb(self, entry, attach_dialog):
         """Callback to launch an application under STAT's control."""
         args = entry.get_text()
         args = args.split()
+        if len(args) <= 0:
+            show_error_dialog('No launch string specified.  Please enter\nthe application launch string.\n', self)
+            return False
         self.options['Launcher Exe'] = args[0]
         for arg in args:
             self.STAT.addLauncherArgv(arg)
-        self.attach_cb(widget, attach_dialog, True)
+        self.attach_cb(attach_dialog, True, False, STAT_LAUNCH)
 
-    def attach_cb(self, widget, attach_dialog, launch=False):
+    def attach_cb(self, attach_dialog, launch, serial, application_option=STAT_ATTACH):
         """Callback to attach to a job and gather a stack trace."""
+        if serial == False:
+            self.serial_attach = False
+            self.process_list = None
+        else:
+            self.serial_attach = True
         stat_wait_dialog.update_progress_bar(0.01)
         if attach_dialog != None:
             attach_dialog.destroy()
@@ -732,7 +876,7 @@ host[1-10,12,15-20];otherhost[30]
         self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
         if self.STAT is None:
             self.STAT = STAT_FrontEnd()
-        if launch == False:
+        if launch == False and serial == False:
             if self.options['PID'] is None:
                 show_error_dialog('No job selected.  Please select a valid\njob launcher process to attach to.\n', self)
                 return False
@@ -768,11 +912,15 @@ host[1-10,12,15-20];otherhost[30]
         self.STAT.setProcsPerNode(self.options['Communication Processes per Node'])
         stat_wait_dialog.update_progress_bar(0.05)
 
+        self.STAT.setApplicationOption(application_option)
         if launch == False:
-            if self.options['Remote Host'] != "localhost":
-                ret = self.STAT.attachAndSpawnDaemons(self.options['PID'], self.options['Remote Host'])
+            if serial == False:
+                if self.options['Remote Host'] != "localhost":
+                    ret = self.STAT.attachAndSpawnDaemons(self.options['PID'], self.options['Remote Host'])
+                else:
+                    ret = self.STAT.attachAndSpawnDaemons(self.options['PID'])
             else:
-                ret = self.STAT.attachAndSpawnDaemons(self.options['PID'])
+                ret = self.STAT.setupForSerialAttach()
         else:
             if self.options['Remote Host'] != "localhost":
                 ret = self.STAT.launchAndSpawnDaemons(self.options['Remote Host'])
@@ -799,24 +947,30 @@ host[1-10,12,15-20];otherhost[30]
         elif self.options['Topology Type'] == 'custom':
             topology_type = STAT_TOPOLOGY_USER
         if self.options['Communication Nodes'] != '':
-            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], self.options['Communication Nodes'], False, self.options['Share App Nodes'])
+            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], self.options['Communication Nodes'], False, self.options['Share App Nodes'], False)
         else:
-            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], '', False, self.options['Share App Nodes'])
+            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], '', False, self.options['Share App Nodes'], False)
         if ret != STAT_OK:
             show_error_dialog('Failed to Launch MRNet Tree:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
             return False
 
-        while 1:
-            if gtk.events_pending():
-                gtk.main_iteration()
-            ret = self.STAT.connectMrnetTree(False)
-            if ret == STAT_OK:
-                break
-            elif ret != STAT_PENDING_ACK:
-                show_error_dialog('Failed to connect to MRNet tree:\n%s' %self.STAT.getLastErrorMessage(), self)
-                self.on_fatal_error()
-                return ret
+        if application_option != STAT_SERIAL_ATTACH:
+            while 1:
+                if gtk.events_pending():
+                    gtk.main_iteration()
+                ret = self.STAT.connectMrnetTree(False)
+                if ret == STAT_OK:
+                    break
+                elif ret != STAT_PENDING_ACK:
+                    show_error_dialog('Failed to connect to MRNet tree:\n%s' %self.STAT.getLastErrorMessage(), self)
+                    self.on_fatal_error()
+                    return ret
+        ret = self.STAT.setupConnectedMrnetTree(False);
+        if ret != STAT_OK:
+            show_error_dialog('Failed to setup STAT:\n%s' %self.STAT.getLastErrorMessage(), self)
+            self.on_fatal_error()
+            return False
 
         stat_wait_dialog.update(0.15)
         ret = self.STAT.attachApplication(False)
@@ -1393,10 +1547,15 @@ host[1-10,12,15-20];otherhost[30]
                     host_pid = line[1].split(':')
                     host = host_pid[0]
                     pid = int(host_pid[1])
+                    exe = line[2]
+                    if exe in self.proctab.executable_paths:
+                        index = self.proctab.executable_paths.index(exe)
+                    else:
+                        index = len(self.proctab.executable_paths)
+                        self.proctab.executable_paths.append(exe)
                     if self.proctab.executable_path is None:
-                        exe = line[2]
                         self.proctab.executable_path = exe
-                    self.proctab.process_list.append((rank, host, pid))
+                    self.proctab.process_list.append((rank, host, pid, index))
         except IOError as e:
             show_error_dialog('%s\nfailed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %(repr(e), self.proctab_file_path), self)
             return False
@@ -1427,26 +1586,30 @@ host[1-10,12,15-20];otherhost[30]
         if ret == False:
             return False
         executable = self.proctab.executable_path
-        executable_path = executable
-        cancel = False
-        while os.path.exists(executable_path) == False:
+        self.executable_path = executable
+        self.cancel = False
+        while os.path.exists(self.executable_path) == False and self.cancel == False:
             # Open dialog prompting for base path
-            dialog = gtk.Dialog('Please enter the base path for the executable')
-            label = gtk.Label('Failed to find executable:\n%s\nPlease enter the base path' %executable)
+            dialog = gtk.Dialog('Please enter the full path for the executable')
+            label = gtk.Label('Failed to find executable:\n%s\nPlease enter the executable full path' %self.executable_path)
             dialog.vbox.pack_start(label, True, True, 0)
             entry = gtk.Entry()
             entry.set_max_length(8192)
-            entry.connect("activate", lambda w: dialog.destroy())
+            def activate_entry(entry, dialog):
+                self.executable_path = entry.get_text()
+                dialog.destroy()
+            entry.connect("activate", lambda w: activate_entry(entry, dialog))
             dialog.vbox.pack_start(entry, True, True, 0)
             hbox = gtk.HButtonBox()
             button = gtk.Button(stock = gtk.STOCK_CANCEL)
             def cancel_entry(dialog):
                 entry.set_text('cancel_operation')
+                self.cancel = True
                 dialog.destroy()
             button.connect("clicked", lambda w: cancel_entry(dialog))
             hbox.pack_start(button, False, False, 0)
             button = gtk.Button(stock = gtk.STOCK_OK)
-            button.connect("clicked", lambda w: dialog.destroy())
+            button.connect("clicked", lambda w: activate_entry(entry, dialog))
             hbox.pack_start(button, False, False, 0)
             dialog.vbox.pack_start(hbox, False, False, 0)
             dialog.show_all()
@@ -1454,12 +1617,16 @@ host[1-10,12,15-20];otherhost[30]
             if entry.get_text() == 'cancel_operation':
                 dialog.destroy()
                 return False
-            executable_path = entry.get_text() + '/' + executable
+        if self.cancel == True:
+            return False
         pids = []
-        for rank, host, pid in self.proctab.process_list:
+        hosts = []
+        exes = []
+        for rank, host, pid, exe_index in self.proctab.process_list:
             if rank in subset_list:
                 pids.append(pid)
-                break
+                hosts.append(host)
+                exes.append(self.proctab.executable_paths[exe_index])
         arg_list = []
         if debugger == 'TotalView':
             filepath = self.options['TotalView Path']
@@ -1467,18 +1634,27 @@ host[1-10,12,15-20];otherhost[30]
                 show_error_dialog('Failed to locate executable totalview\ndefault: %s\n' %filepath, self)
                 return
             arg_list.append(filepath)
-            arg_list.append('-parallel_attach')
-            arg_list.append('yes')
-            if self.options['Remote Host'] not in ['localhost', '']:
-                arg_list.append('-remote')
-                arg_list.append(self.options['Remote Host'])
-            arg_list.append('-pid')
-            arg_list.append(str(self.proctab.launcher_pid))
-            str_list = ''
-            for rank in subset_list:
-                str_list += '%s ' %(rank)
-            arg_list.append('-default_parallel_attach_subset=%s' %(str_list))
-            arg_list.append(self.options['Launcher Exe'])
+            if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH:
+                arg_list.append('-e')
+                for counter, rank in enumerate(subset_list):
+                    if counter == 0:
+                        cli_command = "set new_pid [dattach -r %s -e %s %d] ;" %(hosts[counter], exes[counter], pids[counter])
+                    else:
+                        cli_command += " dattach -r %s -g $CGROUP($new_pid) -e %s %d ;" %(hosts[counter], exes[counter], pids[counter])
+                arg_list.append(cli_command)
+            else:
+                arg_list.append('-parallel_attach')
+                arg_list.append('yes')
+                if self.options['Remote Host'] not in ['localhost', '']:
+                    arg_list.append('-remote')
+                    arg_list.append(self.options['Remote Host'])
+                arg_list.append('-pid')
+                arg_list.append(str(self.proctab.launcher_pid))
+                str_list = ''
+                for rank in subset_list:
+                    str_list += '%s ' %(rank)
+                arg_list.append('-default_parallel_attach_subset=%s' %(str_list))
+                arg_list.append(self.options['Launcher Exe'])
         elif debugger == 'DDT':
             filepath = self.options['DDT Path']
             if not filepath or not os.access(filepath, os.X_OK):
@@ -1489,13 +1665,13 @@ host[1-10,12,15-20];otherhost[30]
             ddt_lmon_prefix = self.options['DDT LaunchMON Prefix']
             ddt_lmon_lib = '%s/lib' %(ddt_lmon_prefix)
             ddt_lmon_launchmon = '%s/bin/launchmon' %(ddt_lmon_prefix)
-            if not ddt_lmon_launchmon or not os.access(ddt_lmon_launchmon, os.X_OK) or not ddt_lmon_lib:
-                # DDT 2.4 / DDT 2.5+ w/o LanchMON
+            if not ddt_lmon_launchmon or not os.access(ddt_lmon_launchmon, os.X_OK) or not ddt_lmon_lib or self.serial_attach == True:
+                # DDT 2.4 / DDT 2.5+ w/o LanchMON / serial processes
                 arg_list.append(filepath)
                 arg_list.append('-attach')
-                arg_list.append(executable_path)
-                for pid in pids:
-                    arg_list.append(pid)
+                arg_list.append(self.executable_path)
+                for counter, pid in enumerate(pids):
+                    arg_list.append('%s:%d' %(hosts[counter], pid))
             else:
                 # DDT 2.5+ with LaunchMON
                 arg_list.append("env")
@@ -1512,7 +1688,7 @@ host[1-10,12,15-20];otherhost[30]
                     else:
                         rank_list_arg += ',%d' %rank
                 arg_list.append(rank_list_arg)
-                arg_list.append(executable_path)
+                arg_list.append(self.executable_path)
 
         sys.stdout.write('fork exec %s %s\n' %(debugger, arg_list))
         # First Detach STAT!!!

@@ -25,15 +25,18 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 int main(int argc, char **argv)
 {
     int opt, optionIndex = 0, mrnetOutputLevel = 1;
-    char *logOutDir = NULL;
-    bool useMrnetPrintf = false;
+    char *logOutDir = NULL, *pid;
+    bool useMrnetPrintf = false, mrnetLaunch = false;
     StatError_t statError;
     STAT_BackEnd *STAT;
 
     struct option longOptions[] =
     {
         {"mrnetprintf", no_argument, 0, 'm'},
+        {"serial", no_argument, 0, 's'},
+        {"mrnet", no_argument, 0, 'M'},
         {"mrnetoutputlevel", required_argument, 0, 'o'},
+        {"pid", required_argument, 0, 'p'},
         {"logdir", required_argument, 0, 'L'},
         {0, 0, 0, 0}
     };
@@ -48,8 +51,12 @@ int main(int argc, char **argv)
         }
     }
 
+    if (argc > 2)
+        if (strcmp(argv[1], "-s") == 0 || strcmp(argv[1], "--serial") == 0)
+            mrnetLaunch = true;
+
     /* Initialize STAT */
-    statError = statInit(&argc, &argv);
+    statError = statInit(&argc, &argv, mrnetLaunch);
     if (statError != STAT_OK)
     {
         fprintf(stderr, "Failed to initialize STAT\n");
@@ -61,8 +68,10 @@ int main(int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVmo:L:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVmsMo:p:L:", longOptions, &optionIndex);
         if (opt == -1)
+            break;
+        if (opt == 'M')
             break;
         switch(opt)
         {
@@ -77,8 +86,18 @@ int main(int argc, char **argv)
         case 'o':
             mrnetOutputLevel = atoi(optarg);
             break;
+        case 'p':
+            STAT->addSerialProcess(optarg);
+            break;
         case 'L':
             logOutDir = strdup(optarg);
+            if (logOutDir == NULL)
+            {
+                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
+                return STAT_ALLOCATE_ERROR;
+            }
+            break;
+        case 's':
             break;
         case 'm':
             useMrnetPrintf = true;
@@ -104,18 +123,24 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Setup Launchmon */
-    statError = STAT->Init();
-    if (statError != STAT_OK)
+    if (mrnetLaunch)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
-        delete STAT;
-        return -1;
+        /* Connect to MRNet */
+        statError = STAT->Connect(6, &argv[argc - 6]);
     }
-
-
-    /* Connect to MRNet */
-    statError = STAT->Connect();
+    else
+    {
+        /* Setup Launchmon */
+        statError = STAT->Init();
+        if (statError != STAT_OK)
+        {
+            STAT->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
+            delete STAT;
+            return -1;
+        }
+        /* Connect to MRNet */
+        statError = STAT->Connect();
+    }
     if (statError != STAT_OK)
     {
         STAT->printMsg(statError, __FILE__, __LINE__, "Failed to connect BE\n");
@@ -133,12 +158,15 @@ int main(int argc, char **argv)
     }
 
     /* Finalize STAT */
-    statError = statFinalize();
-    if (statError != STAT_OK)
+    if (mrnetLaunch == false)
     {
-        fprintf(stderr, "Failed to finalize LMON\n");
-        delete STAT;
-        return -1;
+        statError = statFinalize();
+        if (statError != STAT_OK)
+        {
+            fprintf(stderr, "Failed to finalize LMON\n");
+            delete STAT;
+            return -1;
+        }
     }
 
     /* Sleep for a second to give MRNet time to exit cleanly */

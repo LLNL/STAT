@@ -43,7 +43,8 @@ if os.name != 'nt':
 # Check for required modules
 try:
     import gtk, gobject, pango
-except ImportError:
+except ImportError as e:
+    sys.stderr.write('%s\n' %repr(e))
     sys.stderr.write('STATview requires gtk and gobject\n')
     sys.exit(1)
 except RuntimeError as e:

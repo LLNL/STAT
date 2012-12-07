@@ -67,7 +67,8 @@ extern "C"
 //! An enum for STAT launch vs attach
 typedef enum {
     STAT_LAUNCH = 0,
-    STAT_ATTACH
+    STAT_ATTACH,
+    STAT_SERIAL_ATTACH
 } StatLaunch_t;
 
 //! An enum for MRNet topology specification type
@@ -192,6 +193,12 @@ class STAT_FrontEnd
         */
         StatError_t launchAndSpawnDaemons(char *remoteNode = NULL, bool isStatBench = false);
 
+        //! Setup the appropriate variables for serial attach
+        /*!
+            \return STAT_OK on success
+        */
+        StatError_t setupForSerialAttach();
+
         //! Launch the MRNet tree
         /*!
             \param topologyType - the requested topology type
@@ -217,6 +224,8 @@ class STAT_FrontEnd
             they are the same version.
         */
         StatError_t connectMrnetTree(bool blocking = true, bool isStatBench = false);
+
+        StatError_t setupConnectedMrnetTree(bool isStatBench = false);
 
         //! Attach to the application
         /*!
@@ -511,6 +520,13 @@ class STAT_FrontEnd
         */
         StatError_t addLauncherArgv(const char *launcherArg);
 
+        //! Adds a process for serial attach
+        /*!
+            \param pidString - the [exe@][host:]PID of the serial process
+            \return STAT_OK on success
+        */
+        StatError_t addSerialProcess(const char *pidString);
+
         //! Gets the argument list for the job launcher
         /*!
             \return the arguement list
@@ -534,6 +550,18 @@ class STAT_FrontEnd
             \return the verbosity output level
         */
         StatVerbose_t getVerbose();
+
+        //! Sets the application option
+        /*!
+            \param applicationOption - application option
+        */
+        void setApplicationOption(StatLaunch_t applicationOption);
+
+        //! Gets the application option
+        /*!
+            \return the application option
+        */
+        StatLaunch_t getApplicationOption();
 
         //! Returns the last error message
         char *getLastErrorMessage();
@@ -640,7 +668,6 @@ class STAT_FrontEnd
 
         //! Launch the STAT daemons
         /*!
-            \param applicationOption - STAT_LAUNCH or STAT_ATTACH
             \param isStatBench - [optional] set to true if running as STATBench
             \return STAT_OK on success
 
@@ -649,7 +676,7 @@ class STAT_FrontEnd
             dumping the process table to a file, and generating the application node
             list for MRNet to topology file creation.
         */
-        StatError_t launchDaemons(StatLaunch_t applicationOption, bool isStatBench = false);
+        StatError_t launchDaemons(bool isStatBench = false);
 
         //! Send MRNet LeafInfo to the master daemon
         /*!
@@ -666,6 +693,7 @@ class STAT_FrontEnd
             \param topologyType - the topology specification type
             \param topologySpecification - the topology specification
             \param nodeList - the list of nodes for CPs
+            \param shareAppNodes - whether to use application nodes for communication processes
             \return STAT_OK on success
 
             Topologies can be based on max fanout, depth, or user defined.  User defined
@@ -820,6 +848,7 @@ class STAT_FrontEnd
         StatProt_t pendingAckTag_;                          /*!< the expected tag of the pending acknowledgement */
         StatError_t (STAT_FrontEnd::*pendingAckCb_)();      /*!< the function to call after acknowledgement received from daemons */
         StatVerbose_t verbose_;                             /*!< the verbosity level */
+        StatLaunch_t applicationOption_;                    /*!< the mode in which STAT was given control of the application */
         unsigned char logging_;                             /*!< the logging level */
         MPIR_PROCDESC_EXT *proctab_;                        /*!< the process table */
         MRN::Network *network_;                             /*!< the MRNet Network object */

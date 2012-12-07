@@ -160,7 +160,8 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                 return NULL;
             }
 
-            ret = network_->recv(&tag, packet, &stream_);
+            //ret = network_->recv(&tag, packet, &stream_);
+            ret = stream_->recv(&tag, packet);
             if (ret != 1)
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
@@ -174,6 +175,12 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                         statOutFp, "FE reported error sending contents of %s\n", pathStr));
                 localLib = true;
             }
+            if (tag != PROT_LIB_REQ_RESP)
+            {
+                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                        statOutFp, "Unexpected tag %d when trying to receive contents of %s\n", tag, pathStr));
+                localLib = true;
+            }
 #ifdef MRNET40
             else if (packet->unpack("%Ac %s", &fileContents, &fileContentsLength, &fileName) == -1)
 #else
@@ -181,7 +188,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
 #endif
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        statOutFp, "Failed to unpack contents of %s\n", pathStr));
+                        statOutFp, "Failed to unpack contents of %s, length %d\n", pathStr, fileContentsLength));
                 localLib = true;
             }
         }
@@ -250,6 +257,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
         msr = iter->second;
         msr->refCount_++;
     }
+    mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader", statOutFp, "done\n"));
 
     return static_cast<SymReader *>(msr);
 }

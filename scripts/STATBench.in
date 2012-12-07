@@ -3,8 +3,14 @@
 export prefix=@prefix@
 export STAT_LMON_REMOTE_LOGIN=@rshcmd@
 export STAT_XPLAT_RSH=@rshcmd@
+if test -z $STAT_FGFS_FILTER_PATH; then
+    export STAT_FGFS_FILTER_PATH=@FGFSFILTERPATH@
+fi
 if test -z $STAT_MRNET_COMM_PATH; then
     export STAT_MRNET_COMM_PATH=@MRNETCOMMNODEBIN@
+fi
+if test -z $STAT_LMON_PREFIX; then
+    export STAT_LMON_PREFIX=@LAUNCHMONPREFIX@
 fi
 if test -z $STAT_LMON_LAUNCHMON_ENGINE_PATH; then
     export STAT_LMON_LAUNCHMON_ENGINE_PATH=@LAUNCHMONBIN@
@@ -14,5 +20,8 @@ if test -z $STAT_MRNET_DEBUG_LOG_DIRECTORY; then
 fi
 if test -z $STAT_CONNECT_TIMEOUT; then
     export STAT_CONNECT_TIMEOUT=120
+fi
+if test -z $LMON_FE_ENGINE_TIMEOUT; then
+    export LMON_FE_ENGINE_TIMEOUT=600
 fi
 exec @prefix@/bin/STATBenchbin $@

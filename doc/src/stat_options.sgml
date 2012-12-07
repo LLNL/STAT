@@ -160,6 +160,14 @@
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>-I, --serial <replaceable class="parameter">arg_list</replaceable></term>
+    <listitem>
+        <para>
+        Attach to a list of serial processes.  All arguments after -I are interpreted as processes.  Namely, <replaceable class="parameter">arg_list</replaceable> is a white-space-separated list of processes to attach to, where each process is of the form [exe@][hostname:]PID.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>-D, --daemon <replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>

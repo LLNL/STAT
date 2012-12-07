@@ -42,17 +42,20 @@ extern graphlib_functiontable_p statCountRepFunctions;
 
 FILE *statOutFp = NULL;
 
-StatError_t statInit(int *argc, char ***argv)
+StatError_t statInit(int *argc, char ***argv, bool mrnetLaunch)
 {
     lmon_rc_e rc;
     graphlib_error_t graphlibError;
 
-    /* Call LaunchMON's Init function */
-    rc = LMON_be_init(LMON_VERSION, argc, argv);
-    if (rc != LMON_OK)
+    if (mrnetLaunch == false)
     {
-        fprintf(stderr, "Failed to initialize Launchmon\n");
-        return STAT_LMON_ERROR;
+        /* Call LaunchMON's Init function */
+        rc = LMON_be_init(LMON_VERSION, argc, argv);
+        if (rc != LMON_OK)
+        {
+            fprintf(stderr, "Failed to initialize Launchmon\n");
+            return STAT_LMON_ERROR;
+        }
     }
 
     graphlibError = graphlib_Init();
@@ -150,6 +153,7 @@ STAT_BackEnd::STAT_BackEnd()
     isRunning_ = false;
     network_ = NULL;
     proctab_ = NULL;
+    proctabSize_ = 0;
     parentHostName_ = NULL;
     prefixTree3d_ = NULL;
     prefixTree2d_ = NULL;
@@ -283,8 +287,85 @@ StatError_t STAT_BackEnd::Init()
 
     return STAT_OK;
 }
+        
+StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
+{
+    static int rank = -1;
+    unsigned int pid;
+    char *remoteNode = NULL, *executablePath = NULL;
+    string::size_type delimPos;
+    string remotePid = pidString, remoteHost;
+        
+    rank++;
+    
+    delimPos = remotePid.find_first_of("@");
+    if (delimPos != string::npos)
+    {
+        executablePath = strdup(remotePid.substr(0, delimPos).c_str());
+        if (executablePath == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to executablePath\n", strerror(errno), remotePid.substr(0, delimPos).c_str());
+            return STAT_ALLOCATE_ERROR;
+        }
+        remotePid = remotePid.substr(delimPos + 1, remotePid.length());
+    }
+    else
+    {
+        executablePath = strdup("output");
+        if (executablePath == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup to executablePath\n", strerror(errno));
+            return STAT_ALLOCATE_ERROR;
+        }
+    }
 
-StatError_t STAT_BackEnd::Connect()
+    delimPos = remotePid.find_first_of(":");
+    if (delimPos != string::npos)
+    {
+        remoteHost = remotePid.substr(0, delimPos);
+        remoteNode = strdup(remoteHost.c_str());
+        if (remoteNode == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to remoteNode\n", strerror(errno), remotePid.c_str());
+            return STAT_ALLOCATE_ERROR;
+        }
+        pid = atoi((remotePid.substr(delimPos + 1, remotePid.length())).c_str());
+    }
+    else
+        pid = atoi(remotePid.c_str());
+        
+    if (strcmp(remoteHost.c_str(), "localhost") == 0 || strcmp(remoteHost.c_str(), localHostName_) == 0)
+    {
+        proctabSize_++;
+        proctab_ = (MPIR_PROCDESC_EXT *)realloc(proctab_, proctabSize_ * sizeof(MPIR_PROCDESC_EXT));
+        if (proctab_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
+            return STAT_ALLOCATE_ERROR;
+        }
+
+        proctab_[proctabSize_ - 1].mpirank = rank;
+        proctab_[proctabSize_ - 1].cnodeid = rank;
+        if (remoteNode != NULL)
+            proctab_[proctabSize_ - 1].pd.host_name = remoteNode;
+        else
+        {
+            proctab_[proctabSize_ - 1].pd.host_name = strdup("localhost");
+            if (proctab_[proctabSize_ - 1].pd.host_name == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup to proctab_[%d]\n", strerror(errno), proctabSize_ - 1);
+                return STAT_ALLOCATE_ERROR;
+            }
+        }
+        proctab_[proctabSize_ - 1].pd.executable_name = executablePath;
+        proctab_[proctabSize_ - 1].pd.pid = pid;
+    }
+
+    initialized_ = true;
+    return STAT_OK;
+}
+
+StatError_t STAT_BackEnd::Connect(int argc, char **argv)
 {
     int i;
     bool found;
@@ -294,104 +375,129 @@ StatError_t STAT_BackEnd::Connect()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Prepearing to connect to MRNet\n");
 
-    /* Make sure we've been initialized through Launchmon */
-    if (initialized_ == false)
+    if (argc == 0 || argv == NULL)
     {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Trying to connect when not initialized\n");
-        return STAT_LMON_ERROR;
-    }
-
-    /* Receive MRNet connection information */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Receiving connection information from FE\n");
-    rc = LMON_be_recvUsrData((void *)&leafInfoArray);
-    if (rc != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to receive data from FE\n");
-        return STAT_LMON_ERROR;
-    }
-
-    /* Master broadcast number of daemons */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Broadcasting size of connection info to daemons\n");
-    rc = LMON_be_broadcast((void *)&(leafInfoArray.size), sizeof(int));
-    if (rc != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to broadcast num_leaves\n");
-        return STAT_LMON_ERROR;
-    }
-
-    /* Non-masters allocate space for the MRNet connection info */
-    if (LMON_be_amIMaster() == LMON_NO)
-    {
-        leafInfoArray.leaves = (statLeafInfo_t *)malloc(leafInfoArray.size * sizeof(statLeafInfo_t));
-        if (leafInfoArray.leaves == NULL)
+        /* Make sure we've been initialized through Launchmon */
+        if (initialized_ == false)
         {
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d x %d = %dB of memory for leaf info\n", leafInfoArray.size, sizeof(statLeafInfo_t), leafInfoArray.size*sizeof(statLeafInfo_t));
-            return STAT_ALLOCATE_ERROR;
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Trying to connect when not initialized\n");
+            return STAT_LMON_ERROR;
         }
-    }
-
-    /* Master broadcast MRNet connection information to all daemons */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Broadcasting connection information to all daemons\n");
-    rc = LMON_be_broadcast((void *)(leafInfoArray.leaves), leafInfoArray.size * sizeof(statLeafInfo_t));
-    if (rc != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to broadcast num_leaves\n");
-        return STAT_LMON_ERROR;
-    }
-
-    /* Find my MRNet personality  */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for my connection information\n");
-    found = false;
-    XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
-    for (i = 0; i < leafInfoArray.size; i++)
-    {
-        XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
-        if (prettyHost == leafPrettyHost || strcmp(leafPrettyHost.c_str(), localIp_) == 0)
+    
+        /* Receive MRNet connection information */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Receiving connection information from FE\n");
+        rc = LMON_be_recvUsrData((void *)&leafInfoArray);
+        if (rc != LMON_OK)
         {
-            found = true;
-            parentHostName_ = strdup(leafInfoArray.leaves[i].parentHostName);
-            if (parentHostName_ == NULL)
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to receive data from FE\n");
+            return STAT_LMON_ERROR;
+        }
+    
+        /* Master broadcast number of daemons */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Broadcasting size of connection info to daemons\n");
+        rc = LMON_be_broadcast((void *)&(leafInfoArray.size), sizeof(int));
+        if (rc != LMON_OK)
+        {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to broadcast num_leaves\n");
+            return STAT_LMON_ERROR;
+        }
+    
+        /* Non-masters allocate space for the MRNet connection info */
+        if (LMON_be_amIMaster() == LMON_NO)
+        {
+            leafInfoArray.leaves = (statLeafInfo_t *)malloc(leafInfoArray.size * sizeof(statLeafInfo_t));
+            if (leafInfoArray.leaves == NULL)
             {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed on call to strdup()\n");
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d x %d = %dB of memory for leaf info\n", leafInfoArray.size, sizeof(statLeafInfo_t), leafInfoArray.size*sizeof(statLeafInfo_t));
                 return STAT_ALLOCATE_ERROR;
             }
-            parentPort_ = leafInfoArray.leaves[i].parentPort;
-            parentRank_ = leafInfoArray.leaves[i].parentRank;
-            myRank_ = leafInfoArray.leaves[i].rank;
-            break;
+        }
+    
+        /* Master broadcast MRNet connection information to all daemons */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Broadcasting connection information to all daemons\n");
+        rc = LMON_be_broadcast((void *)(leafInfoArray.leaves), leafInfoArray.size * sizeof(statLeafInfo_t));
+        if (rc != LMON_OK)
+        {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to broadcast num_leaves\n");
+            return STAT_LMON_ERROR;
+        }
+    
+        /* Find my MRNet personality  */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for my connection information\n");
+        found = false;
+        XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
+        for (i = 0; i < leafInfoArray.size; i++)
+        {
+            XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
+            if (prettyHost == leafPrettyHost || strcmp(leafPrettyHost.c_str(), localIp_) == 0)
+            {
+                found = true;
+                parentHostName_ = strdup(leafInfoArray.leaves[i].parentHostName);
+                if (parentHostName_ == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to parentHostName_)\n", strerror(errno), leafInfoArray.leaves[i].parentHostName);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                parentPort_ = leafInfoArray.leaves[i].parentPort;
+                parentRank_ = leafInfoArray.leaves[i].parentRank;
+                myRank_ = leafInfoArray.leaves[i].rank;
+                break;
+            }
+        }
+        if (found == false)
+        {
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to find MRNet parent info\n");
+            return STAT_MRNET_ERROR;
+        }
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found MRNet connection info, parent hostname = %s, parent port = %d, my MRNet rank = %d\n", parentHostName_, parentPort_, myRank_);
+    
+        /* Connect to the MRNet Network */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Connecting to MRNet network\n");
+        char *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
+        snprintf(parentPort, BUFSIZE, "%d", parentPort_);
+        snprintf(parentRank, BUFSIZE, "%d", parentRank_);
+        snprintf(myRank, BUFSIZE, "%d", myRank_);
+        param[0] = NULL;
+        param[1] = parentHostName_;
+        param[2] = parentPort;
+        param[3] = parentRank;
+        param[4] = localHostName_;
+        param[5] = myRank;
+        printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"Calling CreateNetworkBE\n");
+        network_ = Network::CreateNetworkBE(6, param);
+        printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"End of create network be\n");
+        if(network_ == NULL)
+        {
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "backend_init() failed\n");
+            return STAT_MRNET_ERROR;
+        }
+    
+        /* Free the Leaf Info array */
+        if (leafInfoArray.leaves != NULL)
+            free(leafInfoArray.leaves);
+    } // if (argc == 0 || argv == NULL)
+    else
+    {
+        parentHostName_ = strdup(argv[1]);
+        if (parentHostName_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to parentHostName_\n", strerror(errno), argv[1]);
+            return STAT_ALLOCATE_ERROR;
+        }
+        parentPort_ = atoi(argv[2]);
+        parentRank_ = atoi(argv[3]);
+        myRank_ = atoi(argv[5]);
+        printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"Calling CreateNetworkBE with %d args:\n", argc);
+        for (i = 0; i < argc; i++)
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\targv[%d] = %s\n", i, argv[i]);
+        network_ = Network::CreateNetworkBE(6, argv);
+        printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"End of create network be\n");
+        if (network_ == NULL)
+        {
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "backend_init() failed\n");
+            return STAT_MRNET_ERROR;
         }
     }
-    if (found == false)
-    {
-        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to find MRNet parent info\n");
-        return STAT_MRNET_ERROR;
-    }
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found MRNet connection info, parent hostname = %s, parent port = %d, my MRNet rank = %d\n", parentHostName_, parentPort_, myRank_);
-
-    /* Connect to the MRNet Network */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Connecting to MRNet network\n");
-    char *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
-    snprintf(parentPort, BUFSIZE, "%d", parentPort_);
-    snprintf(parentRank, BUFSIZE, "%d", parentRank_);
-    snprintf(myRank, BUFSIZE, "%d", myRank_);
-    param[0] = NULL;
-    param[1] = parentHostName_;
-    param[2] = parentPort;
-    param[3] = parentRank;
-    param[4] = localHostName_;
-    param[5] = myRank;
-    printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"Calling CreateNetworkBE\n");
-    network_ = Network::CreateNetworkBE(6, param);
-    printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"End of create network be\n");
-    if(network_ == NULL)
-    {
-        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "backend_init() failed\n");
-        return STAT_MRNET_ERROR;
-    }
-
-    /* Free the Leaf Info array */
-    if (leafInfoArray.leaves != NULL)
-        free(leafInfoArray.leaves);
 
     connected_ = true;
     return STAT_OK;
@@ -405,7 +511,7 @@ StatError_t STAT_BackEnd::mainLoop()
     StatSample_t previousSampleType;
     uint64_t obyteArrayLen;
     char *obyteArray = NULL, *variableSpecification;
-    Stream *stream;
+    Stream *stream = NULL;
     fd_set readfds, writefds, exceptfds;
     PacketPtr packet;
     StatError_t statError;
@@ -914,7 +1020,7 @@ StatError_t STAT_BackEnd::mainLoop()
 
             default:
                 /* Unknown tag */
-                printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Unknown Protocol: %d\n", tag);
+                printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Unknown Tag %d, first = %d, last = %d\n", tag, PROT_ATTACH_APPLICATION, PROT_SEND_NODE_IN_EDGE_RESP);
                 break;
         } /* switch */
     } while (tag != PROT_EXIT);
@@ -1435,10 +1541,11 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
            if (ret != STAT_OK)
               return ret;
 
-
-           graphlibError = graphlib_exportGraph((char *) "mergegraph.dot", GRF_DOT, prefixTree3d_);
-           if (GRL_IS_FATALERROR(graphlibError))
-              fprintf(stderr, "Error exporting graph\n");
+           //char tmpFileName[BUFSIZE];
+           //snprintf(tmpFileName, BUFSIZE, "STATD.%s.dot", localHostName_);
+           //graphlibError = graphlib_exportGraph(tmpFileName, GRF_DOT, prefixTree3d_);
+           //if (GRL_IS_FATALERROR(graphlibError))
+           //   fprintf(stderr, "Error exporting graph\n");
         }
         else
 #endif
@@ -1467,9 +1574,11 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                  return ret;
            } /* for iter */
 
-           graphlibError = graphlib_exportGraph((char *) "origgraph.dot", GRF_DOT, prefixTree3d_);
-           if (GRL_IS_FATALERROR(graphlibError))
-              fprintf(stderr, "Error exporting graph\n");
+           //char tmpFileName[BUFSIZE];
+           //snprintf(tmpFileName, BUFSIZE, "STATD.%s.dot", localHostName_);
+           //graphlibError = graphlib_exportGraph(tmpFileName, GRF_DOT, prefixTree3d_);
+           //if (GRL_IS_FATALERROR(graphlibError))
+           //   fprintf(stderr, "Error exporting graph\n");
         }
 
         /* Continue the process */
@@ -1586,7 +1695,7 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
     int pyLineNo;
     StatError_t ret2;
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d\n", rank);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d of %d\n", rank, proctabSize_);
 
     /* Set edge label */
     edge = initializeBitVectorEdge(proctabSize_);
@@ -1856,6 +1965,8 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
             return STAT_GRAPHLIB_ERROR;
         }
+        
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Trace from thread %d of %d = %s\n", j, threads.size(), path.c_str());
 
     } /* for thread iter */
 
@@ -2578,6 +2689,11 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, std::vector<Frame> &s
     buffer[length] = '\0';
     processState->readMem(buffer, baseAddr + obSvalOffset, length);
     *pyFun = strdup(buffer);
+    if (*pyFun == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to *pyFun)\n", strerror(errno), buffer);
+        return STAT_ALLOCATE_ERROR;
+    }
     
     /* Get the Python source file name */
     processState->readMem(buffer, pyCodeObjectBaseAddr + coFileNameOffset, sizeof(unsigned long long));
@@ -2590,6 +2706,11 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, std::vector<Frame> &s
     buffer[length] = '\0';
     processState->readMem(buffer, baseAddr + obSvalOffset, length);
     *pySource = strdup(buffer);
+    if (*pyFun == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to *pySource)\n", strerror(errno), buffer);
+        return STAT_ALLOCATE_ERROR;
+    }
     
     /* Get the Python source line number */
     processState->readMem(buffer, pyCodeObjectBaseAddr + coFirstLineNoOffset, sizeof(unsigned long long));
@@ -2810,6 +2931,11 @@ StatError_t STAT_BackEnd::statBenchConnect()
         return STAT_MRNET_ERROR;
     }
     parentHostName_ = strdup(inHostName);
+    if (parentHostName_ == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to parentHostName_)\n", strerror(errno), inHostName);
+        return STAT_ALLOCATE_ERROR;
+    }
     parentPort_ = inPort;
     parentRank_ = inParentRank;
     myRank_ = inRank;

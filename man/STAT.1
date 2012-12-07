@@ -94,6 +94,9 @@ Save all individual samples in addition to the 3D trace when using \fB--traces\f
 \fB-C, --create \fIarg_list\fB\fR
 Launch the application under STAT's control. All arguments after -C are used to launch the app. Namely, \fIarg_list\fR is the command that you would normally use to launch your application.
 .TP
+\fB-I, --serial \fIarg_list\fB\fR
+Attach to a list of serial processes. All arguments after -I are interpreted as processes. Namely, \fIarg_list\fR list of processes to attach to, where each process is of the form [exe@][hostname:]PID.
+.TP
 \fB-D, --daemon \fIpath\fB\fR
 Specify the full path \fIpath\fR to the STAT daemon executable. Use this only if you wish to override the default.
 .TP
