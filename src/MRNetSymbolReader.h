@@ -26,6 +26,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "Comm/MRNetCommFabric.h"
 #include "AsyncFastGlobalFileStat.h"
 #include "MRNetSymbolReader.h"
+#include "walker.h"
 
 using namespace Dyninst;
 using namespace MRN;
@@ -44,6 +45,13 @@ do { \
 extern FILE *statOutFp;
 
 class Elf_X;
+
+#if defined(SW_VERSION_8_0_1)
+#define SW_USE_SEGMENTS
+typedef void* SymRegion;
+#else
+typedef void* SymSegment;
+#endif
 
 class MRNetSymbolReader :public Dyninst::SymReader
 {
@@ -67,6 +75,8 @@ class MRNetSymbolReader :public Dyninst::SymReader
    virtual unsigned getAddressWidth();
    virtual unsigned numRegions();
    virtual bool getRegion(unsigned num, SymRegion &reg);
+   virtual unsigned numSegments();
+   virtual bool getSegment(unsigned num, SymSegment &reg);
    virtual Dyninst::Offset getSymbolOffset(const Symbol_t &sym);
    virtual std::string getSymbolName(const Symbol_t &sym);
    virtual std::string getDemangledName(const Symbol_t &sym);
@@ -320,12 +330,42 @@ inline unsigned MRNetSymbolReader::getAddressWidth()
 
 inline unsigned MRNetSymbolReader::numRegions()
 {
+#if !defined(SW_USE_SEGMENTS)
     return symReaderHandle_->numRegions();
+#else
+    assert(0);
+    return 0;
+#endif
 }
 
 inline bool MRNetSymbolReader::getRegion(unsigned num, SymRegion &reg)
 {
+#if !defined(SW_USE_SEGMENTS)
     return symReaderHandle_->getRegion( num,reg);
+#else
+    assert(0);
+    return false;
+#endif
+}
+
+inline bool MRNetSymbolReader::getSegment(unsigned num, SymSegment &reg)
+{
+#if defined(SW_USE_SEGMENTS)
+    return symReaderHandle_->getSegment( num,reg);
+#else
+    assert(0);
+    return false;
+#endif
+}
+
+inline unsigned int MRNetSymbolReader::numSegments()
+{
+#if defined(SW_USE_SEGMENTS)
+   return symReaderHandle_->numSegments();
+#else
+   assert(0);
+   return 0;
+#endif
 }
 
 inline Dyninst::Offset MRNetSymbolReader::getSymbolOffset(const Symbol_t &sym)
