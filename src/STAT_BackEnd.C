@@ -518,7 +518,8 @@ StatError_t STAT_BackEnd::mainLoop()
         }
         /* Receive the packet from the STAT FE */
         /* Use non-blocking recv to catch any false positive events */
-        retval = network_->recv(&tag, packet, &stream, false);
+        bool should_block = (swNotificationFd == -1);
+        retval = network_->recv(&tag, packet, &stream, should_block);
         if (retval == 0)
             continue;
         else if (retval != 1)
