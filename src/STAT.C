@@ -321,6 +321,7 @@ void printUsage(int argc, char **argv)
     fprintf(stderr, "  -f, --fanout <width>\t\tmaximum tree topology fanout\n");
     fprintf(stderr, "  -u, --usertopology <topology>\tspecify the number of communication nodes per\n\t\t\t\tlayer in the tree topology, separated by dashes\n");
     fprintf(stderr, "  -n, --nodes <nodelist>\tlist of nodes for communication processes\n");
+    fprintf(stderr, "  -N, --nodesfile <filename>\t file containing list of nodes for communication processes\n");
     fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication processes\n");
     fprintf(stderr, "\t\t\t\tExample node lists:\thost1\n\t\t\t\t\t\t\thost1,host2\n\t\t\t\t\t\t\thost[1,5-7,9]\n");
     fprintf(stderr, "  -p, --procs <processes>\tthe maximum number of communication processes\n\t\t\t\tper node\n");
@@ -367,6 +368,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         {"countrep", no_argument, 0, 'U'},
         {"fanout", required_argument, 0, 'f'},
         {"nodes", required_argument, 0, 'n'},
+        {"nodesfile", required_argument, 0, 'N'},
         {"procs", required_argument, 0, 'p'},
         {"jobid", required_argument, 0, 'j'},
         {"retries", required_argument, 0, 'r'},
@@ -464,6 +466,9 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
                 return STAT_ALLOCATE_ERROR;
             }
             break;
+        case 'N':
+            STAT->setNodeListFile(strdup(optarg));
+            break;            
         case 'p':
             STAT->setProcsPerNode(atoi(optarg));
             break;

@@ -598,7 +598,8 @@ StatError_t STAT_BackEnd::mainLoop()
         }
         /* Receive the packet from the STAT FE */
         /* Use non-blocking recv to catch any false positive events */
-        retval = network_->recv(&tag, packet, &stream, false);
+        bool should_block = (swNotificationFd == -1);
+        retval = network_->recv(&tag, packet, &stream, should_block);
         if (retval == 0)
             continue;
         else if (retval != 1)
@@ -2154,14 +2155,14 @@ bool STAT_BackEnd::AddFrameToGraph(graphlib_graph_p gl_graph, CallTree *sw_graph
 
 StatError_t STAT_BackEnd::getStackTraceFromAll(graphlib_graph_p retGraph,
                                                unsigned int /*nRetries*/, unsigned int /*retryFrequency*/,
-                                               unsigned int /*withThreads*/)
+                                               unsigned int withThreads)
 {
-   if (procset->getLWPTracking()) {
+   if (procset->getLWPTracking() && withThreads) {
       procset->getLWPTracking()->refreshLWPs();
    }
 
    CallTree tree(frame_lib_offset_cmp);
-   bool result = walkerset->walkStacks(tree);
+   bool result = walkerset->walkStacks(tree, !withThreads);
    if (!result) {
 #warning TODO: Start handling partial call stacks in group walks
    }
