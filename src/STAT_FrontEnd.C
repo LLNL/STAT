@@ -214,6 +214,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     proctabSize_ = 0;
     proctab_ = NULL;
     remoteNode_ = NULL;
+    nodeListFile_ = NULL;
     isRunning_ = false;
     snprintf(outDir_, BUFSIZE, "NULL");
     snprintf(logOutDir_, BUFSIZE, "NULL");
@@ -1455,6 +1456,11 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId,
 }
 
 #endif //STAT_FGFS
+
+void STAT_FrontEnd::setNodeListFile(char *nodeListFile)
+{
+   nodeListFile_ = nodeListFile;
+}
 
 char *STAT_FrontEnd::getLastErrorMessage()
 {
@@ -3675,12 +3681,19 @@ StatError_t STAT_FrontEnd::setNodeListFromConfigFile(char **nodeList)
 {
     FILE *f;
     char fileName[BUFSIZE], input[BUFSIZE];
+    char *nodefile;
     string nodes;
     int count = 0;
 
-    snprintf(fileName, BUFSIZE, "%s/etc/STAT/nodes.txt", getInstallPrefix());
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting node list from file %s\n", fileName);
-    f = fopen(fileName, "r");
+    if (nodeListFile_ == NULL) {
+       snprintf(fileName, BUFSIZE, "%s/etc/STAT/nodes.txt", getInstallPrefix());
+       nodefile = fileName;
+    }
+    else {
+       nodefile = nodeListFile_;
+    }
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting node list from file %s\n", nodefile);
+    f = fopen(nodefile, "r");
     if (f != NULL)
     {
         while (fscanf(f, "%s", input) != EOF)
@@ -3709,7 +3722,7 @@ StatError_t STAT_FrontEnd::setNodeListFromConfigFile(char **nodeList)
         fclose(f);
     }
     else
-        printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "No config file %s\n", fileName);
+        printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "No config file %s\n", nodefile);
 
     return STAT_OK;
 }
