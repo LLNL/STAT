@@ -307,9 +307,9 @@ void printUsage(int argc, char **argv)
     fprintf(stderr, "  -T, --tracefreq <frequency>\ttime between samples in milli-seconds\n");
     fprintf(stderr, "  -S, --sampleindividual\tsave all individual samples\n");
     fprintf(stderr, "  -r, --retries <count>\t\tretry attempts per sample to get a complete\n\t\t\t\ttrace\n");
-    fprintf(stderr, "  -R, --retryfreq <frequency>\ttime between sample retries\n");
+    fprintf(stderr, "  -R, --retryfreq <frequency>\ttime between sample retries in micro-seconds\n");
     fprintf(stderr, "  -P, --withpc\t\t\tsample program counter in addition to\n\t\t\t\tfunction name\n");
-    fprintf(stderr, "  -i, --withline\t\t\tsample source line number in addition\n\t\t\t\tto function name\n");
+    fprintf(stderr, "  -i, --withline\t\tsample source line number in addition\n\t\t\t\tto function name\n");
     fprintf(stderr, "  -c, --comprehensive\t\tgather 4 traces: function only; function + line;\n\t\t\t\tfunction + pc; and 3D function only\n");
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");

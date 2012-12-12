@@ -273,13 +273,14 @@ class STAT_BackEnd
             \return STAT_OK on success
         */
         StatError_t resumeImpl(Dyninst::Stackwalker::Walker *walker);
+
         //! Gathers the specified number of traces from all processes
         /*!
             \param nTraces - the number of traces to gather per process
-            \param traceFrequency - the time to wait between samples
+            \param traceFrequency - the time (ms) to wait between samples
             \param nRetries - the number of attempts to try to get a complete stack
                 trace
-            \param retryFrequency - the time to wait between retries
+            \param retryFrequency - the time (us) to wait between retries
             \param withThreads - whether to gather thread stack traces too
             \param clearOnSample - whether to clear the accumulated traces before
                 sampling

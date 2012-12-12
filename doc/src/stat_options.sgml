@@ -75,7 +75,7 @@
     <term>-R, --retryfreq <replaceable class="parameter">frequency</replaceable></term>
     <listitem>
         <para>
-        Wait <replaceable class="parameter">frequency</replaceable> milliseconds between sample retries.  To be used with the <option>--retries</option> option.
+        Wait <replaceable class="parameter">frequency</replaceable> microseconds between sample retries.  To be used with the <option>--retries</option> option.
         </para>
     </listitem>
 </varlistentry>

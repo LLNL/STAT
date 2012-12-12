@@ -57,7 +57,7 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     <term><GUIbutton># Retries/Retry Frequency</GUIbutton> (Advanced)</term>
     <listitem>
         <para>
-        Sometimes a process may be in a state (i.e., function prologue or epilogue) such that a complete stack trace may not be obtainable.  This option controls how many times to retry sampling and how often to wait between retries to try and get a complete trace.
+        Sometimes a process may be in a state (i.e., function prologue or epilogue) such that a complete stack trace may not be obtainable.  This option controls how many times to retry sampling and how often to wait (in microseconds) between retries to try and get a complete trace.
         </para>
     </listitem>
 </varlistentry>

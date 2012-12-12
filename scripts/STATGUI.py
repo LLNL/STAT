@@ -121,7 +121,7 @@ class STATGUI(STATDotWindow):
                     'Num Traces'                       : 10,
                     'Trace Frequency (ms)'             : 1000,
                     'Num Retries'                      : 5,
-                    'Retry Frequency (ms)'             : 10,
+                    'Retry Frequency (us)'             : 10,
                     'With Threads'                     : False,
                     'Gather Python Traces'             : False,
                     'Clear On Sample'                  : True,

@@ -1,3 +1,6 @@
+2012-12-11 Gregory L. Lee <lee218@llnl.gov>
+	* : updated documentation for retry frequency in micro (not milli) seconds
+
 2012-12-06 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_*[C,h] : Allow STAT to be run on serial process w/ command line option
 	* scripts/STATGUI.py : GUI support for serial process attaching
