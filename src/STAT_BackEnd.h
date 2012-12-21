@@ -33,6 +33,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <signal.h>
 #include <arpa/inet.h>
 #include <set>
+#include <sys/select.h>
+#include <errno.h>
 
 #include "STAT.h"
 #include "STAT_timer.h"
@@ -46,32 +48,18 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "frame.h"
 #include "swk_errors.h"
 #include "Type.h"
-
 #ifdef SW_VERSION_8_0_0
   #include "PlatFeatures.h"
   #include "ProcessSet.h"
   #include "PCErrors.h"
-  #if !defined(PROTOTYPE_PY) && !defined(PROTOTYPE_TO) && defined(BGL)
+//  #if !defined(PROTOTYPE_PY) && !defined(PROTOTYPE_TO) && defined(BGL)
     #define GROUP_OPS
-  #endif
+//  #endif
 #endif
-
-#ifndef BGL
+#if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
+  #include "local_var.h"
   #include "Variable.h"
   #include "Function.h"
-#endif
-#ifdef PROTOTYPE_TO
-  #include "local_var.h"
-#endif
-#ifdef PROTOTYPE_PY
-  #include "local_var.h"
-#endif
-
-#include <sys/select.h>
-#include <errno.h>
-
-#ifdef SBRS
-  #include "sbrs_std.h"
 #endif
 
 #ifdef STAT_FGFS
@@ -79,6 +67,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #include "AsyncFastGlobalFileStat.h"
   #include "MRNetSymbolReader.h"
 #endif
+
+//! An enum type to determine who launched the daemon
+typedef enum {
+    STATD_LMON_LAUNCH = 0,
+    STATD_SERIAL_LAUNCH,
+    STATD_MRNET_LAUNCH,
+} StatDaemonLaunch_t;
 
 //! A struct that contains MRNet connection information to send to the daemons
 typedef struct
@@ -89,14 +84,14 @@ typedef struct
     int rank;
     int parentPort;
     int parentRank;
-} statLeafInfo_t;
+} StatLeafInfo_t;
 
-//! A struct to hold a list of statLeafInfo_t objects
+//! A struct to hold a list of StatLeafInfo_t objects
 typedef struct
 {
     int size;
-    statLeafInfo_t *leaves;
-} statLeafInfoArray_t;
+    StatLeafInfo_t *leaves;
+} StatLeafInfoArray_t;
 
 //! A struct to specify variables to gather
 typedef struct
@@ -105,7 +100,7 @@ typedef struct
     char variableName[BUFSIZE];
     int lineNum;
     int depth;
-} statVariable_t;
+} StatVariable_t;
 
 //! Unpacks the MRNet parent node info for all daemons
 /*!
@@ -114,54 +109,30 @@ typedef struct
     \param[out] data - the return data
     \return 0 on success
 */
-int Unpack_STAT_BE_info(void *buf, int bufLen, void *data);
-
-//! Generates an integer ID for a given string
-/*!
-    \param str - the input string
-    \return - an unsigned integer that is likely to be unique to this string
-
-    Tries to generate a unique ID for an inputted call path.
-*/
-unsigned int string_hash(const char *str);
+int unpackStatBeInfo(void *buf, int bufLen, void *data);
 
 //! STAT initialization code
 /*!
     \param[in,out] argc - the number of arguments
     \param[in,out] argv - the argument list
-    \param[in] mrnetLaunch - whether the daemon was launched by MRNet
+    \param[in] launchType - the launch type (i.e., LMON or MRNet)
     \return STAT_OK on success
 */
-StatError_t statInit(int *argc, char ***argv, bool mrnetLaunch = false);
+StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH);
 
 //! STAT finalization code
 /*!
+    \param[in] launchType - the launch type (i.e., LMON or MRNet)
     \return STAT_OK on success
 */
-StatError_t statFinalize();
-
-#ifdef SBRS
-//! Broadcast function to register for SBRS
-/*!
-    \param buf - the buffer to broadcast
-    \param size - the buffer size
-    \return 0 on success
-*/
-int bcastWrapper(void *buf, int size);
-
-//! Master check function to register for SBRS
-/*!
-    \return 1 if this daemon is the master, 0 otherwise
-*/
-int isMasterWrapper();
-#endif
+StatError_t statFinalize(StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH);
 
 //! The STAT daemon object used to gather and send stack traces
 class STAT_BackEnd
 {
     public:
         //! Default constructor
-        STAT_BackEnd();
+        STAT_BackEnd(StatDaemonLaunch_t launchType);
 
         //! Default destructor
         ~STAT_BackEnd();
@@ -174,11 +145,11 @@ class STAT_BackEnd
         /*
             \return STAT_OK on success
         */
-        StatError_t Init();
+        StatError_t init();
 
         //! Add a serial process to the process table
         /*
-            \param pidString - the input hostname:pid string
+            \param pidString - the input exe@hostname:pid string
             \return STAT_OK on success
         */
         StatError_t addSerialProcess(const char *pidString);
@@ -189,13 +160,13 @@ class STAT_BackEnd
             \param argv - [optional] the arg list to pass to MRNet
             \return STAT_OK on success
 
-            Receive the connection information from the frontend and broadcast it to all
-            the daemons.  Call the MRNet Network constructor with this daemon's MRNet
-            personality.
+            Receive the connection information from the frontend and broadcast
+            it to all the daemons.  Call the MRNet Network constructor with 
+            this daemon's MRNet personality.
         */
-        StatError_t Connect(int argc = 0, char **argv = NULL);
+        StatError_t connect(int argc = 0, char **argv = NULL);
 
-        //! Receives messages from FE and executes the requests
+        //! Receive messages from FE and execute the requests
         /*!
             \return STAT_OK on success
 
@@ -226,8 +197,8 @@ class STAT_BackEnd
         /*!
             \return STAT_OK on success
 
-            Called by the helper daemon to write MRNet connection information for the
-            STATBench daemon emulators to a fifo.
+            Called by the helper daemon to write MRNet connection information 
+            for the STATBench daemon emulators to a fifo.
         */
         StatError_t statBenchConnectInfoDump();
 
@@ -235,9 +206,9 @@ class STAT_BackEnd
         /*!
             \return STAT_OK on success
 
-            Reads in connection information from the named fifo and uses it to derrive
-            this daemon emulator's MRNet personality, which is then passed to the MRNet
-            Network constructor.
+            Reads in connection information from the named fifo and uses it to
+            derrive this daemon emulator's MRNet personality, which is then 
+            passed to the MRNet Network constructor.
         */
         StatError_t statBenchConnect();
 
@@ -246,91 +217,99 @@ class STAT_BackEnd
         /*!
             \return STAT_OK on success
         */
-        StatError_t Attach();
+        StatError_t attach();
 
         //! Pause the application processes
         /*!
             \return STAT_OK on success
         */
-        StatError_t Pause();
+        StatError_t pause();
 
         //! Resume the application processes
         /*!
             \return STAT_OK on success
         */
-        StatError_t Resume();
+        StatError_t resume();
 
-        //! Pauses a single process
+        //! Pause a single process
         /*!
             \param walker - the process to pause
             \return STAT_OK on success
         */
         StatError_t pauseImpl(Dyninst::Stackwalker::Walker *walker);
 
-        //! Resumes a single process
+        //! Resume a single process
         /*!
             \param walker - the process to resume
             \return STAT_OK on success
         */
         StatError_t resumeImpl(Dyninst::Stackwalker::Walker *walker);
 
-        //! Gathers the specified number of traces from all processes
+        //! Gather the specified number of traces from all processes
         /*!
             \param nTraces - the number of traces to gather per process
             \param traceFrequency - the time (ms) to wait between samples
-            \param nRetries - the number of attempts to try to get a complete stack
-                trace
+            \param nRetries - the number of attempts to try to get a complete 
+                   stack trace
             \param retryFrequency - the time (us) to wait between retries
             \param withThreads - whether to gather thread stack traces too
-            \param clearOnSample - whether to clear the accumulated traces before
-                sampling
-            \param variableSpecification - the specification of variables to extract
+            \param clearOnSample - whether to clear the accumulated traces
+                   before sampling
+            \param variableSpecification - the specification of variables to
+                   extract
+            \param withPython - whether to dive into the Python interpreter to
+                   get Python-level traces
             \return STAT_OK on success
         */
         StatError_t sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification, unsigned int withPython);
 
         //! Merge the given graph into the 2d and 3d graphs
         /*!
-          \param currentGraph - The graph to merge
-          \param last_trace - True iff this graph is from of the last iteration of stackwalks
-          \return STAT_OK on success
+            \param currentGraph - the graph to merge
+            \param isLastTrace - true if this graph is from the last iteration
+                   of stackwalks (and thus should be merged into the 2d graph)
+            \return STAT_OK on success
         */
-        StatError_t mergeIntoGraphs(graphlib_graph_p currentGraph, bool last_trace);
+        StatError_t mergeIntoGraphs(graphlib_graph_p currentGraph, bool isLastTrace);
 
 #if defined GROUP_OPS
         //! Get a stack trace from every process
         /*!
             \param[out] retGraph - the return graph
-            \param nRetries - the number of attempts to try to get a complete stack
-                trace
+            \param nRetries - the number of attempts to try to get a complete
+                   stack trace
             \param retryFrequency - the time to wait between retries
-            \param withThreads - whether to gather thread stack traces too
-            \param extractVariables - a list of variables to extract
-            \param nVariables - the number of variables to extract
+            \param withThreads - whether to gather thread stack traces
             \return STAT_OK on success
         */
-        StatError_t getStackTraceFromAll(graphlib_graph_p retGraph,
-                                         unsigned int nRetries, unsigned int retryFrequency,
-                                         unsigned int withThreads);
+        StatError_t getStackTraceFromAll(graphlib_graph_p retGraph, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads);
 
-        bool AddFrameToGraph(graphlib_graph_p gl_graph, Dyninst::Stackwalker::CallTree *sw_graph,
-                             graphlib_node_t gl_node, Dyninst::Stackwalker::FrameNode *sw_node,
-                             std::string node_id_names,
-                             std::set<std::pair<Dyninst::Stackwalker::Walker *, Dyninst::THR_ID> > *error_threads,
-                             std::set<int> &output_ranks);
-
+        //! Add a frame to a given graph
+        /*!
+            \param[in,out] graphlibGraph - the graph object to add the frame to
+            \param stackwalkerGraph - the current Stackwalker graph object
+            \param graphlibNode - the node to append to
+            \param stackwalkerNode - the current node in the Stackwalker graph
+            \param nodeIdNames - the concatenated string of node IDs
+            \param[out] errorThreads - a list of threads whose stack walks
+                   ended in an error
+            \param[out] outputRanks - the set of ranks in this stack walk
+            \return STAT_OK on success
+        */
+        StatError_t addFrameToGraph(graphlib_graph_p graphlibGraph, Dyninst::Stackwalker::CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, Dyninst::Stackwalker::FrameNode *stackwalkerNode, std::string nodeIdNames, std::set<std::pair<Dyninst::Stackwalker::Walker *, Dyninst::THR_ID> > *errorThreads, std::set<int> &outputRanks);
 #endif
+
         //! Get a single stack trace
         /*!
             \param[out] retGraph - the return graph
             \param proc - the current process
             \param rank - the current process rank
-            \param nRetries - the number of attempts to try to get a complete stack
-                trace
+            \param nRetries - the number of attempts to try to get a complete
+                   stack trace
             \param retryFrequency - the time to wait between retries
-            \param withThreads - whether to gather thread stack traces too
-            \param extractVariables - a list of variables to extract
-            \param nVariables - the number of variables to extract
+            \param withThreads - whether to gather thread stack traces
+            \param withPython - whether to dive into the Python interpreter to
+                   get Python script-level traces
             \return STAT_OK on success
         */
         StatError_t getStackTrace(graphlib_graph_p retGraph, Dyninst::Stackwalker::Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int withPython);
@@ -347,63 +326,71 @@ class STAT_BackEnd
 
         //! Extract a variable value from the application
         /*!
-            \param swalk - the stack trace to extract from
             \param frame - the frame from which to gather the variable
             \param variableName - the name of the variable to gather
             \param[out] outBuf - the value of the variable
         */
-        StatError_t getVariable(std::vector<Dyninst::Stackwalker::Frame> swalk, unsigned int frame, char *variableName, char *outBuf);
+        StatError_t getVariable(const Dyninst::Stackwalker::Frame &frame, char *variableName, char *outBuf, unsigned int outBufSize);
 
         //! Return the STAT name that should be given for a specific frame
         /*!
-          \param frame - The stack frame to get the name of
-          \param is_final_frame - True iff this frame came from the top of the callstack
-          \return The name to use for this frame
-         */
-        std::string getFrameName(const Dyninst::Stackwalker::Frame &frame, bool is_final_frame);
-
-        //! Initialize the nodeattr's name field with the given string
-        /*!
-          \param s - The name to use
-          \param nodeattr - The graphlib_nodeaddr_t whose name field we should change
+            \param frame - the Frame to gather the name from
+            \param depth - [optional] the depth of this frame in the stack walk. This is necessary for identifying the appropriate frame for variable extraction.
+            \return the name to use for this frame
         */
-        void fillInName(const std::string &s, graphlib_nodeattr_t &nodeattr);
+        public:
+        std::string getFrameName(const Dyninst::Stackwalker::Frame &frame, int depth = -1);
+        private:
+
+        //! Initialize the nodeAttr's name field with the given string
+        /*!
+          \param name - the name to use
+          \param nodeAttr[in,out] - the graphlib_nodeaddr_t whose name we should change
+        */
+        void fillInName(const std::string &name, graphlib_nodeattr_t &nodeAttr);
 
         //! Parse the variable specification
         /*!
             \param variableSpecification - the variable specification
-            \param[out] outBuf - the output list of variables
-            \param[out] nVariables - the number of variables
             \return STAT_OK on success
 
-            Parse the variable specification to get individual variables and frame
-            references variableSpecification is of the form:
+            Parse the variable specification to get individual variables and
+            frame references variableSpecification is of the form:
 
             "num_elements#filename:line.depth$var[,filename:line.depth$var]*"
 
             i.e., "1#foo.C:1.2$i" or "2#foo.C:1.2$i,bar.C:3.4$j"
         */
-        StatError_t parseVariableSpecification(char *variableSpecification, statVariable_t **outBuf, int *nVariables);
+        StatError_t parseVariableSpecification(char *variableSpecification);
 
-        //! Detaches from all of the application processes
+        //! Detach from all of the application processes
         /*!
+            \param stopArray - array of process ranks to leave in stopped state
+            \param - stopArrayLen - the length of the stop array
             \return STAT_OK on success
         */
-        StatError_t Detach(unsigned int *stopArray, int stopArrayLen);
+        StatError_t detach(unsigned int *stopArray, int stopArrayLen);
 
-        //! Terminates all of the application processes
+        //! Terminate all of the application processes
         /*!
             \return STAT_OK on success
         */
         StatError_t terminateApplication();
 
-        //! Sends an acknowledgement to the front end
+        //! Send an acknowledgement to the front end
         /*!
             \param stream - the send stream
             \param tag - the packet tag
             \param val - the ack return value, 0 for success, 1 for failure
         */
         StatError_t sendAck(MRN::Stream *stream, int tag, int val);
+
+        //! Get a struct's components for a given type from Symtab
+        /*!
+            \param type - the struct type
+            \return the vector of the struct's components on success
+        */
+        std::vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
 
         //! Get Python script level frame info
         /*!
@@ -415,9 +402,9 @@ class STAT_BackEnd
             \param [out] pyLineNo - the current Python line number
             \return STAT_OK on success
         */
-        StatError_t getPythonFrameInfo(Dyninst::Stackwalker::Walker *proc, std::vector<Dyninst::Stackwalker::Frame> &swalk, unsigned int frame, char **pyFun, char **pySource, int *pyLineNo);
+        StatError_t getPythonFrameInfo(Dyninst::Stackwalker::Walker *proc, const Stackwalker::Frame &frame, char **pyFun, char **pySource, int *pyLineNo);
 
-        //! Creates stack traces
+        //! Create stack traces
         /*!
             \param maxDepth - the maximum call path to generate
             \param nTasks - the number of tasks to emulate
@@ -428,7 +415,7 @@ class STAT_BackEnd
         */
         StatError_t statBenchCreateTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
 
-        //! Creates a single stack trace
+        //! Create a single stack trace
         /*!
             \param maxDepth - the maximum call path to generate
             \param task - the emulated task rank
@@ -444,41 +431,41 @@ class STAT_BackEnd
         /* Private data */
         /****************/
 
-        int proctabSize_;                       /*!< the size of the process table */
-        int processMapNonNull_;                 /*!< the number of active processes */
-        char *parentHostName_;                  /*!< the hostname of the MRNet parent */
-        char localHostName_[BUFSIZE];           /*!< the local hostname */
-        char localIp_[BUFSIZE];                 /*!< the local IP address */
-        FILE *errOutFp_;                        /*!< the error output file handle */
-        bool initialized_;                      /*!< whether LauncMON has been initialized */
-        bool connected_;                        /*!< whether this daemon has been conected to MRNet */
-        bool isRunning_;                        /*!< whether the target processes are running */
-        bool useMrnetPrintf_;                   /*!< whether to use MRNet's printf for logging */
-        bool doGroupOps_;                       /*!< Do group operations through StackwalkerAPI */
-        MRN::Network *network_;                 /*!< the MRNet Network object */
-        MRN::Rank myRank_;                      /*!< this daemon's MRNet rank */
-        MRN::Rank parentRank_;                  /*!< the MRNet parent's rank */
-        MRN::Port parentPort_;                  /*!< the MRNet parent's port */
-        graphlib_graph_p prefixTree3d_;         /*!< the 3D prefix tree */
-        graphlib_graph_p prefixTree2d_;         /*!< the 2D prefix tree */
-        MPIR_PROCDESC_EXT *proctab_;            /*!< the process table */
+        int proctabSize_;               /*!< the size of the process table */
+        int processMapNonNull_;         /*!< the number of active processes */
+        char *parentHostName_;          /*!< the hostname of the MRNet parent */
+        char localHostName_[BUFSIZE];   /*!< the local hostname */
+        char localIp_[BUFSIZE];         /*!< the local IP address */
+        FILE *errOutFp_;                /*!< the error output file handle */
+        bool initialized_;              /*!< whether STAT has been initialized */
+        bool connected_;                /*!< whether this daemon has been conected to MRNet */
+        bool isRunning_;                /*!< whether the target processes are running */
+        bool useMrnetPrintf_;           /*!< whether to use MRNet's printf for logging */
+        bool doGroupOps_;               /*!< do group operations through StackwalkerAPI */
+        bool withPython_; //TODO
+        MRN::Network *network_;         /*!< the MRNet Network object */
+        MRN::Rank myRank_;              /*!< this daemon's MRNet rank */
+        MRN::Rank parentRank_;          /*!< the MRNet parent's rank */
+        MRN::Port parentPort_;          /*!< the MRNet parent's port */
+        MRN::Stream *broadcastStream_;  /*!< the main broadcast/acknowledgement stream */
+        graphlib_graph_p prefixTree3d_; /*!< the 3D prefix tree */
+        graphlib_graph_p prefixTree2d_; /*!< the 2D prefix tree */
+        MPIR_PROCDESC_EXT *proctab_;    /*!< the process table */
+        StatDaemonLaunch_t launchType_; /*!< the launch type */
+        StatSample_t sampleType_;       /*!< type of sample we're currently collecting */
+        int nVariables_;                /*!< the number of variables to extract */
+        StatVariable_t *extractVariables_;  /*!< a list of variables to extract for the current sample */
 
-        //These are specific to a sample request
-        StatSample_t sampleType_;                /*!< type of sample we're currently collecting */
-        statVariable_t *extractVariables;       /*!< a list of variables to extract for the current sample */
-        int nVariables;                         /*!< the number of variables to extract */
+        std::map<int, StatBitVectorEdge_t *> nodeInEdgeMap_;          /*!< a record of edge labels */
+        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;      /*!< the debug process objects */
+        std::map<Dyninst::Stackwalker::Walker *, int> procsToRanks_;    /*!< translate a process into a rank */
 
-        std::map<int, StatBitVectorEdge_t *> nodeInEdgeMap2d_;          /*!< a record of edge labels */
-        std::map<int, StatBitVectorEdge_t *> nodeInEdgeMap3d_;          /*!< a record of edge labels */
-        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;    /*!< the debug process objects */
-        std::map<Dyninst::Stackwalker::Walker *, int> procsToRanks_;  /*!< Turn a process into a rank */
 
 #ifdef GROUP_OPS
-        Dyninst::ProcControlAPI::ProcessSet::ptr procset;
-        Dyninst::Stackwalker::WalkerSet *walkerset;
+        Dyninst::ProcControlAPI::ProcessSet::ptr procSet_;
+        Dyninst::Stackwalker::WalkerSet *walkerSet_;
 #endif
 
-        MRN::Stream *broadcastStream_;          /*!< the main broadcast/acknowledgement stream */
 #ifdef STAT_FGFS
         FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_;
 #endif

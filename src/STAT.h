@@ -36,6 +36,14 @@ enum StatLogOptions_t {
     STAT_LOG_MRN = 0x08
 } ;
 
+enum StatSampleOptions_t {
+    STAT_SAMPLE_FUNCTION_ONLY = 0x00,
+    STAT_SAMPLE_PC = 0x01,
+    STAT_SAMPLE_LINE = 0x02,
+    STAT_SAMPLE_COUNT_REP = 0x04,
+    STAT_SAMPLE_PYTHON = 0x08
+} ;
+
 //! An enum for MRNet message tags
 typedef enum {
     PROT_ATTACH_APPLICATION = FirstApplicationTag,

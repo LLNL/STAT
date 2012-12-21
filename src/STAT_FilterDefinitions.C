@@ -90,10 +90,11 @@ StatError_t increaseCoreLimit()
 
 char lastErrorMessage_[BUFSIZE];
 unsigned char logging_ = STAT_LOG_NONE;
+
 void cpPrintMsg(StatError_t statError, const char *sourceFile, int sourceLine, const char *fmt, ...)
 {
     va_list arg;
-    char timeString[BUFSIZE];
+    char timeString[BUFSIZE], msg[BUFSIZE];
     const char *timeFormat = "%b %d %T";
     time_t currentTime;
     struct tm *localTime;
@@ -128,7 +129,6 @@ void cpPrintMsg(StatError_t statError, const char *sourceFile, int sourceLine, c
     {
         if (logging_ & STAT_LOG_MRN)
         {
-            char msg[BUFSIZE];
             va_start(arg, fmt);
             vsnprintf(msg, BUFSIZE, fmt, arg);
             va_end(arg);
@@ -162,7 +162,7 @@ void filterInit(vector<PacketPtr> &packetsIn,
 {
     char *logDir;
     char fileName[BUFSIZE], hostname[BUFSIZE];
-    int ret, mrnetOutputLevel;
+    int intRet, mrnetOutputLevel;
     unsigned int i;
 
     if (packetsIn[0]->get_Tag() == PROT_SEND_BROADCAST_STREAM)
@@ -176,22 +176,18 @@ void filterInit(vector<PacketPtr> &packetsIn,
                 if (logging_ & STAT_LOG_CP)
                 {
                     /* Create the log directory */
-                    ret = mkdir(logDir, S_IRUSR | S_IWUSR | S_IXUSR);
-                    if (ret == -1 && errno != EEXIST)
-                    {
+                    intRet = mkdir(logDir, S_IRUSR | S_IWUSR | S_IXUSR);
+                    if (intRet == -1 && errno != EEXIST)
                         cpPrintMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: mkdir failed to create log directory %s\n", strerror(errno), logDir);
-                    }
-                    ret = gethostname(hostname, BUFSIZE);
-                    if (ret != 0)
+                    intRet = gethostname(hostname, BUFSIZE);
+                    if (intRet != 0)
                         cpPrintMsg(STAT_WARNING, __FILE__, __LINE__, "Warning, Failed to get hostname\n");
                     snprintf(fileName, BUFSIZE, "%s/%s.STATfilter.%d.log", logDir, hostname, topology.get_Rank());
                     statOutFp = fopen(fileName, "w");
                     if (statOutFp == NULL)
                         cpPrintMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open FE log file %s\n", strerror(errno), fileName);
                     if (logging_ & STAT_LOG_MRN)
-                    {
                         mrn_printf_init(statOutFp);
-                    }
                     set_OutputLevel(mrnetOutputLevel);
                 }
             }
@@ -305,13 +301,11 @@ void statMerge(vector<PacketPtr> &inputPackets,
         cpPrintMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate edgeLabelWidths\n", strerror(errno));
         return;
     }
-    i = 0;
-    for (iter = childrenOrder.begin(); iter != childrenOrder.end(); iter++)
+    for (iter = childrenOrder.begin(), i = 0; iter != childrenOrder.end(); iter++, i++)
     {
         currentPacket = inputPackets[iter->second];
         edgeLabelWidths[i] = (*currentPacket)[1]->get_int32_t();
         totalWidth += edgeLabelWidths[i];
-        i++;
     }
     graphlibError = graphlib_Init();
     if (GRL_IS_FATALERROR(graphlibError))
@@ -341,10 +335,8 @@ void statMerge(vector<PacketPtr> &inputPackets,
         }
 
         /* Loop around the packets in order of lowest task rank and merge into output */
-        rank = -1;
-        for (iter = childrenOrder.begin(); iter != childrenOrder.end(); iter++)
+        for (iter = childrenOrder.begin(), rank = 0; iter != childrenOrder.end(); iter++, rank++)
         {
-            rank++;
             child = iter->second;
             currentPacket = inputPackets[child];
 
@@ -352,9 +344,9 @@ void statMerge(vector<PacketPtr> &inputPackets,
 #ifdef MRNET40
             byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
 #else
-            unsigned int BAL;
-            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &BAL));
-            byteArrayLen = BAL;
+            unsigned int unsignedIntByteArrayLen;
+            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &unsignedIntByteArrayLen));
+            byteArrayLen = unsignedIntByteArrayLen;
 #endif
             statGraphRoutinesTotalWidth = totalWidth;
             statGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
@@ -395,10 +387,8 @@ void statMerge(vector<PacketPtr> &inputPackets,
         }
 
         /* Loop around the packets in order of lowest task rank and merge into output */
-        rank = -1;
-        for (iter = childrenOrder.begin(); iter != childrenOrder.end(); iter++)
+        for (iter = childrenOrder.begin(), rank = 0; iter != childrenOrder.end(); iter++, rank++)
         {
-            rank++;
             child = iter->second;
             currentPacket = inputPackets[child];
 
@@ -406,9 +396,9 @@ void statMerge(vector<PacketPtr> &inputPackets,
 #ifdef MRNET40
             byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
 #else
-            unsigned int BAL;
-            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &BAL));
-            byteArrayLen = BAL;
+            unsigned int unsignedIntByteArrayLen;
+            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &unsignedIntByteArrayLen));
+            byteArrayLen = unsignedIntByteArrayLen;
 #endif
             if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE)
                 graphlibError = graphlib_deserializeBasicGraph(&currentGraph, statCountRepFunctions, byteArray, byteArrayLen);

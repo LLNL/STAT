@@ -109,7 +109,7 @@ class STATGUI(STATDotWindow):
                     'Share App Nodes'                  : True,
                     'Tool Daemon Path'                 : self.STAT.getToolDaemonExe(),
                     'Filter Path'                      : self.STAT.getFilterPath(),
-                    'Job Launcher'                     : 'mpirun|srun|orterun',
+                    'Job Launcher'                     : 'mpirun|srun|orterun|aprun',
                     'Log Dir'                          : os.environ['HOME'],
                     'Log Frontend'                     : False,
                     'Log Backend'                      : False,
@@ -1095,7 +1095,7 @@ host[1-10,12,15-20];otherhost[30]
         except:
             pass
         self.options['Num Retries'] = int(self.spinners['Num Retries'].get_value())
-        self.options['Retry Frequency (ms)'] = int(self.spinners['Retry Frequency (ms)'].get_value())
+        self.options['Retry Frequency (us)'] = int(self.spinners['Retry Frequency (us)'].get_value())
         try:
             self.options['Run Time Before Sample (sec)'] = int(self.spinners['Run Time Before Sample (sec)'].get_value())
         except:
@@ -1147,6 +1147,9 @@ host[1-10,12,15-20];otherhost[30]
         ret_val = STAT_OK
         if keep_var_spec == False:
             self.var_spec = []
+            # below is a test for local variables:
+            self.var_spec.append(("/g/g0/lee218/src/STAT/examples/src/to_test.c", 38, 5, "i"))
+            #self.var_spec.append(("/g/g0/lee218/src/STAT/examples/src/to_test.c", 38, 4, "i"))
         self.update_sample_options()
         ret = self.STAT.pause()
         stat_wait_dialog.update_progress_bar(0.35)
@@ -1161,7 +1164,7 @@ host[1-10,12,15-20];otherhost[30]
             sample_type = STAT_FUNCTION_AND_LINE if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_LINE
         else:
             sample_type = STAT_FUNCTION_NAME_ONLY if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_NAME_ONLY
-        ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Gather Python Traces'], self.options['Clear On Sample'], 1, 1, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
+        ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Gather Python Traces'], self.options['Clear On Sample'], 1, 1, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
         if ret != STAT_OK:
             show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -1239,7 +1242,7 @@ host[1-10,12,15-20];otherhost[30]
                 sample_type = STAT_FUNCTION_AND_LINE if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_LINE
             else:
                 sample_type = STAT_FUNCTION_NAME_ONLY if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_NAME_ONLY
-            ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Gather Python Traces'], self.options['Clear On Sample'], 1, 0, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
+            ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Gather Python Traces'], self.options['Clear On Sample'], 1, 0, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
             if ret != STAT_OK:
                 if ret == STAT_APPLICATION_EXITED:
                     ret_val = STAT_APPLICATION_EXITED
@@ -1708,10 +1711,6 @@ host[1-10,12,15-20];otherhost[30]
         node.edge_label = edge_label
         task_list = get_task_list(edge_label)
         node.num_leaf_tasks = -1
-        try:
-            print self.get_current_graph().cur_filename
-        except:
-            print 'nope'
         if node.edge_label_id in STATview.task_label_id_to_list:
             STATview.task_label_id_to_list[node.edge_label_id] = task_list
         if old_label in STATview.task_label_to_list:
@@ -1764,7 +1763,7 @@ host[1-10,12,15-20];otherhost[30]
         expander = gtk.Expander("Advanced")
         hbox = gtk.HBox()
         self.pack_spinbutton(hbox, 'Num Retries')
-        self.pack_spinbutton(hbox, 'Retry Frequency (ms)')
+        self.pack_spinbutton(hbox, 'Retry Frequency (us)')
         expander.add(hbox)
         vbox2.pack_start(expander, False, False, 5)
         frame.add(vbox2)

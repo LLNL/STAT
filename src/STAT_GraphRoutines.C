@@ -51,8 +51,8 @@ graphlib_graph_p createRootedGraph(graphlib_functiontable_p functions)
         return NULL;
     }
 
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "/", GRAPH_FONT_SIZE};
-    graphlibError = graphlib_addNode(newGraph, 0, &nodeattr);
+    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "/", GRAPH_FONT_SIZE};
+    graphlibError = graphlib_addNode(newGraph, 0, &nodeAttr);
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error adding sentinel node to graph\n");

@@ -1,3 +1,32 @@
+2012-12-21 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : modified getFrameName and getVariable to take a single Frame, rather than a vector of frames
+	* src/STAT_BackEnd.C : getVariable modified to check parameters too
+	* src/STAT_BackEnd.C : getVariable modified to return raw data, variable extraction code translates to text
+	* src/STAT_BackEnd.C : getVariable function used for Python debugging
+	* src/STAT_BackEnd.C : added statFrameCmp for group ops to support variable extraction
+	* src/STAT_BackEnd.C : moved Python script name resolution to getFrameName
+
+2012-12-20 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : dynamically turn off group ops when doing variable extraction
+	* src/STAT_FrontEnd.C : added STAT_CHECK_NODE_ACCESS env var
+	* doc/src/stat_environment_variables.sgml : updated list of env vars
+
+2012-12-19 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : concatenate unique exe names to create applExe_
+
+2012-12-14 Gregory L. Lee <lee218@llnl.gov>
+	* src/*.[C,h] : renamed "ret" variables to reflect return type
+	* src/STAT[Bench]D.C : cleaner handling of errors, delete STAT_BackEnd object and call statFinalize as appropriate
+	* src/STAT_BackEnd.C : cleaner distinction between statInit, statFinalize, constructor, and destructor
+
+2012-12-14 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.[C] : support for Python 3.2 and 3.3 traces
+	* src/STAT_BackEnd.[C,h] : getComponents function created to get components of a given type
+
+2012-12-11 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.[C,h] : rewrite to style guidelines
+	* src/STAT_BackEnd.C : for Python debugging, look for symbols in libraries (for case when Python built with --enable-shared)
+
 2012-12-11 Gregory L. Lee <lee218@llnl.gov>
 	* : updated documentation for retry frequency in micro (not milli) seconds
 

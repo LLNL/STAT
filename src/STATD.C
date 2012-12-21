@@ -16,8 +16,8 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "config.h"
 #include <getopt.h>
+#include "config.h"
 #include "STAT_BackEnd.h"
 
 
@@ -26,9 +26,10 @@ int main(int argc, char **argv)
 {
     int opt, optionIndex = 0, mrnetOutputLevel = 1;
     char *logOutDir = NULL, *pid;
-    bool useMrnetPrintf = false, mrnetLaunch = false;
+    bool useMrnetPrintf = false;
+    StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
     StatError_t statError;
-    STAT_BackEnd *STAT;
+    STAT_BackEnd *statBackEnd;
 
     struct option longOptions[] =
     {
@@ -53,18 +54,18 @@ int main(int argc, char **argv)
 
     if (argc > 2)
         if (strcmp(argv[1], "-s") == 0 || strcmp(argv[1], "--serial") == 0)
-            mrnetLaunch = true;
+            launchType = STATD_MRNET_LAUNCH;
 
     /* Initialize STAT */
-    statError = statInit(&argc, &argv, mrnetLaunch);
+    statError = statInit(&argc, &argv, launchType);
     if (statError != STAT_OK)
     {
         fprintf(stderr, "Failed to initialize STAT\n");
-        return -1;
+        return statError;
     }
 
     /* Create the STAT BackEnd object */
-    STAT = new STAT_BackEnd();
+    statBackEnd = new STAT_BackEnd(launchType);
 
     while (1)
     {
@@ -77,23 +78,29 @@ int main(int argc, char **argv)
         {
         case 'h':
             printf("STATD-%d.%d.%d\n", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
+            delete statBackEnd;
+            statFinalize(launchType);
             return 0;
             break;
         case 'V':
             printf("STATD-%d.%d.%d\n", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
+            delete statBackEnd;
+            statFinalize(launchType);
             return 0;
             break;
         case 'o':
             mrnetOutputLevel = atoi(optarg);
             break;
         case 'p':
-            STAT->addSerialProcess(optarg);
+            statBackEnd->addSerialProcess(optarg);
             break;
         case 'L':
             logOutDir = strdup(optarg);
             if (logOutDir == NULL)
             {
-                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
+                statBackEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
+                delete statBackEnd;
+                statFinalize(launchType);
                 return STAT_ALLOCATE_ERROR;
             }
             break;
@@ -103,78 +110,79 @@ int main(int argc, char **argv)
             useMrnetPrintf = true;
             break;
         case '?':
-            STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            delete statBackEnd;
+            statFinalize(launchType);
             return STAT_ARG_ERROR;
         default:
-            STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            delete statBackEnd;
+            statFinalize(launchType);
             return STAT_ARG_ERROR;
-        }; // switch(opt)
-    } // while(1)
+        }; /* switch(opt) */
+    } /* while(1) */
 
     /* Check if logging of the daemon is enabled */
     if (logOutDir != NULL)
     {
-        statError = STAT->startLog(logOutDir, useMrnetPrintf, mrnetOutputLevel);
+        statError = statBackEnd->startLog(logOutDir, useMrnetPrintf, mrnetOutputLevel);
         if (statError != STAT_OK)
         {
-            STAT->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");
-            delete STAT;
-            return -1;
+            statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");
+            delete statBackEnd;
+            statFinalize(launchType);
+            return statError;
         }
     }
 
-    if (mrnetLaunch)
+    if (launchType == STATD_MRNET_LAUNCH)
     {
         /* Connect to MRNet */
-        statError = STAT->Connect(6, &argv[argc - 6]);
+        statError = statBackEnd->connect(6, &argv[argc - 6]);
     }
     else
     {
         /* Setup Launchmon */
-        statError = STAT->Init();
+        statError = statBackEnd->init();
         if (statError != STAT_OK)
         {
-            STAT->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
-            delete STAT;
-            return -1;
+            statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
+            delete statBackEnd;
+            statFinalize(launchType);
+            return statError;
         }
+
         /* Connect to MRNet */
-        statError = STAT->Connect();
+        statError = statBackEnd->connect();
     }
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to connect BE\n");
-        delete STAT;
-        return -1;
+        statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to connect BE\n");
+        delete statBackEnd;
+        statFinalize(launchType);
+        return statError;
     }
 
     /* Run the main feedback loop */
-    statError = STAT->mainLoop();
+    statError = statBackEnd->mainLoop();
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failure in STAT BE main loop\n");
-        delete STAT;
-        return -1;
+        statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failure in STAT BE main loop\n");
+        delete statBackEnd;
+        statFinalize(launchType);
+        return statError;
     }
+
+    delete statBackEnd;
 
     /* Finalize STAT */
-    if (mrnetLaunch == false)
+    statError = statFinalize(launchType);
+    if (statError != STAT_OK)
     {
-        statError = statFinalize();
-        if (statError != STAT_OK)
-        {
-            fprintf(stderr, "Failed to finalize LMON\n");
-            delete STAT;
-            return -1;
-        }
+        fprintf(stderr, "Failed to finalize STAT\n");
+        return statError;
     }
 
-    /* Sleep for a second to give MRNet time to exit cleanly */
-#ifndef MRNET3
-    sleep(5);
-#endif
-
-    delete STAT;
     return 0;
 }
 

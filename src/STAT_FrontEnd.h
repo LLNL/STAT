@@ -39,9 +39,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "arpa/inet.h"
 
 #include "STAT.h"
-#include "graphlib.h"
 #include "STAT_GraphRoutines.h"
 #include "STAT_timer.h"
+#include "graphlib.h"
 #include "lmon_api/lmon_fe.h"
 
 #ifdef STAT_FGFS
@@ -142,20 +142,20 @@ void beConnectCb(MRN::Event *event, void *dummy);
 //! Callback for daemon or CP exit
 /*!
     \param event - the event type
-    \param dummy - a dummy argument
+    \param statObject - the STAT_FrontEnd object
 
     Handle the exiting of a node in the tree, reconfigure the bit vectors
 */
-void nodeRemovedCb(MRN::Event *event, void *dummy);
+void nodeRemovedCb(MRN::Event *event, void *statObject);
 
 //! Callback for topology modification
 /*!
     \param event - the event type
-    \param dummy - a dummy argument
+    \param statObject - the STAT_FrontEnd object
 
     Handle the change of the tree topology, reconfigure the bit vectors
 */
-void topologyChangeCb(MRN::Event *event, void *dummy);
+void topologyChangeCb(MRN::Event *event, void *statObject);
 
 //! The STAT FrontEnd object is used to Launch STAT daemons and gather and merge stack traces
 class STAT_FrontEnd
@@ -205,6 +205,7 @@ class STAT_FrontEnd
             \param topologySpecification - the requested topology specification
             \param nodeList - [optional] the list of nodes for communication processes
             \param blocking - [optional] set to true if blocking on all connections set
+            \param shareAppNodes - [optional] set to true if we can launch communication processes on the application nodes
             \param isStatBench - [optional] set to true if runninig as STATBench
             \return STAT_OK on success
 
@@ -225,6 +226,11 @@ class STAT_FrontEnd
         */
         StatError_t connectMrnetTree(bool blocking = true, bool isStatBench = false);
 
+        //! Configure STAT based on the topology of the connected MRNet tree
+        /*!
+            \param isStatBench - [optional] set to true if runninig as STATBench
+            \return STAT_OK on success
+        */
         StatError_t setupConnectedMrnetTree(bool isStatBench = false);
 
         //! Attach to the application
@@ -264,6 +270,7 @@ class STAT_FrontEnd
         /*!
             \param sampleType - the level of detail to sample
             \param withThreads - whether to gather samples from helper threads
+            \param withPython - whether to gather Python script-level traces
             \param clearOnSample - whether to clear accumulated traces before sampling
             \param nTraces - the number of traces to gather per task
             \param traceFrequency - the amount of time to wait between samples
@@ -362,6 +369,7 @@ class STAT_FrontEnd
             \param nTraces - the number of traces to generate per emulated task
             \param functionFanout - the maximum function fanout
             \param nEqClasses - the number of equivalence classes to generate
+            \param countRep - true if we just want the count and a single representative for the edge label
             \return STAT_OK on success
         */
         StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, bool countRep);
@@ -564,6 +572,9 @@ class STAT_FrontEnd
         StatLaunch_t getApplicationOption();
 
         //! Returns the last error message
+        /*!
+            \return the last error message
+        */
         char *getLastErrorMessage();
 
         //! Adds a performance metric
@@ -573,7 +584,6 @@ class STAT_FrontEnd
             \return STAT_OK on success
         */
         StatError_t addPerfData(const char *buf, double time);
-
 
         //! Sets the file to use when reading node list
         /*!
@@ -709,7 +719,7 @@ class STAT_FrontEnd
         */
         StatError_t createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool shareAppNodes);
 
-        //! Set the list of application nodes from the process table
+        //! Set the list of daemon nodes from the MRNet topology
         /*!
             \return STAT_OK on success
 
@@ -717,7 +727,7 @@ class STAT_FrontEnd
         */
         StatError_t setDaemonNodes();
 
-        //! Set the list of daemon nodes from the MRNet topology
+        //! Set the list of application nodes from the process table
         /*!
             \return STAT_OK on success
 
@@ -736,6 +746,7 @@ class STAT_FrontEnd
         //! Set the list of communication process nodes from the nodeList specification
         /*!
             \param nodeList - the list of nodes
+            \param checkAccess - whether to test each node's accessibility before including it in the final list
             \return STAT_OK on success
         */
         StatError_t setCommNodeList(char *nodeList, bool checkAccess);
@@ -763,7 +774,7 @@ class STAT_FrontEnd
             \return STAT_OK on success
 
             This only differs from setAppNodeList in that it assigns one BE per
-            processor, not per node
+            core, not per node
         */
         StatError_t STATBench_setAppNodeList();
 
@@ -777,12 +788,10 @@ class STAT_FrontEnd
         //! Recursively build the rank tree
         /*!
             \param node - the corresponding MRNet topology node
-            \param rankToNode - the map of ranks to node
             \return the node in the rank tree corresponding to the MRNet node
 
             Recursively builds the rank tree based on the MRNet topology.
         */
-        //RemapNode_t *buildRemapTree(MRN::NetworkTopology::Node *node, std::map<int, RemapNode_t *> rankToNode);
         RemapNode_t *buildRemapTree(MRN::NetworkTopology::Node *node);
 
         //! Recursively generate the ranks list
@@ -810,7 +819,20 @@ class STAT_FrontEnd
         bool checkNodeAccess(char *node);
 
 #ifdef STAT_FGFS
-        StatError_t sendFileReqStream();
+        //! Send the file request stream to the BEs
+        /*!
+            \return STAT_OK on success
+        */
+        StatError_t sendFileRequestStream();
+
+        //! Intercept messages to receive file requests or return other messages 
+        /*!
+            \param streamId[out] - the ID of the stream the message was received on
+            \param returnTag[out] - the tag of the received message
+            \param packetPtr[out] - the packetPtr of the received message
+            \param retval[out] - the return value from MRNet recv
+            \return STAT_OK on success
+        */
         StatError_t waitForFileRequests(unsigned int *streamId, int *returnTag, MRN::PacketPtr &packetPtr, int &retval);
 #endif
 
@@ -846,10 +868,11 @@ class STAT_FrontEnd
         bool isRunning_;                                    /*!< whether the application processes are currently running */
         bool isPendingAck_;                                 /*!< whether there are any pending acknowledgements */
         bool hasFatalError_;                                /*!< whether a fatal error has been detected outside of the STAT object */
+        bool checkNodeAccess_;                              /*!< whether to perform a simple test to see if user has remote access to a node */
         std::list<int> remapRanksList_;                     /*!< the order of bit vectors in the incoming packets */
         std::set<std::string> communicationNodeSet_;        /*!< the list of nodes to use for MRNet CPs */
         std::multiset<std::string> applicationNodeMultiSet_;    /*!< the set of application nodes */
-        std::map<int, IntList_t *> mrnetRankToMPIRanksMap_; /*!< a map of MRNet ranks to ranks list used for bit vector reordering */
+        std::map<int, IntList_t *> mrnetRankToMpiRanksMap_; /*!< a map of MRNet ranks to ranks list used for bit vector reordering */
         std::set<int> missingRanks_;                        /*!< a set of MPI ranks whose daemon is not connected */
         std::vector<std::pair<std::string, double> > performanceData_;     /*!< the accumulated performance data to be dumped upon completion */
         LeafInfo_t leafInfo_;                               /*!< the MRNet leaf info */
@@ -864,10 +887,7 @@ class STAT_FrontEnd
         MRN::Stream *broadcastStream_;                      /*!< the broadcast stream for sending commands and receiving ack */
         MRN::Stream *mergeStream_;                          /*!< the merge stream that uses the STAT filter */
 #ifdef STAT_FGFS
-        char *fgfsFilterPath_;
-        MRN::Stream *perfStream_;
-        MRN::Stream *fileRequestStream_;
-        MRN::Stream *fgfsStream_;
+        char *fgfsFilterPath_;                              /*!< the path to the FGFS filter shared object */
         FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_;
 #endif
 };

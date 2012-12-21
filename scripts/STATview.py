@@ -1325,7 +1325,8 @@ class STATGraph(xdot.Graph):
         if node.lex_string is None:
             if sourceLine.find(':') == -1:
                 return False
-            if (lex_map_index, lex_string) in lex_map.items():
+            if lex_map_index in lex_map.keys():
+                lex_string = lex_map[lex_map_index]
                 if lex_string.find('$') != -1 and iter_string != '':
                     var_name = lex_string[lex_string.find('$') + 1:lex_string.find('(')]
                     input_var_name = iter_string[:iter_string.find('=')]

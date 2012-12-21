@@ -35,6 +35,14 @@ Several environment variables influence STAT and its dependent packages.  Note t
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>STAT_FGFS_FILTER_PATH=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the STAT FGFS filter shared object <replaceable class="parameter">path</replaceable> instead of the default.  <replaceable class="parameter">path</replaceable> must be set to the full path of the STAT_FilterDefinitions.so shared object file.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>STAT_MRNET_OUTPUT_LEVEL=<replaceable class="parameter">level</replaceable></term>
     <listitem>
         <para>
@@ -55,6 +63,14 @@ Several environment variables influence STAT and its dependent packages.  Note t
     <listitem>
         <para>
         Set the MRNet connection timeout to <replaceable class="parameter">seconds</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_CONNECT_TIMEOUT=<replaceable class="parameter">seconds</replaceable></term>
+    <listitem>
+        <para>
+        Set the STAT connection timeout to <replaceable class="parameter">seconds</replaceable>, after which STAT will try to continue with any subset of daemons that have connected.
         </para>
     </listitem>
 </varlistentry>
@@ -111,6 +127,30 @@ Several environment variables influence STAT and its dependent packages.  Note t
     <listitem>
         <para>
         Allow up to <replaceable class="parameter">count</replaceable> communication processes to be launched per node.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_CHECK_NODE_ACCESS=<replaceable class="parameter">value</replaceable></term>
+    <listitem>
+        <para>
+        Set to any value to have STAT check user access to any specified nodes before launching communication processes.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_NO_GROUP_OPS=<replaceable class="parameter">value</replaceable></term>
+    <listitem>
+        <para>
+        Set to any value to disable Stackwalker's group operations.  Group operations may help with performance when a single daemon needs to manage a large number of target processes.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_LMON_PREFIX=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Sets the LaunchMON installation prefix to <replaceable class="parameter">path</replaceable>.
         </para>
     </listitem>
 </varlistentry>
