@@ -45,9 +45,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "lmon_api/lmon_fe.h"
 
 #ifdef STAT_FGFS
-    #include "Comm/MRNetCommFabric.h"
-    #include "AsyncFastGlobalFileStat.h"
-    #include "MountPointAttr.h"
+  #include "Comm/MRNetCommFabric.h"
+  #include "AsyncFastGlobalFileStat.h"
+  #include "MountPointAttr.h"
     #include <fcntl.h>
 #endif
 
@@ -206,32 +206,29 @@ class STAT_FrontEnd
             \param nodeList - [optional] the list of nodes for communication processes
             \param blocking - [optional] set to true if blocking on all connections set
             \param shareAppNodes - [optional] set to true if we can launch communication processes on the application nodes
-            \param isStatBench - [optional] set to true if runninig as STATBench
             \return STAT_OK on success
 
             Creates the topology file, calls the Network constructor, and sends connection
             info to the daemons.  Waits for all daemons to connect if blocking set to true.
         */
-        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false, bool isStatBench = false);
+        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false);
 
         //! Connect the MRNet tree
         /*!
             \param blocking - [optional] set to true if blocking
-            \param isStatBench - [optional] set to true if runninig as STATBench
             \return STAT_OK on success
 
             Receives BE connections.  When all BEs connected, creates the default streams
             and load the STAT filter.  Finally, checks all STAT components to make sure
             they are the same version.
         */
-        StatError_t connectMrnetTree(bool blocking = true, bool isStatBench = false);
+        StatError_t connectMrnetTree(bool blocking = true);
 
         //! Configure STAT based on the topology of the connected MRNet tree
         /*!
-            \param isStatBench - [optional] set to true if runninig as STATBench
             \return STAT_OK on success
         */
-        StatError_t setupConnectedMrnetTree(bool isStatBench = false);
+        StatError_t setupConnectedMrnetTree();
 
         //! Attach to the application
         /*!
@@ -269,9 +266,6 @@ class STAT_FrontEnd
         //! Broadcast a message to daemons to gather traces and await all acks
         /*!
             \param sampleType - the level of detail to sample
-            \param withThreads - whether to gather samples from helper threads
-            \param withPython - whether to gather Python script-level traces
-            \param clearOnSample - whether to clear accumulated traces before sampling
             \param nTraces - the number of traces to gather per task
             \param traceFrequency - the amount of time to wait between samples
             \param nRetries - the number of times to attempt to gather a good trace
@@ -280,7 +274,7 @@ class STAT_FrontEnd
             \param variableSpecification - a list of variables to gather along with the traces
             \return STAT_OK on success
         */
-        StatError_t sampleStackTraces(StatSample_t sampleType, bool withThreads, bool withPython, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
 
         //! Collect the last stack trace from all daemons
         /*!
@@ -369,10 +363,10 @@ class STAT_FrontEnd
             \param nTraces - the number of traces to generate per emulated task
             \param functionFanout - the maximum function fanout
             \param nEqClasses - the number of equivalence classes to generate
-            \param countRep - true if we just want the count and a single representative for the edge label
+            \param sampleType - the level of detail to sample
             \return STAT_OK on success
         */
-        StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, bool countRep);
+        StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, unsigned int sampleType);
 
         //! Collect the full incoming-edge label for the specified node
         /*!
@@ -685,7 +679,6 @@ class STAT_FrontEnd
 
         //! Launch the STAT daemons
         /*!
-            \param isStatBench - [optional] set to true if running as STATBench
             \return STAT_OK on success
 
             Performs LaunchMON setup, launches the daemons, and gathers the proc table.
@@ -693,7 +686,7 @@ class STAT_FrontEnd
             dumping the process table to a file, and generating the application node
             list for MRNet to topology file creation.
         */
-        StatError_t launchDaemons(bool isStatBench = false);
+        StatError_t launchDaemons();
 
         //! Send MRNet LeafInfo to the master daemon
         /*!
@@ -825,7 +818,7 @@ class STAT_FrontEnd
         */
         StatError_t sendFileRequestStream();
 
-        //! Intercept messages to receive file requests or return other messages 
+        //! Intercept messages to receive file requests or return other messages
         /*!
             \param streamId[out] - the ID of the stream the message was received on
             \param returnTag[out] - the tag of the received message
@@ -862,6 +855,7 @@ class STAT_FrontEnd
         char filePrefix_[BUFSIZE];                          /*!< the installation prefix for STAT */
         char lastErrorMessage_[BUFSIZE];                    /*!< the last error message */
         char hostname_[BUFSIZE];                            /*!< the FrontEnd hostname*/
+        bool isStatBench_;                                   /*!< whether we are a STATBench instance */
         bool isLaunched_;                                   /*!< whether the STAT daemons have been launched */
         bool isConnected_;                                  /*!< whether the STAT daemons are connected to the MRNet tree */
         bool isAttached_;                                   /*!< whether the STAT daemons are attached to the application */

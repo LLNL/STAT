@@ -124,8 +124,9 @@ class StatMergerArgs(object):
     def set_args(self):
         if self._short_args_string == "" or self._long_args_list == []:
             for name, arg_tuple in self.arg_map.items():
+                short_name = arg_tuple.short_name
                 if arg_tuple.required_arg == True:
-                    short_name = arg_tuple.short_name + ":"
+                    short_name += ":"
                     name += "="
                 self._short_args_string += short_name
                 self._long_args_list.append(name)
@@ -141,7 +142,10 @@ class StatMergerArgs(object):
     def print_options(self):
         sys.stderr.write('\nOPTIONS:\n')
         for name, arg_tuple in self.arg_map.items():
-            sys.stderr.write('\t-%s <value>, --%-20s %s\n' %(arg_tuple.short_name, name + '=<value>', arg_tuple.help_string))
+            if arg_tuple.required_arg == True:
+                sys.stderr.write('\t-%s <value>, --%-20s %s\n' %(arg_tuple.short_name, name + '=<value>', arg_tuple.help_string))
+            else:
+                sys.stderr.write('\t-%s, --%-28s %s\n' %(arg_tuple.short_name, name, arg_tuple.help_string))
 
     def print_usage(self, return_value = -1):
         sys.stderr.write(self.usage_msg_synopsis)
@@ -193,13 +197,18 @@ class StatMergerArgs(object):
             handled = False
             for name, arg_tuple in self.arg_map.items():
                 if option in ("--" + name, "-" + arg_tuple.short_name):
-                    try:
-                        options[name] = arg_tuple.arg_type(arg)
-                    except ValueError as e:
-                        sys.stderr.write('\nInvalid specification "%s" for option "%s", expecting type %s.\n' %(arg, name, repr(arg_tuple.arg_type)))
-                        self.print_usage()
-                    handled = True
-                    break
+                    if (arg_tuple.required_arg == True):
+                        try:
+                            options[name] = arg_tuple.arg_type(arg)
+                        except ValueError as e:
+                            sys.stderr.write('\nInvalid specification "%s" for option "%s", expecting type %s.\n' %(arg, name, repr(arg_tuple.arg_type)))
+                            self.print_usage()
+                        handled = True
+                        break
+                    else:
+                        options[name] = 1
+                        handled = True
+                        break
             if handled == False:
                 sys.stderr.write('Unknown option %s\n' %(option))
                 self.print_usage()

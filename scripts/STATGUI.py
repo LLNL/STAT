@@ -28,7 +28,7 @@ import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
 import sys, DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_NONE, STAT_OK, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_FUNCTION_NAME_ONLY, STAT_FUNCTION_AND_PC, STAT_FUNCTION_AND_LINE, STAT_APPLICATION_EXITED, STAT_CR_FUNCTION_NAME_ONLY, STAT_CR_FUNCTION_AND_PC, STAT_CR_FUNCTION_AND_LINE, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_NONE, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON
 import commands
 import subprocess
 import shelve
@@ -425,9 +425,9 @@ host[1-10,12,15-20];otherhost[30]
         self.options['Serial Exe'] = command
 
     def on_add_serial_process(self, widget, attach_dialog, serial_process_list_entry):
-        text = serial_process_list_entry.get_text() 
+        text = serial_process_list_entry.get_text()
         text += ' %s@%s:%s ' %(self.options['Serial Exe'], self.options['Remote Host'], self.options['Serial PID'])
-        text = serial_process_list_entry.set_text(text) 
+        text = serial_process_list_entry.set_text(text)
         attach_dialog.show_all()
 
     def on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
@@ -494,7 +494,7 @@ host[1-10,12,15-20];otherhost[30]
                 radio_button.connect("toggled", self.serial_pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
             vbox.pack_start(radio_button, False, False, 0)
 
-    
+
     def _on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
         vbox = gtk.VBox()
         self._on_update_process_listing2(attach_dialog, filter, vbox, True)
@@ -947,9 +947,9 @@ host[1-10,12,15-20];otherhost[30]
         elif self.options['Topology Type'] == 'custom':
             topology_type = STAT_TOPOLOGY_USER
         if self.options['Communication Nodes'] != '':
-            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], self.options['Communication Nodes'], False, self.options['Share App Nodes'], False)
+            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], self.options['Communication Nodes'], False, self.options['Share App Nodes'])
         else:
-            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], '', False, self.options['Share App Nodes'], False)
+            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], '', False, self.options['Share App Nodes'])
         if ret != STAT_OK:
             show_error_dialog('Failed to Launch MRNet Tree:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -966,7 +966,7 @@ host[1-10,12,15-20];otherhost[30]
                     show_error_dialog('Failed to connect to MRNet tree:\n%s' %self.STAT.getLastErrorMessage(), self)
                     self.on_fatal_error()
                     return ret
-        ret = self.STAT.setupConnectedMrnetTree(False);
+        ret = self.STAT.setupConnectedMrnetTree();
         if ret != STAT_OK:
             show_error_dialog('Failed to setup STAT:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -1158,13 +1158,22 @@ host[1-10,12,15-20];otherhost[30]
             show_error_dialog('Failed to pause application during sample stack trace operation:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
             return ret
+
+        sample_type = 0
         if self.options['Sample Type'] == 'function and pc':
-            sample_type = STAT_FUNCTION_AND_PC if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_PC
-        elif self.options['Sample Type'] == 'function and line':
-            sample_type = STAT_FUNCTION_AND_LINE if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_LINE
-        else:
-            sample_type = STAT_FUNCTION_NAME_ONLY if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_NAME_ONLY
-        ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Gather Python Traces'], self.options['Clear On Sample'], 1, 1, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
+            sample_type += STAT_SAMPLE_PC
+        if self.options['Sample Type'] == 'function and line':
+            sample_type += STAT_SAMPLE_LINE
+        if self.options['Edge Type'] != 'full list':
+            sample_type += STAT_SAMPLE_COUNT_REP
+        if self.options['With Threads']:
+            sample_type += STAT_SAMPLE_THREADS
+        if self.options['Gather Python Traces']:
+            sample_type += STAT_SAMPLE_PYTHON
+        if self.options['Clear On Sample']:
+            sample_type += STAT_SAMPLE_CLEAR_ON_SAMPLE
+        ret = self.STAT.sampleStackTraces(sample_type, 1, 1, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
+
         if ret != STAT_OK:
             show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -1220,6 +1229,7 @@ host[1-10,12,15-20];otherhost[30]
         self.update_sample_options()
         stat_wait_dialog.update_progress_bar(0.01)
 
+        previous_clear = self.options['Clear On Sample']
         for i in xrange(self.options['Num Traces']):
             if stat_wait_dialog.cancelled == True:
                 stat_wait_dialog.cancelled = False
@@ -1236,13 +1246,20 @@ host[1-10,12,15-20];otherhost[30]
                 return ret
             self.set_action_sensitivity('paused')
 
+            sample_type = 0
             if self.options['Sample Type'] == 'function and pc':
-                sample_type = STAT_FUNCTION_AND_PC if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_PC
-            elif self.options['Sample Type'] == 'function and line':
-                sample_type = STAT_FUNCTION_AND_LINE if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_AND_LINE
-            else:
-                sample_type = STAT_FUNCTION_NAME_ONLY if self.options['Edge Type'] == 'full list' else STAT_CR_FUNCTION_NAME_ONLY
-            ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Gather Python Traces'], self.options['Clear On Sample'], 1, 0, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
+                sample_type += STAT_SAMPLE_PC
+            if self.options['Sample Type'] == 'function and line':
+                sample_type += STAT_SAMPLE_LINE
+            if self.options['Edge Type'] != 'full list':
+                sample_type += STAT_SAMPLE_COUNT_REP
+            if self.options['With Threads']:
+                sample_type += STAT_SAMPLE_THREADS
+            if self.options['Gather Python Traces']:
+                sample_type += STAT_SAMPLE_PYTHON
+            if self.options['Clear On Sample']:
+                sample_type += STAT_SAMPLE_CLEAR_ON_SAMPLE
+            ret = self.STAT.sampleStackTraces(sample_type, 1, 0, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
             if ret != STAT_OK:
                 if ret == STAT_APPLICATION_EXITED:
                     ret_val = STAT_APPLICATION_EXITED
@@ -1313,6 +1330,7 @@ host[1-10,12,15-20];otherhost[30]
                     time.sleep(.01)
                     if gtk.events_pending():
                         gtk.main_iteration()
+        self.options['Clear On Sample'] = previous_clear
         stat_wait_dialog.update(0.91)
         ret = self.STAT.gatherTraces(False)
         if ret != STAT_OK:
@@ -1747,12 +1765,12 @@ host[1-10,12,15-20];otherhost[30]
         vbox2 = gtk.VBox()
         self.pack_check_button(vbox2, 'With Threads', False, False, 5)
         self.pack_check_button(vbox2, 'Gather Python Traces', False, False, 5)
-        frame2 = gtk.Frame('Node Sample Options')
+        frame2 = gtk.Frame('Stack Frame (node) Sample Options')
         vbox3 = gtk.VBox()
         self.pack_radio_buttons(vbox3, 'Sample Type')
         frame2.add(vbox3)
         vbox2.pack_start(frame2, False, False, 5)
-        frame2 = gtk.Frame('Edge Sample Options')
+        frame2 = gtk.Frame('Process Set (edge) Sample Options')
         vbox3 = gtk.VBox()
         self.pack_radio_buttons(vbox3, 'Edge Type')
         frame2.add(vbox3)

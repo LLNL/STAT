@@ -38,10 +38,12 @@ enum StatLogOptions_t {
 
 enum StatSampleOptions_t {
     STAT_SAMPLE_FUNCTION_ONLY = 0x00,
-    STAT_SAMPLE_PC = 0x01,
-    STAT_SAMPLE_LINE = 0x02,
+    STAT_SAMPLE_LINE = 0x01,
+    STAT_SAMPLE_PC = 0x02,
     STAT_SAMPLE_COUNT_REP = 0x04,
-    STAT_SAMPLE_PYTHON = 0x08
+    STAT_SAMPLE_THREADS = 0x08,
+    STAT_SAMPLE_CLEAR_ON_SAMPLE = 0x10,
+    STAT_SAMPLE_PYTHON = 0x20
 } ;
 
 //! An enum for MRNet message tags
@@ -118,16 +120,6 @@ typedef enum {
     STAT_APPLICATION_EXITED,
     STAT_PENDING_ACK
 } StatError_t;
-
-//! An enum for STAT sampling granularity
-typedef enum {
-    STAT_FUNCTION_NAME_ONLY = 0,
-    STAT_FUNCTION_AND_PC,
-    STAT_FUNCTION_AND_LINE,
-    STAT_CR_FUNCTION_NAME_ONLY,
-    STAT_CR_FUNCTION_AND_PC,
-    STAT_CR_FUNCTION_AND_LINE
-} StatSample_t;
 
 //! An enum for STAT verbosity type
 typedef enum {

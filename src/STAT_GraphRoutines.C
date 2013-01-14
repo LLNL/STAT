@@ -39,31 +39,36 @@ unsigned int statStringHash(const char *str)
     return hash;
 }
 
-graphlib_graph_p createRootedGraph(graphlib_functiontable_p functions)
+graphlib_graph_p createRootedGraph(unsigned int sampleType)
 {
     graphlib_error_t graphlibError;
-    graphlib_graph_p newGraph = NULL;
+    graphlib_graph_p retGraph = NULL;
 
-    graphlibError = graphlib_newGraph(&newGraph, functions);
+    if (sampleType & STAT_SAMPLE_COUNT_REP)
+        graphlibError = graphlib_newGraph(&retGraph, statCountRepFunctions);
+    else
+        graphlibError = graphlib_newGraph(&retGraph, statBitVectorFunctions);
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error creating new graph\n");
         return NULL;
     }
 
-    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "/", GRAPH_FONT_SIZE};
-    graphlibError = graphlib_addNode(newGraph, 0, &nodeAttr);
+    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "/", -1};
+    graphlibError = graphlib_addNode(retGraph, 0, &nodeAttr);
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error adding sentinel node to graph\n");
         return NULL;
     }
-    return newGraph;
+    return retGraph;
 }
 
 StatBitVectorEdge_t *initializeBitVectorEdge(int numTasks)
 {
-    StatBitVectorEdge_t *edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+    StatBitVectorEdge_t *edge;
+    
+    edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
     if (edge == NULL)
     {
         fprintf(stderr, "%s: Failed to malloc edge\n", strerror(errno));
@@ -183,14 +188,14 @@ void statInitializeCountRepFunctions()
     statCountRepFunctions->merge_node = statMergeNode;
     statCountRepFunctions->copy_node = statCopyNode;
     statCountRepFunctions->free_node = statFreeNode;
-    statCountRepFunctions->serialize_edge = statSerializeCountRepEdge;///
-    statCountRepFunctions->serialize_edge_length = statSerializeCountRepEdgeLength;///
-    statCountRepFunctions->deserialize_edge = statDeserializeCountRepEdge;///
-    statCountRepFunctions->edge_to_text = statCountRepEdgeToText;///
-    statCountRepFunctions->merge_edge = statMergeCountRepEdge;///
-    statCountRepFunctions->copy_edge = statCopyCountRepEdge;///
-    statCountRepFunctions->free_edge = statFreeCountRepEdge;///
-    statCountRepFunctions->edge_checksum = statCountRepEdgeCheckSum;///
+    statCountRepFunctions->serialize_edge = statSerializeCountRepEdge;
+    statCountRepFunctions->serialize_edge_length = statSerializeCountRepEdgeLength;
+    statCountRepFunctions->deserialize_edge = statDeserializeCountRepEdge;
+    statCountRepFunctions->edge_to_text = statCountRepEdgeToText;
+    statCountRepFunctions->merge_edge = statMergeCountRepEdge;
+    statCountRepFunctions->copy_edge = statCopyCountRepEdge;
+    statCountRepFunctions->free_edge = statFreeCountRepEdge;
+    statCountRepFunctions->edge_checksum = statCountRepEdgeCheckSum;
 }
 
 void statFreeCountRepFunctions()
@@ -202,12 +207,12 @@ void statFreeCountRepFunctions()
 
 size_t statBitVectorLength(int numTasks)
 {
-    int ret;
+    int intRet;
 
-    ret = numTasks / STAT_BITVECTOR_BITS;
+    intRet = numTasks / STAT_BITVECTOR_BITS;
     if (numTasks % STAT_BITVECTOR_BITS != 0)
-        ret += 1;
-    return ret;
+        intRet += 1;
+    return intRet;
 }
 
 void statSerializeNode(char *buf, const void *node)
@@ -252,9 +257,10 @@ void statFreeNode(void *node)
 
 void statSerializeEdge(char *buf, const void *edge)
 {
-    char *ptr = buf;
+    char *ptr;
     StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
 
+    ptr = buf;
     memcpy(ptr, (void *)&(e->length), sizeof(size_t));
     ptr += sizeof(size_t);
     memcpy(ptr, e->bitVector, STAT_BITVECTOR_BYTES * e->length);
@@ -268,9 +274,10 @@ unsigned int statSerializeEdgeLength(const void *edge)
 
 void statDeserializeEdge(void **edge, const char *buf, unsigned int bufLength)
 {
-    char *ptr = (char *)buf;
+    char *ptr;
     StatBitVectorEdge_t *e;
 
+    ptr = (char *)buf;
     e = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
     if (e == NULL)
     {
@@ -292,33 +299,31 @@ void statDeserializeEdge(void **edge, const char *buf, unsigned int bufLength)
 
 char *statEdgeToText(const void *edge)
 {
+    char val[128], *charRet;
+    int i, j, inRange = 0, firstIteration = 1, currentValue, lastValue = 0;
+    unsigned int charRetSize = 0, count = 0;
     StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
-    char val[128];
-    int i, j;
-    int in_range = 0, first_iteration = 1, range_start, range_end, cur_val, last_val = 0;
-    char *ret;
-    unsigned int ret_size = 0, count = 0;
 
-    ret = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
-    ret_size = STAT_GRAPH_CHUNK;
-    if (ret == NULL)
+    charRet = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
+    charRetSize = STAT_GRAPH_CHUNK;
+    if (charRet == NULL)
     {
         fprintf(stderr, "%s: Failed to allocte memory for edge label\n", strerror(errno));
         return NULL;
     }
-    sprintf(ret + count, "[");
+    sprintf(charRet + count, "[");
     count += 1;
     for (i = 0; i< e->length; i++)
     {
-        if (ret_size - count < 1024)
+        if (charRetSize - count < 1024)
         {
             /* Reallocate if we are within 1024 bytes of the end */
             /* This is a large threshold to keep it out of the inner loop */
-            ret_size += STAT_GRAPH_CHUNK;
-            ret = (char *)realloc(ret, ret_size * sizeof(char));
-            if (ret == NULL)
+            charRetSize += STAT_GRAPH_CHUNK;
+            charRet = (char *)realloc(charRet, charRetSize * sizeof(char));
+            if (charRet == NULL)
             {
-                fprintf(stderr, "%s: Failed to reallocte %d bytes of memory for edge label\n", strerror(errno), ret_size);
+                fprintf(stderr, "%s: Failed to reallocte %d bytes of memory for edge label\n", strerror(errno), charRetSize);
                 return NULL;
             }
         }
@@ -326,95 +331,96 @@ char *statEdgeToText(const void *edge)
         {
             if (e->bitVector[i] & STAT_GRAPH_BIT(j))
             {
-                cur_val = i * 8 * sizeof(StatBitVector_t) + j;
-                if (in_range == 0)
+                currentValue = i * 8 * sizeof(StatBitVector_t) + j;
+                if (inRange == 0)
                 {
-                    snprintf(val, 128, "%d", cur_val);
-                    if (first_iteration == 0)
+                    snprintf(val, 128, "%d", currentValue);
+                    if (firstIteration == 0)
                     {
-                        if (cur_val == last_val + 1)
+                        if (currentValue == lastValue + 1)
                         {
-                            in_range = 1;
-                            range_start = last_val;
-                            range_end = cur_val;
-                            sprintf(ret + count, "-");
+                            inRange = 1;
+                            sprintf(charRet + count, "-");
                             count += 1;
                         }
                         else
                         {
-                            sprintf(ret + count, ",");
+                            sprintf(charRet + count, ",");
                             count += 1;
-                            sprintf(ret + count, "%s", val);
+                            sprintf(charRet + count, "%s", val);
                             count += strlen(val);
                         }
                     }
                     else
                     {
-                        sprintf(ret + count, "%s", val);
+                        sprintf(charRet + count, "%s", val);
                         count += strlen(val);
                     }
                 }
                 else
                 {
-                    if (cur_val == last_val + 1)
-                        range_end = cur_val;
-                    else
+                    if (currentValue != lastValue + 1)
                     {
-                        snprintf(val, 128, "%d,%d", last_val, cur_val);
-                        sprintf(ret + count, "%s", val);
+                        snprintf(val, 128, "%d,%d", lastValue, currentValue);
+                        sprintf(charRet + count, "%s", val);
                         count += strlen(val);
-                        in_range = 0;
+                        inRange = 0;
                     }
                 }
-                first_iteration = 0;
-                last_val = cur_val;
+                firstIteration = 0;
+                lastValue = currentValue;
             }
         }
     }
-    if (in_range == 1)
+    if (inRange == 1)
     {
-        snprintf(val, 128, "%d", last_val);
-        sprintf(ret + count, "%s", val);
+        snprintf(val, 128, "%d", lastValue);
+        sprintf(charRet + count, "%s", val);
         count += strlen(val);
     }
-    sprintf(ret + count, "]");
+    sprintf(charRet + count, "]");
     count += 1;
 
-    return ret;
+    return charRet;
 }
 
 void *statMergeEdge(void *edge1, const void *edge2)
 {
     unsigned int i;
     size_t length;
-    StatBitVectorEdge_t *e1 = (StatBitVectorEdge_t *)edge1, *e2 = (StatBitVectorEdge_t *)edge2;
+    StatBitVectorEdge_t *e1, *e2;
+    
+    e1 = (StatBitVectorEdge_t *)edge1;
+    e2 = (StatBitVectorEdge_t *)edge2;
+
     length = e1->length;
     if (e2->length < e1->length)
         length = e2->length;
-    for (i = 0; i < e1->length; i++)
+    for (i = 0; i < length; i++)
         e1->bitVector[i] |= e2->bitVector[i];
     return edge1;
 }
 
 void *statCopyEdge(const void *edge)
 {
-    StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge, *ret;
-
-    ret = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
-    if (ret == NULL)
+    StatBitVectorEdge_t *e, *bvRet;
+    
+    e = (StatBitVectorEdge_t *)edge;
+    bvRet = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+    if (bvRet == NULL)
     {
         fprintf(stderr, "Failed to allocate %u bytes for edge copy\n", sizeof(StatBitVectorEdge_t));
         return NULL;
     }
-    ret->length = e->length;
-    ret->bitVector = (StatBitVector_t *)malloc(e->length * STAT_BITVECTOR_BYTES);
-    if (ret->bitVector == NULL)
+    bvRet->length = e->length;
+    bvRet->bitVector = (StatBitVector_t *)malloc(e->length * STAT_BITVECTOR_BYTES);
+    if (bvRet->bitVector == NULL)
     {
         fprintf(stderr, "Failed to allocate %u bytes for bit vector\n", e->length * STAT_BITVECTOR_BYTES);
         return NULL;
     }
-    memcpy(ret->bitVector, e->bitVector, STAT_BITVECTOR_BYTES * e->length);
-    return (void *)ret;
+    memcpy(bvRet->bitVector, e->bitVector, STAT_BITVECTOR_BYTES * e->length);
+    return (void *)bvRet;
 }
 
 void statFreeEdge(void *edge)
@@ -430,12 +436,12 @@ long statEdgeCheckSum(const void *edge)
 {
     StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
     int i;
-    long ret = 0;
+    long longRet = 0;
 
     for (i = 0; i < e->length; i++)
-        ret = ret + e->bitVector[i] * (e->length - i + 1);
+        longRet = longRet + e->bitVector[i] * (e->length - i + 1);
 
-    return ret;
+    return longRet;
 }
 
 void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLength)
@@ -472,22 +478,22 @@ void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLen
 
 void *statCopyEdgeInitializeEmpty(const void *edge)
 {
-    StatBitVectorEdge_t *ret;
+    StatBitVectorEdge_t *bvRet;
 
-    ret = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
-    if (ret == NULL)
+    bvRet = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+    if (bvRet == NULL)
     {
         fprintf(stderr, "Failed to allocate %u bytes for edge copy\n", sizeof(StatBitVectorEdge_t));
         return NULL;
     }
-    ret->length = statGraphRoutinesTotalWidth;
-    ret->bitVector = (StatBitVector_t *)calloc(ret->length, STAT_BITVECTOR_BYTES);
-    if (ret->bitVector == NULL)
+    bvRet->length = statGraphRoutinesTotalWidth;
+    bvRet->bitVector = (StatBitVector_t *)calloc(bvRet->length, STAT_BITVECTOR_BYTES);
+    if (bvRet->bitVector == NULL)
     {
-        fprintf(stderr, "Failed to allocate %u bytes for bit vector\n", ret->length * STAT_BITVECTOR_BYTES);
+        fprintf(stderr, "Failed to allocate %u bytes for bit vector\n", bvRet->length * STAT_BITVECTOR_BYTES);
         return NULL;
     }
-    return (void *)ret;
+    return (void *)bvRet;
 }
 
 int bitVectorContains(StatBitVector_t *vec, int val)
@@ -535,13 +541,13 @@ void statDeserializeCountRepEdge(void **edge, const char *buf, unsigned int bufL
 
 char *statCountRepEdgeToText(const void *edge)
 {
-    char *ret;
+    char *charRet;
     StatCountRepEdge_t *e;
 
     e = (StatCountRepEdge_t *)edge;
-    ret = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
-    snprintf(ret, STAT_GRAPH_CHUNK, "%lld:[%lld](%lld)", e->count, e->representative, e->checksum);
-    return ret;
+    charRet = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
+    snprintf(charRet, STAT_GRAPH_CHUNK, "%lld:[%lld](%lld)", e->count, e->representative, e->checksum);
+    return charRet;
 }
 
 void *statMergeCountRepEdge(void *edge1, const void *edge2)
@@ -559,11 +565,11 @@ void *statMergeCountRepEdge(void *edge1, const void *edge2)
 
 void *statCopyCountRepEdge(const void *edge)
 {
-    StatCountRepEdge_t *ret;
+    StatCountRepEdge_t *crRet;
 
-    ret = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
-    memcpy((void *)ret, edge, sizeof(StatCountRepEdge_t));
-    return (void *)ret;
+    crRet = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
+    memcpy((void *)crRet, edge, sizeof(StatCountRepEdge_t));
+    return (void *)crRet;
 }
 
 void statFreeCountRepEdge(void *edge)
@@ -574,4 +580,33 @@ void statFreeCountRepEdge(void *edge)
 long statCountRepEdgeCheckSum(const void *edge)
 {
     return ((StatCountRepEdge_t *)edge)->checksum;
+}
+
+StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge)
+{
+    unsigned int i, j, rank;
+    StatCountRepEdge_t *crRet;
+
+    crRet = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
+    if (crRet == NULL)
+        return NULL;
+    crRet->count = 0;
+    crRet->representative = -1;
+    crRet->checksum = 0;
+
+    for (i = 0, rank = 0; i < edge->length; i++)
+    {
+        for (j = 0; j < STAT_BITVECTOR_BITS; j++, rank++)
+        {
+            if (edge->bitVector[i] & STAT_GRAPH_BIT(j))
+            {
+                if (crRet->representative == -1)
+                    crRet->representative = rank;
+                crRet->count += 1;
+                crRet->checksum += rank + 1;
+            }
+        }
+    }
+
+    return crRet;
 }

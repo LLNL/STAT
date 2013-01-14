@@ -34,47 +34,61 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 using namespace MRN;
 using namespace std;
 
-int maxDepth;                           /*!< the max trace depth */
-int nTasks;                             /*!< the number of tasks per daemon */
-int nTraces;                            /*!< the number of traces per task */
-int functionFanout;                     /*!< the max function fanout */
-int iters;                              /*!< the number of merge iterations */
-int nEqClasses;                         /*!< the number of equivalence classes */
-char topologySpecification[BUFSIZE];    /*!< the topology specification */
-char *nodeList = NULL;                  /*!< the list of nodes for CPs */
-bool countRep = false;                  /*!< whether to gather just a count and representative */
-bool shareAppNodes = false;             /*!< whether to use the application nodes to run communication processes */
-StatTopology_t topologyType;            /*!< the topology specification type */
+//! A struct to encapsulate user command line args
+typedef struct
+{
+    int maxDepth;                           /*!< the max trace depth */
+    int nTasks;                             /*!< the number of tasks per daemon */
+    int nTraces;                            /*!< the number of traces per task */
+    int functionFanout;                     /*!< the max function fanout */
+    int iters;                              /*!< the number of merge iterations */
+    int nEqClasses;                         /*!< the number of equivalence classes */
+    char topologySpecification[BUFSIZE];    /*!< the topology specification */
+    char *nodeList;                         /*!< the list of nodes for CPs */
+    bool shareAppNodes;                     /*!< whether to use the application nodes to run communication processes */
+    unsigned int sampleType;                /*!< the sample level of detail */
+    StatTopology_t topologyType;            /*!< the topology specification type */
+} StatBenchArgs_t;
 
 //! Prints the usage directions
 void STAT_PrintUsage(int argc, char **argv);
 
 //! Parses the command line arguments and sets class variables
-StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv);
+StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEnd, int argc, char **argv);
 
 //! The STATBench main
 int main(int argc, char **argv)
 {
     int i;
     char statBenchDaemon[BUFSIZE], perfData[BUFSIZE];
-    STAT_FrontEnd *STAT = new STAT_FrontEnd();
+    STAT_FrontEnd *statFrontEnd;
     StatError_t statError;
+    StatBenchArgs_t *statBenchArgs;
+
+    statFrontEnd = new STAT_FrontEnd();
 
     /* Set default values */
-    maxDepth = 7;
-    nTasks = 128;
-    nTraces = 3;
-    functionFanout = 2;
-    iters = 5;
-    nEqClasses = -1;
-    snprintf(statBenchDaemon, BUFSIZE, "%s/bin/STATBenchD", STAT->getInstallPrefix());
-    STAT->setToolDaemonExe(statBenchDaemon);
+    statBenchArgs = (StatBenchArgs_t *)calloc(1, sizeof(StatBenchArgs_t));
+    if (statBenchArgs == NULL)
+    {
+        statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to calloc statBenchArgs\n");
+        return -1;
+    }
+    statBenchArgs->sampleType = 0;
+    statBenchArgs->maxDepth = 7;
+    statBenchArgs->nTasks = 128;
+    statBenchArgs->nTraces = 3;
+    statBenchArgs->functionFanout = 2;
+    statBenchArgs->iters = 5;
+    statBenchArgs->nEqClasses = -1;
+    snprintf(statBenchDaemon, BUFSIZE, "%s/bin/STATBenchD", statFrontEnd->getInstallPrefix());
+    statFrontEnd->setToolDaemonExe(statBenchDaemon);
 
     /* Parse the arguments */
-    statError = Parse_Args(STAT, argc, argv);
+    statError = parseArgs(statBenchArgs, statFrontEnd, argc, argv);
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to parse arguments\n");
+        statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to parse arguments\n");
         return -1;
     }
 
@@ -86,7 +100,7 @@ int main(int argc, char **argv)
         strncat(perfData, " ", BUFSIZE);
     }
     strncat(perfData, "\n", BUFSIZE);
-    STAT->addPerfData(perfData, -1.0);
+    statFrontEnd->addPerfData(perfData, -1.0);
 
     /* Print the STATBench header to the output file and to the screen */
     snprintf(perfData, BUFSIZE,
@@ -100,78 +114,78 @@ int main(int argc, char **argv)
          "Running %d iterations with %d tasks, %d traces per task,\n"
          "%d max call depth after main, %d function fanout, and %d\n"
          "equivalence classes.\n\n",
-         iters, nTasks, nTraces, maxDepth, functionFanout, nEqClasses);
+         statBenchArgs->iters, statBenchArgs->nTasks, statBenchArgs->nTraces, statBenchArgs->maxDepth, statBenchArgs->functionFanout, statBenchArgs->nEqClasses);
 
-    STAT->addPerfData(perfData, -1.0);
+    statFrontEnd->addPerfData(perfData, -1.0);
     printf("%s", perfData);
 
     /* Launch the MRNet Tree */
-    statError = STAT->launchAndSpawnDaemons(NULL, true);
+    statError = statFrontEnd->launchAndSpawnDaemons(NULL, true);
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
-        STAT->shutDown();
-        delete STAT;
+        statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
+        statFrontEnd->shutDown();
+        delete statFrontEnd;
         return -1;
     }
 
     /* Launch the MRNet Tree */
-    statError = STAT->launchMrnetTree(topologyType, topologySpecification, nodeList, true, shareAppNodes, true);
+    statError = statFrontEnd->launchMrnetTree(statBenchArgs->topologyType, statBenchArgs->topologySpecification, statBenchArgs->nodeList, true, statBenchArgs->shareAppNodes);
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
-        STAT->shutDown();
-        delete STAT;
+        statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
+        statFrontEnd->shutDown();
+        delete statFrontEnd;
         return -1;
     }
 
-    statError = STAT->setupConnectedMrnetTree(true);
+    statError = statFrontEnd->setupConnectedMrnetTree();
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to setup connected MRNet tree\n");
-        delete STAT;
+        statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup connected MRNet tree\n");
+        delete statFrontEnd;
         return -1;
     }
 
     /* Generate the traces */
-    statError = STAT->statBenchCreateStackTraces(maxDepth, nTasks, nTraces, functionFanout, nEqClasses, countRep);
+    statError = statFrontEnd->statBenchCreateStackTraces(statBenchArgs->maxDepth, statBenchArgs->nTasks, statBenchArgs->nTraces, statBenchArgs->functionFanout, statBenchArgs->nEqClasses, statBenchArgs->sampleType);
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to generate stack traces\n");
-        STAT->shutDown();
+        statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to generate stack traces\n");
+        statFrontEnd->shutDown();
         return -1;
     }
 
     /* Gather the traces */
-    for (i = 0; i < iters; i++)
+    for (i = 0; i < statBenchArgs->iters; i++)
     {
-        statError = STAT->gatherLastTrace();
+        statError = statFrontEnd->gatherLastTrace();
         if (statError != STAT_OK)
         {
-            STAT->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
-            STAT->shutDown();
-            delete STAT;
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
+            statFrontEnd->shutDown();
+            delete statFrontEnd;
             return -1;
         }
     }
 
     /* Gather the traces */
-    for (i = 0; i < iters; i++)
+    for (i = 0; i < statBenchArgs->iters; i++)
     {
-        statError = STAT->gatherTraces();
+        statError = statFrontEnd->gatherTraces();
         if (statError != STAT_OK)
         {
-            STAT->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
-            STAT->shutDown();
-            delete STAT;
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
+            statFrontEnd->shutDown();
+            delete statFrontEnd;
             return -1;
         }
     }
 
-    STAT->shutDown();
-    printf("\nResults written to %s\n\n", STAT->getOutDir());
+    statFrontEnd->shutDown();
+    printf("\nResults written to %s\n\n", statFrontEnd->getOutDir());
 
-    delete STAT;
+    delete statFrontEnd;
 
     return 0;
 }
@@ -206,7 +220,7 @@ void STAT_PrintUsage(int argc, char **argv)
     fprintf(stderr, "\n%% man STATBench\n  for more information\n\n");
 }
 
-StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
+StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEnd, int argc, char **argv)
 {
     int i, opt, optionIndex = 0;
     char *logOutDir = NULL;
@@ -240,8 +254,8 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
         {0, 0, 0, 0}
     };
 
-    topologyType = STAT_TOPOLOGY_DEPTH;
-    snprintf(topologySpecification, BUFSIZE, "0");
+    statBenchArgs->topologyType = STAT_TOPOLOGY_DEPTH;
+    snprintf(statBenchArgs->topologySpecification, BUFSIZE, "0");
 
     while (1)
     {
@@ -259,54 +273,54 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             exit(0);
             break;
         case 'v':
-            STAT->setVerbose(STAT_VERBOSE_FULL);
+            statFrontEnd->setVerbose(STAT_VERBOSE_FULL);
             break;
         case 'a':
-            topologyType = STAT_TOPOLOGY_AUTO;
+            statBenchArgs->topologyType = STAT_TOPOLOGY_AUTO;
             break;
         case 'f':
-            topologyType = STAT_TOPOLOGY_FANOUT;
-            snprintf(topologySpecification, BUFSIZE, "%s", optarg);
+            statBenchArgs->topologyType = STAT_TOPOLOGY_FANOUT;
+            snprintf(statBenchArgs->topologySpecification, BUFSIZE, "%s", optarg);
             break;
         case 'n':
-            nodeList = strdup(optarg);
-            if (nodeList == NULL)
+            statBenchArgs->nodeList = strdup(optarg);
+            if (statBenchArgs->nodeList == NULL)
             {
-                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to nodeList\n", strerror(errno), optarg);
+                statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to statBenchArgs->nodeList\n", strerror(errno), optarg);
                 return STAT_ALLOCATE_ERROR;
             }
             break;
         case 'A':
-            shareAppNodes = true;
+            statBenchArgs->shareAppNodes = true;
             break;
         case 'p':
-            STAT->setProcsPerNode(atoi(optarg));
+            statFrontEnd->setProcsPerNode(atoi(optarg));
             break;
         case 't':
-            nTraces = atoi(optarg);
+            statBenchArgs->nTraces = atoi(optarg);
             break;
         case 'm':
-            maxDepth = atoi(optarg);
+            statBenchArgs->maxDepth = atoi(optarg);
             break;
         case 'b':
-            functionFanout = atoi(optarg);
+            statBenchArgs->functionFanout = atoi(optarg);
             break;
         case 'e':
-            nEqClasses = atoi(optarg);
+            statBenchArgs->nEqClasses = atoi(optarg);
             break;
         case 'D':
-            statError = STAT->setToolDaemonExe(optarg);
+            statError = statFrontEnd->setToolDaemonExe(optarg);
             if (statError != STAT_OK)
             {
-                STAT->printMsg(statError, __FILE__, __LINE__, "Failed to set tool daemon exe path\n");
+                statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to set tool daemon exe path\n");
                 return statError;
             }
             break;
         case 'F':
-            statError = STAT->setFilterPath(optarg);
+            statError = statFrontEnd->setFilterPath(optarg);
             if (statError != STAT_OK)
             {
-                STAT->printMsg(statError, __FILE__, __LINE__, "Failed to set filter path\n");
+                statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to set filter path\n");
                 return statError;
             }
             break;
@@ -319,7 +333,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
                 logType |= STAT_LOG_CP;
             else
             {
-                STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or ALL, you entered %s\n", optarg);
+                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or ALL, you entered %s\n", optarg);
                 return STAT_ARG_ERROR;
             }
             break;
@@ -327,7 +341,7 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             logOutDir = strdup(optarg);
             if (logOutDir == NULL)
             {
-                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
+                statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
                 return STAT_ALLOCATE_ERROR;
             }
             break;
@@ -335,28 +349,28 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
             logType |= STAT_LOG_MRN;
             break;
         case 'u':
-            topologyType = STAT_TOPOLOGY_USER;
-            snprintf(topologySpecification, BUFSIZE, "%s", optarg);
+            statBenchArgs->topologyType = STAT_TOPOLOGY_USER;
+            snprintf(statBenchArgs->topologySpecification, BUFSIZE, "%s", optarg);
             break;
         case 'd':
-            topologyType = STAT_TOPOLOGY_DEPTH;
-            snprintf(topologySpecification, BUFSIZE, "%s", optarg);
+            statBenchArgs->topologyType = STAT_TOPOLOGY_DEPTH;
+            snprintf(statBenchArgs->topologySpecification, BUFSIZE, "%s", optarg);
             break;
         case 'N':
-            nTasks = atoi(optarg);
+            statBenchArgs->nTasks = atoi(optarg);
             break;
         case 'i':
-            iters = atoi(optarg);
+            statBenchArgs->iters = atoi(optarg);
             break;
         case 'U':
-            countRep = true;
+            statBenchArgs->sampleType |= STAT_SAMPLE_COUNT_REP;
             break;
         case '?':
-            STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
             STAT_PrintUsage(argc, argv);
             return STAT_ARG_ERROR;
         default:
-            STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
             STAT_PrintUsage(argc, argv);
             return STAT_ARG_ERROR;
         };
@@ -364,18 +378,18 @@ StatError_t Parse_Args(STAT_FrontEnd *STAT, int argc, char **argv)
 
     if (logOutDir != NULL && logType != STAT_LOG_NONE)
     {
-        statError = STAT->startLog(logType, logOutDir);
+        statError = statFrontEnd->startLog(logType, logOutDir);
         if (statError != STAT_OK)
         {
-            STAT->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
             return statError;
         }
     }
 
-    if (STAT->getLauncherArgc() == 1)
-        STAT->addLauncherArgv("srun");
-    STAT->addLauncherArgv(STAT->getToolDaemonExe());
-    STAT->addLauncherArgv("--STATBench");
+    if (statFrontEnd->getLauncherArgc() == 1)
+        statFrontEnd->addLauncherArgv("srun");
+    statFrontEnd->addLauncherArgv(statFrontEnd->getToolDaemonExe());
+    statFrontEnd->addLauncherArgv("--STATBench");
 
     return STAT_OK;
 }

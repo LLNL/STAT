@@ -1742,7 +1742,7 @@ class STATGraph(xdot.Graph):
 
     def hide_re(self, search_text, match_case):
         return self.hide_generic(self.re_search, search_text, match_case)
-    
+
     def hide_generic(self, func, *args):
         """Hide frames that match the specified function."""
         modified = False
@@ -2234,7 +2234,7 @@ class STATGraph(xdot.Graph):
         """Determine if the node is an eq class leaf of the visible tree."""
         if node.hide == True or node.node_name == '0':
             return False
-        
+
         task_list = []
         if node.edge_label.find(':') != -1:
             num_leaf_tasks = node.get_num_visual_leaf_tasks()
@@ -2921,7 +2921,7 @@ entered as a regular expression"""
         options = ["truncate", "max node name"]
         for option in options:
             if type(self.options[option]) == int:
-                self.pack_spinbutton(dialog.vbox, option)                
+                self.pack_spinbutton(dialog.vbox, option)
             elif type(self.options[option]) == str:
                 if option in self.types:
                     self.pack_combo_box(dialog.vbox, option)

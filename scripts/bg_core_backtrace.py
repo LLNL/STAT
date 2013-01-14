@@ -28,6 +28,7 @@ from subprocess import Popen, PIPE
 
 addr2line_exe = '/usr/bin/addr2line'
 addr2line_map = {}
+job_ids = []
 
 class BgCoreTrace(StatTrace):
     def get_traces(self):
@@ -37,7 +38,15 @@ class BgCoreTrace(StatTrace):
         line_number_traces = []
         function_only_traces = []
         in_stack = False
+        job_id = -1
         for line in f:
+            if line.find('Job ID') != -1:
+                job_id = int(line.split(':')[1][1:])
+                if job_id not in job_ids:
+                    job_ids.append(job_id)
+                    if len(job_ids) == 2 and self.options['jobid'] == None:
+                        sys.stderr.write('\n\nWarning, multiple Job IDs detected in core files. Stack traces will still be merged into a single tree. To have traces differentiated by job ID, please use the -j or --jobid option\n\n')
+                continue
             if line.find('+++STACK') != -1 or line.find('Function Call Chain') != -1:
                 line_number_trace = []
                 function_only_trace = []
@@ -45,6 +54,9 @@ class BgCoreTrace(StatTrace):
             if line.find("Frame Address") == 0:
                 in_stack = True
             if line.find('---STACK') != -1 or line.find('End of stack') != -1:
+                if self.options['jobid'] != None:
+                    line_number_trace.insert(0, str(job_id))
+                    function_only_trace.insert(0, str(job_id))
                 line_number_traces.append(line_number_trace)
                 function_only_traces.append(function_only_trace)
                 line_number_trace = []
@@ -82,6 +94,9 @@ class BgCoreMerger(StatMerger):
 class BgCoreMergerArgs(StatMergerArgs):
     def __init__(self):
         StatMergerArgs.__init__(self)
+        
+        # add the -j --jobid option to prefix traces with job ID
+        self.arg_map["jobid"] = self.StatMergerArgElement("j", False, None, None, "delineate traces based on Job ID in the core file")
 
         # add an agrument type to take the application executable path
         self.arg_map["exe"] = StatMergerArgs.StatMergerArgElement("x", True, str, "NULL", "the executable path")

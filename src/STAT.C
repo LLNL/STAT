@@ -24,6 +24,29 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 using namespace std;
 using namespace MRN;
 
+//! A struct to encapsulate user command line args
+typedef struct
+{
+    int sleepTime;                          /*!< the sleep duration */
+    unsigned int pid;                       /*!< the job launcher PID */
+    unsigned int nTraces;                   /*!< the number of traces to gather*/
+    unsigned int traceFrequency;            /*!< the time between samples */
+    unsigned int nRetries;                  /*!< the number of retries per sample */
+    unsigned int retryFrequency;            /*!< the time between retries */
+    char topologySpecification[BUFSIZE];    /*!< the topology specification */
+    char *remoteNode;                       /*!< the remote node running the job launcher */
+    char *nodeList;                         /*!< the CP node list */
+    bool individualSamples;                 /*!< whether to gather individual samples when sampling multiple */
+    bool comprehensive;                     /*!< whether to gather a comprehensive set of samples */
+    bool countRep;                          /*!< whether to gather just a count and representative */
+    bool withPython;                        /*!< whether to gather Python script level traces */
+    bool withThreads;                       /*!< whether to gather traces from threads */
+    bool shareAppNodes;                     /*!< whether to use the application nodes to run communication processes */
+    StatLaunch_t applicationOption;         /*!< attach or launch case */
+    unsigned int sampleType;                /*!< the sample level of detail */
+    StatTopology_t topologyType;            /*!< the topology specification type */
+} StatArgs_t;
+
 //! Prints the usage directions
 void printUsage(int argc, char **argv);
 
@@ -34,47 +57,38 @@ void printUsage(int argc, char **argv);
     \param argv - the arguments
     \return STAT_OK on success
 */
-StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv);
+StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int argc, char **argv);
 
 //! Sleeps for requested amount of time and prints a message to inform the user
-void mySleep();
+void mySleep(int sleepTime);
 
-int sleepTime;                          /*!< the sleep duration */
-unsigned int pid;                       /*!< the job launcher PID */
-unsigned int nTraces;                   /*!< the number of traces to gather*/
-unsigned int traceFrequency;            /*!< the time between samples */
-unsigned int nRetries;                  /*!< the number of retries per sample */
-unsigned int retryFrequency;            /*!< the time between retries */
-char topologySpecification[BUFSIZE];    /*!< the topology specification */
-char *remoteNode = NULL;                /*!< the remote node running the job launcher */
-char *nodeList = NULL;                  /*!< the CP node list */
-bool individualSamples = false;         /*!< whether to gather individual samples when sampling multiple */
-bool comprehensive = false;             /*!< whether to gather a comprehensive set of samples */
-bool countRep = false;                  /*!< whether to gather just a count and representative */
-bool withThreads = false;               /*!< whether to gather samples from helper threads */
-bool withPython = false;                /*!< whether to gather samples at the Python script level */
-bool clearOnSample = true;              /*!< whether to clear accumulated traces when sampling */
-bool shareAppNodes = false;             /*!< whether to use the application nodes to run communication processes */
-StatLaunch_t applicationOption;         /*!< attach or launch case */
-StatSample_t sampleType;                /*!< the sample level of detail */
-StatTopology_t topologyType;            /*!< the topology specification type */
 
 //! main() function to run STAT
 int main(int argc, char **argv)
 {
     int i, j, samples = 1, traces;
-    STAT_FrontEnd *STAT;
+    bool clearOnSample = true;
+    STAT_FrontEnd *statFrontEnd;
     StatError_t statError, retval;
     string invocationString;
+    StatArgs_t *statArgs;
+
+    statFrontEnd = new STAT_FrontEnd();
 
     /* Parse arguments and fill in class variables */
-    STAT = new STAT_FrontEnd();
-    statError = parseArgs(STAT, argc, argv);
+    statArgs = (StatArgs_t *)calloc(1, sizeof(StatArgs_t));
+    if (statArgs == NULL)
+    {
+        statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to calloc statArgs\n");
+        return -1;
+    }
+
+    statError = parseArgs(statArgs, statFrontEnd, argc, argv);
     if (statError != STAT_OK)
     {
         if (statError != STAT_WARNING)
-            STAT->printMsg(statError, __FILE__, __LINE__, "Failed to parse arguments\n");
-        delete STAT;
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to parse arguments\n");
+        delete statFrontEnd;
         if (statError != STAT_WARNING)
             return -1;
         else
@@ -89,68 +103,68 @@ int main(int argc, char **argv)
         invocationString.append(" ");
     }
     invocationString.append("\n");
-    STAT->addPerfData(invocationString.c_str(), -1.0);
+    statFrontEnd->addPerfData(invocationString.c_str(), -1.0);
 
     /* If we're just attaching, sleep here */
-    if (applicationOption == STAT_ATTACH || applicationOption == STAT_SERIAL_ATTACH)
-        mySleep();
+    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH)
+        mySleep(statArgs->sleepTime);
 
     /* Launch the Daemons */
-    STAT->setApplicationOption(applicationOption);
-    if (applicationOption == STAT_ATTACH)
-        statError = STAT->attachAndSpawnDaemons(pid, remoteNode);
-    else if (applicationOption == STAT_LAUNCH)
-        statError = STAT->launchAndSpawnDaemons(remoteNode);
+    statFrontEnd->setApplicationOption(statArgs->applicationOption);
+    if (statArgs->applicationOption == STAT_ATTACH)
+        statError = statFrontEnd->attachAndSpawnDaemons(statArgs->pid, statArgs->remoteNode);
+    else if (statArgs->applicationOption == STAT_LAUNCH)
+        statError = statFrontEnd->launchAndSpawnDaemons(statArgs->remoteNode);
     else
-        statError = STAT->setupForSerialAttach();
+        statError = statFrontEnd->setupForSerialAttach();
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
-        STAT->shutDown();
-        delete STAT;
+        statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
+        statFrontEnd->shutDown();
+        delete statFrontEnd;
         return -1;
     }
 
     /* Launch the MRNet Tree */
-    statError = STAT->launchMrnetTree(topologyType, topologySpecification, nodeList, true, shareAppNodes, false);
+    statError = statFrontEnd->launchMrnetTree(statArgs->topologyType, statArgs->topologySpecification, statArgs->nodeList, true, statArgs->shareAppNodes);
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
-        STAT->shutDown();
-        delete STAT;
+        statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
+        statFrontEnd->shutDown();
+        delete statFrontEnd;
         return -1;
     }
 
-    statError = STAT->setupConnectedMrnetTree(false);
+    statError = statFrontEnd->setupConnectedMrnetTree();
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to setup connected MRNet tree\n");
-        delete STAT;
+        statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup connected MRNet tree\n");
+        delete statFrontEnd;
         return -1;
     }
 
     /* Attach to the application */
-    statError = STAT->attachApplication();
+    statError = statFrontEnd->attachApplication();
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to attach to application\n");
-        STAT->shutDown();
-        delete STAT;
+        statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to attach to application\n");
+        statFrontEnd->shutDown();
+        delete statFrontEnd;
         return -1;
     }
 
     /* If we're launching, sleep here to let the job start */
-    if (applicationOption == STAT_LAUNCH)
+    if (statArgs->applicationOption == STAT_LAUNCH)
     {
-        statError = STAT->resume();
+        statError = statFrontEnd->resume();
         if (statError != STAT_OK)
         {
-            STAT->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
-            STAT->shutDown();
-            delete STAT;
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
+            statFrontEnd->shutDown();
+            delete statFrontEnd;
             return -1;
         }
-        mySleep();
+        mySleep(statArgs->sleepTime);
     }
 
 #ifdef SBRS
@@ -159,139 +173,128 @@ int main(int argc, char **argv)
 
     clearOnSample = true;
     retval = STAT_OK;
-    if (nTraces <= 0)
+    if (statArgs->nTraces <= 0)
         traces = 1;
     else
-        traces = nTraces;
+        traces = statArgs->nTraces;
 
-    if (comprehensive)
+    if (statArgs->comprehensive)
         samples = 4;
     for (i = 0; i < samples; i++)
     {
-        if (comprehensive)
+        if (statArgs->comprehensive)
         {
-            if (i == 0)
-            {
-                traces = 1;
-                if (countRep == true)
-                    sampleType = STAT_CR_FUNCTION_NAME_ONLY;
-                else
-                    sampleType = STAT_FUNCTION_NAME_ONLY;
-            }
-            else if (i == 1)
-            {
-                traces = 1;
-                if (countRep == true)
-                    sampleType = STAT_CR_FUNCTION_AND_LINE;
-                else
-                    sampleType = STAT_FUNCTION_AND_LINE;
-            }
+            statArgs->sampleType = 0;
+            statArgs->sampleType |= STAT_SAMPLE_CLEAR_ON_SAMPLE;
+            if (statArgs->withThreads == true)
+                statArgs->sampleType |= STAT_SAMPLE_THREADS;
+            if (statArgs->withPython == true)
+                statArgs->sampleType |= STAT_SAMPLE_PYTHON;
+            if (statArgs->countRep == true)
+                statArgs->sampleType |= STAT_SAMPLE_COUNT_REP;
+
+            traces = 1;
+            if (i == 1)
+                statArgs->sampleType |= STAT_SAMPLE_LINE;
             else if (i == 2)
-            {
-                traces = 1;
-                if (countRep == true)
-                    sampleType = STAT_CR_FUNCTION_AND_PC;
-                else
-                    sampleType = STAT_FUNCTION_AND_PC;
-            }
-            else
-            {
-                traces = nTraces;
-                if (countRep == true)
-                    sampleType = STAT_CR_FUNCTION_NAME_ONLY;
-                else
-                    sampleType = STAT_FUNCTION_NAME_ONLY;
-            }
+                statArgs->sampleType |= STAT_SAMPLE_PC;
+            else if (i == 3)
+                traces = statArgs->nTraces;
         }
         for (j = 0; j < traces; j++)
         {
             if (j == 1)
-                clearOnSample = false;
+            {
+//                unsigned int unsetClearOnSample;
+//                memset(&unsetClearOnSample, 0xff, sizeof(unsigned int));
+                statArgs->sampleType &= ~STAT_SAMPLE_CLEAR_ON_SAMPLE;
+//                clearOnSample = false;
+            }
             /* Pause the application */
-            statError = STAT->pause();
+            statError = statFrontEnd->pause();
             if (statError == STAT_APPLICATION_EXITED)
                 retval = STAT_APPLICATION_EXITED;
             else if (statError != STAT_OK)
             {
-                STAT->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
-                STAT->shutDown();
-                delete STAT;
+                statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
+                statFrontEnd->shutDown();
+                delete statFrontEnd;
                 return -1;
             }
 
             /* Sample the traces */
-            statError = STAT->sampleStackTraces(sampleType, withThreads, withPython, clearOnSample, 1, traceFrequency, nRetries, retryFrequency);
+            statError = statFrontEnd->sampleStackTraces(statArgs->sampleType, 1, statArgs->traceFrequency, statArgs->nRetries, statArgs->retryFrequency);
             if (statError != STAT_OK)
             {
                 if (statError == STAT_APPLICATION_EXITED)
                     break;
-                STAT->printMsg(statError, __FILE__, __LINE__, "Failed to sample stack traces\n");
-                STAT->shutDown();
-                delete STAT;
+                statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to sample stack traces\n");
+                statFrontEnd->shutDown();
+                delete statFrontEnd;
                 return -1;
             }
 
-            if (individualSamples == true)
+            if (statArgs->individualSamples == true)
             {
                 /* Gather the trace */
-                statError = STAT->gatherLastTrace();
+                statError = statFrontEnd->gatherLastTrace();
                 if (statError != STAT_OK)
                 {
-                    STAT->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
-                    STAT->shutDown();
-                    delete STAT;
+                    statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
+                    statFrontEnd->shutDown();
+                    delete statFrontEnd;
                     return -1;
                 }
             }
 
             /* Resume the application */
-            if (comprehensive == false or i == 3)
+            if (statArgs->comprehensive == false or i == 3)
             {
-                statError = STAT->resume();
+                statError = statFrontEnd->resume();
                 if (statError == STAT_APPLICATION_EXITED)
                     retval = STAT_APPLICATION_EXITED;
                 else if (statError != STAT_OK)
                 {
-                    STAT->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
-                    STAT->shutDown();
-                    delete STAT;
+                    statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
+                    statFrontEnd->shutDown();
+                    delete statFrontEnd;
                     return -1;
                 }
                 if (retval != STAT_OK)
                     break;
                 if (j != traces - 1)
-                    usleep(1000*traceFrequency);
+                    usleep(1000 * statArgs->traceFrequency);
             }
         } /* for j */
 
         /* Gather the traces */
         if (traces > 1)
-            statError = STAT->gatherTraces();
+            statError = statFrontEnd->gatherTraces();
         else
-            statError = STAT->gatherLastTrace();
+            statError = statFrontEnd->gatherLastTrace();
         if (statError != STAT_OK)
         {
-            STAT->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
-            STAT->shutDown();
-            delete STAT;
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
+            statFrontEnd->shutDown();
+            delete statFrontEnd;
             return -1;
         }
     } /* for i */
 
     /* Detach from the application */
-    statError = STAT->detachApplication();
+    statError = statFrontEnd->detachApplication();
     if (statError != STAT_OK)
     {
-        STAT->printMsg(statError, __FILE__, __LINE__, "Failed to detach from application\n");
-        STAT->shutDown();
-        delete STAT;
+        statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to detach from application\n");
+        statFrontEnd->shutDown();
+        delete statFrontEnd;
         return -1;
     }
 
-    STAT->shutDown();
-    printf("\nResults written to %s\n\n", STAT->getOutDir());
+    statFrontEnd->shutDown();
+    printf("\nResults written to %s\n\n", statFrontEnd->getOutDir());
 
-    delete STAT;
+    delete statFrontEnd;
     return 0;
 }
 
@@ -337,7 +340,7 @@ void printUsage(int argc, char **argv)
     fprintf(stderr, "\n%% man STAT\n  for more information\n\n");
 }
 
-StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
+StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int argc, char **argv)
 {
     int i, opt, optionIndex = 0;
     string remotePid, remoteHost;
@@ -385,14 +388,14 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
         {0, 0, 0, 0}
     };
 
-    sleepTime = -1;
-    nTraces = 10;
-    traceFrequency = 100;
-    nRetries = 0;
-    retryFrequency = 100;
-    sampleType = STAT_FUNCTION_NAME_ONLY;
-    topologyType = STAT_TOPOLOGY_AUTO;
-    snprintf(topologySpecification, BUFSIZE, "0");
+    statArgs->sleepTime = -1;
+    statArgs->nTraces = 10;
+    statArgs->traceFrequency = 100;
+    statArgs->nRetries = 0;
+    statArgs->retryFrequency = 100;
+    statArgs->sampleType = 0;
+    statArgs->topologyType = STAT_TOPOLOGY_AUTO;
+    snprintf(statArgs->topologySpecification, BUFSIZE, "0");
 
     while (1)
     {
@@ -420,91 +423,93 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             return STAT_WARNING;
             break;
         case 'v':
-            STAT->setVerbose(STAT_VERBOSE_FULL);
+            statFrontEnd->setVerbose(STAT_VERBOSE_FULL);
             break;
         case 'w':
-            withThreads = true;
+            statArgs->withThreads = true;
+            statArgs->sampleType |= STAT_SAMPLE_THREADS;
             break;
         case 'y':
-            withPython = true;
+            statArgs->withPython = true;
+            statArgs->sampleType |= STAT_SAMPLE_PYTHON;
             break;
         case 'P':
-            sampleType = STAT_FUNCTION_AND_PC;
+            statArgs->sampleType |= STAT_SAMPLE_PC;
             break;
         case 'i':
-            sampleType = STAT_FUNCTION_AND_LINE;
+            statArgs->sampleType |= STAT_SAMPLE_LINE;
             break;
         case 'c':
-            comprehensive = true;
+            statArgs->comprehensive = true;
             break;
         case 'a':
-            topologyType = STAT_TOPOLOGY_AUTO;
+            statArgs->topologyType = STAT_TOPOLOGY_AUTO;
             break;
         case 'd':
-            topologyType = STAT_TOPOLOGY_DEPTH;
-            snprintf(topologySpecification, BUFSIZE, "%s", optarg);
+            statArgs->topologyType = STAT_TOPOLOGY_DEPTH;
+            snprintf(statArgs->topologySpecification, BUFSIZE, "%s", optarg);
             break;
         case 'f':
-            topologyType = STAT_TOPOLOGY_FANOUT;
-            snprintf(topologySpecification, BUFSIZE, "%s", optarg);
+            statArgs->topologyType = STAT_TOPOLOGY_FANOUT;
+            snprintf(statArgs->topologySpecification, BUFSIZE, "%s", optarg);
             break;
         case 'u':
-            topologyType = STAT_TOPOLOGY_USER;
-            snprintf(topologySpecification, BUFSIZE, "%s", optarg);
+            statArgs->topologyType = STAT_TOPOLOGY_USER;
+            snprintf(statArgs->topologySpecification, BUFSIZE, "%s", optarg);
             break;
         case 'S':
-            individualSamples = true;
+            statArgs->individualSamples = true;
             break;
         case 'A':
-            shareAppNodes = true;
+            statArgs->shareAppNodes = true;
             break;
         case 'n':
-            nodeList = strdup(optarg);
-            if (nodeList == NULL)
+            statArgs->nodeList = strdup(optarg);
+            if (statArgs->nodeList == NULL)
             {
-                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to nodeList\n", strerror(errno), optarg);
+                statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to statArgs->nodeList\n", strerror(errno), optarg);
                 return STAT_ALLOCATE_ERROR;
             }
             break;
         case 'N':
-            STAT->setNodeListFile(strdup(optarg));
-            break;            
+            statFrontEnd->setNodeListFile(strdup(optarg));
+            break;
         case 'p':
-            STAT->setProcsPerNode(atoi(optarg));
+            statFrontEnd->setProcsPerNode(atoi(optarg));
             break;
         case 'j':
-            STAT->setJobId(atoi(optarg));
+            statFrontEnd->setJobId(atoi(optarg));
             break;
         case 'r':
-            nRetries = atoi(optarg);
+            statArgs->nRetries = atoi(optarg);
             break;
         case 'R':
-            retryFrequency = atoi(optarg);
+            statArgs->retryFrequency = atoi(optarg);
             break;
         case 't':
-            nTraces = atoi(optarg);
+            statArgs->nTraces = atoi(optarg);
             break;
         case 'T':
-            traceFrequency = atoi(optarg);
+            statArgs->traceFrequency = atoi(optarg);
             break;
         case 'D':
-            statError = STAT->setToolDaemonExe(optarg);
+            statError = statFrontEnd->setToolDaemonExe(optarg);
             if (statError != STAT_OK)
             {
-                STAT->printMsg(statError, __FILE__, __LINE__, "Failed to set tool daemon exe path\n");
+                statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to set tool daemon exe path\n");
                 return statError;
             }
             break;
         case 'F':
-            statError = STAT->setFilterPath(optarg);
+            statError = statFrontEnd->setFilterPath(optarg);
             if (statError != STAT_OK)
             {
-                STAT->printMsg(statError, __FILE__, __LINE__, "Failed to set filter path\n");
+                statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to set filter path\n");
                 return statError;
             }
             break;
         case 's':
-            sleepTime = atoi(optarg);
+            statArgs->sleepTime = atoi(optarg);
             break;
         case 'l':
             if (strcmp(optarg, "FE") == 0)
@@ -515,7 +520,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
                 logType |= STAT_LOG_CP;
             else
             {
-                STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or CP, you entered %s\n", optarg);
+                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or CP, you entered %s\n", optarg);
                 return STAT_ARG_ERROR;
             }
             break;
@@ -523,7 +528,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             logOutDir = strdup(optarg);
             if (logOutDir == NULL)
             {
-                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
+                statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
                 return STAT_ALLOCATE_ERROR;
             }
             break;
@@ -531,14 +536,15 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
             logType |= STAT_LOG_MRN;
             break;
         case 'U':
-            countRep = true;
+            statArgs->countRep = true;
+            statArgs->sampleType |= STAT_SAMPLE_COUNT_REP;
             break;
         case '?':
-            STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
             printUsage(argc, argv);
             return STAT_ARG_ERROR;
         default:
-            STAT->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
             printUsage(argc, argv);
             return STAT_ARG_ERROR;
         }; // switch(opt)
@@ -546,56 +552,46 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
 
     if (logOutDir != NULL && logType != STAT_LOG_NONE)
     {
-        statError = STAT->startLog(logType, logOutDir);
+        statError = statFrontEnd->startLog(logType, logOutDir);
         if (statError != STAT_OK)
         {
-            STAT->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
             return statError;
         }
     }
 
-    if (countRep == true)
-    {
-        if (sampleType == STAT_FUNCTION_NAME_ONLY)
-            sampleType = STAT_CR_FUNCTION_NAME_ONLY;
-        else if (sampleType == STAT_FUNCTION_AND_PC)
-            sampleType = STAT_CR_FUNCTION_AND_PC;
-        else if (sampleType == STAT_FUNCTION_AND_LINE)
-            sampleType = STAT_CR_FUNCTION_AND_LINE;
-    }
-
     if (optind == argc - 1 && (createJob == false && serialJob == false))
     {
-        applicationOption = STAT_ATTACH;
+        statArgs->applicationOption = STAT_ATTACH;
         remotePid = argv[optind++];
         colonPos = remotePid.find_first_of(":");
         if (colonPos != string::npos)
         {
             remoteHost = remotePid.substr(0, colonPos);
-            remoteNode = strdup(remoteHost.c_str());
-            if (remoteNode == NULL)
+            statArgs->remoteNode = strdup(remoteHost.c_str());
+            if (statArgs->remoteNode == NULL)
             {
-                STAT->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to set remote node from %s\n", remotePid.c_str());
+                statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to set remote node from %s\n", remotePid.c_str());
                 return STAT_ALLOCATE_ERROR;
             }
-            pid = atoi((remotePid.substr(colonPos + 1, remotePid.length())).c_str());
+            statArgs->pid = atoi((remotePid.substr(colonPos + 1, remotePid.length())).c_str());
         }
         else
         {
-            pid = atoi(remotePid.c_str());
+            statArgs->pid = atoi(remotePid.c_str());
         }
     }
     else if (optind < argc - 1 && createJob == true)
     {
-        applicationOption = STAT_LAUNCH;
+        statArgs->applicationOption = STAT_LAUNCH;
         for (i = optind; i < argc; i++)
-            STAT->addLauncherArgv(argv[i]);
+            statFrontEnd->addLauncherArgv(argv[i]);
     }
     else if (optind < argc && serialJob == true)
     {
-        applicationOption = STAT_SERIAL_ATTACH;
+        statArgs->applicationOption = STAT_SERIAL_ATTACH;
         for (i = optind; i < argc; i++)
-            STAT->addSerialProcess(argv[i]);
+            statFrontEnd->addSerialProcess(argv[i]);
     }
     else
     {
@@ -606,7 +602,7 @@ StatError_t parseArgs(STAT_FrontEnd *STAT, int argc, char **argv)
     return STAT_OK;
 }
 
-void mySleep()
+void mySleep(int sleepTime)
 {
     if (sleepTime > 0)
     {

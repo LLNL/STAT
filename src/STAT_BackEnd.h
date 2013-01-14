@@ -52,9 +52,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #include "PlatFeatures.h"
   #include "ProcessSet.h"
   #include "PCErrors.h"
-//  #if !defined(PROTOTYPE_PY) && !defined(PROTOTYPE_TO) && defined(BGL)
-    #define GROUP_OPS
-//  #endif
+  #define GROUP_OPS
 #endif
 #if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
   #include "local_var.h"
@@ -86,6 +84,21 @@ typedef struct
     int parentRank;
 } StatLeafInfo_t;
 
+//! A struct to cache Python offsets and characteristics
+typedef struct
+{
+    int coNameOffset;
+    int coFileNameOffset;
+    int obSizeOffset;
+    int obSvalOffset;
+    int coFirstLineNoOffset;
+    int coLnotabOffset;
+    int fLastIOffset;
+    int pyVarObjectObSizeOffset;
+    int pyBytesObjectObSvalOffset;
+    bool isUnicode;
+    bool isPython3;
+} StatPythonCache_t;
 //! A struct to hold a list of StatLeafInfo_t objects
 typedef struct
 {
@@ -161,7 +174,7 @@ class STAT_BackEnd
             \return STAT_OK on success
 
             Receive the connection information from the frontend and broadcast
-            it to all the daemons.  Call the MRNet Network constructor with 
+            it to all the daemons.  Call the MRNet Network constructor with
             this daemon's MRNet personality.
         */
         StatError_t connect(int argc = 0, char **argv = NULL);
@@ -173,6 +186,14 @@ class STAT_BackEnd
             Loops on MRNet receive and executes the requested command
         */
         StatError_t mainLoop();
+
+        //! Return the STAT name that should be given for a specific frame
+        /*!
+            \param frame - the Frame to gather the name from
+            \param depth - [optional] the depth of this frame in the stack walk. This is necessary for identifying the appropriate frame for variable extraction.
+            \return the name to use for this frame
+        */
+        std::string getFrameName(const Dyninst::Stackwalker::Frame &frame, int depth = -1);
 
         //! Print the STAT error type and error message
         /*!
@@ -197,7 +218,7 @@ class STAT_BackEnd
         /*!
             \return STAT_OK on success
 
-            Called by the helper daemon to write MRNet connection information 
+            Called by the helper daemon to write MRNet connection information
             for the STATBench daemon emulators to a fifo.
         */
         StatError_t statBenchConnectInfoDump();
@@ -207,7 +228,7 @@ class STAT_BackEnd
             \return STAT_OK on success
 
             Reads in connection information from the named fifo and uses it to
-            derrive this daemon emulator's MRNet personality, which is then 
+            derrive this daemon emulator's MRNet personality, which is then
             passed to the MRNet Network constructor.
         */
         StatError_t statBenchConnect();
@@ -249,28 +270,14 @@ class STAT_BackEnd
         /*!
             \param nTraces - the number of traces to gather per process
             \param traceFrequency - the time (ms) to wait between samples
-            \param nRetries - the number of attempts to try to get a complete 
+            \param nRetries - the number of attempts to try to get a complete
                    stack trace
             \param retryFrequency - the time (us) to wait between retries
-            \param withThreads - whether to gather thread stack traces too
-            \param clearOnSample - whether to clear the accumulated traces
                    before sampling
-            \param variableSpecification - the specification of variables to
-                   extract
-            \param withPython - whether to dive into the Python interpreter to
-                   get Python-level traces
+            \param variableSpecification - the specification of variables to extract
             \return STAT_OK on success
         */
-        StatError_t sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification, unsigned int withPython);
-
-        //! Merge the given graph into the 2d and 3d graphs
-        /*!
-            \param currentGraph - the graph to merge
-            \param isLastTrace - true if this graph is from the last iteration
-                   of stackwalks (and thus should be merged into the 2d graph)
-            \return STAT_OK on success
-        */
-        StatError_t mergeIntoGraphs(graphlib_graph_p currentGraph, bool isLastTrace);
+        StatError_t sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, char *variableSpecification);
 
 #if defined GROUP_OPS
         //! Get a stack trace from every process
@@ -279,10 +286,9 @@ class STAT_BackEnd
             \param nRetries - the number of attempts to try to get a complete
                    stack trace
             \param retryFrequency - the time to wait between retries
-            \param withThreads - whether to gather thread stack traces
             \return STAT_OK on success
         */
-        StatError_t getStackTraceFromAll(graphlib_graph_p retGraph, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads);
+        StatError_t getStackTraceFromAll(unsigned int nRetries, unsigned int retryFrequency);
 
         //! Add a frame to a given graph
         /*!
@@ -294,9 +300,11 @@ class STAT_BackEnd
             \param[out] errorThreads - a list of threads whose stack walks
                    ended in an error
             \param[out] outputRanks - the set of ranks in this stack walk
+            \param[out] abort - the callee indicates whether the callee should abort (delete) the caller node
+            \param[in] branches - the max branch factor of the current node's ancestors
             \return STAT_OK on success
         */
-        StatError_t addFrameToGraph(graphlib_graph_p graphlibGraph, Dyninst::Stackwalker::CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, Dyninst::Stackwalker::FrameNode *stackwalkerNode, std::string nodeIdNames, std::set<std::pair<Dyninst::Stackwalker::Walker *, Dyninst::THR_ID> > *errorThreads, std::set<int> &outputRanks);
+        StatError_t addFrameToGraph(Dyninst::Stackwalker::CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, Dyninst::Stackwalker::FrameNode *stackwalkerNode, std::string nodeIdNames, std::set<std::pair<Dyninst::Stackwalker::Walker *, Dyninst::THR_ID> > *errorThreads, std::set<int> &outputRanks, bool &abort, int branches);
 #endif
 
         //! Get a single stack trace
@@ -307,12 +315,9 @@ class STAT_BackEnd
             \param nRetries - the number of attempts to try to get a complete
                    stack trace
             \param retryFrequency - the time to wait between retries
-            \param withThreads - whether to gather thread stack traces
-            \param withPython - whether to dive into the Python interpreter to
-                   get Python script-level traces
             \return STAT_OK on success
         */
-        StatError_t getStackTrace(graphlib_graph_p retGraph, Dyninst::Stackwalker::Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int withThreads, unsigned int withPython);
+        StatError_t getStackTrace(Dyninst::Stackwalker::Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency);
 
         //! Translates an address into a source file and line number
         /*!
@@ -331,23 +336,6 @@ class STAT_BackEnd
             \param[out] outBuf - the value of the variable
         */
         StatError_t getVariable(const Dyninst::Stackwalker::Frame &frame, char *variableName, char *outBuf, unsigned int outBufSize);
-
-        //! Return the STAT name that should be given for a specific frame
-        /*!
-            \param frame - the Frame to gather the name from
-            \param depth - [optional] the depth of this frame in the stack walk. This is necessary for identifying the appropriate frame for variable extraction.
-            \return the name to use for this frame
-        */
-        public:
-        std::string getFrameName(const Dyninst::Stackwalker::Frame &frame, int depth = -1);
-        private:
-
-        //! Initialize the nodeAttr's name field with the given string
-        /*!
-          \param name - the name to use
-          \param nodeAttr[in,out] - the graphlib_nodeaddr_t whose name we should change
-        */
-        void fillInName(const std::string &name, graphlib_nodeattr_t &nodeAttr);
 
         //! Parse the variable specification
         /*!
@@ -402,7 +390,44 @@ class STAT_BackEnd
             \param [out] pyLineNo - the current Python line number
             \return STAT_OK on success
         */
-        StatError_t getPythonFrameInfo(Dyninst::Stackwalker::Walker *proc, const Stackwalker::Frame &frame, char **pyFun, char **pySource, int *pyLineNo);
+        StatError_t getPythonFrameInfo(Dyninst::Stackwalker::Walker *proc, const Dyninst::Stackwalker::Frame &frame, char **pyFun, char **pySource, int *pyLineNo);
+
+        //! Clear the nodes2d_ and edges2d_ maps
+        /*!
+            \return STAT_OK on success
+        */
+        void clear2dNodesAndEdges();
+
+        //! Clear the nodes2d_ and edges2d_ maps
+        /*!
+            \return STAT_OK on success
+        */
+        void clear3dNodesAndEdges();
+
+        //! Update the nodes3d_ and edges3d_ with the latest nodes2d_ and edges 2d_
+        /*!
+            \return STAT_OK on success
+        */
+        StatError_t update3dNodesAndEdges();
+
+        //! Update the src->dst edge with edge
+        /*!
+            \param src - the source node
+            \param dst - the destination node
+            \param edge - the edge bit vector
+            \return STAT_OK on success
+
+            If the edge does not exist, create it, otherwise just merge
+        */
+        StatError_t update2dEdge(int src, int dst, StatBitVectorEdge_t *edge);
+
+        //! generate the 2d and 3d prefix trees based on nodes and edges
+        /*!
+            \param prefixTree2d - [in,out] the 2d prefix Tree
+            \param prefixTree3d - [in,out] the 3d prefix Tree
+            \return STAT_OK on success
+        */
+        StatError_t generateGraphs(graphlib_graph_p *prefixTree2d, graphlib_graph_p *prefixTree3d);
 
         //! Create stack traces
         /*!
@@ -425,7 +450,7 @@ class STAT_BackEnd
             \param iter - the iteration value to pass to the randomizer
             \return the generated graphlib graph
         */
-        graphlib_graph_p statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int nTasks, unsigned int functionFanout, int nEqClasses, unsigned int iter);
+        StatError_t statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int nTasks, unsigned int functionFanout, int nEqClasses, unsigned int iter);
 
         /****************/
         /* Private data */
@@ -442,21 +467,23 @@ class STAT_BackEnd
         bool isRunning_;                /*!< whether the target processes are running */
         bool useMrnetPrintf_;           /*!< whether to use MRNet's printf for logging */
         bool doGroupOps_;               /*!< do group operations through StackwalkerAPI */
-        bool withPython_; //TODO
+        bool isPyTrace_;                /*!< indicates whether the current trace includes Python script level functions */
         MRN::Network *network_;         /*!< the MRNet Network object */
         MRN::Rank myRank_;              /*!< this daemon's MRNet rank */
         MRN::Rank parentRank_;          /*!< the MRNet parent's rank */
         MRN::Port parentPort_;          /*!< the MRNet parent's port */
         MRN::Stream *broadcastStream_;  /*!< the main broadcast/acknowledgement stream */
         graphlib_graph_p prefixTree3d_; /*!< the 3D prefix tree */
-        graphlib_graph_p prefixTree2d_; /*!< the 2D prefix tree */
+        std::map<int, std::string> nodes2d_; /*!< the 2D prefix tree nodes */
+        std::map<int, std::string> nodes3d_; /*!< the 3D prefix tree nodes */
+        std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges2d_; /*!< the 2D prefix tree edges */
+        std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges3d_; /*!< the 3D prefix tree edges */
         MPIR_PROCDESC_EXT *proctab_;    /*!< the process table */
         StatDaemonLaunch_t launchType_; /*!< the launch type */
-        StatSample_t sampleType_;       /*!< type of sample we're currently collecting */
+        unsigned int sampleType_;       /*!< type of sample we're currently collecting */
         int nVariables_;                /*!< the number of variables to extract */
         StatVariable_t *extractVariables_;  /*!< a list of variables to extract for the current sample */
 
-        std::map<int, StatBitVectorEdge_t *> nodeInEdgeMap_;          /*!< a record of edge labels */
         std::map<int, Dyninst::Stackwalker::Walker *> processMap_;      /*!< the debug process objects */
         std::map<Dyninst::Stackwalker::Walker *, int> procsToRanks_;    /*!< translate a process into a rank */
 

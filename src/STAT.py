@@ -96,12 +96,13 @@ STAT_LOG_FE = _STAT.STAT_LOG_FE
 STAT_LOG_BE = _STAT.STAT_LOG_BE
 STAT_LOG_CP = _STAT.STAT_LOG_CP
 STAT_LOG_MRN = _STAT.STAT_LOG_MRN
-STAT_FUNCTION_NAME_ONLY = _STAT.STAT_FUNCTION_NAME_ONLY
-STAT_FUNCTION_AND_PC = _STAT.STAT_FUNCTION_AND_PC
-STAT_FUNCTION_AND_LINE = _STAT.STAT_FUNCTION_AND_LINE
-STAT_CR_FUNCTION_NAME_ONLY = _STAT.STAT_CR_FUNCTION_NAME_ONLY
-STAT_CR_FUNCTION_AND_PC = _STAT.STAT_CR_FUNCTION_AND_PC
-STAT_CR_FUNCTION_AND_LINE = _STAT.STAT_CR_FUNCTION_AND_LINE
+STAT_SAMPLE_FUNCTION_ONLY = _STAT.STAT_SAMPLE_FUNCTION_ONLY
+STAT_SAMPLE_LINE = _STAT.STAT_SAMPLE_LINE
+STAT_SAMPLE_PC = _STAT.STAT_SAMPLE_PC
+STAT_SAMPLE_COUNT_REP = _STAT.STAT_SAMPLE_COUNT_REP
+STAT_SAMPLE_THREADS = _STAT.STAT_SAMPLE_THREADS
+STAT_SAMPLE_CLEAR_ON_SAMPLE = _STAT.STAT_SAMPLE_CLEAR_ON_SAMPLE
+STAT_SAMPLE_PYTHON = _STAT.STAT_SAMPLE_PYTHON
 STAT_LAUNCH = _STAT.STAT_LAUNCH
 STAT_ATTACH = _STAT.STAT_ATTACH
 STAT_SERIAL_ATTACH = _STAT.STAT_SERIAL_ATTACH
@@ -157,8 +158,8 @@ class STAT_FrontEnd(_object):
     def launchAndSpawnDaemons(self, remoteNode = None, isStatBench = False): return _STAT.STAT_FrontEnd_launchAndSpawnDaemons(self, remoteNode, isStatBench)
     def setupForSerialAttach(self): return _STAT.STAT_FrontEnd_setupForSerialAttach(self)
     def launchMrnetTree(self, *args): return _STAT.STAT_FrontEnd_launchMrnetTree(self, *args)
-    def connectMrnetTree(self, blocking = True, isStatBench = False): return _STAT.STAT_FrontEnd_connectMrnetTree(self, blocking, isStatBench)
-    def setupConnectedMrnetTree(self, isStatBench = False): return _STAT.STAT_FrontEnd_setupConnectedMrnetTree(self, isStatBench)
+    def connectMrnetTree(self, blocking = True): return _STAT.STAT_FrontEnd_connectMrnetTree(self, blocking)
+    def setupConnectedMrnetTree(self): return _STAT.STAT_FrontEnd_setupConnectedMrnetTree(self)
     def attachApplication(self, blocking = True): return _STAT.STAT_FrontEnd_attachApplication(self, blocking)
     def pause(self, blocking = True): return _STAT.STAT_FrontEnd_pause(self, blocking)
     def resume(self, blocking = True): return _STAT.STAT_FrontEnd_resume(self, blocking)

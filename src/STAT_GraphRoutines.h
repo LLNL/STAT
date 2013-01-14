@@ -19,6 +19,19 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #ifndef __STAT_GRAPHROUTNINES_H
 #define __STAT_GRAPHROUTNINES_H
 
+#ifndef STAT_NO_STAT_H /* For merge scripts */
+  #include "STAT.h"
+#else
+enum StatSampleOptions_t {
+    STAT_SAMPLE_FUNCTION_ONLY = 0x00,
+    STAT_SAMPLE_LINE = 0x01,
+    STAT_SAMPLE_PC = 0x02,
+    STAT_SAMPLE_COUNT_REP = 0x04,
+    STAT_SAMPLE_THREADS = 0x08,
+    STAT_SAMPLE_CLEAR_ON_SAMPLE = 0x10,
+    STAT_SAMPLE_PYTHON = 0x20
+} ;
+#endif
 #include "graphlib.h"
 #include <string.h>
 #include <errno.h>
@@ -27,12 +40,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <stdint.h>
 
 #define STAT_GRAPH_CHUNK 8192
-
-#ifdef GRL_DYNAMIC_NODE_NAME
-#define GRAPH_FONT_SIZE 1
-#else
-#define GRAPH_FONT_SIZE -1
-#endif
 
 //! The scalar data type that makes up the bit vector
 typedef int64_t StatBitVector_t;
@@ -59,7 +66,7 @@ typedef struct
 unsigned int statStringHash(const char *str);
 
 //! Created a new graph of type sampleType with a root node
-graphlib_graph_p createRootedGraph(graphlib_functiontable_p functions);
+graphlib_graph_p createRootedGraph(unsigned int sampleType);
 
 //! Initialize a bit-vector edge
 StatBitVectorEdge_t *initializeBitVectorEdge(int numTasks);
@@ -278,5 +285,12 @@ void statFreeCountRepEdge(void *edge);
     \return the checksum of the edge
 */
 long statCountRepEdgeCheckSum(const void *edge);
+
+//! Translate a full bit vector edge into a count + representative edge
+/*!
+    \param edge - a pointer to the edge object
+    \return the count + representative version of the edge
+*/
+StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge);
 
 #endif

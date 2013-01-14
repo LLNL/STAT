@@ -195,6 +195,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     isAttached_ = false;
     isConnected_ = false;
     isPendingAck_ = false;
+    isStatBench_ = false;
     hasFatalError_ = false;
     mergeStream_ = NULL;
     broadcastStream_ = NULL;
@@ -327,6 +328,7 @@ StatError_t STAT_FrontEnd::attachAndSpawnDaemons(unsigned int pid, char *remoteN
 
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Attaching to job launcher %s:%d and launching tool daemons...\n", remoteNode, pid);
 
+    isStatBench_ = false;
     launcherPid_ = pid;
     if (remoteNode_ != NULL)
         free(remoteNode_);
@@ -358,6 +360,7 @@ StatError_t STAT_FrontEnd::launchAndSpawnDaemons(char *remoteNode, bool isStatBe
 
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Launching application and tool daemons...\n");
 
+    isStatBench_ = isStatBench;
     if (remoteNode_ != NULL)
         free(remoteNode_);
     if (remoteNode != NULL)
@@ -372,7 +375,7 @@ StatError_t STAT_FrontEnd::launchAndSpawnDaemons(char *remoteNode, bool isStatBe
     else
         remoteNode_ = NULL;
 
-    statError = launchDaemons(isStatBench);
+    statError = launchDaemons();
     if (statError != STAT_OK)
     {
         printMsg(statError, __FILE__, __LINE__, "Failed to launch and spawn daemons\n");
@@ -388,10 +391,10 @@ StatError_t STAT_FrontEnd::setupForSerialAttach()
     lmonState = lmonState | 0x00000002;
     nApplProcs_ = proctabSize_;
 
-    return launchDaemons(false);
+    return launchDaemons();
 }
 
-StatError_t STAT_FrontEnd::launchDaemons(bool isStatBench)
+StatError_t STAT_FrontEnd::launchDaemons()
 {
     int i, daemonArgc;
     unsigned int proctabSize;
@@ -451,7 +454,7 @@ StatError_t STAT_FrontEnd::launchDaemons(bool isStatBench)
 
         /* Register STAT's check status function */
         lmonState = 0;
-        if (isStatBench == false)
+        if (isStatBench_ == false)
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering status CB function with LaunchMON\n");
             lmonRet = LMON_fe_regStatusCB(lmonSession_, lmonStatusCb);
@@ -634,7 +637,7 @@ StatError_t STAT_FrontEnd::launchDaemons(bool isStatBench)
     /* Set the application node list based on the process table */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tPopulating application node list\n");
     startTime.setTime();
-    if (isStatBench == true)
+    if (isStatBench_ == true)
         statError = STATBench_setAppNodeList();
     else
         statError = setAppNodeList();
@@ -705,7 +708,7 @@ void topologyChangeCb(Event *event, void *statObject)
     }
 }
 
-StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, bool shareAppNodes, bool isStatBench)
+StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, bool shareAppNodes)
 {
     int daemonArgc, statArgc, i;
     char topologyFileName[BUFSIZE], **daemonArgv, temp[BUFSIZE];
@@ -859,7 +862,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         }
     } // if (applicationOption_ == STAT_SERIAL_ATTACH)
     else
-    {    
+    {
 #ifdef CRAYXT
     #ifdef MRNET31
         map<string, string> attrs;
@@ -956,7 +959,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 
     /* Send MRNet connection info to daemons */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tConnecting to daemons...\n");
-    if (isStatBench == false)
+    if (isStatBench_ == false)
     {
         /* for STATbench we do this when creating traces since the proctab is modified */
         startTime.setTime();
@@ -987,7 +990,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         /* If we're blocking, wait for all BEs to connect to MRNet tree */
         if (blocking == true)
         {
-            statError = connectMrnetTree(blocking, isStatBench);
+            statError = connectMrnetTree(blocking);
             if (statError != STAT_OK)
             {
                 printMsg(statError, __FILE__, __LINE__, "Failed to connect MRNet tree\n");
@@ -999,7 +1002,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
+StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking)
 {
     static int connectTimeout = -1, i = 0;
     char *connectTimeoutString;
@@ -1074,7 +1077,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking, bool isStatBench)
 }
 
 
-StatError_t STAT_FrontEnd::setupConnectedMrnetTree(bool isStatBench)
+StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
 {
     int filterId, intRet, tag;
     char fullTopologyFile[BUFSIZE];
@@ -1089,11 +1092,14 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree(bool isStatBench)
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting up STAT based on connected MRNet tree\n");
 
     /* Now that we're fully connected, determine the BE merge order */
-    statError = setRanksList();
-    if (statError != STAT_OK)
+    if (isStatBench_ == false)
     {
-        printMsg(statError, __FILE__, __LINE__, "Failed to set ranks list\n");
-        return statError;
+        statError = setRanksList();
+        if (statError != STAT_OK)
+        {
+            printMsg(statError, __FILE__, __LINE__, "Failed to set ranks list\n");
+            return statError;
+        }
     }
 
     /* Dump the fully connected topology to a file */
@@ -1278,7 +1284,7 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree(bool isStatBench)
     addPerfData("\tTotal MRNet Launch Time", (totalEndTime - totalStartTime).getDoubleTime());
 
     /* If we're STATBench, then release the job launcher in case we need to debug */
-    if (isStatBench)
+    if (isStatBench_)
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STATBench releasing the job launcher\n");
         if (isLaunched_ == true)
@@ -1757,14 +1763,26 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
 
     /* Next populate the hostToMrnetRankMap */
     leafInfo_.networkTopology->get_BackEndNodes(backEndNodes);
-    for (backEndNodesIter = backEndNodes.begin(); backEndNodesIter != backEndNodes.end(); backEndNodesIter++)
+    if (isStatBench_ == true)
     {
-        node = *backEndNodesIter;
-        tempString = node->get_HostName();
-        dotPos = tempString.find_first_of(".");
-        if (dotPos != string::npos)
-            tempString = tempString.substr(0, dotPos);
-        hostToMrnetRankMap[tempString.c_str()] = node->get_Rank();
+        for (backEndNodesIter = backEndNodes.begin(), tempMapIter = tempMap.begin(); backEndNodesIter != backEndNodes.end() && tempMapIter != tempMap.end(); backEndNodesIter++, tempMapIter++)
+        {
+            node = *backEndNodesIter;
+            hostToMrnetRankMap[tempMapIter->first] = node->get_Rank();
+        }
+    }
+    else
+    {
+        for (backEndNodesIter = backEndNodes.begin(); backEndNodesIter != backEndNodes.end(); backEndNodesIter++)
+        {
+            node = *backEndNodesIter;
+            tempString = node->get_HostName();
+            dotPos = tempString.find_first_of(".");
+            if (dotPos != string::npos)
+                tempString = tempString.substr(0, dotPos);
+            /* TODO: this won't work if we move to multiple daemons per node */
+            hostToMrnetRankMap[tempString.c_str()] = node->get_Rank();
+        }
     }
 
     /* Next sort each daemon's rank list and store it in the IntList_t ranks map */
@@ -2335,7 +2353,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         for (i = 0; i < parentCount; i++)
         {
             fprintf(file, "%s =>", treeList[parentIter].c_str());
-            
+
             /* Add the children for this layer */
             for (j = 0; j < (applicationNodeMultiSet_.size() / parentCount) + (applicationNodeMultiSet_.size() % parentCount > i ? 1 : 0); j++)
             {
@@ -2691,7 +2709,7 @@ bool STAT_FrontEnd::isRunning()
     return isRunning_;
 }
 
-StatError_t STAT_FrontEnd::sampleStackTraces(StatSample_t sampleType, bool withThreads, bool withPython, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, char *variableSpecification)
+StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, char *variableSpecification)
 {
     StatError_t statError;
 
@@ -2731,7 +2749,7 @@ StatError_t STAT_FrontEnd::sampleStackTraces(StatSample_t sampleType, bool withT
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d traces with %d frequency, %d retries with %d frequency\n", nTraces, traceFrequency, nRetries, retryFrequency);
 
     /* Send request to daemons to gather stack traces and wait for confirmation */
-    if (broadcastStream_->send(PROT_SAMPLE_TRACES, "%ud %ud %ud %ud %ud %ud %ud %ud %s", nTraces, traceFrequency, nRetries, retryFrequency, sampleType, withThreads, clearOnSample, withPython, variableSpecification) == -1)
+    if (broadcastStream_->send(PROT_SAMPLE_TRACES, "%ud %ud %ud %ud %ud %s", nTraces, traceFrequency, nRetries, retryFrequency, sampleType, variableSpecification) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send request to sample\n");
         return STAT_MRNET_ERROR;
@@ -2754,6 +2772,7 @@ StatError_t STAT_FrontEnd::sampleStackTraces(StatSample_t sampleType, bool withT
             return statError;
         }
     }
+
     return STAT_OK;
 }
 
@@ -2873,11 +2892,11 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     graphlib_error_t graphlibError;
     IntList_t *hostRanks;
     PacketPtr packet;
-    StatSample_t sampleType;
+    unsigned int sampleType;
     set<int>::iterator missingRanksIter;
     StatBitVectorEdge_t *edge;
     StatCountRepEdge_t *countRepEdge;
-    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(void *)errorLabel, GRAPH_FONT_SIZE};
+    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(void *)errorLabel, -1};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
 
     /* Receive the traces */
@@ -2936,7 +2955,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 
     /* Deserialize graph */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph\n");
-    if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE)
+    if (sampleType & STAT_SAMPLE_COUNT_REP)
         graphlibError = graphlib_deserializeBasicGraph(&stackTraces, statCountRepFunctions, byteArray, byteArrayLen);
     else
         graphlibError = graphlib_deserializeBasicGraph(&stackTraces, statBitVectorFunctions, byteArray, byteArrayLen);
@@ -2949,7 +2968,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     endTime.setTime();
     addPerfData("\tMerge", (endTime - startTime).getDoubleTime());
 
-    if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE)
+    if (sampleType & STAT_SAMPLE_COUNT_REP)
     {
         sortedStackTraces = stackTraces;
         stackTraces = NULL;
@@ -3005,7 +3024,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Adding missing ranks\n");
         startTime.setTime();
 
-        if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE)
+        if (sampleType & STAT_SAMPLE_COUNT_REP)
         {
             countRepEdge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
             if (countRepEdge == NULL)
@@ -3034,10 +3053,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         }
 
         graphlibError = graphlib_newGraph(&withMissingStackTraces, statCountRepFunctions);
-        if (sampleType == STAT_CR_FUNCTION_NAME_ONLY || sampleType == STAT_CR_FUNCTION_AND_PC || sampleType == STAT_CR_FUNCTION_AND_LINE)
-           withMissingStackTraces = createRootedGraph(statCountRepFunctions);
-        else
-           withMissingStackTraces = createRootedGraph(statBitVectorFunctions);
+        withMissingStackTraces = createRootedGraph(sampleType);
         if (withMissingStackTraces == NULL)
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating rooted graph\n");
@@ -3137,7 +3153,7 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
     uint64_t byteArrayLen;
     PacketPtr packet;
     StatBitVectorEdge_t *unorderedEdge, *orderedEdge;
-    StatSample_t sampleType;
+    unsigned int sampleType;
     list<int>::iterator ranksIter;
     set<int>::iterator missingRanksIter;
     IntList_t *hostRanks;
@@ -3859,7 +3875,7 @@ StatError_t STAT_FrontEnd::addLauncherArgv(const char *launcherArg)
 
     return STAT_OK;
 }
-        
+
 StatError_t STAT_FrontEnd::addSerialProcess(const char *pidString)
 {
     unsigned int pid;
@@ -3874,7 +3890,7 @@ StatError_t STAT_FrontEnd::addSerialProcess(const char *pidString)
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
         return STAT_ALLOCATE_ERROR;
     }
-        
+
     delimPos = remotePid.find_first_of("@");
     if (delimPos != string::npos)
     {
@@ -4359,9 +4375,9 @@ StatError_t STAT_FrontEnd::STATBench_setAppNodeList()
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, bool countRep)
+StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, unsigned int sampleType)
 {
-    int tag, intRet, iCountRep = 0;
+    int tag, intRet;
     char *currentNode;
     char name[BUFSIZE];
     unsigned int i, j;
@@ -4374,8 +4390,6 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
     /* Rework the proc table to represent the STATBench emulated application */
     startTime.setTime();
 
-    if (countRep == true)
-        iCountRep = 1;
     for (i = 0; i < proctabSize_; i++)
     {
         if (proctab_[i].pd.executable_name != NULL)
@@ -4401,7 +4415,7 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
         {
             proctab_[i * nTasks + j].mpirank = i * nTasks + j;
             proctab_[i * nTasks + j].pd.host_name = strdup(name);
-            if (proctab_[i * nTasks + j].pd.host_name == NULL) 
+            if (proctab_[i * nTasks + j].pd.host_name == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to strdup(%s) for proctab_[%d]\n", strerror(errno), name, i * nTasks + j);
                 return STAT_ALLOCATE_ERROR;
@@ -4445,10 +4459,10 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
         return STAT_NOT_CONNECTED_ERROR;
     }
 
-    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Generating traces with parameters %d %d %d %d %d %d...\n", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, iCountRep);
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Generating traces with parameters %d %d %d %d %d %u...\n", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, sampleType);
 
     /* Send request to daemons to gather stack traces and wait for confirmation */
-    if (broadcastStream_->send(PROT_STATBENCH_CREATE_TRACES, "%ud %ud %ud %ud %d %d", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, iCountRep) == -1)
+    if (broadcastStream_->send(PROT_STATBENCH_CREATE_TRACES, "%ud %ud %ud %ud %d %ud", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, sampleType) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send request to create traces\n");
         return STAT_MRNET_ERROR;

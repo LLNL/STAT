@@ -37,21 +37,22 @@ namespace std{
 #define STAT_UNKNOWN -1
 
 enum StatLogOptions_t {
-               STAT_LOG_NONE = 0x00,
-               STAT_LOG_FE = 0x01,
-               STAT_LOG_BE = 0x02,
-               STAT_LOG_CP = 0x04,
-               STAT_LOG_MRN = 0x08
+    STAT_LOG_NONE = 0x00,
+    STAT_LOG_FE = 0x01,
+    STAT_LOG_BE = 0x02,
+    STAT_LOG_CP = 0x04,
+    STAT_LOG_MRN = 0x08
 } ;
 
-typedef enum {
-    STAT_FUNCTION_NAME_ONLY = 0,
-    STAT_FUNCTION_AND_PC,
-    STAT_FUNCTION_AND_LINE,
-    STAT_CR_FUNCTION_NAME_ONLY,
-    STAT_CR_FUNCTION_AND_PC,
-    STAT_CR_FUNCTION_AND_LINE
-} StatSample_t;
+enum StatSampleOptions_t {
+    STAT_SAMPLE_FUNCTION_ONLY = 0x00,
+    STAT_SAMPLE_LINE = 0x01,
+    STAT_SAMPLE_PC = 0x02,
+    STAT_SAMPLE_COUNT_REP = 0x04,
+    STAT_SAMPLE_THREADS = 0x08,
+    STAT_SAMPLE_CLEAR_ON_SAMPLE = 0x10,
+    STAT_SAMPLE_PYTHON = 0x20
+} ;
 
 typedef enum {
     STAT_LAUNCH = 0,
@@ -113,14 +114,14 @@ class STAT_FrontEnd
         StatError_t attachAndSpawnDaemons(unsigned int pid, char *remoteNode = NULL);
         StatError_t launchAndSpawnDaemons(char *remoteNode = NULL, bool isStatBench = false);
         StatError_t setupForSerialAttach();
-        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false, bool isStatBench = false);
-        StatError_t connectMrnetTree(bool blocking = true, bool isStatBench = false);
-        StatError_t setupConnectedMrnetTree(bool isStatBench = false);
+        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false);
+        StatError_t connectMrnetTree(bool blocking = true);
+        StatError_t setupConnectedMrnetTree();
         StatError_t attachApplication(bool blocking = true);
         StatError_t pause(bool blocking = true);
         StatError_t resume(bool blocking = true);
         bool isRunning();
-        StatError_t sampleStackTraces(StatSample_t sampleType, bool withThreads, bool withPython, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
         StatError_t gatherLastTrace(bool blocking = true);
         StatError_t gatherTraces(bool blocking = true);
         char *getLastDotFilename();

@@ -2685,15 +2685,14 @@ SWIG_Python_MustGetPtr(PyObject *obj, swig_type_info *ty, int argnum, int flags)
 #define SWIGTYPE_p_STAT_FrontEnd swig_types[0]
 #define SWIGTYPE_p_StatError_t swig_types[1]
 #define SWIGTYPE_p_StatLaunch_t swig_types[2]
-#define SWIGTYPE_p_StatSample_t swig_types[3]
-#define SWIGTYPE_p_StatTopology_t swig_types[4]
-#define SWIGTYPE_p_StatVerbose_t swig_types[5]
-#define SWIGTYPE_p_char swig_types[6]
-#define SWIGTYPE_p_int swig_types[7]
-#define SWIGTYPE_p_intArray swig_types[8]
-#define SWIGTYPE_p_p_char swig_types[9]
-static swig_type_info *swig_types[11];
-static swig_module_info swig_module = {swig_types, 10, 0, 0, 0, 0};
+#define SWIGTYPE_p_StatTopology_t swig_types[3]
+#define SWIGTYPE_p_StatVerbose_t swig_types[4]
+#define SWIGTYPE_p_char swig_types[5]
+#define SWIGTYPE_p_int swig_types[6]
+#define SWIGTYPE_p_intArray swig_types[7]
+#define SWIGTYPE_p_p_char swig_types[8]
+static swig_type_info *swig_types[10];
+static swig_module_info swig_module = {swig_types, 9, 0, 0, 0, 0};
 #define SWIG_TypeQuery(name) SWIG_TypeQueryModule(&swig_module, &swig_module, name)
 #define SWIG_MangledTypeQuery(name) SWIG_MangledTypeQueryModule(&swig_module, &swig_module, name)
 
@@ -3730,88 +3729,6 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_0(PyObject *SWIGU
   char *arg4 = (char *) 0 ;
   bool arg5 ;
   bool arg6 ;
-  bool arg7 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  int val2 ;
-  int ecode2 = 0 ;
-  int res3 ;
-  char *buf3 = 0 ;
-  int alloc3 = 0 ;
-  int res4 ;
-  char *buf4 = 0 ;
-  int alloc4 = 0 ;
-  bool val5 ;
-  int ecode5 = 0 ;
-  bool val6 ;
-  int ecode6 = 0 ;
-  bool val7 ;
-  int ecode7 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
-  PyObject * obj3 = 0 ;
-  PyObject * obj4 = 0 ;
-  PyObject * obj5 = 0 ;
-  PyObject * obj6 = 0 ;
-  StatError_t result;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOOO:STAT_FrontEnd_launchMrnetTree",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_STAT_FrontEnd, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "STAT_FrontEnd_launchMrnetTree" "', argument " "1"" of type '" "STAT_FrontEnd *""'"); 
-  }
-  arg1 = reinterpret_cast< STAT_FrontEnd * >(argp1);
-  ecode2 = SWIG_AsVal_int(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_launchMrnetTree" "', argument " "2"" of type '" "StatTopology_t""'");
-  } 
-  arg2 = static_cast< StatTopology_t >(val2);
-  res3 = SWIG_AsCharPtrAndSize(obj2, &buf3, NULL, &alloc3);
-  if (!SWIG_IsOK(res3)) {
-    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "STAT_FrontEnd_launchMrnetTree" "', argument " "3"" of type '" "char *""'");
-  }
-  arg3 = reinterpret_cast< char * >(buf3);
-  res4 = SWIG_AsCharPtrAndSize(obj3, &buf4, NULL, &alloc4);
-  if (!SWIG_IsOK(res4)) {
-    SWIG_exception_fail(SWIG_ArgError(res4), "in method '" "STAT_FrontEnd_launchMrnetTree" "', argument " "4"" of type '" "char *""'");
-  }
-  arg4 = reinterpret_cast< char * >(buf4);
-  ecode5 = SWIG_AsVal_bool(obj4, &val5);
-  if (!SWIG_IsOK(ecode5)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "STAT_FrontEnd_launchMrnetTree" "', argument " "5"" of type '" "bool""'");
-  } 
-  arg5 = static_cast< bool >(val5);
-  ecode6 = SWIG_AsVal_bool(obj5, &val6);
-  if (!SWIG_IsOK(ecode6)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "STAT_FrontEnd_launchMrnetTree" "', argument " "6"" of type '" "bool""'");
-  } 
-  arg6 = static_cast< bool >(val6);
-  ecode7 = SWIG_AsVal_bool(obj6, &val7);
-  if (!SWIG_IsOK(ecode7)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode7), "in method '" "STAT_FrontEnd_launchMrnetTree" "', argument " "7"" of type '" "bool""'");
-  } 
-  arg7 = static_cast< bool >(val7);
-  result = (StatError_t)(arg1)->launchMrnetTree(arg2,arg3,arg4,arg5,arg6,arg7);
-  resultobj = SWIG_From_int(static_cast< int >(result));
-  if (alloc3 == SWIG_NEWOBJ) delete[] buf3;
-  if (alloc4 == SWIG_NEWOBJ) delete[] buf4;
-  return resultobj;
-fail:
-  if (alloc3 == SWIG_NEWOBJ) delete[] buf3;
-  if (alloc4 == SWIG_NEWOBJ) delete[] buf4;
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
-  StatTopology_t arg2 ;
-  char *arg3 = (char *) 0 ;
-  char *arg4 = (char *) 0 ;
-  bool arg5 ;
-  bool arg6 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   int val2 ;
@@ -3877,7 +3794,7 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_2(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
   StatTopology_t arg2 ;
@@ -3941,7 +3858,7 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_3(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_2(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
   StatTopology_t arg2 ;
@@ -3996,7 +3913,7 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_4(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_3(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
   StatTopology_t arg2 ;
@@ -4041,12 +3958,12 @@ fail:
 
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree(PyObject *self, PyObject *args) {
   int argc;
-  PyObject *argv[8];
+  PyObject *argv[7];
   int ii;
   
   if (!PyTuple_Check(args)) SWIG_fail;
   argc = (int)PyObject_Length(args);
-  for (ii = 0; (ii < argc) && (ii < 7); ii++) {
+  for (ii = 0; (ii < argc) && (ii < 6); ii++) {
     argv[ii] = PyTuple_GET_ITEM(args,ii);
   }
   if (argc == 3) {
@@ -4063,7 +3980,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree(PyObject *self, PyObjec
         int res = SWIG_AsCharPtrAndSize(argv[2], 0, NULL, 0);
         _v = SWIG_CheckState(res);
         if (_v) {
-          return _wrap_STAT_FrontEnd_launchMrnetTree__SWIG_4(self, args);
+          return _wrap_STAT_FrontEnd_launchMrnetTree__SWIG_3(self, args);
         }
       }
     }
@@ -4085,7 +4002,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree(PyObject *self, PyObjec
           int res = SWIG_AsCharPtrAndSize(argv[3], 0, NULL, 0);
           _v = SWIG_CheckState(res);
           if (_v) {
-            return _wrap_STAT_FrontEnd_launchMrnetTree__SWIG_3(self, args);
+            return _wrap_STAT_FrontEnd_launchMrnetTree__SWIG_2(self, args);
           }
         }
       }
@@ -4113,7 +4030,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree(PyObject *self, PyObjec
               _v = SWIG_CheckState(res);
             }
             if (_v) {
-              return _wrap_STAT_FrontEnd_launchMrnetTree__SWIG_2(self, args);
+              return _wrap_STAT_FrontEnd_launchMrnetTree__SWIG_1(self, args);
             }
           }
         }
@@ -4147,48 +4064,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree(PyObject *self, PyObjec
                 _v = SWIG_CheckState(res);
               }
               if (_v) {
-                return _wrap_STAT_FrontEnd_launchMrnetTree__SWIG_1(self, args);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  if (argc == 7) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      {
-        int res = SWIG_AsVal_int(argv[1], NULL);
-        _v = SWIG_CheckState(res);
-      }
-      if (_v) {
-        int res = SWIG_AsCharPtrAndSize(argv[2], 0, NULL, 0);
-        _v = SWIG_CheckState(res);
-        if (_v) {
-          int res = SWIG_AsCharPtrAndSize(argv[3], 0, NULL, 0);
-          _v = SWIG_CheckState(res);
-          if (_v) {
-            {
-              int res = SWIG_AsVal_bool(argv[4], NULL);
-              _v = SWIG_CheckState(res);
-            }
-            if (_v) {
-              {
-                int res = SWIG_AsVal_bool(argv[5], NULL);
-                _v = SWIG_CheckState(res);
-              }
-              if (_v) {
-                {
-                  int res = SWIG_AsVal_bool(argv[6], NULL);
-                  _v = SWIG_CheckState(res);
-                }
-                if (_v) {
-                  return _wrap_STAT_FrontEnd_launchMrnetTree__SWIG_0(self, args);
-                }
+                return _wrap_STAT_FrontEnd_launchMrnetTree__SWIG_0(self, args);
               }
             }
           }
@@ -4200,7 +4076,6 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree(PyObject *self, PyObjec
 fail:
   SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number of arguments for overloaded function 'STAT_FrontEnd_launchMrnetTree'.\n"
     "  Possible C/C++ prototypes are:\n"
-    "    launchMrnetTree(STAT_FrontEnd *,StatTopology_t,char *,char *,bool,bool,bool)\n"
     "    launchMrnetTree(STAT_FrontEnd *,StatTopology_t,char *,char *,bool,bool)\n"
     "    launchMrnetTree(STAT_FrontEnd *,StatTopology_t,char *,char *,bool)\n"
     "    launchMrnetTree(STAT_FrontEnd *,StatTopology_t,char *,char *)\n"
@@ -4210,46 +4085,6 @@ fail:
 
 
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_connectMrnetTree__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
-  bool arg2 ;
-  bool arg3 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  bool val2 ;
-  int ecode2 = 0 ;
-  bool val3 ;
-  int ecode3 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  PyObject * obj2 = 0 ;
-  StatError_t result;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OOO:STAT_FrontEnd_connectMrnetTree",&obj0,&obj1,&obj2)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_STAT_FrontEnd, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "STAT_FrontEnd_connectMrnetTree" "', argument " "1"" of type '" "STAT_FrontEnd *""'"); 
-  }
-  arg1 = reinterpret_cast< STAT_FrontEnd * >(argp1);
-  ecode2 = SWIG_AsVal_bool(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_connectMrnetTree" "', argument " "2"" of type '" "bool""'");
-  } 
-  arg2 = static_cast< bool >(val2);
-  ecode3 = SWIG_AsVal_bool(obj2, &val3);
-  if (!SWIG_IsOK(ecode3)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "STAT_FrontEnd_connectMrnetTree" "', argument " "3"" of type '" "bool""'");
-  } 
-  arg3 = static_cast< bool >(val3);
-  result = (StatError_t)(arg1)->connectMrnetTree(arg2,arg3);
-  resultobj = SWIG_From_int(static_cast< int >(result));
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_connectMrnetTree__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
   bool arg2 ;
@@ -4280,7 +4115,7 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_connectMrnetTree__SWIG_2(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+SWIGINTERN PyObject *_wrap_STAT_FrontEnd_connectMrnetTree__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
   void *argp1 = 0 ;
@@ -4304,12 +4139,12 @@ fail:
 
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_connectMrnetTree(PyObject *self, PyObject *args) {
   int argc;
-  PyObject *argv[4];
+  PyObject *argv[3];
   int ii;
   
   if (!PyTuple_Check(args)) SWIG_fail;
   argc = (int)PyObject_Length(args);
-  for (ii = 0; (ii < argc) && (ii < 3); ii++) {
+  for (ii = 0; (ii < argc) && (ii < 2); ii++) {
     argv[ii] = PyTuple_GET_ITEM(args,ii);
   }
   if (argc == 1) {
@@ -4318,7 +4153,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_connectMrnetTree(PyObject *self, PyObje
     int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
     _v = SWIG_CheckState(res);
     if (_v) {
-      return _wrap_STAT_FrontEnd_connectMrnetTree__SWIG_2(self, args);
+      return _wrap_STAT_FrontEnd_connectMrnetTree__SWIG_1(self, args);
     }
   }
   if (argc == 2) {
@@ -4332,28 +4167,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_connectMrnetTree(PyObject *self, PyObje
         _v = SWIG_CheckState(res);
       }
       if (_v) {
-        return _wrap_STAT_FrontEnd_connectMrnetTree__SWIG_1(self, args);
-      }
-    }
-  }
-  if (argc == 3) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      {
-        int res = SWIG_AsVal_bool(argv[1], NULL);
-        _v = SWIG_CheckState(res);
-      }
-      if (_v) {
-        {
-          int res = SWIG_AsVal_bool(argv[2], NULL);
-          _v = SWIG_CheckState(res);
-        }
-        if (_v) {
-          return _wrap_STAT_FrontEnd_connectMrnetTree__SWIG_0(self, args);
-        }
+        return _wrap_STAT_FrontEnd_connectMrnetTree__SWIG_0(self, args);
       }
     }
   }
@@ -4361,45 +4175,13 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_connectMrnetTree(PyObject *self, PyObje
 fail:
   SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number of arguments for overloaded function 'STAT_FrontEnd_connectMrnetTree'.\n"
     "  Possible C/C++ prototypes are:\n"
-    "    connectMrnetTree(STAT_FrontEnd *,bool,bool)\n"
     "    connectMrnetTree(STAT_FrontEnd *,bool)\n"
     "    connectMrnetTree(STAT_FrontEnd *)\n");
   return NULL;
 }
 
 
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_setupConnectedMrnetTree__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
-  PyObject *resultobj = 0;
-  STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
-  bool arg2 ;
-  void *argp1 = 0 ;
-  int res1 = 0 ;
-  bool val2 ;
-  int ecode2 = 0 ;
-  PyObject * obj0 = 0 ;
-  PyObject * obj1 = 0 ;
-  StatError_t result;
-  
-  if (!PyArg_ParseTuple(args,(char *)"OO:STAT_FrontEnd_setupConnectedMrnetTree",&obj0,&obj1)) SWIG_fail;
-  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_STAT_FrontEnd, 0 |  0 );
-  if (!SWIG_IsOK(res1)) {
-    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "STAT_FrontEnd_setupConnectedMrnetTree" "', argument " "1"" of type '" "STAT_FrontEnd *""'"); 
-  }
-  arg1 = reinterpret_cast< STAT_FrontEnd * >(argp1);
-  ecode2 = SWIG_AsVal_bool(obj1, &val2);
-  if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_setupConnectedMrnetTree" "', argument " "2"" of type '" "bool""'");
-  } 
-  arg2 = static_cast< bool >(val2);
-  result = (StatError_t)(arg1)->setupConnectedMrnetTree(arg2);
-  resultobj = SWIG_From_int(static_cast< int >(result));
-  return resultobj;
-fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_setupConnectedMrnetTree__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+SWIGINTERN PyObject *_wrap_STAT_FrontEnd_setupConnectedMrnetTree(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
   void *argp1 = 0 ;
@@ -4417,50 +4199,6 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_setupConnectedMrnetTree__SWIG_1(PyObjec
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
 fail:
-  return NULL;
-}
-
-
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_setupConnectedMrnetTree(PyObject *self, PyObject *args) {
-  int argc;
-  PyObject *argv[3];
-  int ii;
-  
-  if (!PyTuple_Check(args)) SWIG_fail;
-  argc = (int)PyObject_Length(args);
-  for (ii = 0; (ii < argc) && (ii < 2); ii++) {
-    argv[ii] = PyTuple_GET_ITEM(args,ii);
-  }
-  if (argc == 1) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      return _wrap_STAT_FrontEnd_setupConnectedMrnetTree__SWIG_1(self, args);
-    }
-  }
-  if (argc == 2) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      {
-        int res = SWIG_AsVal_bool(argv[1], NULL);
-        _v = SWIG_CheckState(res);
-      }
-      if (_v) {
-        return _wrap_STAT_FrontEnd_setupConnectedMrnetTree__SWIG_0(self, args);
-      }
-    }
-  }
-  
-fail:
-  SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number of arguments for overloaded function 'STAT_FrontEnd_setupConnectedMrnetTree'.\n"
-    "  Possible C/C++ prototypes are:\n"
-    "    setupConnectedMrnetTree(STAT_FrontEnd *,bool)\n"
-    "    setupConnectedMrnetTree(STAT_FrontEnd *)\n");
   return NULL;
 }
 
@@ -4781,39 +4519,30 @@ fail:
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_sampleStackTraces__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
-  StatSample_t arg2 ;
-  bool arg3 ;
-  bool arg4 ;
-  bool arg5 ;
+  unsigned int arg2 ;
+  unsigned int arg3 ;
+  unsigned int arg4 ;
+  unsigned int arg5 ;
   unsigned int arg6 ;
-  unsigned int arg7 ;
-  unsigned int arg8 ;
-  unsigned int arg9 ;
-  bool arg10 ;
-  char *arg11 = (char *) 0 ;
+  bool arg7 ;
+  char *arg8 = (char *) 0 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  int val2 ;
+  unsigned int val2 ;
   int ecode2 = 0 ;
-  bool val3 ;
+  unsigned int val3 ;
   int ecode3 = 0 ;
-  bool val4 ;
+  unsigned int val4 ;
   int ecode4 = 0 ;
-  bool val5 ;
+  unsigned int val5 ;
   int ecode5 = 0 ;
   unsigned int val6 ;
   int ecode6 = 0 ;
-  unsigned int val7 ;
+  bool val7 ;
   int ecode7 = 0 ;
-  unsigned int val8 ;
-  int ecode8 = 0 ;
-  unsigned int val9 ;
-  int ecode9 = 0 ;
-  bool val10 ;
-  int ecode10 = 0 ;
-  int res11 ;
-  char *buf11 = 0 ;
-  int alloc11 = 0 ;
+  int res8 ;
+  char *buf8 = 0 ;
+  int alloc8 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
@@ -4822,73 +4551,55 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_sampleStackTraces__SWIG_0(PyObject *SWI
   PyObject * obj5 = 0 ;
   PyObject * obj6 = 0 ;
   PyObject * obj7 = 0 ;
-  PyObject * obj8 = 0 ;
-  PyObject * obj9 = 0 ;
-  PyObject * obj10 = 0 ;
   StatError_t result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOOOO:STAT_FrontEnd_sampleStackTraces",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8,&obj9,&obj10)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOO:STAT_FrontEnd_sampleStackTraces",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_STAT_FrontEnd, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "1"" of type '" "STAT_FrontEnd *""'"); 
   }
   arg1 = reinterpret_cast< STAT_FrontEnd * >(argp1);
-  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  ecode2 = SWIG_AsVal_unsigned_SS_int(obj1, &val2);
   if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "2"" of type '" "StatSample_t""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "2"" of type '" "unsigned int""'");
   } 
-  arg2 = static_cast< StatSample_t >(val2);
-  ecode3 = SWIG_AsVal_bool(obj2, &val3);
+  arg2 = static_cast< unsigned int >(val2);
+  ecode3 = SWIG_AsVal_unsigned_SS_int(obj2, &val3);
   if (!SWIG_IsOK(ecode3)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "3"" of type '" "bool""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "3"" of type '" "unsigned int""'");
   } 
-  arg3 = static_cast< bool >(val3);
-  ecode4 = SWIG_AsVal_bool(obj3, &val4);
+  arg3 = static_cast< unsigned int >(val3);
+  ecode4 = SWIG_AsVal_unsigned_SS_int(obj3, &val4);
   if (!SWIG_IsOK(ecode4)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "4"" of type '" "bool""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "4"" of type '" "unsigned int""'");
   } 
-  arg4 = static_cast< bool >(val4);
-  ecode5 = SWIG_AsVal_bool(obj4, &val5);
+  arg4 = static_cast< unsigned int >(val4);
+  ecode5 = SWIG_AsVal_unsigned_SS_int(obj4, &val5);
   if (!SWIG_IsOK(ecode5)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "5"" of type '" "bool""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "5"" of type '" "unsigned int""'");
   } 
-  arg5 = static_cast< bool >(val5);
+  arg5 = static_cast< unsigned int >(val5);
   ecode6 = SWIG_AsVal_unsigned_SS_int(obj5, &val6);
   if (!SWIG_IsOK(ecode6)) {
     SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "6"" of type '" "unsigned int""'");
   } 
   arg6 = static_cast< unsigned int >(val6);
-  ecode7 = SWIG_AsVal_unsigned_SS_int(obj6, &val7);
+  ecode7 = SWIG_AsVal_bool(obj6, &val7);
   if (!SWIG_IsOK(ecode7)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode7), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "7"" of type '" "unsigned int""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode7), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "7"" of type '" "bool""'");
   } 
-  arg7 = static_cast< unsigned int >(val7);
-  ecode8 = SWIG_AsVal_unsigned_SS_int(obj7, &val8);
-  if (!SWIG_IsOK(ecode8)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode8), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "8"" of type '" "unsigned int""'");
-  } 
-  arg8 = static_cast< unsigned int >(val8);
-  ecode9 = SWIG_AsVal_unsigned_SS_int(obj8, &val9);
-  if (!SWIG_IsOK(ecode9)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode9), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "9"" of type '" "unsigned int""'");
-  } 
-  arg9 = static_cast< unsigned int >(val9);
-  ecode10 = SWIG_AsVal_bool(obj9, &val10);
-  if (!SWIG_IsOK(ecode10)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode10), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "10"" of type '" "bool""'");
-  } 
-  arg10 = static_cast< bool >(val10);
-  res11 = SWIG_AsCharPtrAndSize(obj10, &buf11, NULL, &alloc11);
-  if (!SWIG_IsOK(res11)) {
-    SWIG_exception_fail(SWIG_ArgError(res11), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "11"" of type '" "char *""'");
+  arg7 = static_cast< bool >(val7);
+  res8 = SWIG_AsCharPtrAndSize(obj7, &buf8, NULL, &alloc8);
+  if (!SWIG_IsOK(res8)) {
+    SWIG_exception_fail(SWIG_ArgError(res8), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "8"" of type '" "char *""'");
   }
-  arg11 = reinterpret_cast< char * >(buf11);
-  result = (StatError_t)(arg1)->sampleStackTraces(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11);
+  arg8 = reinterpret_cast< char * >(buf8);
+  result = (StatError_t)(arg1)->sampleStackTraces(arg2,arg3,arg4,arg5,arg6,arg7,arg8);
   resultobj = SWIG_From_int(static_cast< int >(result));
-  if (alloc11 == SWIG_NEWOBJ) delete[] buf11;
+  if (alloc8 == SWIG_NEWOBJ) delete[] buf8;
   return resultobj;
 fail:
-  if (alloc11 == SWIG_NEWOBJ) delete[] buf11;
+  if (alloc8 == SWIG_NEWOBJ) delete[] buf8;
   return NULL;
 }
 
@@ -4896,35 +4607,26 @@ fail:
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_sampleStackTraces__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
-  StatSample_t arg2 ;
-  bool arg3 ;
-  bool arg4 ;
-  bool arg5 ;
+  unsigned int arg2 ;
+  unsigned int arg3 ;
+  unsigned int arg4 ;
+  unsigned int arg5 ;
   unsigned int arg6 ;
-  unsigned int arg7 ;
-  unsigned int arg8 ;
-  unsigned int arg9 ;
-  bool arg10 ;
+  bool arg7 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  int val2 ;
+  unsigned int val2 ;
   int ecode2 = 0 ;
-  bool val3 ;
+  unsigned int val3 ;
   int ecode3 = 0 ;
-  bool val4 ;
+  unsigned int val4 ;
   int ecode4 = 0 ;
-  bool val5 ;
+  unsigned int val5 ;
   int ecode5 = 0 ;
   unsigned int val6 ;
   int ecode6 = 0 ;
-  unsigned int val7 ;
+  bool val7 ;
   int ecode7 = 0 ;
-  unsigned int val8 ;
-  int ecode8 = 0 ;
-  unsigned int val9 ;
-  int ecode9 = 0 ;
-  bool val10 ;
-  int ecode10 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
@@ -4932,63 +4634,45 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_sampleStackTraces__SWIG_1(PyObject *SWI
   PyObject * obj4 = 0 ;
   PyObject * obj5 = 0 ;
   PyObject * obj6 = 0 ;
-  PyObject * obj7 = 0 ;
-  PyObject * obj8 = 0 ;
-  PyObject * obj9 = 0 ;
   StatError_t result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOOO:STAT_FrontEnd_sampleStackTraces",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8,&obj9)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOOO:STAT_FrontEnd_sampleStackTraces",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_STAT_FrontEnd, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "1"" of type '" "STAT_FrontEnd *""'"); 
   }
   arg1 = reinterpret_cast< STAT_FrontEnd * >(argp1);
-  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  ecode2 = SWIG_AsVal_unsigned_SS_int(obj1, &val2);
   if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "2"" of type '" "StatSample_t""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "2"" of type '" "unsigned int""'");
   } 
-  arg2 = static_cast< StatSample_t >(val2);
-  ecode3 = SWIG_AsVal_bool(obj2, &val3);
+  arg2 = static_cast< unsigned int >(val2);
+  ecode3 = SWIG_AsVal_unsigned_SS_int(obj2, &val3);
   if (!SWIG_IsOK(ecode3)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "3"" of type '" "bool""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "3"" of type '" "unsigned int""'");
   } 
-  arg3 = static_cast< bool >(val3);
-  ecode4 = SWIG_AsVal_bool(obj3, &val4);
+  arg3 = static_cast< unsigned int >(val3);
+  ecode4 = SWIG_AsVal_unsigned_SS_int(obj3, &val4);
   if (!SWIG_IsOK(ecode4)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "4"" of type '" "bool""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "4"" of type '" "unsigned int""'");
   } 
-  arg4 = static_cast< bool >(val4);
-  ecode5 = SWIG_AsVal_bool(obj4, &val5);
+  arg4 = static_cast< unsigned int >(val4);
+  ecode5 = SWIG_AsVal_unsigned_SS_int(obj4, &val5);
   if (!SWIG_IsOK(ecode5)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "5"" of type '" "bool""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "5"" of type '" "unsigned int""'");
   } 
-  arg5 = static_cast< bool >(val5);
+  arg5 = static_cast< unsigned int >(val5);
   ecode6 = SWIG_AsVal_unsigned_SS_int(obj5, &val6);
   if (!SWIG_IsOK(ecode6)) {
     SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "6"" of type '" "unsigned int""'");
   } 
   arg6 = static_cast< unsigned int >(val6);
-  ecode7 = SWIG_AsVal_unsigned_SS_int(obj6, &val7);
+  ecode7 = SWIG_AsVal_bool(obj6, &val7);
   if (!SWIG_IsOK(ecode7)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode7), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "7"" of type '" "unsigned int""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode7), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "7"" of type '" "bool""'");
   } 
-  arg7 = static_cast< unsigned int >(val7);
-  ecode8 = SWIG_AsVal_unsigned_SS_int(obj7, &val8);
-  if (!SWIG_IsOK(ecode8)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode8), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "8"" of type '" "unsigned int""'");
-  } 
-  arg8 = static_cast< unsigned int >(val8);
-  ecode9 = SWIG_AsVal_unsigned_SS_int(obj8, &val9);
-  if (!SWIG_IsOK(ecode9)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode9), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "9"" of type '" "unsigned int""'");
-  } 
-  arg9 = static_cast< unsigned int >(val9);
-  ecode10 = SWIG_AsVal_bool(obj9, &val10);
-  if (!SWIG_IsOK(ecode10)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode10), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "10"" of type '" "bool""'");
-  } 
-  arg10 = static_cast< bool >(val10);
-  result = (StatError_t)(arg1)->sampleStackTraces(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10);
+  arg7 = static_cast< bool >(val7);
+  result = (StatError_t)(arg1)->sampleStackTraces(arg2,arg3,arg4,arg5,arg6,arg7);
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
 fail:
@@ -4999,90 +4683,63 @@ fail:
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_sampleStackTraces__SWIG_2(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
-  StatSample_t arg2 ;
-  bool arg3 ;
-  bool arg4 ;
-  bool arg5 ;
+  unsigned int arg2 ;
+  unsigned int arg3 ;
+  unsigned int arg4 ;
+  unsigned int arg5 ;
   unsigned int arg6 ;
-  unsigned int arg7 ;
-  unsigned int arg8 ;
-  unsigned int arg9 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
-  int val2 ;
+  unsigned int val2 ;
   int ecode2 = 0 ;
-  bool val3 ;
+  unsigned int val3 ;
   int ecode3 = 0 ;
-  bool val4 ;
+  unsigned int val4 ;
   int ecode4 = 0 ;
-  bool val5 ;
+  unsigned int val5 ;
   int ecode5 = 0 ;
   unsigned int val6 ;
   int ecode6 = 0 ;
-  unsigned int val7 ;
-  int ecode7 = 0 ;
-  unsigned int val8 ;
-  int ecode8 = 0 ;
-  unsigned int val9 ;
-  int ecode9 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
   PyObject * obj2 = 0 ;
   PyObject * obj3 = 0 ;
   PyObject * obj4 = 0 ;
   PyObject * obj5 = 0 ;
-  PyObject * obj6 = 0 ;
-  PyObject * obj7 = 0 ;
-  PyObject * obj8 = 0 ;
   StatError_t result;
   
-  if (!PyArg_ParseTuple(args,(char *)"OOOOOOOOO:STAT_FrontEnd_sampleStackTraces",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5,&obj6,&obj7,&obj8)) SWIG_fail;
+  if (!PyArg_ParseTuple(args,(char *)"OOOOOO:STAT_FrontEnd_sampleStackTraces",&obj0,&obj1,&obj2,&obj3,&obj4,&obj5)) SWIG_fail;
   res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_STAT_FrontEnd, 0 |  0 );
   if (!SWIG_IsOK(res1)) {
     SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "1"" of type '" "STAT_FrontEnd *""'"); 
   }
   arg1 = reinterpret_cast< STAT_FrontEnd * >(argp1);
-  ecode2 = SWIG_AsVal_int(obj1, &val2);
+  ecode2 = SWIG_AsVal_unsigned_SS_int(obj1, &val2);
   if (!SWIG_IsOK(ecode2)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "2"" of type '" "StatSample_t""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "2"" of type '" "unsigned int""'");
   } 
-  arg2 = static_cast< StatSample_t >(val2);
-  ecode3 = SWIG_AsVal_bool(obj2, &val3);
+  arg2 = static_cast< unsigned int >(val2);
+  ecode3 = SWIG_AsVal_unsigned_SS_int(obj2, &val3);
   if (!SWIG_IsOK(ecode3)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "3"" of type '" "bool""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode3), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "3"" of type '" "unsigned int""'");
   } 
-  arg3 = static_cast< bool >(val3);
-  ecode4 = SWIG_AsVal_bool(obj3, &val4);
+  arg3 = static_cast< unsigned int >(val3);
+  ecode4 = SWIG_AsVal_unsigned_SS_int(obj3, &val4);
   if (!SWIG_IsOK(ecode4)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "4"" of type '" "bool""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode4), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "4"" of type '" "unsigned int""'");
   } 
-  arg4 = static_cast< bool >(val4);
-  ecode5 = SWIG_AsVal_bool(obj4, &val5);
+  arg4 = static_cast< unsigned int >(val4);
+  ecode5 = SWIG_AsVal_unsigned_SS_int(obj4, &val5);
   if (!SWIG_IsOK(ecode5)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "5"" of type '" "bool""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "5"" of type '" "unsigned int""'");
   } 
-  arg5 = static_cast< bool >(val5);
+  arg5 = static_cast< unsigned int >(val5);
   ecode6 = SWIG_AsVal_unsigned_SS_int(obj5, &val6);
   if (!SWIG_IsOK(ecode6)) {
     SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "6"" of type '" "unsigned int""'");
   } 
   arg6 = static_cast< unsigned int >(val6);
-  ecode7 = SWIG_AsVal_unsigned_SS_int(obj6, &val7);
-  if (!SWIG_IsOK(ecode7)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode7), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "7"" of type '" "unsigned int""'");
-  } 
-  arg7 = static_cast< unsigned int >(val7);
-  ecode8 = SWIG_AsVal_unsigned_SS_int(obj7, &val8);
-  if (!SWIG_IsOK(ecode8)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode8), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "8"" of type '" "unsigned int""'");
-  } 
-  arg8 = static_cast< unsigned int >(val8);
-  ecode9 = SWIG_AsVal_unsigned_SS_int(obj8, &val9);
-  if (!SWIG_IsOK(ecode9)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode9), "in method '" "STAT_FrontEnd_sampleStackTraces" "', argument " "9"" of type '" "unsigned int""'");
-  } 
-  arg9 = static_cast< unsigned int >(val9);
-  result = (StatError_t)(arg1)->sampleStackTraces(arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
+  result = (StatError_t)(arg1)->sampleStackTraces(arg2,arg3,arg4,arg5,arg6);
   resultobj = SWIG_From_int(static_cast< int >(result));
   return resultobj;
 fail:
@@ -5092,37 +4749,76 @@ fail:
 
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_sampleStackTraces(PyObject *self, PyObject *args) {
   int argc;
-  PyObject *argv[12];
+  PyObject *argv[9];
   int ii;
   
   if (!PyTuple_Check(args)) SWIG_fail;
   argc = (int)PyObject_Length(args);
-  for (ii = 0; (ii < argc) && (ii < 11); ii++) {
+  for (ii = 0; (ii < argc) && (ii < 8); ii++) {
     argv[ii] = PyTuple_GET_ITEM(args,ii);
   }
-  if (argc == 9) {
+  if (argc == 6) {
     int _v;
     void *vptr = 0;
     int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
     _v = SWIG_CheckState(res);
     if (_v) {
       {
-        int res = SWIG_AsVal_int(argv[1], NULL);
+        int res = SWIG_AsVal_unsigned_SS_int(argv[1], NULL);
         _v = SWIG_CheckState(res);
       }
       if (_v) {
         {
-          int res = SWIG_AsVal_bool(argv[2], NULL);
+          int res = SWIG_AsVal_unsigned_SS_int(argv[2], NULL);
           _v = SWIG_CheckState(res);
         }
         if (_v) {
           {
-            int res = SWIG_AsVal_bool(argv[3], NULL);
+            int res = SWIG_AsVal_unsigned_SS_int(argv[3], NULL);
             _v = SWIG_CheckState(res);
           }
           if (_v) {
             {
-              int res = SWIG_AsVal_bool(argv[4], NULL);
+              int res = SWIG_AsVal_unsigned_SS_int(argv[4], NULL);
+              _v = SWIG_CheckState(res);
+            }
+            if (_v) {
+              {
+                int res = SWIG_AsVal_unsigned_SS_int(argv[5], NULL);
+                _v = SWIG_CheckState(res);
+              }
+              if (_v) {
+                return _wrap_STAT_FrontEnd_sampleStackTraces__SWIG_2(self, args);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  if (argc == 7) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_unsigned_SS_int(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        {
+          int res = SWIG_AsVal_unsigned_SS_int(argv[2], NULL);
+          _v = SWIG_CheckState(res);
+        }
+        if (_v) {
+          {
+            int res = SWIG_AsVal_unsigned_SS_int(argv[3], NULL);
+            _v = SWIG_CheckState(res);
+          }
+          if (_v) {
+            {
+              int res = SWIG_AsVal_unsigned_SS_int(argv[4], NULL);
               _v = SWIG_CheckState(res);
             }
             if (_v) {
@@ -5132,23 +4828,11 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_sampleStackTraces(PyObject *self, PyObj
               }
               if (_v) {
                 {
-                  int res = SWIG_AsVal_unsigned_SS_int(argv[6], NULL);
+                  int res = SWIG_AsVal_bool(argv[6], NULL);
                   _v = SWIG_CheckState(res);
                 }
                 if (_v) {
-                  {
-                    int res = SWIG_AsVal_unsigned_SS_int(argv[7], NULL);
-                    _v = SWIG_CheckState(res);
-                  }
-                  if (_v) {
-                    {
-                      int res = SWIG_AsVal_unsigned_SS_int(argv[8], NULL);
-                      _v = SWIG_CheckState(res);
-                    }
-                    if (_v) {
-                      return _wrap_STAT_FrontEnd_sampleStackTraces__SWIG_2(self, args);
-                    }
-                  }
+                  return _wrap_STAT_FrontEnd_sampleStackTraces__SWIG_1(self, args);
                 }
               }
             }
@@ -5157,29 +4841,29 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_sampleStackTraces(PyObject *self, PyObj
       }
     }
   }
-  if (argc == 10) {
+  if (argc == 8) {
     int _v;
     void *vptr = 0;
     int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
     _v = SWIG_CheckState(res);
     if (_v) {
       {
-        int res = SWIG_AsVal_int(argv[1], NULL);
+        int res = SWIG_AsVal_unsigned_SS_int(argv[1], NULL);
         _v = SWIG_CheckState(res);
       }
       if (_v) {
         {
-          int res = SWIG_AsVal_bool(argv[2], NULL);
+          int res = SWIG_AsVal_unsigned_SS_int(argv[2], NULL);
           _v = SWIG_CheckState(res);
         }
         if (_v) {
           {
-            int res = SWIG_AsVal_bool(argv[3], NULL);
+            int res = SWIG_AsVal_unsigned_SS_int(argv[3], NULL);
             _v = SWIG_CheckState(res);
           }
           if (_v) {
             {
-              int res = SWIG_AsVal_bool(argv[4], NULL);
+              int res = SWIG_AsVal_unsigned_SS_int(argv[4], NULL);
               _v = SWIG_CheckState(res);
             }
             if (_v) {
@@ -5189,95 +4873,14 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_sampleStackTraces(PyObject *self, PyObj
               }
               if (_v) {
                 {
-                  int res = SWIG_AsVal_unsigned_SS_int(argv[6], NULL);
+                  int res = SWIG_AsVal_bool(argv[6], NULL);
                   _v = SWIG_CheckState(res);
                 }
                 if (_v) {
-                  {
-                    int res = SWIG_AsVal_unsigned_SS_int(argv[7], NULL);
-                    _v = SWIG_CheckState(res);
-                  }
-                  if (_v) {
-                    {
-                      int res = SWIG_AsVal_unsigned_SS_int(argv[8], NULL);
-                      _v = SWIG_CheckState(res);
-                    }
-                    if (_v) {
-                      {
-                        int res = SWIG_AsVal_bool(argv[9], NULL);
-                        _v = SWIG_CheckState(res);
-                      }
-                      if (_v) {
-                        return _wrap_STAT_FrontEnd_sampleStackTraces__SWIG_1(self, args);
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  if (argc == 11) {
-    int _v;
-    void *vptr = 0;
-    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
-    _v = SWIG_CheckState(res);
-    if (_v) {
-      {
-        int res = SWIG_AsVal_int(argv[1], NULL);
-        _v = SWIG_CheckState(res);
-      }
-      if (_v) {
-        {
-          int res = SWIG_AsVal_bool(argv[2], NULL);
-          _v = SWIG_CheckState(res);
-        }
-        if (_v) {
-          {
-            int res = SWIG_AsVal_bool(argv[3], NULL);
-            _v = SWIG_CheckState(res);
-          }
-          if (_v) {
-            {
-              int res = SWIG_AsVal_bool(argv[4], NULL);
-              _v = SWIG_CheckState(res);
-            }
-            if (_v) {
-              {
-                int res = SWIG_AsVal_unsigned_SS_int(argv[5], NULL);
-                _v = SWIG_CheckState(res);
-              }
-              if (_v) {
-                {
-                  int res = SWIG_AsVal_unsigned_SS_int(argv[6], NULL);
+                  int res = SWIG_AsCharPtrAndSize(argv[7], 0, NULL, 0);
                   _v = SWIG_CheckState(res);
-                }
-                if (_v) {
-                  {
-                    int res = SWIG_AsVal_unsigned_SS_int(argv[7], NULL);
-                    _v = SWIG_CheckState(res);
-                  }
                   if (_v) {
-                    {
-                      int res = SWIG_AsVal_unsigned_SS_int(argv[8], NULL);
-                      _v = SWIG_CheckState(res);
-                    }
-                    if (_v) {
-                      {
-                        int res = SWIG_AsVal_bool(argv[9], NULL);
-                        _v = SWIG_CheckState(res);
-                      }
-                      if (_v) {
-                        int res = SWIG_AsCharPtrAndSize(argv[10], 0, NULL, 0);
-                        _v = SWIG_CheckState(res);
-                        if (_v) {
-                          return _wrap_STAT_FrontEnd_sampleStackTraces__SWIG_0(self, args);
-                        }
-                      }
-                    }
+                    return _wrap_STAT_FrontEnd_sampleStackTraces__SWIG_0(self, args);
                   }
                 }
               }
@@ -5291,9 +4894,9 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_sampleStackTraces(PyObject *self, PyObj
 fail:
   SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number of arguments for overloaded function 'STAT_FrontEnd_sampleStackTraces'.\n"
     "  Possible C/C++ prototypes are:\n"
-    "    sampleStackTraces(STAT_FrontEnd *,StatSample_t,bool,bool,bool,unsigned int,unsigned int,unsigned int,unsigned int,bool,char *)\n"
-    "    sampleStackTraces(STAT_FrontEnd *,StatSample_t,bool,bool,bool,unsigned int,unsigned int,unsigned int,unsigned int,bool)\n"
-    "    sampleStackTraces(STAT_FrontEnd *,StatSample_t,bool,bool,bool,unsigned int,unsigned int,unsigned int,unsigned int)\n");
+    "    sampleStackTraces(STAT_FrontEnd *,unsigned int,unsigned int,unsigned int,unsigned int,unsigned int,bool,char *)\n"
+    "    sampleStackTraces(STAT_FrontEnd *,unsigned int,unsigned int,unsigned int,unsigned int,unsigned int,bool)\n"
+    "    sampleStackTraces(STAT_FrontEnd *,unsigned int,unsigned int,unsigned int,unsigned int,unsigned int)\n");
   return NULL;
 }
 
@@ -7088,7 +6691,6 @@ static void *_p_intArrayTo_p_int(void *x, int *SWIGUNUSEDPARM(newmemory)) {
 static swig_type_info _swigt__p_STAT_FrontEnd = {"_p_STAT_FrontEnd", "STAT_FrontEnd *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_StatError_t = {"_p_StatError_t", "enum StatError_t *|StatError_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_StatLaunch_t = {"_p_StatLaunch_t", "enum StatLaunch_t *|StatLaunch_t *", 0, 0, (void*)0, 0};
-static swig_type_info _swigt__p_StatSample_t = {"_p_StatSample_t", "enum StatSample_t *|StatSample_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_StatTopology_t = {"_p_StatTopology_t", "enum StatTopology_t *|StatTopology_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_StatVerbose_t = {"_p_StatVerbose_t", "enum StatVerbose_t *|StatVerbose_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_char = {"_p_char", "char *", 0, 0, (void*)0, 0};
@@ -7100,7 +6702,6 @@ static swig_type_info *swig_type_initial[] = {
   &_swigt__p_STAT_FrontEnd,
   &_swigt__p_StatError_t,
   &_swigt__p_StatLaunch_t,
-  &_swigt__p_StatSample_t,
   &_swigt__p_StatTopology_t,
   &_swigt__p_StatVerbose_t,
   &_swigt__p_char,
@@ -7112,7 +6713,6 @@ static swig_type_info *swig_type_initial[] = {
 static swig_cast_info _swigc__p_STAT_FrontEnd[] = {  {&_swigt__p_STAT_FrontEnd, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_StatError_t[] = {  {&_swigt__p_StatError_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_StatLaunch_t[] = {  {&_swigt__p_StatLaunch_t, 0, 0, 0},{0, 0, 0, 0}};
-static swig_cast_info _swigc__p_StatSample_t[] = {  {&_swigt__p_StatSample_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_StatTopology_t[] = {  {&_swigt__p_StatTopology_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_StatVerbose_t[] = {  {&_swigt__p_StatVerbose_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_char[] = {  {&_swigt__p_char, 0, 0, 0},{0, 0, 0, 0}};
@@ -7124,7 +6724,6 @@ static swig_cast_info *swig_cast_initial[] = {
   _swigc__p_STAT_FrontEnd,
   _swigc__p_StatError_t,
   _swigc__p_StatLaunch_t,
-  _swigc__p_StatSample_t,
   _swigc__p_StatTopology_t,
   _swigc__p_StatVerbose_t,
   _swigc__p_char,
@@ -7730,12 +7329,13 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "STAT_LOG_BE",SWIG_From_int(static_cast< int >(STAT_LOG_BE)));
   SWIG_Python_SetConstant(d, "STAT_LOG_CP",SWIG_From_int(static_cast< int >(STAT_LOG_CP)));
   SWIG_Python_SetConstant(d, "STAT_LOG_MRN",SWIG_From_int(static_cast< int >(STAT_LOG_MRN)));
-  SWIG_Python_SetConstant(d, "STAT_FUNCTION_NAME_ONLY",SWIG_From_int(static_cast< int >(STAT_FUNCTION_NAME_ONLY)));
-  SWIG_Python_SetConstant(d, "STAT_FUNCTION_AND_PC",SWIG_From_int(static_cast< int >(STAT_FUNCTION_AND_PC)));
-  SWIG_Python_SetConstant(d, "STAT_FUNCTION_AND_LINE",SWIG_From_int(static_cast< int >(STAT_FUNCTION_AND_LINE)));
-  SWIG_Python_SetConstant(d, "STAT_CR_FUNCTION_NAME_ONLY",SWIG_From_int(static_cast< int >(STAT_CR_FUNCTION_NAME_ONLY)));
-  SWIG_Python_SetConstant(d, "STAT_CR_FUNCTION_AND_PC",SWIG_From_int(static_cast< int >(STAT_CR_FUNCTION_AND_PC)));
-  SWIG_Python_SetConstant(d, "STAT_CR_FUNCTION_AND_LINE",SWIG_From_int(static_cast< int >(STAT_CR_FUNCTION_AND_LINE)));
+  SWIG_Python_SetConstant(d, "STAT_SAMPLE_FUNCTION_ONLY",SWIG_From_int(static_cast< int >(STAT_SAMPLE_FUNCTION_ONLY)));
+  SWIG_Python_SetConstant(d, "STAT_SAMPLE_LINE",SWIG_From_int(static_cast< int >(STAT_SAMPLE_LINE)));
+  SWIG_Python_SetConstant(d, "STAT_SAMPLE_PC",SWIG_From_int(static_cast< int >(STAT_SAMPLE_PC)));
+  SWIG_Python_SetConstant(d, "STAT_SAMPLE_COUNT_REP",SWIG_From_int(static_cast< int >(STAT_SAMPLE_COUNT_REP)));
+  SWIG_Python_SetConstant(d, "STAT_SAMPLE_THREADS",SWIG_From_int(static_cast< int >(STAT_SAMPLE_THREADS)));
+  SWIG_Python_SetConstant(d, "STAT_SAMPLE_CLEAR_ON_SAMPLE",SWIG_From_int(static_cast< int >(STAT_SAMPLE_CLEAR_ON_SAMPLE)));
+  SWIG_Python_SetConstant(d, "STAT_SAMPLE_PYTHON",SWIG_From_int(static_cast< int >(STAT_SAMPLE_PYTHON)));
   SWIG_Python_SetConstant(d, "STAT_LAUNCH",SWIG_From_int(static_cast< int >(STAT_LAUNCH)));
   SWIG_Python_SetConstant(d, "STAT_ATTACH",SWIG_From_int(static_cast< int >(STAT_ATTACH)));
   SWIG_Python_SetConstant(d, "STAT_SERIAL_ATTACH",SWIG_From_int(static_cast< int >(STAT_SERIAL_ATTACH)));
