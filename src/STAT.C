@@ -350,7 +350,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     int nProcs;
     bool createJob = false, serialJob = false;
     char *logOutDir = NULL;
-    unsigned char logType = STAT_LOG_NONE;
+    unsigned int logType = 0;
 
     struct option longOptions[] =
     {
@@ -518,9 +518,13 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
                 logType |= STAT_LOG_BE;
             else if (strcmp(optarg, "CP") == 0)
                 logType |= STAT_LOG_CP;
+            else if (strcmp(optarg, "SW") == 0)
+                logType |= STAT_LOG_SW;
+            else if (strcmp(optarg, "SWERR") == 0)
+                logType |= STAT_LOG_SWERR;
             else
             {
-                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or CP, you entered %s\n", optarg);
+                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, CP, SW, SWERR, you entered %s\n", optarg);
                 return STAT_ARG_ERROR;
             }
             break;
@@ -550,7 +554,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         }; // switch(opt)
     } // while (1)
 
-    if (logOutDir != NULL && logType != STAT_LOG_NONE)
+    if (logOutDir != NULL && logType != 0)
     {
         statError = statFrontEnd->startLog(logType, logOutDir);
         if (statError != STAT_OK)

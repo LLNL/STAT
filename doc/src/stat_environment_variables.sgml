@@ -91,14 +91,6 @@ Several environment variables influence STAT and its dependent packages.  Note t
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term>STAT_SW_DEBUG_LOG_DIR=<replaceable class="parameter">directory</replaceable></term>
-    <listitem>
-        <para>
-        Enable StackWalker debug logging to a set of hostname specific files in <replaceable class="parameter">directory</replaceable>.
-        </para>
-    </listitem>
-</varlistentry>
-<varlistentry>
     <term>STAT_MRN_COMM_PATH=<replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>

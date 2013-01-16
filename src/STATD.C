@@ -25,8 +25,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 int main(int argc, char **argv)
 {
     int opt, optionIndex = 0, mrnetOutputLevel = 1;
+    unsigned int logType = 0;
     char *logOutDir = NULL, *pid;
-    bool useMrnetPrintf = false;
     StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
     StatError_t statError;
     STAT_BackEnd *statBackEnd;
@@ -39,6 +39,7 @@ int main(int argc, char **argv)
         {"mrnetoutputlevel", required_argument, 0, 'o'},
         {"pid", required_argument, 0, 'p'},
         {"logdir", required_argument, 0, 'L'},
+        {"log", required_argument, 0, 'l'},
         {0, 0, 0, 0}
     };
 
@@ -69,7 +70,7 @@ int main(int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVmsMo:p:L:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVmsMo:p:L:l:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'M')
@@ -104,10 +105,25 @@ int main(int argc, char **argv)
                 return STAT_ALLOCATE_ERROR;
             }
             break;
+        case 'l':
+            if (strcmp(optarg, "BE") == 0)
+                logType |= STAT_LOG_BE;
+            else if (strcmp(optarg, "SW") == 0)
+                logType |= STAT_LOG_SW;
+            else if (strcmp(optarg, "SWERR") == 0)
+                logType |= STAT_LOG_SWERR;
+            else
+            {
+                statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal BE, SW, SWERR, you entered %s\n", optarg);
+                delete statBackEnd;
+                statFinalize(launchType);
+                return STAT_ARG_ERROR;
+            }
+            break;
         case 's':
             break;
         case 'm':
-            useMrnetPrintf = true;
+            logType |= STAT_LOG_MRN;
             break;
         case '?':
             statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
@@ -125,7 +141,7 @@ int main(int argc, char **argv)
     /* Check if logging of the daemon is enabled */
     if (logOutDir != NULL)
     {
-        statError = statBackEnd->startLog(logOutDir, useMrnetPrintf, mrnetOutputLevel);
+        statError = statBackEnd->startLog(logType, logOutDir, mrnetOutputLevel);
         if (statError != STAT_OK)
         {
             statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");
@@ -168,6 +184,8 @@ int main(int argc, char **argv)
     if (statError != STAT_OK)
     {
         statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failure in STAT BE main loop\n");
+        if (statError == STAT_STACKWALKER_ERROR)
+            statBackEnd->swDebugBufferToFile();
         delete statBackEnd;
         statFinalize(launchType);
         return statError;

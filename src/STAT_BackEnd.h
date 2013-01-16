@@ -20,6 +20,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define __STAT_BACKEND_H
 
 #define STAT_MAX_BUF_LEN 256
+#define STAT_SW_DEBUG_BUFFER_LENGTH 33554432
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -207,12 +208,15 @@ class STAT_BackEnd
 
         //! Creates the log file
         /*!
+            \param logType - the level of logging
             \param logOutDir - the output log directory
-            \param useMrnetPrintf - [optional] whether to use MRNet's printf for STAT logging
             \param mrnetOutputLevel - [optional] the MRNet logging output level
             \return STAT_OK on success
         */
-        StatError_t startLog(char *logOutDir, bool useMrnetPrintf = false, int mrnetOutputLevel = 1);
+        StatError_t startLog(unsigned int logType, char *logOutDir, int mrnetOutputLevel = 1);
+
+        //! Dump the Stackwalker debug buffer to the log file
+        void swDebugBufferToFile();
 
         //! Write MRNet connection information to a named fifo
         /*!
@@ -458,14 +462,17 @@ class STAT_BackEnd
 
         int proctabSize_;               /*!< the size of the process table */
         int processMapNonNull_;         /*!< the number of active processes */
+        unsigned int logType_;          /*!< the logging level */
         char *parentHostName_;          /*!< the hostname of the MRNet parent */
+        char logOutDir_[BUFSIZE];       /*!< the directory for log files */
         char localHostName_[BUFSIZE];   /*!< the local hostname */
         char localIp_[BUFSIZE];         /*!< the local IP address */
+        char *swDebugString_;  /*!< the memory buffer for stackwalker debug logging */
+        FILE *swDebugFile_;             /*!< the stackwalker debug file handle */
         FILE *errOutFp_;                /*!< the error output file handle */
         bool initialized_;              /*!< whether STAT has been initialized */
         bool connected_;                /*!< whether this daemon has been conected to MRNet */
         bool isRunning_;                /*!< whether the target processes are running */
-        bool useMrnetPrintf_;           /*!< whether to use MRNet's printf for logging */
         bool doGroupOps_;               /*!< do group operations through StackwalkerAPI */
         bool isPyTrace_;                /*!< indicates whether the current trace includes Python script level functions */
         MRN::Network *network_;         /*!< the MRNet Network object */

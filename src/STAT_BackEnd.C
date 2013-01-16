@@ -36,11 +36,7 @@ using namespace Dyninst::SymtabAPI;
 extern graphlib_functiontable_p statBitVectorFunctions;
 extern graphlib_functiontable_p statCountRepFunctions;
 
-FILE *statOutFp = NULL;
-
-//TODO BGQ
-FILE *globalFile;
-char globalString[512*1024*1024];
+FILE *gStatOutFp = NULL;
 
 StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType)
 {
@@ -136,22 +132,8 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) : launchType_(launchTy
     envValue = getenv("STAT_NO_GROUP_OPS");
     doGroupOps_ = (envValue == NULL);
 
-    /* Code to setup StackWalker debug logging */
-    envValue = getenv("STAT_SW_DEBUG_LOG_DIR");
-    if (envValue != NULL)
-    {
-        snprintf(fileName, BUFSIZE, "%s/%s.sw.txt", envValue, localHostName_);
-        file = fopen(fileName, "w");
-        Dyninst::Stackwalker::setDebug(true);
-        Dyninst::Stackwalker::setDebugChannel(file);
-#ifdef SW_VERSION_8_0_0
-        Dyninst::ProcControlAPI::setDebug(true);
-        Dyninst::ProcControlAPI::setDebugChannel(file);
-#endif
-    }
-
     processMapNonNull_ = 0;
-    statOutFp = NULL;
+    gStatOutFp = NULL;
     initialized_ = false;
     connected_ = false;
     isRunning_ = false;
@@ -1150,7 +1132,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 boolRet = AsyncGlobalFileStatus::initialize(fgfsCommFabric_);
                 if (boolRet == false)
                 {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize AsyncGlobalFileStatus\n");
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize AsyncswDebugFile_Status\n");
                     return STAT_MRNET_ERROR;
                 }
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "FGFS setup complete\n");
@@ -1239,28 +1221,7 @@ StatError_t STAT_BackEnd::attach()
         {
             Process::ptr pcProc = aInfo[i].proc;
             proc = pcProc ? Walker::newWalker(pcProc) : NULL;
-            if (proc == NULL)
-            {
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "Group Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, Dyninst::ProcControlAPI::getGenericErrorMsg(aInfo[i].error_ret));
-
-//TODO BGQ
-if (statOutFp != NULL && globalFile != NULL)
-{
-fclose(globalFile);
-globalFile = NULL;
-int len = strlen(globalString);
-fwrite(globalString, 1, len, statOutFp);
-
-globalFile = fmemopen(globalString, 512*1024*1024 - 1, "w");
-Dyninst::Stackwalker::setDebug(true);
-Dyninst::Stackwalker::setDebugChannel(globalFile);
-Dyninst::ProcControlAPI::setDebug(true);
-Dyninst::ProcControlAPI::setDebugChannel(globalFile);
-//assert(proc);
-}
-
-            }
-            else
+            if (proc != NULL)
             {
                 pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
                 walkerSet_->insert(proc);
@@ -1270,11 +1231,12 @@ Dyninst::ProcControlAPI::setDebugChannel(globalFile);
 #endif
         {
             proc = Walker::newWalker(proctab_[i].pd.pid, proctab_[i].pd.executable_name);
-            if (proc == NULL)
-            {
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, Dyninst::Stackwalker::getLastErrorMsg());
+        }
 
-            }
+        if (proc == NULL)
+        {
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, Dyninst::Stackwalker::getLastErrorMsg());
+            swDebugBufferToFile();
         }
 
         processMap_[proctab_[i].mpirank] = proc;
@@ -2304,38 +2266,57 @@ int unpackStatBeInfo(void *buf, int bufLen, void *data)
     return 0;
 }
 
-StatError_t STAT_BackEnd::startLog(char *logOutDir, bool useMrnetPrintf, int mrnetOutputLevel)
+StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mrnetOutputLevel)
 {
-
-//TODO BGQ
-static int init = 0;
-if (init == 0)
-{
-    globalFile = fmemopen(globalString, 512*1024*1024 - 1, "w");
-    Dyninst::Stackwalker::setDebug(true);
-    Dyninst::Stackwalker::setDebugChannel(globalFile);
-    Dyninst::ProcControlAPI::setDebug(true);
-    Dyninst::ProcControlAPI::setDebugChannel(globalFile);
-    init++;
-}
-
-
     char fileName[BUFSIZE];
+    
+    logType_ = logType;
+    snprintf(logOutDir_, BUFSIZE, "%s", logOutDir);
 
-    useMrnetPrintf_ = useMrnetPrintf;
-    snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir, localHostName_);
-    statOutFp = fopen(fileName, "w");
-    if (statOutFp == NULL)
+    if (logType_ & STAT_LOG_BE || logType_ & STAT_LOG_SW)
     {
-        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
-        return STAT_FILE_ERROR;
+        snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir, localHostName_);
+        gStatOutFp = fopen(fileName, "w");
+        if (gStatOutFp == NULL)
+        {
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
+            return STAT_FILE_ERROR;
+        }
+        if (logType_ & STAT_LOG_MRN)
+            mrn_printf_init(gStatOutFp);
+        set_OutputLevel(mrnetOutputLevel);
     }
-    if (useMrnetPrintf_ == true)
-        mrn_printf_init(statOutFp);
-    set_OutputLevel(mrnetOutputLevel);
+
+    if (logType_ & STAT_LOG_SWERR || logType_ & STAT_LOG_SW)
+    {
+        if (logType_ & STAT_LOG_SW)
+            swDebugFile_ = gStatOutFp;
+        else
+        {
+            swDebugString_ = (char *)malloc(STAT_SW_DEBUG_BUFFER_LENGTH);
+            if (swDebugString_ == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc returned NULL for swDebugString_\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            swDebugFile_ = fmemopen(swDebugString_, STAT_SW_DEBUG_BUFFER_LENGTH - 1, "w");
+            if (swDebugFile_ == NULL)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "%s: fmemopen failed\n", strerror(errno));
+                return STAT_STACKWALKER_ERROR;
+            }
+        }
+        Dyninst::Stackwalker::setDebug(true);
+        Dyninst::Stackwalker::setDebugChannel(swDebugFile_);
+#ifdef SW_VERSION_8_0_0
+        Dyninst::ProcControlAPI::setDebug(true);
+        Dyninst::ProcControlAPI::setDebugChannel(swDebugFile_);
+#endif
+    }
 
     return STAT_OK;
 }
+
 
 void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int sourceLine, const char *fmt, ...)
 {
@@ -2345,20 +2326,8 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     time_t currentTime;
     struct tm *localTime;
 
-//TODO BGQ
-if (strcmp(fmt, "Failure in STAT BE main loop\n") == 0)
-{
-if (statOutFp != NULL && globalFile != NULL)
-{
-fclose(globalFile);
-globalFile = NULL;
-int len = strlen(globalString);
-fwrite(globalString, 1, len, statOutFp);
-}
-}
-
     /* If this is a log message and we're not logging, then return */
-    if (statError == STAT_LOG_MESSAGE && statOutFp == NULL)
+    if (statError == STAT_LOG_MESSAGE && !(logType_ & STAT_LOG_BE))
         return;
 
     /* Get the time */
@@ -2391,31 +2360,68 @@ fwrite(globalString, 1, len, statOutFp);
     }
 
     /* Print the message to the log */
-    if (statOutFp != NULL)
+    if (gStatOutFp != NULL && logType_ & STAT_LOG_BE)
     {
-        if (useMrnetPrintf_ == true)
+        if (logType_ & STAT_LOG_MRN)
         {
             va_start(args, fmt);
             vsnprintf(msg, BUFSIZE, fmt, args);
             va_end(args);
-            mrn_printf(sourceFile, sourceLine, "", statOutFp, "%s", msg);
+            mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
         }
         else
         {
-            fprintf(statOutFp, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
+            fprintf(gStatOutFp, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
             if (statError != STAT_LOG_MESSAGE && statError != STAT_STDOUT && statError != STAT_VERBOSITY)
             {
-                fprintf(statOutFp, "%s: STAT returned error type ", localHostName_);
-                statPrintErrorType(statError, statOutFp);
-                fprintf(statOutFp, ": ");
+                fprintf(gStatOutFp, "%s: STAT returned error type ", localHostName_);
+                statPrintErrorType(statError, gStatOutFp);
+                fprintf(gStatOutFp, ": ");
             }
             va_start(args, fmt);
-            vfprintf(statOutFp, fmt, args);
+            vfprintf(gStatOutFp, fmt, args);
             va_end(args);
-            fflush(statOutFp);
+            fflush(gStatOutFp);
         }
     }
 }
+
+        
+void STAT_BackEnd::swDebugBufferToFile()
+{
+    char fileName[BUFSIZE];
+
+    if (logType_ & STAT_LOG_SWERR)
+    {
+        if (gStatOutFp != NULL && swDebugFile_ != NULL)
+        {
+            fclose(swDebugFile_);
+            if (gStatOutFp == NULL)
+            {
+                snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir_, localHostName_);
+                gStatOutFp = fopen(fileName, "w");
+                if (gStatOutFp == NULL)
+                {
+                    printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
+                    return;
+                }
+                if (logType_ & STAT_LOG_MRN)
+                    mrn_printf_init(gStatOutFp);
+            }
+            fwrite(swDebugString_, 1, strlen(swDebugString_), gStatOutFp);
+            
+            swDebugFile_ = fmemopen(swDebugString_, STAT_SW_DEBUG_BUFFER_LENGTH - 1, "w");
+            if (swDebugFile_ == NULL)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "%s: fmemopen failed\n", strerror(errno));
+                return;
+            }
+            Dyninst::Stackwalker::setDebugChannel(swDebugFile_);
+            Dyninst::ProcControlAPI::setDebugChannel(swDebugFile_);
+        }
+    }
+}
+
 
 vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 {

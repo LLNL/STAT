@@ -1,3 +1,11 @@
+2013-01-15 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.[C] : added -l SW and -l SWERR args
+	* scripts/STATGUI.py : SW and SWERR log check boxes
+	* src/STATD.C : added -l args
+	* src/STAT_FrontEnd.[C,h] : added stackwalker debug log args to daemonArgv
+	* src/STAT_BackEnd.[C,h] : capture stackwalker deubg logs on request/error
+	* src/STAT_BackEnd.[C] : removed STAT_SW_DEBUG_LOG_DIR env var
+
 2013-01-14 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/bg_core_backtrace.py : added --jobid option to delinate traces. Also warns if multiple job IDs detected in core files
 

@@ -347,7 +347,7 @@ class STAT_FrontEnd
             \param logOutDir - the output directory for the log files
             \return STAT_OK on success
         */
-        StatError_t startLog(unsigned char logType, char *logOutDir);
+        StatError_t startLog(unsigned int logType, char *logOutDir);
 
         //! Receive an acknowledgement from the daemons
         /*!
@@ -811,6 +811,14 @@ class STAT_FrontEnd
         */
         bool checkNodeAccess(char *node);
 
+        //! Add daemon logging args to daemon arg list
+        /*!
+            \param daemonArgc [in, out] - the number of daemon args
+            \param daemonArgv [in, out] - the daemon args
+            \return STAT_OK on success
+        */
+        StatError_t addDaemonLogArgs(int &daemonArgc, char ** &daemonArgv);
+
 #ifdef STAT_FGFS
         //! Send the file request stream to the BEs
         /*!
@@ -840,6 +848,7 @@ class STAT_FrontEnd
         unsigned int procsPerNode_;                         /*!< the number of CPs to launcher per node*/
         unsigned int launcherArgc_;                         /*!< the number of job launch arguments*/
         unsigned int topologySize_;                         /*!< the size of the MRNet topology */
+        unsigned int logging_;                             /*!< the logging level */
         int jobId_;                                         /*!< the batch job ID */
         int lmonSession_;                                   /*!< the LaunchMON session ID */
         int mrnetOutputLevel_;                              /*!< the MRNet output level */
@@ -874,7 +883,6 @@ class STAT_FrontEnd
         StatError_t (STAT_FrontEnd::*pendingAckCb_)();      /*!< the function to call after acknowledgement received from daemons */
         StatVerbose_t verbose_;                             /*!< the verbosity level */
         StatLaunch_t applicationOption_;                    /*!< the mode in which STAT was given control of the application */
-        unsigned char logging_;                             /*!< the logging level */
         MPIR_PROCDESC_EXT *proctab_;                        /*!< the process table */
         MRN::Network *network_;                             /*!< the MRNet Network object */
         MRN::Communicator *broadcastCommunicator_;          /*!< the broadcast communicator*/

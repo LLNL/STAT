@@ -41,7 +41,9 @@ enum StatLogOptions_t {
     STAT_LOG_FE = 0x01,
     STAT_LOG_BE = 0x02,
     STAT_LOG_CP = 0x04,
-    STAT_LOG_MRN = 0x08
+    STAT_LOG_MRN = 0x08,
+    STAT_LOG_SW = 0x10,
+    STAT_LOG_SWERR = 0x20
 } ;
 
 enum StatSampleOptions_t {

@@ -7329,6 +7329,8 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "STAT_LOG_BE",SWIG_From_int(static_cast< int >(STAT_LOG_BE)));
   SWIG_Python_SetConstant(d, "STAT_LOG_CP",SWIG_From_int(static_cast< int >(STAT_LOG_CP)));
   SWIG_Python_SetConstant(d, "STAT_LOG_MRN",SWIG_From_int(static_cast< int >(STAT_LOG_MRN)));
+  SWIG_Python_SetConstant(d, "STAT_LOG_SW",SWIG_From_int(static_cast< int >(STAT_LOG_SW)));
+  SWIG_Python_SetConstant(d, "STAT_LOG_SWERR",SWIG_From_int(static_cast< int >(STAT_LOG_SWERR)));
   SWIG_Python_SetConstant(d, "STAT_SAMPLE_FUNCTION_ONLY",SWIG_From_int(static_cast< int >(STAT_SAMPLE_FUNCTION_ONLY)));
   SWIG_Python_SetConstant(d, "STAT_SAMPLE_LINE",SWIG_From_int(static_cast< int >(STAT_SAMPLE_LINE)));
   SWIG_Python_SetConstant(d, "STAT_SAMPLE_PC",SWIG_From_int(static_cast< int >(STAT_SAMPLE_PC)));

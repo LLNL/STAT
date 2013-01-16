@@ -225,7 +225,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
     int i, opt, optionIndex = 0;
     char *logOutDir = NULL;
     StatError_t statError;
-    unsigned char logType = STAT_LOG_NONE;
+    unsigned int logType = 0;
 
     struct option longOptions[] =
     {
@@ -331,6 +331,10 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
                 logType |= STAT_LOG_BE;
             else if (strcmp(optarg, "CP") == 0)
                 logType |= STAT_LOG_CP;
+            else if (strcmp(optarg, "SW") == 0)
+                logType |= STAT_LOG_SW;
+            else if (strcmp(optarg, "SWERR") == 0)
+                logType |= STAT_LOG_SWERR;
             else
             {
                 statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or ALL, you entered %s\n", optarg);
@@ -376,7 +380,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         };
     }
 
-    if (logOutDir != NULL && logType != STAT_LOG_NONE)
+    if (logOutDir != NULL && logType != 0)
     {
         statError = statFrontEnd->startLog(logType, logOutDir);
         if (statError != STAT_OK)

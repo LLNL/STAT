@@ -28,7 +28,7 @@ import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
 import sys, DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_NONE, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_LOG_NONE, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON
 import commands
 import subprocess
 import shelve
@@ -114,6 +114,8 @@ class STATGUI(STATDotWindow):
                     'Log Frontend'                     : False,
                     'Log Backend'                      : False,
                     'Log CP'                           : False,
+                    'Log SW'                           : False,
+                    'Log SWERR'                        : False,
                     'Use MRNet Printf'                 : False,
                     'Verbosity Type'                   : 'error',
                     'Communication Nodes'              : '',
@@ -808,6 +810,8 @@ host[1-10,12,15-20];otherhost[30]
         self.pack_check_button(vbox2, 'Log Frontend')
         self.pack_check_button(vbox2, 'Log Backend')
         self.pack_check_button(vbox2, 'Log CP')
+        self.pack_check_button(vbox2, 'Log SW')
+        self.pack_check_button(vbox2, 'Log SWERR')
         self.pack_string_option(vbox2, 'Log Dir', attach_dialog)
         self.pack_check_button(vbox2, 'Use MRNet Printf')
         frame.add(vbox2)
@@ -890,6 +894,10 @@ host[1-10,12,15-20];otherhost[30]
             logType |= STAT_LOG_BE
         if self.options['Log CP']:
             logType |= STAT_LOG_CP
+        if self.options['Log SW']:
+            logType |= STAT_LOG_SW
+        if self.options['Log SWERR']:
+            logType |= STAT_LOG_SWERR
         if self.options['Use MRNet Printf']:
             logType |= STAT_LOG_MRN
         if logType != STAT_LOG_NONE:
