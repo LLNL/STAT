@@ -32,12 +32,12 @@ enum StatSampleOptions_t {
     STAT_SAMPLE_PYTHON = 0x20
 } ;
 #endif
-#include "graphlib.h"
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "graphlib.h"
 
 #define STAT_GRAPH_CHUNK 8192
 
@@ -62,13 +62,25 @@ typedef struct
     int64_t checksum;
 } StatCountRepEdge_t;
 
-//! Return a hash value for a given string
+//! Generate a hash value for a given string
+/*!
+    \param str - the string to hash
+    \return the hash value of the string
+*/
 unsigned int statStringHash(const char *str);
 
 //! Created a new graph of type sampleType with a root node
+/*!
+    \param sampleType - the level of detail in the sample
+    \return a graphlib graph with a "/" root node
+*/
 graphlib_graph_p createRootedGraph(unsigned int sampleType);
 
 //! Initialize a bit-vector edge
+/*!
+    \param numTasks - the number of tasks to represent with this bit vector
+    \return a newly allocated, zeroed bit vector
+*/
 StatBitVectorEdge_t *initializeBitVectorEdge(int numTasks);
 
 //! Initialize the standard bit vector functions
@@ -118,7 +130,7 @@ unsigned int statSerializeNodeLength(const void *node);
 
 //! Deserialize the STAT node object from a buffer
 /*!
-    \param[out] node - a pointer to the node object
+    \param[out] node - a return pointer to the new node object pointer
     \param buf - the serialized buffer
     \param bufLength - the length of the serialized buffer
 */
@@ -134,7 +146,7 @@ char *statNodeToText(const void *node);
 //! Merge two STAT node objects
 /*!
     \param[inout] node1 - the node to merge into
-    \param node2 - the node to merge in
+    \param node2 - the node to merge with
 */
 void *statMergeNode(void *node1, const void *node2);
 
@@ -207,26 +219,38 @@ void statFreeEdge(void *edge);
 */
 long statEdgeCheckSum(const void *edge);
 
-//! Deserialize a STAT edge object from a buffer into the appropriate location in the bit vector for the STAT filter.This requires statGraphRoutinesTotalWidth must be set to the final bit vector width, statGraphRoutinesEdgeLAbelWidths must be a list of bit vector widths, and statGraphRoutinesCurrentIndex must be set to the current index.
+//! Deserialize a STAT edge object for the STAT filter.
 /*!
     \param[out] edge - a pointer to the edge object
     \param buf - the serialized buffer
     \param bufLength - the length of the serialized buffer
+    
+    Deserialize a STAT edge object from a buffer into the appropriate location 
+    in the bit vector for the STAT filter. This requires 
+    gStatGraphRoutinesTotalWidth to be set to the final bit vector width, 
+    gStatGraphRoutinesEdgeLabelWidths must be a list of bit vector widths, and 
+    gStatGraphRoutinesCurrentIndex must be set to the current index.
 */
 void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLength);
 
-
-//! Initialize an empty bit vector for initializing the frontend's reorder graph
+//! Initialize an empty bit vector for initializing the FrontEnd's reorder graph
 /*!
     \param edge - a pointer to the edge object to be copied
     \return a pointer to the new edge copy
 */
 void *statCopyEdgeInitializeEmpty(const void *edge);
 
-//! Merge the unordered input vector bits into the appropriate in-order bits of the frontend's reorder graph. This requires statGraphRoutinesRanksList must be set to the ranks list for the current bitvector, statGraphRoutinesRanksListLength must be set to the length of the ranks list for the current bitvector, and statGraphRoutinesCurrentIndex must be set to the start index for the bit vector in edge
+//! Merge the unordered input vector bits into the reorder graph.
 /*!
     \param[inout] edge1 - the edge to merge into
     \param edge2 - the edge to merge in
+
+    Merge the unordered input vector bits into the appropriate in-order bits of
+    the frontend's reorder graph. This requires gStatGraphRoutinesRanksList to
+    be set to the ranks list for the current bit vector, 
+    gStatGraphRoutinesRanksListLength must be set to the length of the ranks 
+    list for the current bitvector, and gStatGraphRoutinesCurrentIndex must be
+    set to the start index for the bit vector in edge
 */
 void *statMergeEdgeOrdered(void *edge1, const void *edge2);
 

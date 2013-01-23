@@ -46,7 +46,6 @@ int main(int argc, char **argv)
         launchType = STATD_SERIAL_LAUNCH;
     }
 
-    /* Initialize STAT */
     statError = statInit(&argc, &argv, launchType);
     if (statError != STAT_OK)
     {
@@ -55,11 +54,16 @@ int main(int argc, char **argv)
     }
 
     statBackEnd = new STAT_BackEnd(launchType);
+    statError = statBackEnd->init();
+    if (statError != STAT_OK)
+    {
+        fprintf(stderr, "Failed to initialize STAT_BackEnd object\n");
+        return statError;
+    }
 
     if (isHelperDaemon == false)
     {
         /* We're the STATBench BE, not the helper daemon */
-        /* Connect to MRNet */
         statError = statBackEnd->statBenchConnect();
         if (statError != STAT_OK)
         {
@@ -69,7 +73,6 @@ int main(int argc, char **argv)
             return statError;
         }
 
-        /* Run the main feedback loop */
         statError = statBackEnd->mainLoop();
         if (statError != STAT_OK)
         {
@@ -82,8 +85,7 @@ int main(int argc, char **argv)
     else
     {
         /* We're the STATBench helper daemon */
-        /* Initialize Launchmon */
-        statError = statBackEnd->init();
+        statError = statBackEnd->initLmon();
         if (statError != STAT_OK)
         {
             statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
@@ -92,7 +94,6 @@ int main(int argc, char **argv)
             return statError;
         }
 
-        /* Gather MRNet info and dump to file */
         statError = statBackEnd->statBenchConnectInfoDump();
         if (statError != STAT_OK)
         {
@@ -105,7 +106,6 @@ int main(int argc, char **argv)
 
     delete statBackEnd;
 
-    /* Finalize STAT */
     statError = statFinalize(launchType);
     if (statError != STAT_OK)
     {

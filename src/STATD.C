@@ -24,7 +24,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 //! The daemon main
 int main(int argc, char **argv)
 {
-    int opt, optionIndex = 0, mrnetOutputLevel = 1;
+    int opt, optionIndex, mrnetOutputLevel = 1;
     unsigned int logType = 0;
     char *logOutDir = NULL, *pid;
     StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
@@ -57,7 +57,6 @@ int main(int argc, char **argv)
         if (strcmp(argv[1], "-s") == 0 || strcmp(argv[1], "--serial") == 0)
             launchType = STATD_MRNET_LAUNCH;
 
-    /* Initialize STAT */
     statError = statInit(&argc, &argv, launchType);
     if (statError != STAT_OK)
     {
@@ -65,8 +64,13 @@ int main(int argc, char **argv)
         return statError;
     }
 
-    /* Create the STAT BackEnd object */
     statBackEnd = new STAT_BackEnd(launchType);
+    statError = statBackEnd->init();
+    if (statError != STAT_OK)
+    {
+        fprintf(stderr, "Failed to initialize STAT_BackEnd object\n");
+        return statError;
+    }
 
     while (1)
     {
@@ -138,7 +142,6 @@ int main(int argc, char **argv)
         }; /* switch(opt) */
     } /* while(1) */
 
-    /* Check if logging of the daemon is enabled */
     if (logOutDir != NULL)
     {
         statError = statBackEnd->startLog(logType, logOutDir, mrnetOutputLevel);
@@ -152,14 +155,10 @@ int main(int argc, char **argv)
     }
 
     if (launchType == STATD_MRNET_LAUNCH)
-    {
-        /* Connect to MRNet */
         statError = statBackEnd->connect(6, &argv[argc - 6]);
-    }
     else
     {
-        /* Setup Launchmon */
-        statError = statBackEnd->init();
+        statError = statBackEnd->initLmon();
         if (statError != STAT_OK)
         {
             statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
@@ -167,8 +166,6 @@ int main(int argc, char **argv)
             statFinalize(launchType);
             return statError;
         }
-
-        /* Connect to MRNet */
         statError = statBackEnd->connect();
     }
     if (statError != STAT_OK)
@@ -179,7 +176,6 @@ int main(int argc, char **argv)
         return statError;
     }
 
-    /* Run the main feedback loop */
     statError = statBackEnd->mainLoop();
     if (statError != STAT_OK)
     {
@@ -193,7 +189,6 @@ int main(int argc, char **argv)
 
     delete statBackEnd;
 
-    /* Finalize STAT */
     statError = statFinalize(launchType);
     if (statError != STAT_OK)
     {

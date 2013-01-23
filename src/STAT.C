@@ -50,9 +50,10 @@ typedef struct
 //! Prints the usage directions
 void printUsage(int argc, char **argv);
 
-//! Parses the command line arguments and sets the STAT class variables
+//! Parses the command line arguments and return the options
 /*!
-    \param STAT - the STAT Frontend object
+    \param[out] statArgs - the options to return from parsing
+    \param statFrontEnd - the STAT Frontend object
     \param argc - the number of arguments
     \param argv - the arguments
     \return STAT_OK on success
@@ -300,7 +301,7 @@ int main(int argc, char **argv)
 
 void printUsage(int argc, char **argv)
 {
-    fprintf(stderr, "\nSTAT, the Stack Trace Analysis Tool, is a highly scalable, lightweight tool that gathers and merges stack traces from a parallel application's processes.  STAT can gather and merge multiple stack traces per process, showing the application's time varying behavior.  The output shows the global application behavior and can be used to identify process equivalence classes, subsets of tasks that exhibit similar behavior.  A representative of each equivalence class can be fed into a heavyweight debugger for root cause analysis.  Running STAT will create a STAT_results directory that contains \".dot\" files that are best viewed with the STATview GUI.  They can also be viewed with the \"dotty\" utility from graphviz.\n");
+    fprintf(stderr, "\nSTAT, the Stack Trace Analysis Tool, is a highly scalable, lightweight tool that gathers and merges stack traces from a parallel application's processes.  STAT can gather and merge multiple stack traces per process, showing the application's time varying behavior.  The output shows the global application behavior and can be used to identify process equivalence classes, subsets of tasks that exhibit similar behavior.  A representative of each equivalence class can be fed into a heavyweight debugger for root cause analysis.  Running STAT will create a stat_results directory that contains \".dot\" files that are best viewed with the STATview GUI.  They can also be viewed with the \"dotty\" utility from graphviz.\n");
     fprintf(stderr, "\nUsage:\n");
     fprintf(stderr, "\tSTAT [OPTIONS] <launcherPid_>\n");
     fprintf(stderr, "\tSTAT [OPTIONS] -C <application_launch_command>\n");

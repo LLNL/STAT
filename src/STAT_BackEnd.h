@@ -99,7 +99,8 @@ typedef struct
     int pyBytesObjectObSvalOffset;
     bool isUnicode;
     bool isPython3;
-} StatPythonCache_t;
+} StatPythonOffsets_t;
+
 //! A struct to hold a list of StatLeafInfo_t objects
 typedef struct
 {
@@ -127,16 +128,16 @@ int unpackStatBeInfo(void *buf, int bufLen, void *data);
 
 //! STAT initialization code
 /*!
-    \param[in,out] argc - the number of arguments
-    \param[in,out] argv - the argument list
-    \param[in] launchType - the launch type (i.e., LMON or MRNet)
+    \param[in,out] argc - pointer to the number of arguments
+    \param[in,out] argv - pointer to the argument list
+    \param launchType - the launch type (i.e., LMON or MRNet)
     \return STAT_OK on success
 */
 StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH);
 
 //! STAT finalization code
 /*!
-    \param[in] launchType - the launch type (i.e., LMON or MRNet)
+    \param launchType - the launch type (i.e., LMON or MRNet)
     \return STAT_OK on success
 */
 StatError_t statFinalize(StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH);
@@ -155,11 +156,17 @@ class STAT_BackEnd
         /* Core STAT BE functionality */
         /******************************/
 
-        //! Initialize and set up LaunchMON
+        //! Initialize and set up this object
         /*
             \return STAT_OK on success
         */
         StatError_t init();
+
+        //! Initialize and set up LaunchMON
+        /*
+            \return STAT_OK on success
+        */
+        StatError_t initLmon();
 
         //! Add a serial process to the process table
         /*
@@ -191,7 +198,9 @@ class STAT_BackEnd
         //! Return the STAT name that should be given for a specific frame
         /*!
             \param frame - the Frame to gather the name from
-            \param depth - [optional] the depth of this frame in the stack walk. This is necessary for identifying the appropriate frame for variable extraction.
+            \param depth - [optional] the depth of this frame in the stack walk.
+                   This is necessary for identifying the appropriate frame for
+                   variable extraction.
             \return the name to use for this frame
         */
         std::string getFrameName(const Dyninst::Stackwalker::Frame &frame, int depth = -1);
@@ -218,7 +227,7 @@ class STAT_BackEnd
         //! Dump the Stackwalker debug buffer to the log file
         void swDebugBufferToFile();
 
-        //! Write MRNet connection information to a named fifo
+        //! (STAT Bench) Write MRNet connection information to a named fifo
         /*!
             \return STAT_OK on success
 
@@ -227,7 +236,7 @@ class STAT_BackEnd
         */
         StatError_t statBenchConnectInfoDump();
 
-        //! Connects to the MRNet tree
+        //! (STAT Bench) Connect to the MRNet tree
         /*!
             \return STAT_OK on success
 
@@ -238,19 +247,19 @@ class STAT_BackEnd
         StatError_t statBenchConnect();
 
     private:
-        //! Attach to the application processes
+        //! Attach to all application processes
         /*!
             \return STAT_OK on success
         */
         StatError_t attach();
 
-        //! Pause the application processes
+        //! Pause all application processes
         /*!
             \return STAT_OK on success
         */
         StatError_t pause();
 
-        //! Resume the application processes
+        //! Resume all application processes
         /*!
             \return STAT_OK on success
         */
@@ -261,14 +270,14 @@ class STAT_BackEnd
             \param walker - the process to pause
             \return STAT_OK on success
         */
-        StatError_t pauseImpl(Dyninst::Stackwalker::Walker *walker);
+        StatError_t pauseProcess(Dyninst::Stackwalker::Walker *walker);
 
         //! Resume a single process
         /*!
             \param walker - the process to resume
             \return STAT_OK on success
         */
-        StatError_t resumeImpl(Dyninst::Stackwalker::Walker *walker);
+        StatError_t resumeProcess(Dyninst::Stackwalker::Walker *walker);
 
         //! Gather the specified number of traces from all processes
         /*!
@@ -278,7 +287,8 @@ class STAT_BackEnd
                    stack trace
             \param retryFrequency - the time (us) to wait between retries
                    before sampling
-            \param variableSpecification - the specification of variables to extract
+            \param variableSpecification - the specification of variables to
+                   extract
             \return STAT_OK on success
         */
         StatError_t sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, char *variableSpecification);
@@ -286,7 +296,6 @@ class STAT_BackEnd
 #if defined GROUP_OPS
         //! Get a stack trace from every process
         /*!
-            \param[out] retGraph - the return graph
             \param nRetries - the number of attempts to try to get a complete
                    stack trace
             \param retryFrequency - the time to wait between retries
@@ -296,7 +305,6 @@ class STAT_BackEnd
 
         //! Add a frame to a given graph
         /*!
-            \param[in,out] graphlibGraph - the graph object to add the frame to
             \param stackwalkerGraph - the current Stackwalker graph object
             \param graphlibNode - the node to append to
             \param stackwalkerNode - the current node in the Stackwalker graph
@@ -304,8 +312,10 @@ class STAT_BackEnd
             \param[out] errorThreads - a list of threads whose stack walks
                    ended in an error
             \param[out] outputRanks - the set of ranks in this stack walk
-            \param[out] abort - the callee indicates whether the callee should abort (delete) the caller node
-            \param[in] branches - the max branch factor of the current node's ancestors
+            \param[out] abort - the callee indicates whether the caller should
+                   abort (delete) the caller node
+            \param[in] branches - the max branch factor of the current node's
+                   ancestors
             \return STAT_OK on success
         */
         StatError_t addFrameToGraph(Dyninst::Stackwalker::CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, Dyninst::Stackwalker::FrameNode *stackwalkerNode, std::string nodeIdNames, std::set<std::pair<Dyninst::Stackwalker::Walker *, Dyninst::THR_ID> > *errorThreads, std::set<int> &outputRanks, bool &abort, int branches);
@@ -313,7 +323,6 @@ class STAT_BackEnd
 
         //! Get a single stack trace
         /*!
-            \param[out] retGraph - the return graph
             \param proc - the current process
             \param rank - the current process rank
             \param nRetries - the number of attempts to try to get a complete
@@ -337,7 +346,8 @@ class STAT_BackEnd
         /*!
             \param frame - the frame from which to gather the variable
             \param variableName - the name of the variable to gather
-            \param[out] outBuf - the value of the variable
+            \param[out] outBuf - the value of the variable, caller must allocate
+            \param outBufSize - the size of the output buffer
         */
         StatError_t getVariable(const Dyninst::Stackwalker::Frame &frame, char *variableName, char *outBuf, unsigned int outBufSize);
 
@@ -352,13 +362,15 @@ class STAT_BackEnd
             "num_elements#filename:line.depth$var[,filename:line.depth$var]*"
 
             i.e., "1#foo.C:1.2$i" or "2#foo.C:1.2$i,bar.C:3.4$j"
+
+            The results are stored in extractVariables_
         */
         StatError_t parseVariableSpecification(char *variableSpecification);
 
         //! Detach from all of the application processes
         /*!
             \param stopArray - array of process ranks to leave in stopped state
-            \param - stopArrayLen - the length of the stop array
+            \param stopArrayLen - the length of the stop array
             \return STAT_OK on success
         */
         StatError_t detach(unsigned int *stopArray, int stopArrayLen);
@@ -367,13 +379,14 @@ class STAT_BackEnd
         /*!
             \return STAT_OK on success
         */
-        StatError_t terminateApplication();
+        StatError_t terminate();
 
         //! Send an acknowledgement to the front end
         /*!
             \param stream - the send stream
             \param tag - the packet tag
             \param val - the ack return value, 0 for success, 1 for failure
+            \return STAT_OK on success
         */
         StatError_t sendAck(MRN::Stream *stream, int tag, int val);
 
@@ -387,11 +400,10 @@ class STAT_BackEnd
         //! Get Python script level frame info
         /*!
             \param proc - the Walker object for this process
-            \param swalk - the currnet stack frames
             \param frame - the index for the current frame
-            \param [out] pyFun - the Python function name
-            \param [out] pySource - the Python source file
-            \param [out] pyLineNo - the current Python line number
+            \param[out] pyFun - the Python function name
+            \param[out] pySource - the Python script source file
+            \param[out] pyLineNo - the Python script line number
             \return STAT_OK on success
         */
         StatError_t getPythonFrameInfo(Dyninst::Stackwalker::Walker *proc, const Dyninst::Stackwalker::Frame &frame, char **pyFun, char **pySource, int *pyLineNo);
@@ -402,13 +414,13 @@ class STAT_BackEnd
         */
         void clear2dNodesAndEdges();
 
-        //! Clear the nodes2d_ and edges2d_ maps
+        //! Clear the nodes3d_ and edges3d_ maps
         /*!
             \return STAT_OK on success
         */
         void clear3dNodesAndEdges();
 
-        //! Update the nodes3d_ and edges3d_ with the latest nodes2d_ and edges 2d_
+        //! Update the 3d node and edge maps with the current 2d nodes and edges
         /*!
             \return STAT_OK on success
         */
@@ -425,7 +437,7 @@ class STAT_BackEnd
         */
         StatError_t update2dEdge(int src, int dst, StatBitVectorEdge_t *edge);
 
-        //! generate the 2d and 3d prefix trees based on nodes and edges
+        //! generate the 2d and 3d prefix trees based on nodes and edges maps
         /*!
             \param prefixTree2d - [in,out] the 2d prefix Tree
             \param prefixTree3d - [in,out] the 3d prefix Tree
@@ -433,9 +445,9 @@ class STAT_BackEnd
         */
         StatError_t generateGraphs(graphlib_graph_p *prefixTree2d, graphlib_graph_p *prefixTree3d);
 
-        //! Create stack traces
+        //! Create stack traces (STAT Bench)
         /*!
-            \param maxDepth - the maximum call path to generate
+            \param maxDepth - the maximum call path depth to generate
             \param nTasks - the number of tasks to emulate
             \param nTraces - the number of traces to generate per emulated task
             \param functionFanout - the max function fanout
@@ -444,9 +456,9 @@ class STAT_BackEnd
         */
         StatError_t statBenchCreateTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
 
-        //! Create a single stack trace
+        //! Create a single stack trace (STAT Bench)
         /*!
-            \param maxDepth - the maximum call path to generate
+            \param maxDepth - the maximum call path depth to generate
             \param task - the emulated task rank
             \param nTasks - the total number of emulated tasks
             \param functionFanout - the max function fanout
@@ -467,41 +479,50 @@ class STAT_BackEnd
         char logOutDir_[BUFSIZE];       /*!< the directory for log files */
         char localHostName_[BUFSIZE];   /*!< the local hostname */
         char localIp_[BUFSIZE];         /*!< the local IP address */
-        char *swDebugString_;  /*!< the memory buffer for stackwalker debug logging */
-        FILE *swDebugFile_;             /*!< the stackwalker debug file handle */
+        char *swDebugString_;           /*!< the memory buffer for stackwalker 
+                                             debug logging */
+        FILE *swDebugFile_;             /*!< the stackwalker log file handle */
         FILE *errOutFp_;                /*!< the error output file handle */
-        bool initialized_;              /*!< whether STAT has been initialized */
-        bool connected_;                /*!< whether this daemon has been conected to MRNet */
-        bool isRunning_;                /*!< whether the target processes are running */
-        bool doGroupOps_;               /*!< do group operations through StackwalkerAPI */
-        bool isPyTrace_;                /*!< indicates whether the current trace includes Python script level functions */
+        bool initialized_;              /*!< whether STAT has been 
+                                             initialized */
+        bool connected_;                /*!< whether this daemon has been 
+                                             conected to MRNet */
+        bool isRunning_;                /*!< whether the target processes are 
+                                             running */
+        bool doGroupOps_;               /*!< do group operations through 
+                                             StackwalkerAPI */
+        bool isPyTrace_;                /*!< whether the current trace includes 
+                                             Python script level functions */
         MRN::Network *network_;         /*!< the MRNet Network object */
         MRN::Rank myRank_;              /*!< this daemon's MRNet rank */
         MRN::Rank parentRank_;          /*!< the MRNet parent's rank */
         MRN::Port parentPort_;          /*!< the MRNet parent's port */
-        MRN::Stream *broadcastStream_;  /*!< the main broadcast/acknowledgement stream */
-        graphlib_graph_p prefixTree3d_; /*!< the 3D prefix tree */
+        MRN::Stream *broadcastStream_;  /*!< the main broadcast and 
+                                             acknowledgement stream */
         std::map<int, std::string> nodes2d_; /*!< the 2D prefix tree nodes */
         std::map<int, std::string> nodes3d_; /*!< the 3D prefix tree nodes */
         std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges2d_; /*!< the 2D prefix tree edges */
         std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges3d_; /*!< the 3D prefix tree edges */
         MPIR_PROCDESC_EXT *proctab_;    /*!< the process table */
         StatDaemonLaunch_t launchType_; /*!< the launch type */
-        unsigned int sampleType_;       /*!< type of sample we're currently collecting */
-        int nVariables_;                /*!< the number of variables to extract */
-        StatVariable_t *extractVariables_;  /*!< a list of variables to extract for the current sample */
+        unsigned int sampleType_;       /*!< type of sample we're currently 
+                                             collecting */
+        int nVariables_;                /*!< the number of variables to 
+                                             extract */
+        StatVariable_t *extractVariables_;  /*!< a list of variables to extract 
+                                                 for the current sample */
 
-        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;      /*!< the debug process objects */
+        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;  /*!< the debug process objects */
         std::map<Dyninst::Stackwalker::Walker *, int> procsToRanks_;    /*!< translate a process into a rank */
 
 
 #ifdef GROUP_OPS
-        Dyninst::ProcControlAPI::ProcessSet::ptr procSet_;
-        Dyninst::Stackwalker::WalkerSet *walkerSet_;
+        Dyninst::ProcControlAPI::ProcessSet::ptr procSet_;  /*< the set of process objects */
+        Dyninst::Stackwalker::WalkerSet *walkerSet_;        /*< the set of walker objects */
 #endif
 
 #ifdef STAT_FGFS
-        FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_;
+        FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_; /*< the FGFS communication fabric handle */
 #endif
 
 };

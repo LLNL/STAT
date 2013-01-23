@@ -30,9 +30,11 @@ extern "C" {
 vector<graphlib_graph_p> *graphs = NULL;
 int high_rank;
 #ifdef COUNTREP
-extern graphlib_functiontable_p statCountRepFunctions;
+//! the count and representative routines
+extern graphlib_functiontable_p gStatCountRepFunctions;
 #else
-extern graphlib_functiontable_p statBitVectorFunctions;
+//! the bit vector routines
+extern graphlib_functiontable_p gStatBitVectorFunctions;
 #endif
 
 static PyObject *py_Init_Graphlib(PyObject *self, PyObject *args)
@@ -67,9 +69,9 @@ static PyObject *py_New_Graph(PyObject *self, PyObject *args)
     graphlib_error_t gl_err;
 
 #ifdef COUNTREP
-    gl_err = graphlib_newGraph(&new_graph, statCountRepFunctions);
+    gl_err = graphlib_newGraph(&new_graph, gStatCountRepFunctions);
 #else
-    gl_err = graphlib_newGraph(&new_graph, statBitVectorFunctions);
+    gl_err = graphlib_newGraph(&new_graph, gStatBitVectorFunctions);
 #endif
     if (GRL_IS_FATALERROR(gl_err))
     {
@@ -121,7 +123,7 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
     edge->representative = task;
     edge->checksum = task;
     edge_attr.label = (void *)edge;
-    gl_err = graphlib_newGraph(&cur_graph, statCountRepFunctions);
+    gl_err = graphlib_newGraph(&cur_graph, gStatCountRepFunctions);
     if (GRL_IS_FATALERROR(gl_err))
     {
         fprintf(stderr, "Failed to create new graph\n");
@@ -141,7 +143,7 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
 
     edge_attr.label = (void *)edge;
 
-    gl_err = graphlib_newGraph(&cur_graph, statBitVectorFunctions);
+    gl_err = graphlib_newGraph(&cur_graph, gStatBitVectorFunctions);
     if (GRL_IS_FATALERROR(gl_err))
     {
         fprintf(stderr, "Failed to create new graph\n");
@@ -362,9 +364,9 @@ static PyObject *py_Deserialize_Graph(PyObject *self, PyObject *args)
     }
 
 #ifdef COUNTREP
-    gl_err = graphlib_deserializeBasicGraph(&graph_ptr, statCountRepFunctions, buf, (unsigned int)buf_len);
+    gl_err = graphlib_deserializeBasicGraph(&graph_ptr, gStatCountRepFunctions, buf, (unsigned int)buf_len);
 #else
-    gl_err = graphlib_deserializeBasicGraph(&graph_ptr, statBitVectorFunctions, buf, (unsigned int)buf_len);
+    gl_err = graphlib_deserializeBasicGraph(&graph_ptr, gStatBitVectorFunctions, buf, (unsigned int)buf_len);
 #endif
     if (GRL_IS_FATALERROR(gl_err))
     {

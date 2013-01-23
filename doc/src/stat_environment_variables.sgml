@@ -131,10 +131,10 @@ Several environment variables influence STAT and its dependent packages.  Note t
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term>STAT_NO_GROUP_OPS=<replaceable class="parameter">value</replaceable></term>
+    <term>STAT_GROUP_OPS=<replaceable class="parameter">value</replaceable></term>
     <listitem>
         <para>
-        Set to any value to disable Stackwalker's group operations.  Group operations may help with performance when a single daemon needs to manage a large number of target processes.
+        Set to any value to enable Stackwalker's group operations.  Group operations may help with performance when a single daemon needs to manage a large number of target processes.  This is on by default on BG/Q systems.
         </para>
     </listitem>
 </varlistentry>

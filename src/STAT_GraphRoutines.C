@@ -18,22 +18,40 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "STAT_GraphRoutines.h"
 
-graphlib_functiontable_p statBitVectorFunctions;
-graphlib_functiontable_p statMergeFunctions;
-graphlib_functiontable_p statReorderFunctions;
-graphlib_functiontable_p statCountRepFunctions;
-int statGraphRoutinesTotalWidth;
-int *statGraphRoutinesEdgeLabelWidths;
-int statGraphRoutinesCurrentIndex;
-int *statGraphRoutinesRanksList;
-int statGraphRoutinesRanksListLength;
+//! the bit vector routines
+graphlib_functiontable_p gStatBitVectorFunctions;
+
+//! the bit vector filter routines to append bit vectors
+graphlib_functiontable_p gStatMergeFunctions;
+
+//! the bit vector to reorder the bit vectors by MPI rank
+graphlib_functiontable_p gStatReorderFunctions;
+
+//! the count and representative routines
+graphlib_functiontable_p gStatCountRepFunctions;
+
+//! the final bit vector width
+int gStatGraphRoutinesTotalWidth;
+
+//! the input list of bit vector widths
+int *gStatGraphRoutinesEdgeLabelWidths;
+
+//! the current index into the bit vector
+int gStatGraphRoutinesCurrentIndex;
+
+//! the ranks list for the current bit vector
+int *gStatGraphRoutinesRanksList;
+
+//! the length of the ranks list
+int gStatGraphRoutinesRanksListLength;
 
 unsigned int statStringHash(const char *str)
 {
     unsigned int hash = 0;
     int c;
 
-    while (c = *(str++))
+    /* perform a sdbm hash */
+    while (c = *str++)
         hash = c + (hash << 6) + (hash << 16) - hash;
 
     return hash;
@@ -45,16 +63,16 @@ graphlib_graph_p createRootedGraph(unsigned int sampleType)
     graphlib_graph_p retGraph = NULL;
 
     if (sampleType & STAT_SAMPLE_COUNT_REP)
-        graphlibError = graphlib_newGraph(&retGraph, statCountRepFunctions);
+        graphlibError = graphlib_newGraph(&retGraph, gStatCountRepFunctions);
     else
-        graphlibError = graphlib_newGraph(&retGraph, statBitVectorFunctions);
+        graphlibError = graphlib_newGraph(&retGraph, gStatBitVectorFunctions);
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error creating new graph\n");
         return NULL;
     }
 
-    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *) "/", -1};
+    graphlib_nodeattr_t nodeAttr = {1, 0, 20, GRC_LIGHTGREY, 0, 0, (char *)"/", -1};
     graphlibError = graphlib_addNode(retGraph, 0, &nodeAttr);
     if (GRL_IS_FATALERROR(graphlibError))
     {
@@ -88,121 +106,121 @@ StatBitVectorEdge_t *initializeBitVectorEdge(int numTasks)
 void statInitializeBitVectorFunctions()
 {
     statFreeBitVectorFunctions();
-    statBitVectorFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
-    if (statBitVectorFunctions == NULL)
+    gStatBitVectorFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
+    if (gStatBitVectorFunctions == NULL)
         fprintf(stderr, "Failed to malloc function table\n");
-    statBitVectorFunctions->serialize_node = statSerializeNode;
-    statBitVectorFunctions->serialize_node_length = statSerializeNodeLength;
-    statBitVectorFunctions->deserialize_node = statDeserializeNode;
-    statBitVectorFunctions->node_to_text = statNodeToText;
-    statBitVectorFunctions->merge_node = statMergeNode;
-    statBitVectorFunctions->copy_node = statCopyNode;
-    statBitVectorFunctions->free_node = statFreeNode;
-    statBitVectorFunctions->serialize_edge = statSerializeEdge;
-    statBitVectorFunctions->serialize_edge_length = statSerializeEdgeLength;
-    statBitVectorFunctions->deserialize_edge = statDeserializeEdge;
-    statBitVectorFunctions->edge_to_text = statEdgeToText;
-    statBitVectorFunctions->merge_edge = statMergeEdge;
-    statBitVectorFunctions->copy_edge = statCopyEdge;
-    statBitVectorFunctions->free_edge = statFreeEdge;
-    statBitVectorFunctions->edge_checksum = statEdgeCheckSum;
+    gStatBitVectorFunctions->serialize_node = statSerializeNode;
+    gStatBitVectorFunctions->serialize_node_length = statSerializeNodeLength;
+    gStatBitVectorFunctions->deserialize_node = statDeserializeNode;
+    gStatBitVectorFunctions->node_to_text = statNodeToText;
+    gStatBitVectorFunctions->merge_node = statMergeNode;
+    gStatBitVectorFunctions->copy_node = statCopyNode;
+    gStatBitVectorFunctions->free_node = statFreeNode;
+    gStatBitVectorFunctions->serialize_edge = statSerializeEdge;
+    gStatBitVectorFunctions->serialize_edge_length = statSerializeEdgeLength;
+    gStatBitVectorFunctions->deserialize_edge = statDeserializeEdge;
+    gStatBitVectorFunctions->edge_to_text = statEdgeToText;
+    gStatBitVectorFunctions->merge_edge = statMergeEdge;
+    gStatBitVectorFunctions->copy_edge = statCopyEdge;
+    gStatBitVectorFunctions->free_edge = statFreeEdge;
+    gStatBitVectorFunctions->edge_checksum = statEdgeCheckSum;
 }
 
 void statFreeBitVectorFunctions()
 {
-    if (statBitVectorFunctions != NULL)
-        free(statBitVectorFunctions);
-    statBitVectorFunctions = NULL;
+    if (gStatBitVectorFunctions != NULL)
+        free(gStatBitVectorFunctions);
+    gStatBitVectorFunctions = NULL;
 }
 
 void statInitializeMergeFunctions()
 {
     statFreeMergeFunctions();
-    statMergeFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
-    if (statMergeFunctions == NULL)
+    gStatMergeFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
+    if (gStatMergeFunctions == NULL)
         fprintf(stderr, "Failed to malloc function table\n");
-    statMergeFunctions->serialize_node = statSerializeNode;
-    statMergeFunctions->serialize_node_length = statSerializeNodeLength;
-    statMergeFunctions->deserialize_node = statDeserializeNode;
-    statMergeFunctions->node_to_text = statNodeToText;
-    statMergeFunctions->merge_node = statMergeNode;
-    statMergeFunctions->copy_node = statCopyNode;
-    statMergeFunctions->free_node = statFreeNode;
-    statMergeFunctions->serialize_edge = statSerializeEdge;
-    statMergeFunctions->serialize_edge_length = statSerializeEdgeLength;
-    statMergeFunctions->deserialize_edge = statFilterDeserializeEdge;
-    statMergeFunctions->edge_to_text = statEdgeToText;
-    statMergeFunctions->merge_edge = statMergeEdge;
-    statMergeFunctions->copy_edge = statCopyEdge;
-    statMergeFunctions->free_edge = statFreeEdge;
-    statMergeFunctions->edge_checksum = statEdgeCheckSum;
+    gStatMergeFunctions->serialize_node = statSerializeNode;
+    gStatMergeFunctions->serialize_node_length = statSerializeNodeLength;
+    gStatMergeFunctions->deserialize_node = statDeserializeNode;
+    gStatMergeFunctions->node_to_text = statNodeToText;
+    gStatMergeFunctions->merge_node = statMergeNode;
+    gStatMergeFunctions->copy_node = statCopyNode;
+    gStatMergeFunctions->free_node = statFreeNode;
+    gStatMergeFunctions->serialize_edge = statSerializeEdge;
+    gStatMergeFunctions->serialize_edge_length = statSerializeEdgeLength;
+    gStatMergeFunctions->deserialize_edge = statFilterDeserializeEdge;
+    gStatMergeFunctions->edge_to_text = statEdgeToText;
+    gStatMergeFunctions->merge_edge = statMergeEdge;
+    gStatMergeFunctions->copy_edge = statCopyEdge;
+    gStatMergeFunctions->free_edge = statFreeEdge;
+    gStatMergeFunctions->edge_checksum = statEdgeCheckSum;
 }
 
 void statFreeMergeFunctions()
 {
-    if (statMergeFunctions != NULL)
-        free(statMergeFunctions);
-    statMergeFunctions = NULL;
+    if (gStatMergeFunctions != NULL)
+        free(gStatMergeFunctions);
+    gStatMergeFunctions = NULL;
 }
 
 void statInitializeReorderFunctions()
 {
     statFreeReorderFunctions();
-    statReorderFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
-    if (statReorderFunctions == NULL)
+    gStatReorderFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
+    if (gStatReorderFunctions == NULL)
         fprintf(stderr, "Failed to malloc function table\n");
-    statReorderFunctions->serialize_node = statSerializeNode;
-    statReorderFunctions->serialize_node_length = statSerializeNodeLength;
-    statReorderFunctions->deserialize_node = statDeserializeNode;
-    statReorderFunctions->node_to_text = statNodeToText;
-    statReorderFunctions->merge_node = statMergeNode;
-    statReorderFunctions->copy_node = statCopyNode;
-    statReorderFunctions->free_node = statFreeNode;
-    statReorderFunctions->serialize_edge = statSerializeEdge;
-    statReorderFunctions->serialize_edge_length = statSerializeEdgeLength;
-    statReorderFunctions->deserialize_edge = statDeserializeEdge;
-    statReorderFunctions->edge_to_text = statEdgeToText;
-    statReorderFunctions->merge_edge = statMergeEdgeOrdered;
-    statReorderFunctions->copy_edge = statCopyEdgeInitializeEmpty;
-    statReorderFunctions->free_edge = statFreeEdge;
-    statReorderFunctions->edge_checksum = statEdgeCheckSum;
+    gStatReorderFunctions->serialize_node = statSerializeNode;
+    gStatReorderFunctions->serialize_node_length = statSerializeNodeLength;
+    gStatReorderFunctions->deserialize_node = statDeserializeNode;
+    gStatReorderFunctions->node_to_text = statNodeToText;
+    gStatReorderFunctions->merge_node = statMergeNode;
+    gStatReorderFunctions->copy_node = statCopyNode;
+    gStatReorderFunctions->free_node = statFreeNode;
+    gStatReorderFunctions->serialize_edge = statSerializeEdge;
+    gStatReorderFunctions->serialize_edge_length = statSerializeEdgeLength;
+    gStatReorderFunctions->deserialize_edge = statDeserializeEdge;
+    gStatReorderFunctions->edge_to_text = statEdgeToText;
+    gStatReorderFunctions->merge_edge = statMergeEdgeOrdered;
+    gStatReorderFunctions->copy_edge = statCopyEdgeInitializeEmpty;
+    gStatReorderFunctions->free_edge = statFreeEdge;
+    gStatReorderFunctions->edge_checksum = statEdgeCheckSum;
 }
 
 void statFreeReorderFunctions()
 {
-    if (statReorderFunctions != NULL)
-        free(statReorderFunctions);
-    statReorderFunctions = NULL;
+    if (gStatReorderFunctions != NULL)
+        free(gStatReorderFunctions);
+    gStatReorderFunctions = NULL;
 }
 
 void statInitializeCountRepFunctions()
 {
     statFreeCountRepFunctions();
-    statCountRepFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
-    if (statCountRepFunctions == NULL)
+    gStatCountRepFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
+    if (gStatCountRepFunctions == NULL)
         fprintf(stderr, "Failed to malloc function table\n");
-    statCountRepFunctions->serialize_node = statSerializeNode;
-    statCountRepFunctions->serialize_node_length = statSerializeNodeLength;
-    statCountRepFunctions->deserialize_node = statDeserializeNode;
-    statCountRepFunctions->node_to_text = statNodeToText;
-    statCountRepFunctions->merge_node = statMergeNode;
-    statCountRepFunctions->copy_node = statCopyNode;
-    statCountRepFunctions->free_node = statFreeNode;
-    statCountRepFunctions->serialize_edge = statSerializeCountRepEdge;
-    statCountRepFunctions->serialize_edge_length = statSerializeCountRepEdgeLength;
-    statCountRepFunctions->deserialize_edge = statDeserializeCountRepEdge;
-    statCountRepFunctions->edge_to_text = statCountRepEdgeToText;
-    statCountRepFunctions->merge_edge = statMergeCountRepEdge;
-    statCountRepFunctions->copy_edge = statCopyCountRepEdge;
-    statCountRepFunctions->free_edge = statFreeCountRepEdge;
-    statCountRepFunctions->edge_checksum = statCountRepEdgeCheckSum;
+    gStatCountRepFunctions->serialize_node = statSerializeNode;
+    gStatCountRepFunctions->serialize_node_length = statSerializeNodeLength;
+    gStatCountRepFunctions->deserialize_node = statDeserializeNode;
+    gStatCountRepFunctions->node_to_text = statNodeToText;
+    gStatCountRepFunctions->merge_node = statMergeNode;
+    gStatCountRepFunctions->copy_node = statCopyNode;
+    gStatCountRepFunctions->free_node = statFreeNode;
+    gStatCountRepFunctions->serialize_edge = statSerializeCountRepEdge;
+    gStatCountRepFunctions->serialize_edge_length = statSerializeCountRepEdgeLength;
+    gStatCountRepFunctions->deserialize_edge = statDeserializeCountRepEdge;
+    gStatCountRepFunctions->edge_to_text = statCountRepEdgeToText;
+    gStatCountRepFunctions->merge_edge = statMergeCountRepEdge;
+    gStatCountRepFunctions->copy_edge = statCopyCountRepEdge;
+    gStatCountRepFunctions->free_edge = statFreeCountRepEdge;
+    gStatCountRepFunctions->edge_checksum = statCountRepEdgeCheckSum;
 }
 
 void statFreeCountRepFunctions()
 {
-    if (statCountRepFunctions != NULL)
-        free(statCountRepFunctions);
-    statCountRepFunctions = NULL;
+    if (gStatCountRepFunctions != NULL)
+        free(gStatCountRepFunctions);
+    gStatCountRepFunctions = NULL;
 }
 
 size_t statBitVectorLength(int numTasks)
@@ -217,13 +235,13 @@ size_t statBitVectorLength(int numTasks)
 
 void statSerializeNode(char *buf, const void *node)
 {
-  if (node!= NULL)
+  if (node !=  NULL)
     strcpy(buf, (char *)node);
 }
 
 unsigned int statSerializeNodeLength(const void *node)
 {
-  if (node!=NULL)
+  if (node != NULL)
     return strlen((char *)node) + 1;
   else
     return 0;
@@ -299,9 +317,9 @@ void statDeserializeEdge(void **edge, const char *buf, unsigned int bufLength)
 
 char *statEdgeToText(const void *edge)
 {
-    char val[128], *charRet;
     int i, j, inRange = 0, firstIteration = 1, currentValue, lastValue = 0;
     unsigned int charRetSize = 0, count = 0;
+    char val[128], *charRet;
     StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
 
     charRet = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
@@ -313,7 +331,7 @@ char *statEdgeToText(const void *edge)
     }
     sprintf(charRet + count, "[");
     count += 1;
-    for (i = 0; i< e->length; i++)
+    for (i = 0; i < e->length; i++)
     {
         if (charRetSize - count < 1024)
         {
@@ -434,9 +452,9 @@ void statFreeEdge(void *edge)
 
 long statEdgeCheckSum(const void *edge)
 {
-    StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
     int i;
     long longRet = 0;
+    StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
 
     for (i = 0; i < e->length; i++)
         longRet = longRet + e->bitVector[i] * (e->length - i + 1);
@@ -460,7 +478,7 @@ void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLen
 
     memcpy((void *)&(currentEdgeLength), ptr, sizeof(size_t));
     ptr += sizeof(size_t);
-    e->length = statGraphRoutinesTotalWidth;
+    e->length = gStatGraphRoutinesTotalWidth;
     e->bitVector = (StatBitVector_t *)calloc(e->length, STAT_BITVECTOR_BYTES);
     if (e == NULL)
     {
@@ -469,8 +487,8 @@ void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLen
     }
 
     offset = 0;
-    for (i = 0; i < statGraphRoutinesCurrentIndex; i++)
-        offset += statGraphRoutinesEdgeLabelWidths[i];
+    for (i = 0; i < gStatGraphRoutinesCurrentIndex; i++)
+        offset += gStatGraphRoutinesEdgeLabelWidths[i];
 
     memcpy((void *)&(e->bitVector[offset]), ptr, STAT_BITVECTOR_BYTES * currentEdgeLength);
     *edge = (void *)e;
@@ -486,7 +504,7 @@ void *statCopyEdgeInitializeEmpty(const void *edge)
         fprintf(stderr, "Failed to allocate %u bytes for edge copy\n", sizeof(StatBitVectorEdge_t));
         return NULL;
     }
-    bvRet->length = statGraphRoutinesTotalWidth;
+    bvRet->length = gStatGraphRoutinesTotalWidth;
     bvRet->bitVector = (StatBitVector_t *)calloc(bvRet->length, STAT_BITVECTOR_BYTES);
     if (bvRet->bitVector == NULL)
     {
@@ -508,12 +526,12 @@ void *statMergeEdgeOrdered(void *edge1, const void *edge2)
 
     StatBitVectorEdge_t *e1 = (StatBitVectorEdge_t *)edge1, *e2 = (StatBitVectorEdge_t *)edge2;
 
-    for (i = 0; i < statGraphRoutinesRanksListLength; i++)
+    for (i = 0; i < gStatGraphRoutinesRanksListLength; i++)
     {
-        if (bitVectorContains(e2->bitVector, statGraphRoutinesCurrentIndex * STAT_BITVECTOR_BITS + i) == 1)
+        if (bitVectorContains(e2->bitVector, gStatGraphRoutinesCurrentIndex * STAT_BITVECTOR_BITS + i) == 1)
         {
-            byte = statGraphRoutinesRanksList[i] / STAT_BITVECTOR_BITS;
-            bit = statGraphRoutinesRanksList[i] % STAT_BITVECTOR_BITS;
+            byte = gStatGraphRoutinesRanksList[i] / STAT_BITVECTOR_BITS;
+            bit = gStatGraphRoutinesRanksList[i] % STAT_BITVECTOR_BITS;
             e1->bitVector[byte] |= STAT_GRAPH_BIT(bit);
         }
     }

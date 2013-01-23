@@ -29,19 +29,51 @@ using namespace MRN;
     using namespace FastGlobalFileStatus::MountPointAttribute;
 #endif
 
-/* Externals from STAT's graphlib routines */
-extern graphlib_functiontable_p statReorderFunctions;
-extern graphlib_functiontable_p statBitVectorFunctions;
-extern graphlib_functiontable_p statCountRepFunctions;
-extern int statGraphRoutinesCurrentIndex;
-extern int *statGraphRoutinesRanksList;
-extern int statGraphRoutinesRanksListLength;
+//! the bit vector routines
+extern graphlib_functiontable_p gStatBitVectorFunctions;
 
-static int gsLMonState = 0;
+//! the count and representative routines
+extern graphlib_functiontable_p gStatCountRepFunctions;
+
+//! the bit vector to reorder the bit vectors by MPI rank
+extern graphlib_functiontable_p gStatReorderFunctions;
+
+//! the current index into the bit vector
+extern int gStatGraphRoutinesCurrentIndex;
+
+//! the ranks list for the current bit vector
+extern int *gStatGraphRoutinesRanksList;
+
+//! the length of the ranks list
+extern int gStatGraphRoutinesRanksListLength;
+
+//! the LMON status bit vector to detect daemon and application exit
+static int gsLmonState = 0;
+
+//! frame label to indicate an error
 const char *gErrorLabel = "daemon error";
-STAT_timer gTotalgStartTime, gTotalgEndTime, gStartTime, gEndTime;
 
+//! start timer for composite operations
+STAT_timer gTotalgStartTime;
+
+//! end timer for composite operations
+STAT_timer gTotalgEndTime;
+
+//! start timer for individual operations
+STAT_timer gStartTime;
+
+//! end timer for individual operations
+STAT_timer gEndTime;
+
+//! the STAT log handle, global for filter access
 FILE *gStatOutFp = NULL;
+
+//! The number of BEs that have connected
+int gNumCallbacks;
+
+//! A mutex to protect data/events during a callback
+pthread_mutex_t gMrnetCallbackMutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 STAT_FrontEnd::STAT_FrontEnd()
 {
@@ -97,8 +129,8 @@ STAT_FrontEnd::STAT_FrontEnd()
         setenv("MRNET_PORT_BASE", envValue, 1);
 
     /* Set the daemon path and filter paths to the environment variable
-       specification if applicable.  Otherwise, set to default install
-       directory */
+       specification if applicable.  Otherwise, set to default installation
+       paths */
     envValue = getenv("STAT_DAEMON_PATH");
     if (envValue != NULL)
     {
@@ -166,7 +198,6 @@ STAT_FrontEnd::STAT_FrontEnd()
     }
 #endif
 
-    /* Initialize Graphlib */
     graphlibError = graphlib_Init();
     if (GRL_IS_FATALERROR(graphlibError))
     {
@@ -190,33 +221,10 @@ STAT_FrontEnd::STAT_FrontEnd()
         printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
 
     /* Initialize variables */
-    verbose_ = STAT_VERBOSE_STDOUT;
-    isLaunched_ = false;
-    isAttached_ = false;
-    isConnected_ = false;
-    isPendingAck_ = false;
-    isStatBench_ = false;
-    hasFatalError_ = false;
-    mergeStream_ = NULL;
-    broadcastStream_ = NULL;
-    broadcastCommunicator_ = NULL;
-    network_ = NULL;
-    gStatOutFp = NULL;
     launcherPid_ = 0;
-    launcherArgv_ = NULL;
-    launcherArgc_ = 1;
-    lmonSession_ = -1;
-    logging_ = 0;
-    applExe_ = NULL;
-    jobId_ = 0;
+    nApplNodes_ = 0;
     proctabSize_ = 0;
-    proctab_ = NULL;
-    remoteNode_ = NULL;
-    nodeListFile_ = NULL;
-    isRunning_ = false;
-    snprintf(outDir_, BUFSIZE, "NULL");
-    snprintf(logOutDir_, BUFSIZE, "NULL");
-    snprintf(filePrefix_, BUFSIZE, "NULL");
+    nApplProcs_ = 0;
 #ifdef STAT_PROCS_PER_NODE
     procsPerNode_ = STAT_PROCS_PER_NODE;
 #else
@@ -225,58 +233,88 @@ STAT_FrontEnd::STAT_FrontEnd()
     envValue = getenv("STAT_PROCS_PER_NODE");
     if (envValue != NULL)
         procsPerNode_ = atoi(envValue);
+    launcherArgc_ = 1;
+    topologySize_ = 0;
+    logging_ = 0;
+    jobId_ = 0;
+    lmonSession_ = -1;
+    launcherArgv_ = NULL;
+    applExe_ = NULL;
+    remoteNode_ = NULL;
+    nodeListFile_ = NULL;
+    snprintf(outDir_, BUFSIZE, "NULL");
+    snprintf(logOutDir_, BUFSIZE, "NULL");
+    snprintf(filePrefix_, BUFSIZE, "NULL");
+    isStatBench_ = false;
+    isLaunched_ = false;
+    isConnected_ = false;
+    isAttached_ = false;
+    isRunning_ = false;
+    isPendingAck_ = false;
+    hasFatalError_ = false;
     checkNodeAccess_ = false;
     envValue = getenv("STAT_CHECK_NODE_ACCESS");
     if (envValue != NULL)
         checkNodeAccess_ = true;
+    verbose_ = STAT_VERBOSE_STDOUT;
+    applicationOption_ = STAT_ATTACH;
+    proctab_ = NULL;
+    network_ = NULL;
+    broadcastCommunicator_ = NULL;
+    broadcastStream_ = NULL;
+    mergeStream_ = NULL;
+#ifdef STAT_FGFS
+    fgfsCommFabric_ = NULL;
+#endif
+    gStatOutFp = NULL;
 }
+
 
 STAT_FrontEnd::~STAT_FrontEnd()
 {
     unsigned int i;
-    StatError_t statError;
     map<int, IntList_t *>::iterator mrnetRankToMpiRanksMapIter;
+    StatError_t statError;
     graphlib_error_t graphlibError;
 
-    /* Dump the performance metrics to a file */
     statError = dumpPerf();
     if (statError != STAT_OK)
         printMsg(statError, __FILE__, __LINE__, "Failed to dump performance results\n");
 
-    /* Free up MRNet variables */
-    if (network_ != NULL)
+    if (launcherArgv_ != NULL)
     {
-        delete network_;
-        network_ = NULL;
+        for (i = 0; i < launcherArgc_; i++)
+        {
+            if (launcherArgv_[i] != NULL)
+                free(launcherArgv_[i]);
+        }
+        free(launcherArgv_);
+        launcherArgv_ = NULL;
     }
-
-    /* Free up any allocated variables */
     if (toolDaemonExe_ != NULL)
     {
         free(toolDaemonExe_);
         toolDaemonExe_ = NULL;
+    }
+    if (applExe_ != NULL)
+    {
+        free(applExe_);
+        applExe_ = NULL;
     }
     if (filterPath_ != NULL)
     {
         free(filterPath_);
         filterPath_ = NULL;
     }
-#ifdef STAT_FGFS
-    if (fgfsCommFabric_ != NULL)
+    if (remoteNode_ != NULL)
     {
-        delete fgfsCommFabric_;
-        fgfsCommFabric_ = NULL;
+        free(remoteNode_);
+        remoteNode_ = NULL;
     }
-    if (fgfsFilterPath_ != NULL)
+    if (nodeListFile_ != NULL)
     {
-        free(fgfsFilterPath_);
-        fgfsFilterPath_ = NULL;
-    }
-#endif
-    if (applExe_ != NULL)
-    {
-        free(applExe_);
-        applExe_ = NULL;
+        free(nodeListFile_);
+        nodeListFile_ = NULL;
     }
     if (proctab_ != NULL)
     {
@@ -290,16 +328,23 @@ STAT_FrontEnd::~STAT_FrontEnd()
         free(proctab_);
         proctab_ = NULL;
     }
-    if (launcherArgv_ != NULL)
+    if (network_ != NULL)
     {
-        for (i = 0; i < launcherArgc_; i++)
-        {
-            if (launcherArgv_[i] != NULL)
-                free(launcherArgv_[i]);
-        }
-        free(launcherArgv_);
-        launcherArgv_ = NULL;
+        delete network_;
+        network_ = NULL;
     }
+#ifdef STAT_FGFS
+    if (fgfsFilterPath_ != NULL)
+    {
+        free(fgfsFilterPath_);
+        fgfsFilterPath_ = NULL;
+    }
+    if (fgfsCommFabric_ != NULL)
+    {
+        delete fgfsCommFabric_;
+        fgfsCommFabric_ = NULL;
+    }
+#endif
     for (mrnetRankToMpiRanksMapIter = mrnetRankToMpiRanksMap_.begin(); mrnetRankToMpiRanksMapIter != mrnetRankToMpiRanksMap_.end(); mrnetRankToMpiRanksMapIter++)
     {
         if (mrnetRankToMpiRanksMapIter->second != NULL)
@@ -317,10 +362,8 @@ STAT_FrontEnd::~STAT_FrontEnd()
     graphlibError = graphlib_Finish();
     if (GRL_IS_FATALERROR(graphlibError))
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to finish graphlib\n");
-
-    isAttached_ = false;
-    isConnected_ = false;
 }
+
 
 StatError_t STAT_FrontEnd::attachAndSpawnDaemons(unsigned int pid, char *remoteNode)
 {
@@ -388,7 +431,7 @@ StatError_t STAT_FrontEnd::launchAndSpawnDaemons(char *remoteNode, bool isStatBe
 StatError_t STAT_FrontEnd::setupForSerialAttach()
 {
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Setting up environment for seral attach...\n");
-    gsLMonState = gsLMonState | 0x00000002;
+    gsLmonState = gsLmonState | 0x00000002;
     nApplProcs_ = proctabSize_;
 
     return launchDaemons();
@@ -399,7 +442,7 @@ StatError_t STAT_FrontEnd::launchDaemons()
     int i, daemonArgc = 1;
     unsigned int proctabSize;
     char **daemonArgv = NULL;
-    static bool sFirstRun = true;
+    static bool iIsFirstRun = true;
     string applName;
     set<string> exeNames;
     lmon_rc_e lmonRet;
@@ -409,20 +452,18 @@ StatError_t STAT_FrontEnd::launchDaemons()
     /* Initialize performance timer */
     addPerfData("MRNet Launch Time", -1.0);
     gTotalgStartTime.setTime();
+    gStartTime.setTime();
 
-    /* Increase the max proc and max fd limits */
+    /* Increase the max proc and max fd limits for MRNet threads */
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
     statError = increaseSysLimits();
     if (statError != STAT_OK)
         printMsg(statError, __FILE__, __LINE__, "Failed to increase limits... attemting to run with current configuration\n");
 #endif
 
-    gStartTime.setTime();
-
     if (applicationOption_ != STAT_SERIAL_ATTACH)
     {
-        /* Initialize LaunchMON */
-        if (sFirstRun == true)
+        if (iIsFirstRun == true)
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Initializing LaunchMON\n");
             lmonRet = LMON_fe_init(LMON_VERSION);
@@ -432,9 +473,8 @@ StatError_t STAT_FrontEnd::launchDaemons()
                 return STAT_LMON_ERROR;
             }
         }
-        sFirstRun = false;
+        iIsFirstRun = false;
 
-        /* Create a LaunchMON session */
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating LaunchMON session\n");
         lmonRet = LMON_fe_createSession(&lmonSession_);
         if (lmonRet != LMON_OK)
@@ -443,7 +483,6 @@ StatError_t STAT_FrontEnd::launchDaemons()
             return STAT_LMON_ERROR;
         }
 
-        /* Register STAT's pack function */
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering pack function with LaunchMON\n");
         lmonRet = LMON_fe_regPackForFeToBe(lmonSession_, statPack);
         if (lmonRet != LMON_OK)
@@ -452,8 +491,7 @@ StatError_t STAT_FrontEnd::launchDaemons()
             return STAT_LMON_ERROR;
         }
 
-        /* Register STAT's check status function */
-        gsLMonState = 0;
+        gsLmonState = 0;
         if (isStatBench_ == false)
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering status CB function with LaunchMON\n");
@@ -465,9 +503,8 @@ StatError_t STAT_FrontEnd::launchDaemons()
             }
         }
         else
-            gsLMonState = gsLMonState | 0x00000002;
+            gsLmonState = gsLmonState | 0x00000002;
 
-        /* Make sure we know which daemon to launch */
         if (toolDaemonExe_ == NULL)
         {
             printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Tool daemon path not set\n");
@@ -483,14 +520,12 @@ StatError_t STAT_FrontEnd::launchDaemons()
 
         if (applicationOption_ == STAT_ATTACH)
         {
-            /* Make sure the pid has been set */
             if (launcherPid_ == 0)
             {
                 printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Launcher PID not set\n");
                 return STAT_ARG_ERROR;
             }
 
-            /* Attach to launcher and spawn daemons */
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to job launcher and spawning daemons\n");
             lmonRet = LMON_fe_attachAndSpawnDaemons(lmonSession_, remoteNode_, launcherPid_, toolDaemonExe_, daemonArgv, NULL, NULL);
             if (lmonRet != LMON_OK)
@@ -501,7 +536,6 @@ StatError_t STAT_FrontEnd::launchDaemons()
         }
         else
         {
-            /* Launch the application and spawn daemons */
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launching the application and spawning daemons\n");
             i = 0;
             while (1)
@@ -519,7 +553,6 @@ StatError_t STAT_FrontEnd::launchDaemons()
                 return STAT_LMON_ERROR;
             }
 
-            /* Get the launcher PID */
             lmonRet = LMON_fe_getRMInfo(lmonSession_, &rmInfo);
             if (lmonRet != LMON_OK)
             {
@@ -529,7 +562,6 @@ StatError_t STAT_FrontEnd::launchDaemons()
             launcherPid_ = rmInfo.rm_launcher_pid;
         }
 
-        /* Gather the process table */
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering the process table\n");
         lmonRet = LMON_fe_getProctableSize(lmonSession_, &proctabSize_);
         if (lmonRet != LMON_OK)
@@ -551,7 +583,6 @@ StatError_t STAT_FrontEnd::launchDaemons()
         }
     } /* if (applicationOption_ != STAT_SERIAL_ATTACH) */
 
-    /* Gather application characteristics */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering application information\n");
 
     /* Iterate over all unique exe names and concatenate to app name */
@@ -572,13 +603,10 @@ StatError_t STAT_FrontEnd::launchDaemons()
     }
     nApplProcs_ = proctabSize_;
     isLaunched_ = true;
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemons successfully launched\n");
-
     gEndTime.setTime();
     addPerfData("\tLaunchmon Launch Time", (gEndTime - gStartTime).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tTool daemons launched\n");
 
-    /* Create the output directory and file prefix if not already created */
     if (strcmp(outDir_, "NULL") == 0 || strcmp(filePrefix_, "NULL") == 0)
     {
         statError = createOutputDir();
@@ -589,7 +617,6 @@ StatError_t STAT_FrontEnd::launchDaemons()
         }
     }
 
-    /* Dump the proctable to a file */
     statError = dumpProctab();
     if (statError != STAT_OK)
     {
@@ -626,11 +653,6 @@ StatError_t STAT_FrontEnd::launchDaemons()
     return STAT_OK;
 }
 
-//! The number of BEs that have connected
-int gNumCallbacks;
-
-//! A mutex to protect data/events during a callback
-pthread_mutex_t gMrnetCallbackMutex = PTHREAD_MUTEX_INITIALIZER;
 
 void beConnectCb(Event *event, void *dummy)
 {
@@ -642,9 +664,11 @@ void beConnectCb(Event *event, void *dummy)
     }
 }
 
+
 void nodeRemovedCb(Event *event, void *statObject)
 {
     StatError_t statError;
+
     if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_REMOVE_NODE))
     {
         pthread_mutex_lock(&gMrnetCallbackMutex);
@@ -659,9 +683,11 @@ void nodeRemovedCb(Event *event, void *statObject)
     }
 }
 
+
 void topologyChangeCb(Event *event, void *statObject)
 {
     StatError_t statError;
+
     if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_CHANGE_PARENT))
     {
         pthread_mutex_lock(&gMrnetCallbackMutex);
@@ -673,6 +699,7 @@ void topologyChangeCb(Event *event, void *statObject)
     }
 }
 
+
 StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, bool shareAppNodes)
 {
     int daemonArgc = 1, statArgc, i;
@@ -680,7 +707,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     bool boolRet;
     StatError_t statError;
 
-    /* Make sure daemons are launched */
     if (isLaunched_ == false)
     {
         printMsg(STAT_NOT_LAUNCHED_ERROR, __FILE__, __LINE__, "BEs not launched yet.\n");
@@ -690,7 +716,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\tLaunching MRNet tree\n");
     gStartTime.setTime();
 
-    /* Create a topology file */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Creating MRNet topology file\n");
     statError = createTopology(topologyFileName, topologyType, topologySpecification, nodeList, shareAppNodes);
     if (statError != STAT_OK)
@@ -702,7 +727,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     addPerfData("\tCreate Topology File Time", (gEndTime - gStartTime).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tMRNet topology %s created\n", topologyFileName);
 
-    /* Now that we have the topology configured, launch away */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tInitializing MRNet...\n");
     gStartTime.setTime();
 
@@ -739,7 +763,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
                 return STAT_ALLOCATE_ERROR;
             }
         }
-
         daemonArgv[daemonArgc - 1] = NULL;
 
         statError = addDaemonLogArgs(daemonArgc, daemonArgv);
@@ -753,7 +776,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
         if (daemonArgv == NULL)
         {
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s realloc failed to allocate for daemon argv\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
 
@@ -784,16 +807,14 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     else
     {
 #ifdef CRAYXT
-    #ifdef MRNET31
         map<string, string> attrs;
         char apidString[BUFSIZE];
+    #ifdef MRNET31
         snprintf(apidString, BUFSIZE, "%d", launcherPid_);
-        attrs.insert(make_pair("CRAY_ALPS_APRUN_PID", apidString));
-        attrs.insert(make_pair("CRAY_ALPS_STAGE_FILES", filterPath_));
-        network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-   #else /* ifdef MRNET31 */
-        map<string, string> attrs;
-        char apidString[BUFSIZE], *emsg;
+        attrs["CRAY_ALPS_APRUN_PID"] = apidString;
+        attrs["CRAY_ALPS_STAGE_FILES"] = filterPath_;
+    #else /* ifdef MRNET31 */
+        char *emsg;
         int nid;
         uint64_t apid;
         emsg = alpsGetMyNid(&nid);
@@ -810,12 +831,14 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         }
         snprintf(apidString, BUFSIZE, "%d", apid);
         attrs["apid"] = apidString;
-        network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
     #endif /* ifdef MRNET31 */
+        network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
 #else /* ifdef CRAYXT */
         network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
 #endif /* ifdef CRAYXT */
+
     } /* else branch of if (applicationOption_ == STAT_SERIAL_ATTACH) */
+
     if (network_ == NULL)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Network initialization failure\n");
@@ -835,7 +858,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     addPerfData("\tMRNet Constructor Time", (gEndTime - gStartTime).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tMRNet initialized\n");
 
-    /* Register the BE connect callback function with MRNet */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering topology event callback with MRNet\n");
     gNumCallbacks = 0;
     boolRet = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_ADD_BE, beConnectCb, NULL);
@@ -846,7 +868,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     }
 
 #ifndef STAT_FGFS
-    /* Register the node removed callback function with MRNet */
     boolRet = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_REMOVE_NODE, nodeRemovedCb, (void *)this);
     if (boolRet == false)
     {
@@ -854,7 +875,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         return STAT_MRNET_ERROR;
     }
 
-    /* Register the topology change callback function with MRNet */
     boolRet = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_CHANGE_PARENT, topologyChangeCb, (void *)this);
     if (boolRet == false)
     {
@@ -863,7 +883,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     }
 #endif
 
-    /* Get the topology information from the Network */
     leafInfo_.networkTopology = network_->get_NetworkTopology();
     if (leafInfo_.networkTopology == NULL)
     {
@@ -877,7 +896,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 
     leafInfo_.daemons = applicationNodeMultiSet_;
 
-    /* Send MRNet connection info to daemons */
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tConnecting to daemons...\n");
     if (isStatBench_ == false)
     {
@@ -907,7 +925,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         gEndTime.setTime();
         addPerfData("\tLaunchmon Send Time", (gEndTime - gStartTime).getDoubleTime());
 
-        /* If we're blocking, wait for all BEs to connect to MRNet tree */
         if (blocking == true)
         {
             statError = connectMrnetTree(blocking);
@@ -922,20 +939,19 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     return STAT_OK;
 }
 
+
 StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking)
 {
     static int sConnectTimeout = -1, sConnectAttempt = 0;
     char *connectTimeoutString;
     StatError_t statError;
 
-    /* Make sure the Network object has been created */
     if (network_ == NULL)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "MRNet Network object is NULL.\n");
         return STAT_MRNET_ERROR;
     }
 
-    /* Connect to the Daemons */
     if (sConnectTimeout == -1)
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Connecting MRNet to daemons\n");
@@ -947,11 +963,10 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking)
             sConnectTimeout = 999999;
     }
 
-    /* Check for BE connections */
     if (blocking == false)
     {
         sConnectAttempt = sConnectAttempt + 1;
-        if (!WIFBESPAWNED(gsLMonState))
+        if (!WIFBESPAWNED(gsLmonState))
         {
             printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
             return STAT_DAEMON_ERROR;
@@ -969,7 +984,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking)
     {
         for (sConnectAttempt = 0; sConnectAttempt < sConnectTimeout * 100; sConnectAttempt++)
         {
-            if (!WIFBESPAWNED(gsLMonState))
+            if (!WIFBESPAWNED(gsLmonState))
             {
                 printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
                 return STAT_DAEMON_ERROR;
@@ -1027,7 +1042,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Outputting full MRNet topology file to %s\n", fullTopologyFile);
     leafInfo_.networkTopology->print_TopologyFile(fullTopologyFile);
 
-    /* Get MRNet Broadcast Communicator */
     gStartTime.setTime();
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tConfiguring MRNet connection...\n");
     broadcastCommunicator_ = network_->get_BroadcastCommunicator();
@@ -1037,7 +1051,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
         return STAT_MRNET_ERROR;
     }
 
-    /* Check for the STAT filter path */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Loading STAT filter into MRNet\n");
     if (filterPath_ == NULL)
     {
@@ -1045,15 +1058,13 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
         return STAT_ARG_ERROR;
     }
 
-    /* Load the STAT filter into MRNet */
     filterId = network_->load_FilterFunc(filterPath_, "filterInit");
     if (filterId == -1)
     {
-        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure for path %s, function statMerge\n", filterPath_);
+        printMsg(STAT_FILTERLOAD_ERROR, __FILE__, __LINE__, "load_FilterFunc() failure for path %s, function filterInit\n", filterPath_);
         return STAT_FILTERLOAD_ERROR;
     }
 
-    /* Create broadcast stream */
     broadcastStream_ = network_->new_Stream(broadcastCommunicator_, TFILTER_SUM, SFILTER_WAITFORALL, filterId);
     if (broadcastStream_ == NULL)
     {
@@ -1072,7 +1083,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to flush broadcast stream\n");
         return STAT_MRNET_ERROR;
     }
-
     intRet = broadcastStream_->recv(&tag, packet, true);
     if (intRet == -1)
     {
@@ -1090,7 +1100,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
         return STAT_DAEMON_ERROR;
     }
 
-    /* Load the STAT filter into MRNet */
     filterId = network_->load_FilterFunc(filterPath_, "statMerge");
     if (filterId == -1)
     {
@@ -1098,7 +1107,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
         return STAT_FILTERLOAD_ERROR;
     }
 
-    /* Setup the STAT merge stream */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating MRNet stream with STAT filter\n");
     mergeStream_ = network_->new_Stream(broadcastCommunicator_, filterId, SFILTER_WAITFORALL);
     if (mergeStream_ == NULL)
@@ -1113,7 +1121,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
     isConnected_ = true;
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Tool daemons launched and connected!\n");
 
-    /* Make sure all daemons have the same version number as the FE */
     statError = checkVersion();
     if (statError != STAT_OK)
     {
@@ -1124,7 +1131,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
 #ifdef STAT_FGFS
     gStartTime.setTime();
 
-    /* Check for the FGFS filter path */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting up FGFS\n");
     if (fgfsFilterPath_ == NULL)
     {
@@ -1132,7 +1138,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
         return STAT_ARG_ERROR;
     }
 
-    /* Load the FGFS upstream filter into MRNet */
     filterId = network_->load_FilterFunc(fgfsFilterPath_, FGFS_UP_FILTER_FN_NAME);
     if (filterId == -1)
     {
@@ -1140,7 +1145,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
         return STAT_FILTERLOAD_ERROR;
     }
 
-    /* Load the FGFS downstream filter into MRNet */
     filterId2 = network_->load_FilterFunc(fgfsFilterPath_, FGFS_DOWN_FILTER_FN_NAME);
     if (filterId2 == -1)
     {
@@ -1148,7 +1152,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
         return STAT_FILTERLOAD_ERROR;
     }
 
-    /* Setup the FGFS stream */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating MRNet stream with the FGFS filter\n");
     fgfsStream = network_->new_Stream(broadcastCommunicator_, filterId, SFILTER_WAITFORALL, filterId2);
     if (fgfsStream == NULL)
@@ -1169,7 +1172,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
         return STAT_MRNET_ERROR;
     }
 
-    /* Initialize the FGFS Comm Fabric */
     boolRet = MRNetCommFabric::initialize((void *)network_, (void *)fgfsStream);
     if (boolRet == false)
     {
@@ -1188,7 +1190,6 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
     gEndTime.setTime();
     addPerfData("\tFGFS Setup Time", (gEndTime - gStartTime).getDoubleTime());
 
-    /* send the file request stream to the BEs */
     gStartTime.setTime();
     statError = sendFileRequestStream();
     if (statError != STAT_OK)
@@ -1203,7 +1204,7 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
     gTotalgEndTime.setTime();
     addPerfData("\tTotal MRNet Launch Time", (gTotalgEndTime - gTotalgStartTime).getDoubleTime());
 
-    /* If we're STATBench, then release the job launcher in case we need to debug */
+    /* If we're STATBench, release the job launcher in case we need to debug */
     if (isStatBench_)
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STATBench releasing the job launcher\n");
@@ -1247,7 +1248,6 @@ StatError_t STAT_FrontEnd::sendFileRequestStream()
         return STAT_FILTERLOAD_ERROR;
     }
 
-    /* Create a stream that will use the fileRequestUpStream and fileRequestDownStream filters for file requests */
     fileRequestStream = network_->new_Stream(broadcastCommunicator_, upstreamFileRequestFilterId, SFILTER_DONTWAIT, downstreamFileRequestFilterId);
     if (fileRequestStream == NULL)
     {
@@ -1255,7 +1255,7 @@ StatError_t STAT_FrontEnd::sendFileRequestStream()
         return STAT_MRNET_ERROR;
     }
 
-    /* Broadcast a message to BEs on the file request stream */
+    /* Broadcast a dummy message to BEs on the file request stream */
     if (fileRequestStream->send(PROT_FILE_REQ, "%auc %s", "X", 2, "X") == -1 )
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send file request stream message\n");
@@ -1267,7 +1267,6 @@ StatError_t STAT_FrontEnd::sendFileRequestStream()
         return STAT_MRNET_ERROR;
     }
 
-    /* Receive acks from all BEs */
     pendingAckTag_ = PROT_FILE_REQ_RESP;
     isPendingAck_ = true;
     pendingAckCb_ = NULL;
@@ -1278,24 +1277,23 @@ StatError_t STAT_FrontEnd::sendFileRequestStream()
         return statError;
     }
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Recieved acknowledgements from all BEs\n");
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received acknowledgements from all BEs\n");
     return STAT_OK;
 }
 
 
-StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId, int *returnTag, PacketPtr &packetPtr, int &intRetVal)
+StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int &streamId, int &returnTag, PacketPtr &packetPtr, int &intRetVal)
 {
     int tag, intRet;
     long signedFileSize;
     uint64_t fileSize;
-    char *receiveFileName, *fileContents = NULL, errorMsg[BUFSIZE];
-    FILE *file;
-    PacketPtr packet;
+    char *receiveFileName = NULL, *fileContents = NULL, errorMsg[BUFSIZE];
+    FILE *file = NULL;
     Stream *stream;
 
     while (1)
     {
-        intRetVal = network_->recv(&tag, packet, &stream, false);
+        intRetVal = network_->recv(&returnTag, packetPtr, &stream, false);
         if (intRetVal == 0)
             return STAT_PENDING_ACK;
         else if (intRetVal < 0)
@@ -1304,17 +1302,15 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId, int *retu
             return STAT_MRNET_ERROR;
         }
 
-        if (tag != PROT_LIB_REQ)
+        if (returnTag != PROT_LIB_REQ)
         {
-            *streamId = stream->get_Id();
-            *returnTag = tag;
-            packetPtr = packet;
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waitForFileRequests returing tag %d, stream ID %d\n", tag, streamId);
+            streamId = stream->get_Id();
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waitForFileRequests returing tag %d, stream ID %d\n", returnTag, streamId);
             return STAT_OK;
         }
-        if (packet->unpack("%s", &receiveFileName) == -1)
+        if (packetPtr->unpack("%s", &receiveFileName) == -1)
         {
-            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "packet::unpack() failure\n");
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "packetPtr::unpack() failure\n");
             return STAT_MRNET_ERROR;
         }
 
@@ -1404,15 +1400,18 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int *streamId, int *retu
 
 #endif /* STAT_FGFS */
 
+
 void STAT_FrontEnd::setNodeListFile(char *nodeListFile)
 {
    nodeListFile_ = nodeListFile;
 }
 
+
 char *STAT_FrontEnd::getLastErrorMessage()
 {
     return lastErrorMessage_;
 }
+
 
 const char *STAT_FrontEnd::getInstallPrefix()
 {
@@ -1423,6 +1422,7 @@ const char *STAT_FrontEnd::getInstallPrefix()
     return STAT_PREFIX;
 }
 
+
 void STAT_FrontEnd::getVersion(int *version)
 {
     version[0] = STAT_MAJOR_VERSION;
@@ -1430,13 +1430,13 @@ void STAT_FrontEnd::getVersion(int *version)
     version[2] = STAT_REVISION_VERSION;
 }
 
+
 StatError_t STAT_FrontEnd::dumpProctab()
 {
     int i;
     FILE *file;
     char fileName[BUFSIZE];
 
-    /* Create the process table file */
     snprintf(fileName, BUFSIZE, "%s/%s.ptab", outDir_, filePrefix_);
     file = fopen(fileName, "w");
     if (file == NULL)
@@ -1473,7 +1473,6 @@ StatError_t STAT_FrontEnd::startLog(unsigned int logType, char *logOutDir)
     logging_ = logType;
     snprintf(logOutDir_, BUFSIZE, "%s", logOutDir);
 
-    /* Create the log directory */
     intRet = mkdir(logOutDir_, S_IRUSR | S_IWUSR | S_IXUSR);
     if (intRet == -1 && errno != EEXIST)
     {
@@ -1497,6 +1496,7 @@ StatError_t STAT_FrontEnd::startLog(unsigned int logType, char *logOutDir)
 
     return STAT_OK;
 }
+
 
 StatError_t STAT_FrontEnd::receiveAck(bool blocking)
 {
@@ -1530,10 +1530,10 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
             return STAT_DAEMON_ERROR;
         }
 #ifdef STAT_FGFS
-        statError = waitForFileRequests(&streamId, &tag, packet, intRet);
+        statError = waitForFileRequests(streamId, tag, packet, intRet);
         if (statError == STAT_PENDING_ACK)
         {
-            if (!WIFBESPAWNED(gsLMonState))
+            if (!WIFBESPAWNED(gsLmonState))
             {
                 printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
                 isPendingAck_ = false;
@@ -1556,7 +1556,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
 #endif
         if (intRet == 0)
         {
-            if (!WIFBESPAWNED(gsLMonState))
+            if (!WIFBESPAWNED(gsLmonState))
             {
                 printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
                 isPendingAck_ = false;
@@ -1613,7 +1613,6 @@ StatError_t STAT_FrontEnd::setDaemonNodes()
     set<MRN::NetworkTopology::Node *>::iterator nodeIter;
     string prettyHost;
 
-    /* Set the application node list */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating daemon node list: ");
     leafInfo_.networkTopology->get_BackEndNodes(nodes);
     if (nodes.size() <= 0)
@@ -1639,7 +1638,6 @@ StatError_t STAT_FrontEnd::setAppNodeList()
     unsigned int i;
     char *currentNode;
 
-    /* Set the application node list */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating application node list: ");
     applicationNodeMultiSet_.clear();
     for (i = 0; i < nApplProcs_; i++)
@@ -1739,6 +1737,7 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
     return STAT_OK;
 }
 
+
 StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList, bool checkAccess = true)
 {
     char numString[BUFSIZE], nodeName[BUFSIZE], *nodeRange;
@@ -1749,7 +1748,6 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList, bool checkAccess = tr
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating communication node list\n");
 
-    /* Make sure the node list has been set */
     if (nodeList == NULL)
     {
         /* There may be enough resources where the STAT FE is being run so
@@ -1878,22 +1876,23 @@ StatError_t STAT_FrontEnd::setCommNodeList(char *nodeList, bool checkAccess = tr
                         }
                     else
                         communicationNodeSet_.insert(nodeName);
-                }
+                } /* else branch of if (isRange) */
                 i = i - 1;
-            }
+            } /* for (i = 0; i < strlen(nodeRange); i++) */
 
             if (nodeRange != NULL)
                 free(nodeRange);
-        }
+        } /* else branch of if (openBracketPos == ...) */
         if (finalPos >= list.length())
             break;
         else
             list = list.substr(finalPos + 1, list.length() - 1);
-    }
+    } /* while (1) */
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Communication node list created with %d nodes\n", communicationNodeSet_.size());
     return STAT_OK;
 }
+
 
 StatError_t STAT_FrontEnd::createOutputDir()
 {
@@ -1902,13 +1901,13 @@ StatError_t STAT_FrontEnd::createOutputDir()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating output directory\n");
 
-    /* Look for the STAT_results directory and create if it doesn't exist */
+    /* Look for the stat_results directory and create if it doesn't exist */
     if (getcwd(cwd, BUFSIZE) == NULL)
     {
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: getcwd failed\n", strerror(errno));
         return STAT_SYSTEM_ERROR;
     }
-    snprintf(resultsDirectory, BUFSIZE, "%s/STAT_results", cwd);
+    snprintf(resultsDirectory, BUFSIZE, "%s/stat_results", cwd);
     intRet = mkdir(resultsDirectory, S_IRUSR | S_IWUSR | S_IXUSR);
     if (intRet == -1 && errno != EEXIST)
     {
@@ -1919,7 +1918,7 @@ StatError_t STAT_FrontEnd::createOutputDir()
             printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "Failed to create output directory in current working directory and failed to get $HOME as an alternative.\n");
             return STAT_FILE_ERROR;
         }
-        snprintf(resultsDirectory, BUFSIZE, "%s/STAT_results", homeDirectory);
+        snprintf(resultsDirectory, BUFSIZE, "%s/stat_results", homeDirectory);
         intRet = mkdir(resultsDirectory, S_IRUSR | S_IWUSR | S_IXUSR);
         if (intRet == -1 && errno != EEXIST)
         {
@@ -1932,19 +1931,9 @@ StatError_t STAT_FrontEnd::createOutputDir()
     for (fileNameCount = 0; fileNameCount < STAT_MAX_FILENAME_ID; fileNameCount++)
     {
         if (jobId_ == 0)
-        {
-            if (fileNameCount == 0)
-                snprintf(outDir_, BUFSIZE, "%s/%s", resultsDirectory, applExe_);
-            else
-                snprintf(outDir_, BUFSIZE, "%s/%s.%04d", resultsDirectory, applExe_, fileNameCount);
-        }
+            snprintf(outDir_, BUFSIZE, "%s/%s.%04d", resultsDirectory, applExe_, fileNameCount);
         else
-        {
-            if (fileNameCount == 0)
-                snprintf(outDir_, BUFSIZE, "%s/%s.%d", resultsDirectory, applExe_, jobId_);
-            else
-                snprintf(outDir_, BUFSIZE, "%s/%s.%d.%04d", resultsDirectory, applExe_, jobId_, fileNameCount);
-        }
+            snprintf(outDir_, BUFSIZE, "%s/%s.%d.%04d", resultsDirectory, applExe_, jobId_, fileNameCount);
         intRet = mkdir(outDir_, S_IRUSR | S_IWUSR | S_IXUSR);
         if (intRet == 0)
             break;
@@ -1965,6 +1954,7 @@ StatError_t STAT_FrontEnd::createOutputDir()
 
     return STAT_OK;
 }
+
 
 StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool shareAppNodes)
 {
@@ -2174,7 +2164,6 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     snprintf(tmp, BUFSIZE, "%s:0", hostname_);
     treeList.push_back(tmp);
 
-    /* Make sure the procsPerNode_ is set */
     if (procsPerNode_ <= 0)
     {
         printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "At least one process must be allowed per node... %d specified\n", procsPerNode_);
@@ -2182,12 +2171,10 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     }
 
     /* Add the nodes and IDs to the list of hosts */
-    counter = 0;
-    for (i = 0; i < procsPerNode_; i++)
+    for (i = 0, counter = 0; i < procsPerNode_; i++)
     {
-        for (communicationNodeSetIter = communicationNodeSet_.begin(); communicationNodeSetIter != communicationNodeSet_.end(); communicationNodeSetIter++)
+        for (communicationNodeSetIter = communicationNodeSet_.begin(); communicationNodeSetIter != communicationNodeSet_.end(); communicationNodeSetIter++, counter++)
         {
-            counter++;
             if ((*communicationNodeSetIter) == hostname_)
                 snprintf(tmp, BUFSIZE, "%s:%d", (*communicationNodeSetIter).c_str(), i + 1);
             else
@@ -2196,7 +2183,6 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         }
     }
 
-    /* Create the topology file */
     snprintf(topologyFileName, BUFSIZE, "%s/%s.top", outDir_, filePrefix_);
     file = fopen(topologyFileName, "w");
     if (file == NULL)
@@ -2215,7 +2201,6 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         fprintf(file, "%s;\n", treeList[0].c_str());
     else
     {
-        /* Create the topology file from specification */
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating specified topology\n");
         topoIter = topology;
         parentIter = 0;
@@ -2306,7 +2291,6 @@ StatError_t STAT_FrontEnd::checkVersion()
         return STAT_NOT_CONNECTED_ERROR;
     }
 
-    /* Load the STAT version check filter into MRNet */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting up version check filter\n");
     filterId = network_->load_FilterFunc(filterPath_, "STAT_checkVersion");
     if (filterId == -1)
@@ -2315,7 +2299,6 @@ StatError_t STAT_FrontEnd::checkVersion()
         return STAT_FILTERLOAD_ERROR;
     }
 
-    /* Setup the STAT version check stream */
     stream = network_->new_Stream(broadcastCommunicator_, filterId, SFILTER_WAITFORALL);
     if (stream == NULL)
     {
@@ -2323,7 +2306,6 @@ StatError_t STAT_FrontEnd::checkVersion()
         return STAT_MRNET_ERROR;
     }
 
-    /* Send request to daemons to check version and wait for reply */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending version message to daemons\n");
     if (stream->send(PROT_CHECK_VERSION, "%d %d %d", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION) == -1)
     {
@@ -2336,14 +2318,13 @@ StatError_t STAT_FrontEnd::checkVersion()
         return STAT_MRNET_ERROR;
     }
 
-    /* Receive a single acknowledgement packet */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Receiving version check acknowledgements\n");
     do
     {
         intRet = stream->recv(&tag, packet, false);
         if (intRet == 0)
         {
-            if (!WIFBESPAWNED(gsLMonState))
+            if (!WIFBESPAWNED(gsLmonState))
             {
                 printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
                 return STAT_DAEMON_ERROR;
@@ -2362,14 +2343,12 @@ StatError_t STAT_FrontEnd::checkVersion()
         return STAT_MRNET_ERROR;
     }
 
-    /* Unpack the ack and check for errors */
     if (packet->unpack("%d %d %d %d %d", &major, &minor, &revision, &daemonCount, &filterCount) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to unpack acknowledgement packet\n");
         return STAT_MRNET_ERROR;
     }
 
-    /* Look for any version mismatches */
     if (filterCount != 0 || daemonCount != 0)
     {
         if (filterCount != 0)
@@ -2384,15 +2363,13 @@ StatError_t STAT_FrontEnd::checkVersion()
     return STAT_OK;
 }
 
+
 StatError_t STAT_FrontEnd::attachApplication(bool blocking)
 {
     int tag;
     StatError_t statError;
     PacketPtr packet;
 
-    gStartTime.setTime();
-
-    /* Make sure we're in the expected state */
     if (isAttached_ == true)
     {
         printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT already attached to the application... ignoring request to attach\n");
@@ -2403,18 +2380,17 @@ StatError_t STAT_FrontEnd::attachApplication(bool blocking)
         printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
         return STAT_NOT_CONNECTED_ERROR;
     }
-    if (WIFKILLED(gsLMonState))
+    if (WIFKILLED(gsLmonState))
     {
         printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
         return STAT_APPLICATION_EXITED;
     }
-    if (!WIFBESPAWNED(gsLMonState))
+    if (!WIFBESPAWNED(gsLmonState))
     {
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
         return STAT_DAEMON_ERROR;
     }
 
-    /* Check for pending acks */
     statError = receiveAck(true);
     if (statError != STAT_OK)
     {
@@ -2422,9 +2398,9 @@ StatError_t STAT_FrontEnd::attachApplication(bool blocking)
         return statError;
     }
 
+    gStartTime.setTime();
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Attaching to application...\n");
 
-    /* Send request to daemons to attach to application and wait for reply */
     if (broadcastStream_->send(PROT_ATTACH_APPLICATION, "") == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send attach request\n");
@@ -2451,16 +2427,17 @@ StatError_t STAT_FrontEnd::attachApplication(bool blocking)
     return STAT_OK;
 }
 
+
 StatError_t STAT_FrontEnd::postAttachApplication()
 {
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Attached!\n");
     isAttached_ = true;
     isRunning_ = false;
-
     gEndTime.setTime();
     addPerfData("Attach Time", (gEndTime - gStartTime).getDoubleTime());
     return STAT_OK;
 }
+
 
 StatError_t STAT_FrontEnd::pause(bool blocking)
 {
@@ -2468,9 +2445,6 @@ StatError_t STAT_FrontEnd::pause(bool blocking)
     StatError_t statError;
     PacketPtr packet;
 
-    gStartTime.setTime();
-
-    /* Make sure we're in the expected state */
     if (isRunning_ == false)
     {
         printMsg(STAT_STDOUT, __FILE__, __LINE__, "Application already paused... ignoring request to pause\n");
@@ -2486,18 +2460,17 @@ StatError_t STAT_FrontEnd::pause(bool blocking)
         printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
         return STAT_NOT_CONNECTED_ERROR;
     }
-    if (WIFKILLED(gsLMonState))
+    if (WIFKILLED(gsLmonState))
     {
         printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
         return STAT_APPLICATION_EXITED;
     }
-    if (!WIFBESPAWNED(gsLMonState))
+    if (!WIFBESPAWNED(gsLmonState))
     {
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
         return STAT_DAEMON_ERROR;
     }
 
-    /* Check for pending acks */
     statError = receiveAck(true);
     if (statError != STAT_OK)
     {
@@ -2505,9 +2478,9 @@ StatError_t STAT_FrontEnd::pause(bool blocking)
         return statError;
     }
 
+    gStartTime.setTime();
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Pausing the application...\n");
 
-    /* Send request to daemons to pause the application and wait for reply */
     if (broadcastStream_->send(PROT_PAUSE_APPLICATION, "") == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send pause request\n");
@@ -2549,9 +2522,6 @@ StatError_t STAT_FrontEnd::resume(bool blocking)
     StatError_t statError;
     PacketPtr packet;
 
-    gStartTime.setTime();
-
-    /* Make sure we're in the expected state */
     if (isRunning_ == true)
     {
         printMsg(STAT_STDOUT, __FILE__, __LINE__, "Application already running... ignoring request to resume\n");
@@ -2567,18 +2537,17 @@ StatError_t STAT_FrontEnd::resume(bool blocking)
         printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
         return STAT_NOT_CONNECTED_ERROR;
     }
-    if (WIFKILLED(gsLMonState))
+    if (WIFKILLED(gsLmonState))
     {
         printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
         return STAT_APPLICATION_EXITED;
     }
-    if (!WIFBESPAWNED(gsLMonState))
+    if (!WIFBESPAWNED(gsLmonState))
     {
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
         return STAT_DAEMON_ERROR;
     }
 
-    /* Check for pending acks */
     statError = receiveAck(true);
     if (statError != STAT_OK)
     {
@@ -2586,9 +2555,9 @@ StatError_t STAT_FrontEnd::resume(bool blocking)
         return statError;
     }
 
+    gStartTime.setTime();
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Resuming the application...\n");
 
-    /* Send request to daemons to resume the application and wait for reply */
     if (broadcastStream_->send(PROT_RESUME_APPLICATION, "") == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send resume request\n");
@@ -2633,9 +2602,6 @@ StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned i
 {
     StatError_t statError;
 
-    gStartTime.setTime();
-
-    /* Make sure we're in the expected state */
     if (isAttached_ == false)
     {
         printMsg(STAT_NOT_ATTACHED_ERROR, __FILE__, __LINE__, "STAT not attached to the application... ignoring request to gather samples\n");
@@ -2646,18 +2612,17 @@ StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned i
         printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
         return STAT_NOT_CONNECTED_ERROR;
     }
-    if (WIFKILLED(gsLMonState))
+    if (WIFKILLED(gsLmonState))
     {
         printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
         return STAT_APPLICATION_EXITED;
     }
-    if (!WIFBESPAWNED(gsLMonState))
+    if (!WIFBESPAWNED(gsLmonState))
     {
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
         return STAT_DAEMON_ERROR;
     }
 
-    /* Check for pending acks */
     statError = receiveAck(true);
     if (statError != STAT_OK)
     {
@@ -2665,10 +2630,10 @@ StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned i
         return statError;
     }
 
+    gStartTime.setTime();
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Sampling traces...\n");
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d traces with %d frequency, %d retries with %d frequency\n", nTraces, traceFrequency, nRetries, retryFrequency);
 
-    /* Send request to daemons to gather stack traces and wait for confirmation */
     if (broadcastStream_->send(PROT_SAMPLE_TRACES, "%ud %ud %ud %ud %ud %s", nTraces, traceFrequency, nRetries, retryFrequency, sampleType, variableSpecification) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send request to sample\n");
@@ -2708,7 +2673,6 @@ StatError_t STAT_FrontEnd::gatherLastTrace(bool blocking)
 {
     StatError_t statError;
 
-    /* Check for pending acks */
     statError = receiveAck(true);
     if (statError != STAT_OK)
     {
@@ -2724,7 +2688,6 @@ StatError_t STAT_FrontEnd::gatherTraces(bool blocking)
 {
     StatError_t statError;
 
-    /* Check for pending acks */
     statError = receiveAck(true);
     if (statError != STAT_OK)
     {
@@ -2740,36 +2703,20 @@ StatError_t STAT_FrontEnd::gatherImpl(StatProt_t type, bool blocking)
 {
     StatError_t statError = STAT_OK;
 
-    /* Make sure we're in the expected state */
     if (isConnected_ == false)
     {
         printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
         return STAT_NOT_CONNECTED_ERROR;
     }
-    if (!WIFBESPAWNED(gsLMonState))
+    if (!WIFBESPAWNED(gsLmonState))
     {
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
         return STAT_DAEMON_ERROR;
     }
 
+    gStartTime.setTime();
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Merging traces...\n");
 
-    /* Gather merged traces from the daemons */
-    gStartTime.setTime();
-
-    /* Make sure we're in the expected state */
-    if (isConnected_ == false)
-    {
-        printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
-        return STAT_NOT_CONNECTED_ERROR;
-    }
-    if (!WIFBESPAWNED(gsLMonState))
-    {
-        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
-        return STAT_DAEMON_ERROR;
-    }
-
-    /* Send request to daemons to send merged stack traces */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending request to daemons to send traces\n");
     if (mergeStream_->send(type, "") == -1)
     {
@@ -2806,26 +2753,25 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     static int sMergeCount2d = -1, sMergeCount3d = -1;
     int tag, totalWidth, intRet, dummyRank, offset, mergeCount, nodeId;
     uint64_t byteArrayLen;
-    char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray;
+    unsigned int sampleType;
+    char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL;
     list<int>::iterator ranksIter;
-    graphlib_graph_p stackTraces, sortedStackTraces, withMissingStackTraces = NULL;
+    set<int>::iterator missingRanksIter;
+    graphlib_graph_p stackTraces = NULL, sortedStackTraces = NULL, withMissingStackTraces = NULL;
     graphlib_error_t graphlibError;
     IntList_t *hostRanks;
     PacketPtr packet;
-    unsigned int sampleType;
-    set<int>::iterator missingRanksIter;
     StatBitVectorEdge_t *edge;
     StatCountRepEdge_t *countRepEdge;
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(void *)gErrorLabel, -1};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
 
-    /* Receive the traces */
     do
     {
         intRet = mergeStream_->recv(&tag, packet, false);
         if (intRet == 0)
         {
-            if (!WIFBESPAWNED(gsLMonState))
+            if (!WIFBESPAWNED(gsLmonState))
             {
                 printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
                 return STAT_DAEMON_ERROR;
@@ -2861,7 +2807,6 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     addPerfData(perfData, -1.0);
     isPendingAck_ = false;
 
-    /* Unpack byte array representing the graph */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
 #ifdef MRNET40
     if (packet->unpack("%Ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
@@ -2873,12 +2818,11 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         return STAT_MRNET_ERROR;
     }
 
-    /* Deserialize graph */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph\n");
     if (sampleType & STAT_SAMPLE_COUNT_REP)
-        graphlibError = graphlib_deserializeBasicGraph(&stackTraces, statCountRepFunctions, byteArray, byteArrayLen);
+        graphlibError = graphlib_deserializeBasicGraph(&stackTraces, gStatCountRepFunctions, byteArray, byteArrayLen);
     else
-        graphlibError = graphlib_deserializeBasicGraph(&stackTraces, statBitVectorFunctions, byteArray, byteArrayLen);
+        graphlibError = graphlib_deserializeBasicGraph(&stackTraces, gStatBitVectorFunctions, byteArray, byteArrayLen);
     if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "deserializeBasicGraph() failed\n");
@@ -2899,7 +2843,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating sorted graph\n");
         gStartTime.setTime();
         offset = 0;
-        graphlibError = graphlib_newGraph(&sortedStackTraces, statReorderFunctions);
+        graphlibError = graphlib_newGraph(&sortedStackTraces, gStatReorderFunctions);
         if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
@@ -2921,9 +2865,9 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         {
             /* Fill edge labels for this daemon */
             hostRanks = mrnetRankToMpiRanksMap_[*ranksIter];
-            statGraphRoutinesRanksList = hostRanks->list;
-            statGraphRoutinesRanksListLength = hostRanks->count;
-            statGraphRoutinesCurrentIndex = offset;
+            gStatGraphRoutinesRanksList = hostRanks->list;
+            gStatGraphRoutinesRanksListLength = hostRanks->count;
+            gStatGraphRoutinesCurrentIndex = offset;
             graphlibError = graphlib_mergeGraphs(sortedStackTraces, stackTraces);
             if (GRL_IS_FATALERROR(graphlibError))
             {
@@ -2972,7 +2916,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             edgeAttr.label = (void *)edge;
         }
 
-        graphlibError = graphlib_newGraph(&withMissingStackTraces, statCountRepFunctions);
+        graphlibError = graphlib_newGraph(&withMissingStackTraces, gStatCountRepFunctions);
         withMissingStackTraces = createRootedGraph(sampleType);
         if (withMissingStackTraces == NULL)
         {
@@ -3010,11 +2954,9 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         addPerfData("Add Missing Ranks Time", (gEndTime - gStartTime).getDoubleTime());
     }
 
-    /* Export temporally and spatially merged graph */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Exporting %s graph to dot\n", outSuffix);
     gStartTime.setTime();
 
-    /* Dump spatial-temporally merged graph to dot format */
     graphlibError = graphlib_colorGraphByLeadingEdgeLabel(sortedStackTraces);
     if (GRL_IS_FATALERROR(graphlibError))
     {
@@ -3043,7 +2985,6 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     addPerfData("Export Graph Files Time", (gEndTime - gStartTime).getDoubleTime());
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Traces merged!\n");
 
-    /* Delete the graphs */
     if (stackTraces != NULL)
     {
         graphlibError = graphlib_delGraph(stackTraces);
@@ -3062,21 +3003,24 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             return STAT_GRAPHLIB_ERROR;
         }
     }
+    if (byteArray != NULL)
+        free(byteArray);
 
     return STAT_OK;
 }
 
+
 char *STAT_FrontEnd::getNodeInEdge(int nodeId)
 {
-    int tag, intRet, totalWidth, dummyRank, offset = 0;
-    char *byteArray, *edgeLabel;
-    uint64_t byteArrayLen;
-    PacketPtr packet;
-    StatBitVectorEdge_t *unorderedEdge, *orderedEdge;
+    int tag, intRet, totalWidth, dummyRank, offset;
     unsigned int sampleType;
+    uint64_t byteArrayLen;
+    char *byteArray = NULL, *edgeLabel;
     list<int>::iterator ranksIter;
     set<int>::iterator missingRanksIter;
     IntList_t *hostRanks;
+    PacketPtr packet;
+    StatBitVectorEdge_t *unorderedEdge, *orderedEdge;
 
     gStartTime.setTime();
 
@@ -3091,12 +3035,12 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
         printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
         return NULL;
     }
-    if (WIFKILLED(gsLMonState))
+    if (WIFKILLED(gsLmonState))
     {
         printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
         return NULL;
     }
-    if (!WIFBESPAWNED(gsLMonState))
+    if (!WIFBESPAWNED(gsLmonState))
     {
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
         return NULL;
@@ -3117,7 +3061,6 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
     }
     else
     {
-        /* Send request to daemons to get edge */
         if (mergeStream_->send(PROT_SEND_NODE_IN_EDGE, "%d", nodeId) == -1)
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send request to gather edge label\n");
@@ -3129,13 +3072,12 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
             return NULL;
         }
 
-        /* Receive the ack */
         do
         {
             intRet = mergeStream_->recv(&tag, packet, false);
             if (intRet == 0)
             {
-                if (!WIFBESPAWNED(gsLMonState))
+                if (!WIFBESPAWNED(gsLmonState))
                 {
                     printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
                     return NULL;
@@ -3154,7 +3096,6 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
             return NULL;
         }
 
-        /* Unpack byte array representing the edge */
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
 #ifdef MRNET40
         if (packet->unpack("%Ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
@@ -3166,7 +3107,6 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
             return NULL;
         }
 
-        /* Deserialize the unordered edge */
         statDeserializeEdge((void **)&unorderedEdge, byteArray, byteArrayLen);
 
         /* Create an empty bit vector for reordering */
@@ -3179,13 +3119,14 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
 
         /* Fill edge label on a per daemon basis */
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Filling in edges\n");
+        offset = 0;
         for (ranksIter = remapRanksList_.begin(); ranksIter != remapRanksList_.end(); ranksIter++)
         {
             /* Fill edge labels for this daemon */
             hostRanks = mrnetRankToMpiRanksMap_[*ranksIter];
-            statGraphRoutinesRanksList = hostRanks->list;
-            statGraphRoutinesRanksListLength = hostRanks->count;
-            statGraphRoutinesCurrentIndex = offset;
+            gStatGraphRoutinesRanksList = hostRanks->list;
+            gStatGraphRoutinesRanksListLength = hostRanks->count;
+            gStatGraphRoutinesCurrentIndex = offset;
             statMergeEdgeOrdered(orderedEdge, unorderedEdge);
             offset += statBitVectorLength(hostRanks->count);
         }
@@ -3194,16 +3135,21 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
     edgeLabel = statEdgeToText((void *)orderedEdge);
     statFreeEdge((void *)orderedEdge);
 
+    if (byteArray != NULL)
+        free(byteArray);
+
     gEndTime.setTime();
     addPerfData("\tGather Edge", (gEndTime - gStartTime).getDoubleTime());
 
     return edgeLabel;
 }
 
+
 char *STAT_FrontEnd::getLastDotFilename()
 {
     return lastDotFileName_;
 }
+
 
 StatError_t STAT_FrontEnd::addPerfData(const char *buf, double time)
 {
@@ -3212,15 +3158,24 @@ StatError_t STAT_FrontEnd::addPerfData(const char *buf, double time)
     return STAT_OK;
 }
 
+
 StatError_t STAT_FrontEnd::dumpPerf()
 {
-    char perfFileName[BUFSIZE], usageLogFile[BUFSIZE];
-    FILE *perfFile;
-    static int sCount = 0;
     int i, size;
+    static int sCount = 0;
+    char perfFileName[BUFSIZE];
+    FILE *perfFile;
     bool isUsageLogging = false;
+#ifdef STAT_USAGELOG
+    char usageLogFile[BUFSIZE];
+    double launchTime = -1.0, attachTime = -1.0, sampleTime = -1.0, mergeTime = -1.0, orderTime = -1.0, exportTime = -1.0;
+    struct timeval timeStamp;
+    time_t currentTime;
+    char timeBuf[BUFSIZE], *userName;
+    uid_t uid;
+    struct passwd *pwd;
+#endif
 
-    /* Exit with OK if there is no data to dump */
     size = performanceData_.size();
     if (size <= 0)
         return STAT_OK;
@@ -3231,7 +3186,6 @@ StatError_t STAT_FrontEnd::dumpPerf()
         return STAT_FILE_ERROR;
     }
 
-    /* Create performance results file */
     snprintf(perfFileName, BUFSIZE, "%s/%s.perf", outDir_, filePrefix_);
     perfFile = fopen(perfFileName, "a");
     if (perfFile ==NULL)
@@ -3280,12 +3234,6 @@ StatError_t STAT_FrontEnd::dumpPerf()
 
 #ifdef STAT_USAGELOG
     snprintf(usageLogFile , BUFSIZE, STAT_USAGELOG);
-    double launchTime = -1.0, attachTime = -1.0, sampleTime = -1.0, mergeTime = -1.0, orderTime = -1.0, exportTime = -1.0;
-    struct timeval timeStamp;
-    time_t currentTime;
-    char timeBuf[BUFSIZE], *userName;
-    uid_t uid;
-    struct passwd *pw;
     for (i = 0; i < size; i++)
     {
         if (performanceData_[i].first.find("Total MRNet Launch Time") != string::npos)
@@ -3311,10 +3259,10 @@ StatError_t STAT_FrontEnd::dumpPerf()
     currentTime = timeStamp.tv_sec;
     strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtime(&currentTime));
     uid = getuid();
-    pw = getpwuid(uid);
-    if (pw == NULL)
+    pwd = getpwuid(uid);
+    if (pwd == NULL)
         userName = "NULL";
-    userName = pw->pw_name; /*userName = getlogin(); */
+    userName = pwd->pw_name;
     if (userName == NULL)
     {
         userName = getenv("USER");
@@ -3330,24 +3278,22 @@ StatError_t STAT_FrontEnd::dumpPerf()
     return STAT_OK;
 }
 
+
 void STAT_FrontEnd::shutDown()
 {
     int killed, detached;
     StatError_t statError;
     lmon_rc_e lmonRet;
 
-    /* Dump the performance metrics to a file */
     statError = dumpPerf();
     if (statError != STAT_OK)
         printMsg(statError, __FILE__, __LINE__, "Failed to dump performance results\n");
 
-    /* Shut down the MRNet Tree */
     if (network_ != NULL && isConnected_ == true)
         shutdownMrnetTree();
 
-    /* Close the LaunchMON session */
-    killed = WIFKILLED(gsLMonState);
-    detached = !WIFBESPAWNED(gsLMonState);
+    killed = WIFKILLED(gsLmonState);
+    detached = !WIFBESPAWNED(gsLmonState);
     if (isLaunched_ == true && killed == 0 && detached == 0)
     {
         if (lmonSession_ != -1)
@@ -3383,18 +3329,17 @@ StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bo
         printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
         return STAT_NOT_CONNECTED_ERROR;
     }
-    if (WIFKILLED(gsLMonState))
+    if (WIFKILLED(gsLmonState))
     {
         printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
         return STAT_APPLICATION_EXITED;
     }
-    if (!WIFBESPAWNED(gsLMonState))
+    if (!WIFBESPAWNED(gsLmonState))
     {
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
         return STAT_DAEMON_ERROR;
     }
 
-    /* Check for pending acks */
     statError = receiveAck(true);
     if (statError != STAT_OK)
     {
@@ -3404,7 +3349,6 @@ StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bo
 
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Detaching from application...\n");
 
-    /* Send request to daemons to detach from application and wait for reply */
     if (broadcastStream_->send(PROT_DETACH_APPLICATION, "%aud", stopList, stopListSize) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send detach request\n");
@@ -3431,6 +3375,7 @@ StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bo
     return STAT_OK;
 }
 
+
 StatError_t STAT_FrontEnd::postDetachApplication()
 {
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Detached!\n");
@@ -3438,6 +3383,7 @@ StatError_t STAT_FrontEnd::postDetachApplication()
     isRunning_ = false;
     return STAT_OK;
 }
+
 
 StatError_t STAT_FrontEnd::shutdownMrnetTree()
 {
@@ -3455,6 +3401,7 @@ StatError_t STAT_FrontEnd::shutdownMrnetTree()
     return STAT_OK;
 }
 
+
 void STAT_FrontEnd::printMsg(StatError_t statError, const char *sourceFile, int sourceLine, const char *fmt, ...)
 {
     va_list arg;
@@ -3467,7 +3414,6 @@ void STAT_FrontEnd::printMsg(StatError_t statError, const char *sourceFile, int 
     if (statError == STAT_LOG_MESSAGE && !(logging_ & STAT_LOG_FE))
         return;
 
-    /* Get the time */
     currentTime = time(NULL);
     localTime = localtime(&currentTime);
     if (localTime == NULL)
@@ -3525,6 +3471,7 @@ void STAT_FrontEnd::printMsg(StatError_t statError, const char *sourceFile, int 
     }
 }
 
+
 StatError_t STAT_FrontEnd::terminateApplication(bool blocking)
 {
     int tag;
@@ -3542,18 +3489,17 @@ StatError_t STAT_FrontEnd::terminateApplication(bool blocking)
         printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
         return STAT_NOT_CONNECTED_ERROR;
     }
-    if (WIFKILLED(gsLMonState))
+    if (WIFKILLED(gsLmonState))
     {
         printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
         return STAT_APPLICATION_EXITED;
     }
-    if (!WIFBESPAWNED(gsLMonState))
+    if (!WIFBESPAWNED(gsLmonState))
     {
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
         return STAT_DAEMON_ERROR;
     }
 
-    /* Check for pending acks */
     statError = receiveAck(true);
     if (statError != STAT_OK)
     {
@@ -3563,7 +3509,6 @@ StatError_t STAT_FrontEnd::terminateApplication(bool blocking)
 
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Terminating Application ...");
 
-    /* Send request to daemons to terminate application and wait for reply */
     if (broadcastStream_->send(PROT_TERMINATE_APPLICATION, "") == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send terminate request\n");
@@ -3590,6 +3535,7 @@ StatError_t STAT_FrontEnd::terminateApplication(bool blocking)
     return STAT_OK;
 }
 
+
 StatError_t STAT_FrontEnd::postTerminateApplication()
 {
     isRunning_ = false;
@@ -3597,6 +3543,7 @@ StatError_t STAT_FrontEnd::postTerminateApplication()
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "\tApplication terminated!\n");
     return STAT_OK;
 }
+
 
 void STAT_FrontEnd::printCommunicationNodeList()
 {
@@ -3608,6 +3555,7 @@ void STAT_FrontEnd::printCommunicationNodeList()
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "\n");
 }
 
+
 void STAT_FrontEnd::printApplicationNodeList()
 {
     multiset<string>::iterator applicationNodeMultiSetIter;
@@ -3617,6 +3565,7 @@ void STAT_FrontEnd::printApplicationNodeList()
         printMsg(STAT_STDOUT, __FILE__, __LINE__, "%s, ", applicationNodeMultiSetIter->c_str());
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "\n");
 }
+
 
 StatError_t STAT_FrontEnd::setNodeListFromConfigFile(char **nodeList)
 {
@@ -3667,20 +3616,24 @@ StatError_t STAT_FrontEnd::setNodeListFromConfigFile(char **nodeList)
     return STAT_OK;
 }
 
+
 unsigned int STAT_FrontEnd::getLauncherPid()
 {
     return launcherPid_;
 }
+
 
 unsigned int STAT_FrontEnd::getNumApplProcs()
 {
     return nApplProcs_;
 }
 
+
 unsigned int STAT_FrontEnd::getNumApplNodes()
 {
     return nApplNodes_;
 }
+
 
 void STAT_FrontEnd::setJobId(unsigned int jobId)
 {
@@ -3699,6 +3652,7 @@ const char *STAT_FrontEnd::getApplExe()
     return applExe_;
 }
 
+
 StatError_t STAT_FrontEnd::setToolDaemonExe(const char *toolDaemonExe)
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting tool daemon path to %s\n", toolDaemonExe);
@@ -3713,10 +3667,12 @@ StatError_t STAT_FrontEnd::setToolDaemonExe(const char *toolDaemonExe)
     return STAT_OK;
 }
 
+
 const char *STAT_FrontEnd::getToolDaemonExe()
 {
     return toolDaemonExe_;
 }
+
 
 StatError_t STAT_FrontEnd::setOutDir(const char *outDir)
 {
@@ -3724,10 +3680,12 @@ StatError_t STAT_FrontEnd::setOutDir(const char *outDir)
     return STAT_OK;
 }
 
+
 const char *STAT_FrontEnd::getOutDir()
 {
     return outDir_;
 }
+
 
 StatError_t STAT_FrontEnd::setFilePrefix(const char *filePrefix)
 {
@@ -3735,20 +3693,24 @@ StatError_t STAT_FrontEnd::setFilePrefix(const char *filePrefix)
     return STAT_OK;
 }
 
+
 const char *STAT_FrontEnd::getFilePrefix()
 {
     return filePrefix_;
 }
+
 
 void STAT_FrontEnd::setProcsPerNode(unsigned int procsPerNode)
 {
     procsPerNode_ = procsPerNode;
 }
 
+
 unsigned int STAT_FrontEnd::getProcsPerNode()
 {
     return procsPerNode_;
 }
+
 
 StatError_t STAT_FrontEnd::setFilterPath(const char *filterPath)
 {
@@ -3764,15 +3726,18 @@ StatError_t STAT_FrontEnd::setFilterPath(const char *filterPath)
     return STAT_OK;
 }
 
+
 const char *STAT_FrontEnd::getFilterPath()
 {
     return filterPath_;
 }
 
+
 const char *STAT_FrontEnd::getRemoteNode()
 {
     return remoteNode_;
 }
+
 
 StatError_t STAT_FrontEnd::addLauncherArgv(const char *launcherArg)
 {
@@ -3790,11 +3755,11 @@ StatError_t STAT_FrontEnd::addLauncherArgv(const char *launcherArg)
         return STAT_ALLOCATE_ERROR;
     }
 
-    /* NULL terminate */
     launcherArgv_[launcherArgc_ - 1] = NULL;
 
     return STAT_OK;
 }
+
 
 StatError_t STAT_FrontEnd::addSerialProcess(const char *pidString)
 {
@@ -3877,65 +3842,72 @@ StatError_t STAT_FrontEnd::addSerialProcess(const char *pidString)
     return STAT_OK;
 }
 
+
 const char **STAT_FrontEnd::getLauncherArgv()
 {
     return (const char **)launcherArgv_;
 }
+
 
 unsigned int STAT_FrontEnd::getLauncherArgc()
 {
     return launcherArgc_;
 }
 
+
 void STAT_FrontEnd::setVerbose(StatVerbose_t verbose)
 {
     verbose_ = verbose;
 }
+
 
 StatVerbose_t STAT_FrontEnd::getVerbose()
 {
     return verbose_;
 }
 
+
 void STAT_FrontEnd::setApplicationOption(StatLaunch_t applicationOption)
 {
     applicationOption_ = applicationOption;
 }
+
 
 StatLaunch_t STAT_FrontEnd::getApplicationOption()
 {
     return applicationOption_;
 }
 
+
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
 StatError_t increaseSysLimits()
 {
-    struct rlimit rlim[1];
+    struct rlimit rLim[1];
 
-    if (getrlimit(RLIMIT_NOFILE, rlim) < 0)
+    if (getrlimit(RLIMIT_NOFILE, rLim) < 0)
     {
         fprintf(stderr, "%s: getrlimit failed\n", strerror(errno));
         return STAT_SYSTEM_ERROR;
     }
-    else if (rlim->rlim_cur < rlim->rlim_max)
+    else if (rLim->rlim_cur < rLim->rlim_max)
     {
-        rlim->rlim_cur = rlim->rlim_max;
-        if (setrlimit (RLIMIT_NOFILE, rlim) < 0)
+        rLim->rlim_cur = rLim->rlim_max;
+        if (setrlimit(RLIMIT_NOFILE, rLim) < 0)
         {
             fprintf(stderr, "%s: Unable to increase max no. files\n", strerror(errno));
             return STAT_SYSTEM_ERROR;
         }
     }
 
-    if (getrlimit(RLIMIT_NPROC, rlim) < 0)
+    if (getrlimit(RLIMIT_NPROC, rLim) < 0)
     {
         fprintf(stderr, "%s: getrlimit failed\n", strerror(errno));
         return STAT_SYSTEM_ERROR;
     }
-    else if (rlim->rlim_cur < rlim->rlim_max)
+    else if (rLim->rlim_cur < rLim->rlim_max)
     {
-        rlim->rlim_cur = rlim->rlim_max;
-        if (setrlimit (RLIMIT_NPROC, rlim) < 0)
+        rLim->rlim_cur = rLim->rlim_max;
+        if (setrlimit (RLIMIT_NPROC, rLim) < 0)
         {
             fprintf(stderr, "%s: Unable to increase max no. files\n", strerror(errno));
             return STAT_SYSTEM_ERROR;
@@ -3945,6 +3917,7 @@ StatError_t increaseSysLimits()
     return STAT_OK;
 }
 #endif
+
 
 StatError_t STAT_FrontEnd::setRanksList()
 {
@@ -4003,10 +3976,12 @@ StatError_t STAT_FrontEnd::setRanksList()
     return STAT_OK;
 }
 
+
 void STAT_FrontEnd::setHasFatalError(bool hasFatalError)
 {
     hasFatalError_ = hasFatalError;
 }
+
 
 RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node)
 {
@@ -4068,6 +4043,7 @@ RemapNode_t *STAT_FrontEnd::buildRemapTree(NetworkTopology::Node *node)
     return remapNodeRet;
 }
 
+
 StatError_t STAT_FrontEnd::buildRanksList(RemapNode_t *node)
 {
     int i;
@@ -4087,6 +4063,7 @@ StatError_t STAT_FrontEnd::buildRanksList(RemapNode_t *node)
 
     return STAT_OK;
 }
+
 
 StatError_t STAT_FrontEnd::freeRemapTree(RemapNode_t *node)
 {
@@ -4112,10 +4089,13 @@ StatError_t STAT_FrontEnd::freeRemapTree(RemapNode_t *node)
     return STAT_OK;
 }
 
+
 StatError_t STAT_FrontEnd::sendDaemonInfo()
 {
     lmon_rc_e lmonRet;
+
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending MRNet connection info to daemons\n");
+
     lmonRet = LMON_fe_sendUsrDataBe(lmonSession_, (void *)&leafInfo_);
     if (lmonRet != LMON_OK)
     {
@@ -4220,9 +4200,10 @@ int statPack(void *data, void *buf, int bufMax, int *bufLen)
 
 int lmonStatusCb(int *status)
 {
-    gsLMonState = *status;
+    gsLmonState = *status;
     return 0;
 }
+
 
 bool STAT_FrontEnd::checkNodeAccess(char *node)
 {
@@ -4423,6 +4404,7 @@ StatError_t STAT_FrontEnd::addDaemonLogArgs(int &daemonArgc, char ** &daemonArgv
     return STAT_OK;
 }
 
+
 /**********************
  * STATBench Routines
 **********************/
@@ -4433,8 +4415,8 @@ StatError_t STAT_FrontEnd::STATBench_setAppNodeList()
     char *currentNode;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating application node list\n");
-    applicationNodeMultiSet_.clear();
 
+    applicationNodeMultiSet_.clear();
     for (i = 0; i < nApplProcs_; i++)
     {
         currentNode = proctab_[i].pd.host_name;
@@ -4448,9 +4430,8 @@ StatError_t STAT_FrontEnd::STATBench_setAppNodeList()
 StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, unsigned int sampleType)
 {
     int tag, intRet;
-    char *currentNode;
-    char name[BUFSIZE];
     unsigned int i, j;
+    char *currentNode, name[BUFSIZE];
     StatError_t statError;
     PacketPtr packet;
 
@@ -4517,10 +4498,8 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
     }
     gEndTime.setTime();
     addPerfData("\tRanks List Creation Time", (gEndTime - gStartTime).getDoubleTime());
-
     gTotalgEndTime.setTime();
     addPerfData("\tTotal STATBench Setup Time", (gTotalgEndTime - gTotalgStartTime).getDoubleTime());
-
     gStartTime.setTime();
 
     if (isConnected_ == false)
@@ -4531,7 +4510,6 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
 
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Generating traces with parameters %d %d %d %d %d %u...\n", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, sampleType);
 
-    /* Send request to daemons to gather stack traces and wait for confirmation */
     if (broadcastStream_->send(PROT_STATBENCH_CREATE_TRACES, "%ud %ud %ud %ud %d %ud", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, sampleType) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send request to create traces\n");
@@ -4543,18 +4521,17 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
         return STAT_MRNET_ERROR;
     }
 
-    /* Receive a single acknowledgement packet that all daemons have completed */
     do
     {
         intRet = broadcastStream_->recv(&tag, packet, false);
         if (intRet == 0)
         {
-            if (WIFKILLED(gsLMonState))
+            if (WIFKILLED(gsLmonState))
             {
                 printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
                 return STAT_APPLICATION_EXITED;
             }
-            if (!WIFBESPAWNED(gsLMonState))
+            if (!WIFBESPAWNED(gsLmonState))
             {
                 printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
                 return STAT_DAEMON_ERROR;
@@ -4572,8 +4549,6 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Unexpected tag %d\n, expecting PROT_STATBENCH_CREATE_TRACES_RESP = %d\n", tag, PROT_STATBENCH_CREATE_TRACES_RESP);
     }
 
-    /* Unpack the ack and check for errors */
-    if (packet->unpack("%d", &intRet) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to unpack acknowledgement packet\n");
         return STAT_MRNET_ERROR;

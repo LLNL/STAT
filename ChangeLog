@@ -1,3 +1,8 @@
+2013-01-22 Gregory L. Lee <lee218@llnl.gov>
+	* : code clean up
+	* src/STAT_BackEnd.C : fixed Python offset caching
+	* src/STAT_BackEnd.C : moved code from constructor to init routine
+
 2013-01-15 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT.[C] : added -l SW and -l SWERR args
 	* scripts/STATGUI.py : SW and SWERR log check boxes

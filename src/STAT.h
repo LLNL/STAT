@@ -27,7 +27,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "STAT_IncMRNet.h"
 
-//! An enum to determine which messages to log
+//! An enum of bit flags to determine which components to log
 enum StatLogOptions_t {
     STAT_LOG_NONE = 0x00,
     STAT_LOG_FE = 0x01,
@@ -38,6 +38,7 @@ enum StatLogOptions_t {
     STAT_LOG_SWERR = 0x20
 } ;
 
+//! An enum of bit flags for sample options
 enum StatSampleOptions_t {
     STAT_SAMPLE_FUNCTION_ONLY = 0x00,
     STAT_SAMPLE_LINE = 0x01,
@@ -73,7 +74,6 @@ typedef enum {
     PROT_SEND_LAST_TRACE_RESP,
     PROT_SEND_BROADCAST_STREAM,
     PROT_SEND_BROADCAST_STREAM_RESP,
-#ifdef STAT_FGFS
     PROT_FILE_REQ,
     PROT_FILE_REQ_RESP,
     PROT_LIB_REQ,
@@ -85,7 +85,6 @@ typedef enum {
     PROT_ATTACH_PERF_RESP,
     PROT_SEND_FGFS_STREAM,
     PROT_FGFS_REQUEST,
-#endif
     PROT_SEND_NODE_IN_EDGE,
     PROT_SEND_NODE_IN_EDGE_RESP
 } StatProt_t;

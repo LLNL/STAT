@@ -158,6 +158,8 @@ def list_to_string(task_list):
     return ret
 
 ## \param dot_filename - the input .dot file
+## \param truncate - whether to truncate from "front" or "back"
+## \param max_node_name - the max length of the node name to output
 #  \return the created temporary dot file name
 #
 #  \n
@@ -676,7 +678,6 @@ class STATNode(STATElement):
         self.edge_label_id = next_label_id
         return task_list
 
-    ## \param node - the input node
     #  \return the task list
     #
     #  \n
@@ -689,7 +690,6 @@ class STATNode(STATElement):
         return sorted(list(in_set - out_set))
 
 
-    ## \param node - the input node
     #  \return the task count
     #
     #  \n
@@ -705,7 +705,6 @@ class STATNode(STATElement):
                 self.num_leaf_tasks = 0
         return self.num_leaf_tasks
 
-    ## \param node - the input node
     #  \return the task count
     #
     #  \n
