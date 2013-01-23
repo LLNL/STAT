@@ -1359,8 +1359,9 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
 
 StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, char *outBuf, unsigned int outBufSize)
 {
+    int intRet;
 #if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
-    int intRet, i;
+    int i;
     bool boolRet, found = false;
     char buf[BUFSIZE];
     string frameName;
@@ -1414,7 +1415,7 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
 #else
     printMsg(STAT_WARNING, __FILE__, __LINE__, "Prototype variable extraction feature not enabled!\n");
     intRet = -1;
-    memcpy(outBuf, &ret, sizeof(int));
+    memcpy(outBuf, &intRet, sizeof(int));
 #endif
     return STAT_OK;
 }
