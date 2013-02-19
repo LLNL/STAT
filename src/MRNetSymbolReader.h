@@ -122,8 +122,8 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
     bool localLib = true;
     int tag = PROT_LIB_REQ, ret;
     long size;
-    uint64_t fileContentsLength;
-    char *fileName, *fileContents;
+    uint64_t fileContentsLength = 0;
+    char *fileName = NULL, *fileContents = NULL;
     FILE *fp;
     PacketPtr packet;
     MRNetSymbolReader *msr;
@@ -201,6 +201,8 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                         gStatOutFp, "Failed to unpack contents of %s, length %d\n", pathStr, fileContentsLength));
                 localLib = true;
             }
+            free(fileName);
+            fileName = NULL;
         }
 
         if (localLib == true)
@@ -221,6 +223,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
                         gStatOutFp, "%s: File %s ftell returned -1\n", strerror(errno), pathStr));
+                fclose(fp);
                 return NULL;
             }
             fseek(fp, 0, SEEK_SET);
@@ -229,6 +232,8 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
                         gStatOutFp, "Malloc returned NULL for %s\n", pathStr));
+                free(fileContents);
+                fclose(fp);
                 return NULL;
             }
             fread(fileContents, size, 1, fp);
@@ -240,6 +245,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
                         gStatOutFp, "openSymReader returned NULL for %s %d\n",
                         pathName.c_str(), size));
+                free(fileContents);
                 return NULL;
             }
         }

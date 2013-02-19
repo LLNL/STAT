@@ -31,7 +31,7 @@ where
 .fi
 .SH "DESCRIPTION"
 .PP
-STAT (the Stack Trace Analysis Tool) is a highly scalable, lightweight tool that gathers and merges stack traces from all of the processes of a parallel application. After running the STAT command, STAT will create a STAT_results directory in your current working directory. This directory will contain a subdirectory, based on your parallel application's executable name, with the merged stack traces in DOT format.
+STAT (the Stack Trace Analysis Tool) is a highly scalable, lightweight tool that gathers and merges stack traces from all of the processes of a parallel application. After running the STAT command, STAT will create a stat_results directory in your current working directory. This directory will contain a subdirectory, based on your parallel application's executable name, with the merged stack traces in DOT format.
 .SH "OPTIONS"
 .TP
 \fB-a, --autotopo\fR
@@ -41,10 +41,10 @@ let STAT automatically create topology.
 Sets the maximum tree topology fanout to \fIwidth\fR\&. Specify nodes to launch communications processes on with \fB--nodes\fR\&.
 .TP
 \fB-d, --depth \fIdepth\fB\fR
-Sets the tree topology depth to \fIdepth\fR\&. This option takes precedence over the \fB--fanout\fR option. Specify nodes to launch communications processes on with \fB--nodes\fR\&.
+Sets the tree topology depth to \fIdepth\fR\&. Specify nodes to launch communications processes on with \fB--nodes\fR\&.
 .TP
 \fB-u, --usertopology \fItopology\fB\fR
-Specify the number of communication nodes per layer in the tree topology, separated by dashes, with \fItopology\fR\&. This option takes precedence over the \fB--fanout\fR and \fB--depth\fR options. Specify nodes to launch communications processes on with \fB--nodes\fR\&. Example topologies: 4, 4-16, 5-20-75.
+Specify the number of communication nodes per layer in the tree topology, separated by dashes, with \fItopology\fR\&. Specify nodes to launch communications processes on with \fB--nodes\fR\&. Example topologies: 4, 4-16, 5-20-75.
 .TP
 \fB-n, --nodes \fInodelist\fB\fR
 Use the specified nodes in \fInodelist\fR\&. To be used with \fB--fanout\fR, \fB--depth\fR, or \fB--usertopology\fR\&. Example nodes lists: host1; host1,host2; host[1,5-7,9].
@@ -53,16 +53,16 @@ Use the specified nodes in \fInodelist\fR\&. To be used with \fB--fanout\fR, \fB
 Allow tool communication processes to be co-located on nodes running application processes.
 .TP
 \fB-p, --procs \fIprocesses\fB\fR
-Sets the maximum number of communication processes to be spawned per node to \fIprocesses\fR\&. This should typically be set to the number of CPUs per node.
+Sets the maximum number of communication processes to be spawned per node to \fIprocesses\fR\&. This should typically be set to a number less than or equal to the number of CPU cores per node.
 .TP
 \fB-j, --jobid \fIid\fB\fR
-Append \fIid\fR to the output directoory and file prefixes. This is useful for associating STAT results with a batch job.
+Append \fIid\fR to the output directory and file prefixes. This is useful for associating STAT results with a batch job.
 .TP
 \fB-r, --retries \fIcount\fB\fR
 Attempt \fIcount\fR retries per sample to try to get a complete stack trace.
 .TP
 \fB-R, --retryfreq \fIfrequency\fB\fR
-Wait \fIfrequency\fR milliseconds between sample retries. To be used with the \fB--retries\fR option.
+Wait \fIfrequency\fR microseconds between sample retries. To be used with the \fB--retries\fR option.
 .TP
 \fB-P, --withpc\fR
 Sample program counter values in addition to function names.
@@ -74,13 +74,13 @@ Sample source line number in addition to function names.
 Gather 4 traces: function only; function + line; function + PC; and 3D function only.
 .TP
 \fB-U, --countrep\fR
-Only gather count and a single representative
+Only gather edge labels with the task count and a single representative. This will improve performance at extreme (i.e., over 1 million tasks) scales.
 .TP
 \fB-w, --withthreads\fR
-Sample helper threads in addition to the main thread.
+Sample stack traces from helper threads in addition to the main thread.
 .TP
 \fB-y, --withpython\fR
-Where applicable, gather Python script level stack traces, rather than show the Python interpreter stack traces.
+Where applicable, gather Python script level stack traces, rather than show the Python interpreter stack traces. This requires the Python interpreter being debugged to be built with -g and preferrably -O0.
 .TP
 \fB-t, --traces \fIcount\fB\fR
 Gather \fIcount\fR traces per process.
@@ -95,7 +95,7 @@ Save all individual samples in addition to the 3D trace when using \fB--traces\f
 Launch the application under STAT's control. All arguments after -C are used to launch the app. Namely, \fIarg_list\fR is the command that you would normally use to launch your application.
 .TP
 \fB-I, --serial \fIarg_list\fB\fR
-Attach to a list of serial processes. All arguments after -I are interpreted as processes. Namely, \fIarg_list\fR list of processes to attach to, where each process is of the form [exe@][hostname:]PID.
+Attach to a list of serial processes. All arguments after -I are interpreted as processes. Namely, \fIarg_list\fR is a white-space-separated list of processes to attach to, where each process is of the form [exe@][hostname:]PID.
 .TP
 \fB-D, --daemon \fIpath\fB\fR
 Specify the full path \fIpath\fR to the STAT daemon executable. Use this only if you wish to override the default.
@@ -107,7 +107,7 @@ Specify the full path \fIpath\fR to the STAT filter shared object. Use this only
 Sleep for \fItime\fR seconds before attaching and gathering traces. This gives the application time to get to a hung state.
 .TP
 \fB-l, --log\fR
-Enable debug logging of the \fIFE\fR, \fIBE\fR, or \fIALL\fR\&.
+Enable debug logging of the \fIFE\fR frontend, \fIBE\fR backend, \fICP\fR communication process, \fISW\fR Stackwalker, \fISWERR\fR Stackwalker on error. Multiple log options may be specified (i.e., -l FE -l BE).
 .TP
 \fB-L, --logdir \fIlog_directory\fB\fR
 Dump logging output into \fIlog_directory\fR\&. To be used with the \fB--log\fR option.
@@ -152,11 +152,11 @@ With the -a option (or when automatic topology is set as default), STAT will try
 .sp
 .fi
 .PP
-Upon successful completion, STAT will write its output to a STAT_results directory within the current working directory. Each run creates a subdirectory named after the application with a unique integer ID. STAT's output indicates the directory created with a message such as:
+Upon successful completion, STAT will write its output to a stat_results directory within the current working directory. Each run creates a subdirectory named after the application with a unique integer ID. STAT's output indicates the directory created with a message such as:
 .PP
 .sp
 .nf
-  Results written to /home/user/bin/STAT_results/mpi_application.6
+  Results written to /home/user/bin/stat_results/mpi_application.6
     
 .sp
 .fi

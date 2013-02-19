@@ -147,7 +147,7 @@ STATBenchD_OBJECTS = $(am_STATBenchD_OBJECTS)
 STATBenchD_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(STATBenchD_LDFLAGS) $(LDFLAGS) -o $@
-am__STATBenchbin_SOURCES_DIST = STATBench.C STAT.h STAT_FrongEnd.h \
+am__STATBenchbin_SOURCES_DIST = STATBench.C STAT.h STAT_FrontEnd.h \
 	STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@am_STATBenchbin_OBJECTS = STATBench.$(OBJEXT)
 STATBenchbin_OBJECTS = $(am_STATBenchbin_OBJECTS)
@@ -355,8 +355,8 @@ AM_LDFLAGS =
 
 # this lists the binaries to produce, the (non-PHONY, binary) targets in
 # the previous manual Makefile
-include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h
-@ENABLE_STATBENCH_TRUE@STATBenchbin_SOURCES = STATBench.C STAT.h STAT_FrongEnd.h STAT_GraphRoutines.h
+include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h
+@ENABLE_STATBENCH_TRUE@STATBenchbin_SOURCES = STATBench.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@STATBenchD_SOURCES = STATBenchD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@STATBenchbin_LDFLAGS = -Wl,-E
 @ENABLE_STATBENCH_TRUE@STATBenchD_LDFLAGS = -Wl,-E

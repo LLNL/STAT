@@ -4,10 +4,10 @@ AM_LDFLAGS =
 
 # this lists the binaries to produce, the (non-PHONY, binary) targets in
 # the previous manual Makefile
-include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h
+include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h
 if ENABLE_STATBENCH
 bin_PROGRAMS = STATbin STATD STATBenchbin STATBenchD
-STATBenchbin_SOURCES = STATBench.C STAT.h STAT_FrongEnd.h STAT_GraphRoutines.h
+STATBenchbin_SOURCES = STATBench.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 STATBenchD_SOURCES = STATBenchD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
 STATBenchbin_LDFLAGS = -Wl,-E
 STATBenchD_LDFLAGS = -Wl,-E

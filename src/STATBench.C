@@ -26,9 +26,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 *********************************************************/
 
 
-#include "config.h"
-
 #include <getopt.h>
+#include "config.h"
 #include "STAT_FrontEnd.h"
 
 using namespace MRN;
@@ -51,10 +50,11 @@ typedef struct
 } StatBenchArgs_t;
 
 //! Prints the usage directions
-void STAT_PrintUsage(int argc, char **argv);
+void printUsage();
 
 //! Parses the command line arguments and sets class variables
 StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEnd, int argc, char **argv);
+
 
 //! The STATBench main
 int main(int argc, char **argv)
@@ -120,6 +120,7 @@ int main(int argc, char **argv)
     printf("%s", perfData);
 
     /* Launch the MRNet Tree */
+    statFrontEnd->setApplicationOption(STAT_LAUNCH);
     statError = statFrontEnd->launchAndSpawnDaemons(NULL, true);
     if (statError != STAT_OK)
     {
@@ -190,9 +191,11 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void STAT_PrintUsage(int argc, char **argv)
+
+//! Prints the usage message
+void printUsage()
 {
-    fprintf(stderr, "\nUsage:\n\t%s [ OPTIONS ]\n\n",  argv[0]);
+    fprintf(stderr, "\nUsage:\n\tSTATBench [ OPTIONS ]\n\n");
     fprintf(stderr, "OPTIONS:\n");
     fprintf(stderr, "\nStack trace generation options:\n");
     fprintf(stderr, "  -t, --traces <count>\t\tgenerate <count> traces.\n");
@@ -220,38 +223,45 @@ void STAT_PrintUsage(int argc, char **argv)
     fprintf(stderr, "\n%% man STATBench\n  for more information\n\n");
 }
 
+
+//! Parses the arguments
+/*
+    param statArgs[out] - the return set of options
+    statFrontEnd - the STAT_FrontEnd object
+    argc - the number of args
+    argv - the arg list
+*/
 StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEnd, int argc, char **argv)
 {
     int i, opt, optionIndex = 0;
+    unsigned int logType = 0;
     char *logOutDir = NULL;
     StatError_t statError;
-    unsigned int logType = 0;
-
     struct option longOptions[] =
     {
-        {"help", no_argument, 0, 'h'},
-        {"version", no_argument, 0, 'V'},
-        {"verbose", no_argument, 0, 'v'},
-        {"autotopo", no_argument, 0, 'a'},
-        {"appnodes", no_argument, 0, 'A'},
-        {"mrnetprintf", no_argument, 0, 'M'},
-        {"countrep", no_argument, 0, 'U'},
-        {"fanout", required_argument, 0, 'f'},
-        {"nodes", required_argument, 0, 'n'},
-        {"procs", required_argument, 0, 'p'},
-        {"traces", required_argument, 0, 't'},
-        {"maxdepth", required_argument, 0, 'm'},
-        {"branch", required_argument, 0, 'b'},
-        {"eqclasses", required_argument, 0, 'e'},
-        {"daemon", required_argument, 0, 'D'},
-        {"filter", required_argument, 0, 'F'},
-        {"log", required_argument, 0, 'l'},
-        {"logdir", required_argument, 0, 'L'},
-        {"usertopology", required_argument, 0, 'u'},
-        {"depth", required_argument, 0, 'd'},
-        {"numtasks", required_argument, 0, 'N'},
-        {"iters", required_argument, 0, 'i'},
-        {0, 0, 0, 0}
+        {"help",            no_argument,        0, 'h'},
+        {"version",         no_argument,        0, 'V'},
+        {"verbose",         no_argument,        0, 'v'},
+        {"autotopo",        no_argument,        0, 'a'},
+        {"appnodes",        no_argument,        0, 'A'},
+        {"mrnetprintf",     no_argument,        0, 'M'},
+        {"countrep",        no_argument,        0, 'U'},
+        {"fanout",          required_argument,  0, 'f'},
+        {"nodes",           required_argument,  0, 'n'},
+        {"procs",           required_argument,  0, 'p'},
+        {"traces",          required_argument,  0, 't'},
+        {"maxdepth",        required_argument,  0, 'm'},
+        {"branch",          required_argument,  0, 'b'},
+        {"eqclasses",       required_argument,  0, 'e'},
+        {"daemon",          required_argument,  0, 'D'},
+        {"filter",          required_argument,  0, 'F'},
+        {"log",             required_argument,  0, 'l'},
+        {"logdir",          required_argument,  0, 'L'},
+        {"usertopology",    required_argument,  0, 'u'},
+        {"depth",           required_argument,  0, 'd'},
+        {"numtasks",        required_argument,  0, 'N'},
+        {"iters",           required_argument,  0, 'i'},
+        {0,                 0,                  0, 0}
     };
 
     statBenchArgs->topologyType = STAT_TOPOLOGY_DEPTH;
@@ -265,7 +275,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         switch(opt)
         {
         case 'h':
-            STAT_PrintUsage(argc, argv);
+            printUsage();
             exit(0);
             break;
         case 'V':
@@ -371,14 +381,14 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
             break;
         case '?':
             statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
-            STAT_PrintUsage(argc, argv);
+            printUsage();
             return STAT_ARG_ERROR;
         default:
             statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
-            STAT_PrintUsage(argc, argv);
+            printUsage();
             return STAT_ARG_ERROR;
-        };
-    }
+        }; /* switch */
+    } /* while(1) */
 
     if (logOutDir != NULL && logType != 0)
     {

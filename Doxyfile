@@ -23,7 +23,7 @@ PROJECT_NAME           = STAT
 # This could be handy for archiving the generated documentation or 
 # if some version control system is used.
 
-PROJECT_NUMBER         = 1.0
+PROJECT_NUMBER         = 2.0.0
 
 # The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute) 
 # base path where the generated documentation will be put. 
@@ -459,7 +459,7 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories 
 # with spaces.
 
-INPUT                  = src/STAT_FrontEnd.h src/STAT_FrontEnd.C src/STAT.h src/STAT_BackEnd.h src/STAT_BackEnd.C src/STAT_FilterDefinitions.C src/STAT.C src/STATD.C src/STATBench.C src/STATBenchD.C scripts/STATview.py scripts/STATGUI.py doc/src/mainpage
+INPUT                  = src/STAT_FrontEnd.h src/STAT_FrontEnd.C src/STAT.h src/STAT_BackEnd.h src/STAT_BackEnd.C src/STAT_FilterDefinitions.C src/STAT.C src/STATD.C src/STATBench.C src/STATBenchD.C src/STAT_merge.C src/STAT_GraphRoutines.h src/STAT_GraphRoutines.C scripts/STAThelper.py scripts/STATmerge.py scripts/STATview.py scripts/STATGUI.py doc/src/mainpage
 
 # If the value of the INPUT tag contains directories, you can use the 
 # FILE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp 

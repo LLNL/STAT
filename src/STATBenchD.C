@@ -22,6 +22,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 
 //! The STATBench daemon main
+/*!
+    \param argc - the number of arguments
+    \param argv - the arguments
+    \return 0 on success
+*/
 int main(int argc, char **argv)
 {
     bool isHelperDaemon = true;

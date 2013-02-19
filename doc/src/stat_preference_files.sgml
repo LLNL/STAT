@@ -187,4 +187,28 @@ Here is a list of options:
         </para>
     </listitem>
 </varlistentry>
+<varlistentry>
+    <term>Log CP = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to enable debug logging of the STAT communication processes.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Log SW = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to enable debug logging of Stackwalker by the STAT backend.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Log SWERR = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to enable debug logging of Stackwalker by the STAT backend when a Stackwalker error is detected.
+        </para>
+    </listitem>
+</varlistentry>
 </variablelist>

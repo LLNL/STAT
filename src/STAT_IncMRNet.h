@@ -23,80 +23,80 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
  * conflicting names with STAT.
  **/
 
-//Include config.h and back-up its PACKAGE defines
+/* Include config.h and back-up its PACKAGE defines */
 #include "config.h"
 #if defined(PACKAGE_BUGREPORT)
-#define STAT_PACKAGE_BUGREPORT PACKAGE_BUGREPORT
-#undef PACKAGE_BUGREPORT
+  #define STAT_PACKAGE_BUGREPORT PACKAGE_BUGREPORT
+  #undef PACKAGE_BUGREPORT
 #endif
 #if defined(PACKAGE_NAME)
-#define STAT_PACKAGE_NAME PACKAGE_NAME
-#undef PACKAGE_NAME
+  #define STAT_PACKAGE_NAME PACKAGE_NAME
+  #undef PACKAGE_NAME
 #endif
 #if defined(PACKAGE_STRING)
-#define STAT_PACKAGE_STRING PACKAGE_STRING
-#undef PACKAGE_STRING
+  #define STAT_PACKAGE_STRING PACKAGE_STRING
+  #undef PACKAGE_STRING
 #endif
 #if defined(PACKAGE_TARNAME)
-#define STAT_PACKAGE_TARNAME PACKAGE_TARNAME
-#undef PACKAGE_TARNAME
+  #define STAT_PACKAGE_TARNAME PACKAGE_TARNAME
+  #undef PACKAGE_TARNAME
 #endif
 #if defined(PACKAGE_VERSION)
-#define STAT_PACKAGE_VERSION PACKAGE_VERSION
-#undef PACKAGE_VERSION
+  #define STAT_PACKAGE_VERSION PACKAGE_VERSION
+  #undef PACKAGE_VERSION
 #endif
 
-//Include MRNet
+/* Include MRNet */
 #include "mrnet/MRNet.h"
 #include "mrnet/Types.h"
 #include "mrnet/Packet.h"
 
-//Drop MRNet package includes and include xplat
+/* Drop MRNet package includes and include xplat */
 #if defined(PACKAGE_NAME)
-#undef PACKAGE_NAME
+  #undef PACKAGE_NAME
 #endif
 #if defined(PACKAGE_STRING)
-#undef PACKAGE_STRING
+  #undef PACKAGE_STRING
 #endif
 #if defined(PACKAGE_TARNAME)
-#undef PACKAGE_TARNAME
+  #undef PACKAGE_TARNAME
 #endif
 #if defined(PACKAGE_VERSION)
-#undef PACKAGE_VERSION
+  #undef PACKAGE_VERSION
 #endif
 #include "xplat/NetUtils.h"
 
-//Remove MRNet's Package defines
+/* Remove MRNet's Package defines */
 #if defined(PACKAGE_BUGREPORT)
-#undef PACKAGE_BUGREPORT
+  #undef PACKAGE_BUGREPORT
 #endif
 #if defined(PACKAGE_NAME)
-#undef PACKAGE_NAME
+  #undef PACKAGE_NAME
 #endif
 #if defined(PACKAGE_STRING)
-#undef PACKAGE_STRING
+  #undef PACKAGE_STRING
 #endif
 #if defined(PACKAGE_TARNAME)
-#undef PACKAGE_TARNAME
+  #undef PACKAGE_TARNAME
 #endif
 #if defined(PACKAGE_VERSION)
-#undef PACKAGE_VERSION
+  #undef PACKAGE_VERSION
 #endif
 
-//Restore STAT's package defines
+/* Restore STAT's package defines*/
 #if defined(STAT_PACKAGE_BUGREPORT)
-#define PACKAGE_BUGREPORT STAT_PACKAGE_BUGREPORT
+  #define PACKAGE_BUGREPORT STAT_PACKAGE_BUGREPORT
 #endif
 #if defined(STAT_PACKAGE_NAME)
-#define PACKAGE_NAME STAT_PACKAGE_NAME
+  #define PACKAGE_NAME STAT_PACKAGE_NAME
 #endif
 #if defined(STAT_PACKAGE_STRING)
-#define PACKAGE_STRING STAT_PACKAGE_STRING
+  #define PACKAGE_STRING STAT_PACKAGE_STRING
 #endif
 #if defined(STAT_PACKAGE_TARNAME)
-#define PACKAGE_TARNAME STAT_PACKAGE_TARNAME
+  #define PACKAGE_TARNAME STAT_PACKAGE_TARNAME
 #endif
 #if defined(STAT_PACKAGE_VERSION)
-#define PACKAGE_VERSION STAT_PACKAGE_VERSION
+  #define PACKAGE_VERSION STAT_PACKAGE_VERSION
 #endif
 

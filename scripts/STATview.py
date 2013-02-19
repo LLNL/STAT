@@ -1058,7 +1058,6 @@ class STATGraph(xdot.Graph):
     def view_source(self, node, item = None):
         """Generate a window that displays the source code for the node."""
         # find the source file name and line number
-        #if not has_source_and_not_collapsed(node.label):
         if not label_has_source(node.label):
             show_error_dialog('Cannot determine source file, please run STAT with the -i option to get source file and line number information\n')
             return
@@ -1083,8 +1082,6 @@ class STATGraph(xdot.Graph):
         lineNums = []
         lineNums.append((cur_lineNum, fill_color_string, font_color_string))
         for node_iter in self.nodes:
-            #if node_iter == node:
-            #    continue
             frames = decompose_node(node_iter.label, -1)
             if (type(frames) == tuple):
                 frames = [frames]

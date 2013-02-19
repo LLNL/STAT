@@ -142,6 +142,24 @@ StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType = ST
 */
 StatError_t statFinalize(StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH);
 
+
+//! Routine to compare the equivalence of two frames
+/*!
+    \param frame1 - the first frame
+    \param frame2 - the second frame
+    \return true if frame1 < frame2
+*/
+bool statFrameCmp(const Dyninst::Stackwalker::Frame &frame1, const Dyninst::Stackwalker::Frame &frame2);
+
+
+//! Translate a relative (local daemon) rank to an absolute (global MPI) rank
+/*!
+    \param rank - the relative rank
+    \return the absolute rank
+*/
+int statRelativeRankToAbsoluteRank(int rank);
+
+
 //! The STAT daemon object used to gather and send stack traces
 class STAT_BackEnd
 {
@@ -226,6 +244,18 @@ class STAT_BackEnd
 
         //! Dump the Stackwalker debug buffer to the log file
         void swDebugBufferToFile();
+
+        //! Get the process table
+        /*!
+            \return the proces table
+        */
+        MPIR_PROCDESC_EXT *getProctab();
+
+        //! Get the process table size
+        /*!
+            \return the proces table size
+        */
+        int getProctabSize();
 
         //! (STAT Bench) Write MRNet connection information to a named fifo
         /*!

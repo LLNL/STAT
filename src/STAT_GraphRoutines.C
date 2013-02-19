@@ -19,16 +19,16 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "STAT_GraphRoutines.h"
 
 //! the bit vector routines
-graphlib_functiontable_p gStatBitVectorFunctions;
+graphlib_functiontable_p gStatBitVectorFunctions = NULL;
 
 //! the bit vector filter routines to append bit vectors
-graphlib_functiontable_p gStatMergeFunctions;
+graphlib_functiontable_p gStatMergeFunctions = NULL;
 
 //! the bit vector to reorder the bit vectors by MPI rank
-graphlib_functiontable_p gStatReorderFunctions;
+graphlib_functiontable_p gStatReorderFunctions = NULL;
 
 //! the count and representative routines
-graphlib_functiontable_p gStatCountRepFunctions;
+graphlib_functiontable_p gStatCountRepFunctions = NULL;
 
 //! the final bit vector width
 int gStatGraphRoutinesTotalWidth;
@@ -96,7 +96,7 @@ StatBitVectorEdge_t *initializeBitVectorEdge(int numTasks)
     edge->bitVector = (StatBitVector_t *)calloc(edge->length, STAT_BITVECTOR_BYTES);
     if (edge->bitVector == NULL)
     {
-        fprintf(stderr, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), edge->length);
+        fprintf(stderr, "%s: Failed to calloc %zu longs for edge->bitVector\n", strerror(errno), edge->length);
         free(edge);
         return NULL;
     }
@@ -105,10 +105,14 @@ StatBitVectorEdge_t *initializeBitVectorEdge(int numTasks)
 
 void statInitializeBitVectorFunctions()
 {
-    statFreeBitVectorFunctions();
+    if (gStatBitVectorFunctions != NULL)
+        return;
     gStatBitVectorFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
     if (gStatBitVectorFunctions == NULL)
+    {
         fprintf(stderr, "Failed to malloc function table\n");
+        return;
+    }
     gStatBitVectorFunctions->serialize_node = statSerializeNode;
     gStatBitVectorFunctions->serialize_node_length = statSerializeNodeLength;
     gStatBitVectorFunctions->deserialize_node = statDeserializeNode;
@@ -135,10 +139,14 @@ void statFreeBitVectorFunctions()
 
 void statInitializeMergeFunctions()
 {
-    statFreeMergeFunctions();
+    if (gStatMergeFunctions != NULL)
+        return;
     gStatMergeFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
     if (gStatMergeFunctions == NULL)
+    {
         fprintf(stderr, "Failed to malloc function table\n");
+        return;
+    }
     gStatMergeFunctions->serialize_node = statSerializeNode;
     gStatMergeFunctions->serialize_node_length = statSerializeNodeLength;
     gStatMergeFunctions->deserialize_node = statDeserializeNode;
@@ -165,10 +173,14 @@ void statFreeMergeFunctions()
 
 void statInitializeReorderFunctions()
 {
-    statFreeReorderFunctions();
+    if (gStatReorderFunctions != NULL)
+        return;
     gStatReorderFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
     if (gStatReorderFunctions == NULL)
+    {
         fprintf(stderr, "Failed to malloc function table\n");
+        return;
+    }
     gStatReorderFunctions->serialize_node = statSerializeNode;
     gStatReorderFunctions->serialize_node_length = statSerializeNodeLength;
     gStatReorderFunctions->deserialize_node = statDeserializeNode;
@@ -195,10 +207,14 @@ void statFreeReorderFunctions()
 
 void statInitializeCountRepFunctions()
 {
-    statFreeCountRepFunctions();
+    if (gStatCountRepFunctions != NULL)
+        return;
     gStatCountRepFunctions = (graphlib_functiontable_p)malloc(sizeof(graphlib_functiontable_t));
     if (gStatCountRepFunctions == NULL)
+    {
         fprintf(stderr, "Failed to malloc function table\n");
+        return;
+    }
     gStatCountRepFunctions->serialize_node = statSerializeNode;
     gStatCountRepFunctions->serialize_node_length = statSerializeNodeLength;
     gStatCountRepFunctions->deserialize_node = statDeserializeNode;
@@ -299,16 +315,16 @@ void statDeserializeEdge(void **edge, const char *buf, unsigned int bufLength)
     e = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
     if (e == NULL)
     {
-        fprintf(stderr, "Failed to allocate %u bytes for deserialized edge object\n", sizeof(StatBitVectorEdge_t));
+        fprintf(stderr, "Failed to allocate %zu bytes for deserialized edge object\n", sizeof(StatBitVectorEdge_t));
         return;
     }
 
     memcpy((void *)&(e->length), ptr, sizeof(size_t));
     ptr += sizeof(size_t);
     e->bitVector = (StatBitVector_t *)malloc(STAT_BITVECTOR_BYTES * e->length);
-    if (e == NULL)
+    if (e->bitVector == NULL)
     {
-        fprintf(stderr, "Failed to allocate %u bytes for deserialized edge bit vector\n", STAT_BITVECTOR_BYTES * e->length);
+        fprintf(stderr, "Failed to allocate %zu bytes for deserialized edge bit vector\n", STAT_BITVECTOR_BYTES * e->length);
         return;
     }
     memcpy(e->bitVector, ptr, STAT_BITVECTOR_BYTES * e->length);
@@ -341,7 +357,7 @@ char *statEdgeToText(const void *edge)
             charRet = (char *)realloc(charRet, charRetSize * sizeof(char));
             if (charRet == NULL)
             {
-                fprintf(stderr, "%s: Failed to reallocte %d bytes of memory for edge label\n", strerror(errno), charRetSize);
+                fprintf(stderr, "%s: Failed to reallocte %u bytes of memory for edge label\n", strerror(errno), charRetSize);
                 return NULL;
             }
         }
@@ -397,7 +413,6 @@ char *statEdgeToText(const void *edge)
         count += strlen(val);
     }
     sprintf(charRet + count, "]");
-    count += 1;
 
     return charRet;
 }
@@ -427,14 +442,14 @@ void *statCopyEdge(const void *edge)
     bvRet = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
     if (bvRet == NULL)
     {
-        fprintf(stderr, "Failed to allocate %u bytes for edge copy\n", sizeof(StatBitVectorEdge_t));
+        fprintf(stderr, "Failed to allocate %zu bytes for edge copy\n", sizeof(StatBitVectorEdge_t));
         return NULL;
     }
     bvRet->length = e->length;
     bvRet->bitVector = (StatBitVector_t *)malloc(e->length * STAT_BITVECTOR_BYTES);
     if (bvRet->bitVector == NULL)
     {
-        fprintf(stderr, "Failed to allocate %u bytes for bit vector\n", e->length * STAT_BITVECTOR_BYTES);
+        fprintf(stderr, "Failed to allocate %zu bytes for bit vector\n", e->length * STAT_BITVECTOR_BYTES);
         return NULL;
     }
     memcpy(bvRet->bitVector, e->bitVector, STAT_BITVECTOR_BYTES * e->length);
@@ -472,7 +487,7 @@ void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLen
     e = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
     if (e == NULL)
     {
-        fprintf(stderr, "Failed to allocate %u bytes for deserialized edge object\n", sizeof(StatBitVectorEdge_t));
+        fprintf(stderr, "Failed to allocate %zu bytes for deserialized edge object\n", sizeof(StatBitVectorEdge_t));
         return;
     }
 
@@ -480,9 +495,9 @@ void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLen
     ptr += sizeof(size_t);
     e->length = gStatGraphRoutinesTotalWidth;
     e->bitVector = (StatBitVector_t *)calloc(e->length, STAT_BITVECTOR_BYTES);
-    if (e == NULL)
+    if (e->bitVector == NULL)
     {
-        fprintf(stderr, "Failed to allocate %u bytes for deserialized edge bit vector\n", STAT_BITVECTOR_BYTES * e->length);
+        fprintf(stderr, "Failed to allocate %zu bytes for deserialized edge bit vector\n", STAT_BITVECTOR_BYTES * e->length);
         return;
     }
 
@@ -501,14 +516,14 @@ void *statCopyEdgeInitializeEmpty(const void *edge)
     bvRet = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
     if (bvRet == NULL)
     {
-        fprintf(stderr, "Failed to allocate %u bytes for edge copy\n", sizeof(StatBitVectorEdge_t));
+        fprintf(stderr, "Failed to allocate %zu bytes for edge copy\n", sizeof(StatBitVectorEdge_t));
         return NULL;
     }
     bvRet->length = gStatGraphRoutinesTotalWidth;
     bvRet->bitVector = (StatBitVector_t *)calloc(bvRet->length, STAT_BITVECTOR_BYTES);
     if (bvRet->bitVector == NULL)
     {
-        fprintf(stderr, "Failed to allocate %u bytes for bit vector\n", bvRet->length * STAT_BITVECTOR_BYTES);
+        fprintf(stderr, "Failed to allocate %zu bytes for bit vector\n", bvRet->length * STAT_BITVECTOR_BYTES);
         return NULL;
     }
     return (void *)bvRet;
@@ -564,7 +579,10 @@ char *statCountRepEdgeToText(const void *edge)
 
     e = (StatCountRepEdge_t *)edge;
     charRet = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
-    snprintf(charRet, STAT_GRAPH_CHUNK, "%lld:[%lld](%lld)", e->count, e->representative, e->checksum);
+    if (charRet != NULL)
+        snprintf(charRet, STAT_GRAPH_CHUNK, "%lld:[%lld](%lld)", e->count, e->representative, e->checksum);
+    else
+        fprintf(stderr, "Failled to malloc %zu bytes for edge text\n", STAT_GRAPH_CHUNK * sizeof(char));
     return charRet;
 }
 
@@ -600,9 +618,9 @@ long statCountRepEdgeCheckSum(const void *edge)
     return ((StatCountRepEdge_t *)edge)->checksum;
 }
 
-StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge)
+StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int))
 {
-    unsigned int i, j, rank;
+    unsigned int i, j, rank, absoluteRank;
     StatCountRepEdge_t *crRet;
 
     crRet = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
@@ -618,10 +636,11 @@ StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge)
         {
             if (edge->bitVector[i] & STAT_GRAPH_BIT(j))
             {
+                absoluteRank = relativeRankToAbsoluteRank(rank);
                 if (crRet->representative == -1)
-                    crRet->representative = rank;
+                    crRet->representative = absoluteRank;
                 crRet->count += 1;
-                crRet->checksum += rank + 1;
+                crRet->checksum += absoluteRank + 1;
             }
         }
     }

@@ -19,7 +19,7 @@
     <term>-d, --depth <replaceable class="parameter">depth</replaceable></term>
     <listitem>
         <para>
-        Sets the tree topology depth to <replaceable class="parameter">depth</replaceable>.  This option takes precedence over the <option>--fanout</option> option.  Specify nodes to launch communications processes on with <option>--nodes</option>.
+        Sets the tree topology depth to <replaceable class="parameter">depth</replaceable>.  Specify nodes to launch communications processes on with <option>--nodes</option>.
         </para>
     </listitem>
 </varlistentry>
@@ -27,7 +27,7 @@
     <term>-u, --usertopology <replaceable class="parameter">topology</replaceable></term>
     <listitem>
         <para>
-        Specify the number of communication nodes per layer in the tree topology, separated by dashes, with <replaceable class="parameter">topology</replaceable>.  This option takes precedence over the <option>--fanout</option> and <option>--depth</option> options.  Specify nodes to launch communications processes on with <option>--nodes</option>.  Example topologies: 4, 4-16, 5-20-75.
+        Specify the number of communication nodes per layer in the tree topology, separated by dashes, with <replaceable class="parameter">topology</replaceable>.  Specify nodes to launch communications processes on with <option>--nodes</option>.  Example topologies: 4, 4-16, 5-20-75.
         </para>
     </listitem>
 </varlistentry>
@@ -51,7 +51,7 @@
     <term>-p, --procs <replaceable class="parameter">processes</replaceable></term>
     <listitem>
         <para>
-        Sets the maximum number of communication processes to be spawned per node to <replaceable class="parameter">processes</replaceable>.  This should typically be set to the number of CPUs per node.
+        Sets the maximum number of communication processes to be spawned per node to <replaceable class="parameter">processes</replaceable>.  This should typically be set to a number less than or equal to the number of CPU cores per node.
         </para>
     </listitem>
 </varlistentry>
@@ -59,7 +59,7 @@
     <term>-j, --jobid <replaceable class="parameter">id</replaceable></term>
     <listitem>
         <para>
-        Append <replaceable class="parameter">id</replaceable> to the output directoory and file prefixes.  This is useful for associating STAT results with a batch job.
+        Append <replaceable class="parameter">id</replaceable> to the output directory and file prefixes.  This is useful for associating STAT results with a batch job.
         </para>
     </listitem>
 </varlistentry>
@@ -107,7 +107,7 @@
     <term>-U, --countrep</term>
     <listitem>
         <para>
-        Only gather count and a single representative
+        Only gather edge labels with the task count and a single representative. This will improve performance at extreme (i.e., over 1 million tasks) scales.
         </para>
     </listitem>
 </varlistentry>
@@ -115,7 +115,7 @@
     <term>-w, --withthreads</term>
     <listitem>
         <para>
-        Sample helper threads in addition to the main thread.
+        Sample stack traces from helper threads in addition to the main thread.
         </para>
     </listitem>
 </varlistentry>
@@ -123,7 +123,7 @@
     <term>-y, --withpython</term>
     <listitem>
         <para>
-        Where applicable, gather Python script level stack traces, rather than show the Python interpreter stack traces.
+        Where applicable, gather Python script level stack traces, rather than show the Python interpreter stack traces.  This requires the Python interpreter being debugged to be built with -g and preferrably -O0.
         </para>
     </listitem>
 </varlistentry>
@@ -192,10 +192,10 @@
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term>-l, --log <cmdsynopsis><group><arg><replaceable class="parameter">FE</replaceable></arg><arg><replaceable class="parameter">BE</replaceable></arg><arg><replaceable class="parameter">ALL</replaceable></arg></group></cmdsynopsis></term>
+    <term>-l, --log <cmdsynopsis><group><arg><replaceable class="parameter">FE</replaceable></arg><arg><replaceable class="parameter">BE</replaceable></arg><arg><replaceable class="parameter">CP</replaceable></arg></group></cmdsynopsis></term>
     <listitem>
         <para>
-        Enable debug logging of the <replaceable class="parameter">FE</replaceable>, <replaceable class="parameter">BE</replaceable>, or <replaceable class="parameter">ALL</replaceable>.
+        Enable debug logging of the <replaceable class="parameter">FE</replaceable> frontend, <replaceable class="parameter">BE</replaceable> backend, <replaceable class="parameter">CP</replaceable> communication process, <replaceable class="parameter">SW</replaceable> Stackwalker, <replaceable class="parameter">SWERR</replaceable> Stackwalker on error. Multiple log options may be specified (i.e., -l FE -l BE).
         </para>
     </listitem>
 </varlistentry>

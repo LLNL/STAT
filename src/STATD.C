@@ -22,26 +22,33 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 
 //! The daemon main
+/*!
+    \param argc - the number of arguments
+    \param argv - the arguments
+    \return 0 on success
+*/
 int main(int argc, char **argv)
 {
-    int opt, optionIndex, mrnetOutputLevel = 1;
+    int opt, optionIndex = 0, mrnetOutputLevel = 1;
     unsigned int logType = 0;
-    char *logOutDir = NULL, *pid;
+    char logOutDir[BUFSIZE], *pid;
     StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
     StatError_t statError;
     STAT_BackEnd *statBackEnd;
 
     struct option longOptions[] =
     {
-        {"mrnetprintf", no_argument, 0, 'm'},
-        {"serial", no_argument, 0, 's'},
-        {"mrnet", no_argument, 0, 'M'},
-        {"mrnetoutputlevel", required_argument, 0, 'o'},
-        {"pid", required_argument, 0, 'p'},
-        {"logdir", required_argument, 0, 'L'},
-        {"log", required_argument, 0, 'l'},
-        {0, 0, 0, 0}
+        {"mrnetprintf",         no_argument,        0, 'm'},
+        {"serial",              no_argument,        0, 's'},
+        {"mrnet",               no_argument,        0, 'M'},
+        {"mrnetoutputlevel",    required_argument,  0, 'o'},
+        {"pid",                 required_argument,  0, 'p'},
+        {"logdir",              required_argument,  0, 'L'},
+        {"log",                 required_argument,  0, 'l'},
+        {0,                     0,                  0, 0}
     };
+
+    snprintf(logOutDir, BUFSIZE, "NULL");
 
     /* If user querying for version, print it and exit */
     if (argc == 2)
@@ -69,6 +76,7 @@ int main(int argc, char **argv)
     if (statError != STAT_OK)
     {
         fprintf(stderr, "Failed to initialize STAT_BackEnd object\n");
+        delete statBackEnd;
         return statError;
     }
 
@@ -100,14 +108,7 @@ int main(int argc, char **argv)
             statBackEnd->addSerialProcess(optarg);
             break;
         case 'L':
-            logOutDir = strdup(optarg);
-            if (logOutDir == NULL)
-            {
-                statBackEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
-                delete statBackEnd;
-                statFinalize(launchType);
-                return STAT_ALLOCATE_ERROR;
-            }
+            snprintf(logOutDir, BUFSIZE, "%s", optarg);
             break;
         case 'l':
             if (strcmp(optarg, "BE") == 0)
@@ -142,7 +143,7 @@ int main(int argc, char **argv)
         }; /* switch(opt) */
     } /* while(1) */
 
-    if (logOutDir != NULL)
+    if (strcmp(logOutDir, "NULL") != 0)
     {
         statError = statBackEnd->startLog(logType, logOutDir, mrnetOutputLevel);
         if (statError != STAT_OK)

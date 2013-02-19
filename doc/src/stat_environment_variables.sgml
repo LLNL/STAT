@@ -123,6 +123,14 @@ Several environment variables influence STAT and its dependent packages.  Note t
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>STAT_FE_HOSTNAME=<replaceable class="parameter">value</replaceable></term>
+    <listitem>
+        <para>
+        Set the STAT Front End hostname to <replaceable class="parameter">value</replaceable>.  This may be necessary for example on BlueGene systems to use the proper network interface for the I/O nodes to connect back to.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>STAT_CHECK_NODE_ACCESS=<replaceable class="parameter">value</replaceable></term>
     <listitem>
         <para>

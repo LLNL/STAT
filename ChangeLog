@@ -1,3 +1,29 @@
+2013-02-15 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : need to strdup remoteNode into proctab for serial attach
+	* doc/src/* : updated documentation
+
+2013-02-08 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : added STAT_FE_HOSTNAME env variable
+	* scripts/*.in : check for [STAT|LMON|MRNET]_PREFIX env vars and adjust	paths accordingly
+	* config/x_ac_debuglibs.m4 : added --enable-[libdwarf|stackwalker|-rpm to look for includes/libs in /usr
+
+2013-01-30 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : use std::string instead of char * for topo generation
+	* : Fixed memory leaks, dead code, etc. identified by Intel's Static Security Analysis Tool
+
+2013-01-30 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : clear proctab on detach
+	* : MRNet 3.0 and MRNet 3.1 backwards compatibility fixes
+	* : StackWalker 8.0 and 2.0 backwards compatibility fixes
+	* src/STAT_GraphRoutines.[C,h], src/STAT_BackEnd.[C,h] : fixed count+rep graph (need to translate daemon-local rank to MPI rank)
+
+2013-01-29 Gregory L. Lee <lee218@llnl.gov>
+	* : Fixed some memory leaks identified by Inspector
+	* src/STAT_BackEnd.C : fixed Python truncating of "[call|fast]_function"
+
+2013-01-28 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_GraphRoutines.C : fixed handling of function tables when	previously allocated
+
 2013-01-22 Gregory L. Lee <lee218@llnl.gov>
 	* : code clean up
 	* src/STAT_BackEnd.C : fixed Python offset caching

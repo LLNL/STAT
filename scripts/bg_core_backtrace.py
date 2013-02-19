@@ -33,6 +33,8 @@ job_ids = []
 class BgCoreTrace(StatTrace):
     def get_traces(self):
         global addr2line_map, addr2line_exe
+        if self.options['addr2line'] != 'NULL':
+            addr2line_exe = self.options['addr2line']
         self.rank = int(self.file_path[self.file_path.find('core.')+5:])
         f = open(self.file_path, 'r')
         line_number_traces = []
@@ -100,6 +102,9 @@ class BgCoreMergerArgs(StatMergerArgs):
 
         # add an agrument type to take the application executable path
         self.arg_map["exe"] = StatMergerArgs.StatMergerArgElement("x", True, str, "NULL", "the executable path")
+
+        # add an agrument type to take the application executable path
+        self.arg_map["addr2line"] = StatMergerArgs.StatMergerArgElement("a", True, str, "NULL", "the path to addr2line")
 
         # override the usage messages:
         self.usage_msg_synopsis = '\nThis tool will merge the stack traces from the user specified lightweight core files and output 2 .dot files, one with just function names, the other with function names + line number information\n'

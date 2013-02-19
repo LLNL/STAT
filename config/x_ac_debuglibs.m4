@@ -1,4 +1,18 @@
 AC_DEFUN([X_AC_DEBUGLIBS], [
+
+  AC_ARG_ENABLE(stackwalker-rpm,
+    [AS_HELP_STRING([--enable-stackwalker-rpm],[Enable the use of rpm-installed stackwalker, default=no])],
+    [CXXFLAGS="$CXXFLAGS -I/usr/include/dyninst"
+     LDFLAGS="$LDFLAGS -L/usr/lib64/dyninst"
+     RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=/usr/lib64/dyninst"],
+    [CXXFLAGS="$CXXFLAGS"]
+  )  
+  AC_ARG_ENABLE(libdwarf-rpm,
+    [AS_HELP_STRING([--enable-libdwarf-rpm],[Enable the use of rpm-installed libdwarf, default=no])],
+    [CXXFLAGS="$CXXFLAGS -I/usr/include/libdwarf"],
+    [CXXFLAGS="$CXXFLAGS"]
+  )  
+
   AC_ARG_WITH(stackwalker,
     [AS_HELP_STRING([--with-stackwalker=prefix],
       [Add the compile and link search paths for stackwalker]

@@ -19,7 +19,7 @@ where
 .fi
 .SH "DESCRIPTION"
 .PP
-The Stack Trace Analysis Tool is a highly scalable, lightweight tool that gathers and merges stack traces from all of the processes of a parallel application. stat-bench is a benchmark that can emulate STAT's performance. By utilizing your entire parallel allocation (launching one stat-bench daemon emulator per core) and generating artificial stack traces, stat-bench is able model STAT's performance using less resources than an actual STAT run requires. With various options, you can also map stat-bench to your target machine architecture and target application. After completion, stat-bench will create a STAT_results directory in your current working directory. This directory will contain a subdirectory for the current run, with the merged stack traces in DOT format as well as a performance results text file. 
+The Stack Trace Analysis Tool is a highly scalable, lightweight tool that gathers and merges stack traces from all of the processes of a parallel application. stat-bench is a benchmark that can emulate STAT's performance. By utilizing your entire parallel allocation (launching one stat-bench daemon emulator per core) and generating artificial stack traces, stat-bench is able model STAT's performance using less resources than an actual STAT run requires. With various options, you can also map stat-bench to your target machine architecture and target application. After completion, stat-bench will create a stat_results directory in your current working directory. This directory will contain a subdirectory for the current run, with the merged stack traces in DOT format as well as a performance results text file. 
 .SH "OPTIONS"
 .TP
 \fB-a, --autotopo\fR
@@ -68,10 +68,10 @@ Generate traces with a max branching factor of \fIwidth\fR\&.
 Generate traces within \fIcount\fR equivalence classes.
 .TP
 \fB-U, --countrep\fR
-only gather count and a single representative
+Only gather edge labels with the task count and a single representative.
 .TP
 \fB-l, --log\fR
-Enable debug logging of the \fIFE\fR, \fIBE\fR, or \fIALL\fR\&.
+Enable debug logging of the \fIFE\fR frontend, \fIBE\fR backend, or \fICP\fR communication process. Multiple log options may be specified (i.e., -l FE -l BE).
 .TP
 \fB-L, --logdir \fIlog_directory\fB\fR
 Dump logging output into \fIlog_directory\fR\&. To be used with the \fB--log\fR option.

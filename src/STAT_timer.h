@@ -17,8 +17,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 
-#ifndef __TIMER_H
-#define __TIMER_H 1
+#ifndef __STAT_TIMER_H
+#define __STAT_TIMER_H 1
 
 #include <sys/time.h>
 #include <stdlib.h>
@@ -39,4 +39,4 @@ class STAT_timer
         STAT_timer operator-(STAT_timer& statTimer);
 };
 
-#endif /* __TIMER_H */
+#endif /* __STAT_TIMER_H */

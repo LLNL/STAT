@@ -48,7 +48,7 @@ typedef struct
 } StatArgs_t;
 
 //! Prints the usage directions
-void printUsage(int argc, char **argv);
+void printUsage();
 
 //! Parses the command line arguments and return the options
 /*!
@@ -65,10 +65,14 @@ void mySleep(int sleepTime);
 
 
 //! main() function to run STAT
+/*!
+    \param argc - the number of arguments
+    \param argv - the arguments
+    \return 0 on success
+*/
 int main(int argc, char **argv)
 {
     int i, j, samples = 1, traces;
-    bool clearOnSample = true;
     STAT_FrontEnd *statFrontEnd;
     StatError_t statError, retval;
     string invocationString;
@@ -81,6 +85,7 @@ int main(int argc, char **argv)
     if (statArgs == NULL)
     {
         statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to calloc statArgs\n");
+        delete statFrontEnd;
         return -1;
     }
 
@@ -90,6 +95,7 @@ int main(int argc, char **argv)
         if (statError != STAT_WARNING)
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to parse arguments\n");
         delete statFrontEnd;
+        free(statArgs);
         if (statError != STAT_WARNING)
             return -1;
         else
@@ -123,6 +129,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
         statFrontEnd->shutDown();
         delete statFrontEnd;
+        free(statArgs);
         return -1;
     }
 
@@ -133,6 +140,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
         statFrontEnd->shutDown();
         delete statFrontEnd;
+        free(statArgs);
         return -1;
     }
 
@@ -141,6 +149,7 @@ int main(int argc, char **argv)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup connected MRNet tree\n");
         delete statFrontEnd;
+        free(statArgs);
         return -1;
     }
 
@@ -151,6 +160,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to attach to application\n");
         statFrontEnd->shutDown();
         delete statFrontEnd;
+        free(statArgs);
         return -1;
     }
 
@@ -163,6 +173,7 @@ int main(int argc, char **argv)
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
             statFrontEnd->shutDown();
             delete statFrontEnd;
+            free(statArgs);
             return -1;
         }
         mySleep(statArgs->sleepTime);
@@ -172,7 +183,6 @@ int main(int argc, char **argv)
     sleep(1);
 #endif
 
-    clearOnSample = true;
     retval = STAT_OK;
     if (statArgs->nTraces <= 0)
         traces = 1;
@@ -205,12 +215,7 @@ int main(int argc, char **argv)
         for (j = 0; j < traces; j++)
         {
             if (j == 1)
-            {
-//                unsigned int unsetClearOnSample;
-//                memset(&unsetClearOnSample, 0xff, sizeof(unsigned int));
                 statArgs->sampleType &= ~STAT_SAMPLE_CLEAR_ON_SAMPLE;
-//                clearOnSample = false;
-            }
             /* Pause the application */
             statError = statFrontEnd->pause();
             if (statError == STAT_APPLICATION_EXITED)
@@ -220,6 +225,7 @@ int main(int argc, char **argv)
                 statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
                 statFrontEnd->shutDown();
                 delete statFrontEnd;
+                free(statArgs);
                 return -1;
             }
 
@@ -232,6 +238,7 @@ int main(int argc, char **argv)
                 statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to sample stack traces\n");
                 statFrontEnd->shutDown();
                 delete statFrontEnd;
+                free(statArgs);
                 return -1;
             }
 
@@ -244,6 +251,7 @@ int main(int argc, char **argv)
                     statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
                     statFrontEnd->shutDown();
                     delete statFrontEnd;
+                    free(statArgs);
                     return -1;
                 }
             }
@@ -259,6 +267,7 @@ int main(int argc, char **argv)
                     statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
                     statFrontEnd->shutDown();
                     delete statFrontEnd;
+                    free(statArgs);
                     return -1;
                 }
                 if (retval != STAT_OK)
@@ -278,6 +287,7 @@ int main(int argc, char **argv)
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
             statFrontEnd->shutDown();
             delete statFrontEnd;
+            free(statArgs);
             return -1;
         }
     } /* for i */
@@ -289,6 +299,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to detach from application\n");
         statFrontEnd->shutDown();
         delete statFrontEnd;
+        free(statArgs);
         return -1;
     }
 
@@ -296,10 +307,12 @@ int main(int argc, char **argv)
     printf("\nResults written to %s\n\n", statFrontEnd->getOutDir());
 
     delete statFrontEnd;
+    free(statArgs);
     return 0;
 }
 
-void printUsage(int argc, char **argv)
+//! Prints the usage message
+void printUsage()
 {
     fprintf(stderr, "\nSTAT, the Stack Trace Analysis Tool, is a highly scalable, lightweight tool that gathers and merges stack traces from a parallel application's processes.  STAT can gather and merge multiple stack traces per process, showing the application's time varying behavior.  The output shows the global application behavior and can be used to identify process equivalence classes, subsets of tasks that exhibit similar behavior.  A representative of each equivalence class can be fed into a heavyweight debugger for root cause analysis.  Running STAT will create a stat_results directory that contains \".dot\" files that are best viewed with the STATview GUI.  They can also be viewed with the \"dotty\" utility from graphviz.\n");
     fprintf(stderr, "\nUsage:\n");
@@ -341,54 +354,60 @@ void printUsage(int argc, char **argv)
     fprintf(stderr, "\n%% man STAT\n  for more information\n\n");
 }
 
+
+//! Parses the arguments
+/*
+    param statArgs[out] - the return set of options
+    statFrontEnd - the STAT_FrontEnd object
+    argc - the number of args
+    argv - the arg list
+*/
 StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int argc, char **argv)
 {
-    int i, opt, optionIndex = 0;
-    string remotePid, remoteHost;
+    int i, opt, optionIndex = 0, nProcs;
+    unsigned int logType = 0;
+    bool createJob = false, serialJob = false;
+    char logOutDir[BUFSIZE];
+    string remotePid, remoteHost, nProcsOpt;
     string::size_type colonPos;
     StatError_t statError;
-    string nProcsOpt;
-    int nProcs;
-    bool createJob = false, serialJob = false;
-    char *logOutDir = NULL;
-    unsigned int logType = 0;
-
     struct option longOptions[] =
     {
-        {"help", no_argument, 0, 'h'},
-        {"version", no_argument, 0, 'V'},
-        {"verbose", no_argument, 0, 'v'},
-        {"withpc", no_argument, 0, 'P'},
-        {"withline", no_argument, 0, 'i'},
-        {"comprehensive", no_argument, 0, 'c'},
-        {"withthreads", no_argument, 0, 'w'},
-        {"pythontrace", no_argument, 0, 'y'},
-        {"autotopo", no_argument, 0, 'a'},
-        {"create", no_argument, 0, 'C'},
-        {"serial", no_argument, 0, 'I'},
-        {"appnodes", no_argument, 0, 'A'},
-        {"sampleindividual", no_argument, 0, 'S'},
-        {"mrnetprintf", no_argument, 0, 'M'},
-        {"countrep", no_argument, 0, 'U'},
-        {"fanout", required_argument, 0, 'f'},
-        {"nodes", required_argument, 0, 'n'},
-        {"nodesfile", required_argument, 0, 'N'},
-        {"procs", required_argument, 0, 'p'},
-        {"jobid", required_argument, 0, 'j'},
-        {"retries", required_argument, 0, 'r'},
-        {"retryfreq", required_argument, 0, 'R'},
-        {"traces", required_argument, 0, 't'},
-        {"tracefreq", required_argument, 0, 'T'},
-        {"daemon", required_argument, 0, 'D'},
-        {"filter", required_argument, 0, 'F'},
-        {"sleep", required_argument, 0, 's'},
-        {"log", required_argument, 0, 'l'},
-        {"logdir", required_argument, 0, 'L'},
-        {"usertopology", required_argument, 0, 'u'},
-        {"depth", required_argument, 0, 'd'},
-        {0, 0, 0, 0}
+        {"help",                no_argument,        0, 'h'},
+        {"version",             no_argument,        0, 'V'},
+        {"verbose",             no_argument,        0, 'v'},
+        {"withpc",              no_argument,        0, 'P'},
+        {"withline",            no_argument,        0, 'i'},
+        {"comprehensive",       no_argument,        0, 'c'},
+        {"withthreads",         no_argument,        0, 'w'},
+        {"pythontrace",         no_argument,        0, 'y'},
+        {"autotopo",            no_argument,        0, 'a'},
+        {"create",              no_argument,        0, 'C'},
+        {"serial",              no_argument,        0, 'I'},
+        {"appnodes",            no_argument,        0, 'A'},
+        {"sampleindividual",    no_argument,        0, 'S'},
+        {"mrnetprintf",         no_argument,        0, 'M'},
+        {"countrep",            no_argument,        0, 'U'},
+        {"fanout",              required_argument,  0, 'f'},
+        {"nodes",               required_argument,  0, 'n'},
+        {"nodesfile",           required_argument,  0, 'N'},
+        {"procs",               required_argument,  0, 'p'},
+        {"jobid",               required_argument,  0, 'j'},
+        {"retries",             required_argument,  0, 'r'},
+        {"retryfreq",           required_argument,  0, 'R'},
+        {"traces",              required_argument,  0, 't'},
+        {"tracefreq",           required_argument,  0, 'T'},
+        {"daemon",              required_argument,  0, 'D'},
+        {"filter",              required_argument,  0, 'F'},
+        {"sleep",               required_argument,  0, 's'},
+        {"log",                 required_argument,  0, 'l'},
+        {"logdir",              required_argument,  0, 'L'},
+        {"usertopology",        required_argument,  0, 'u'},
+        {"depth",               required_argument,  0, 'd'},
+        {0,                     0,                  0, 0}
     };
 
+    snprintf(logOutDir, BUFSIZE, "NULL");
     statArgs->sleepTime = -1;
     statArgs->nTraces = 10;
     statArgs->traceFrequency = 100;
@@ -416,7 +435,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         switch(opt)
         {
         case 'h':
-            printUsage(argc, argv);
+            printUsage();
             return STAT_WARNING;
             break;
         case 'V':
@@ -530,12 +549,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             }
             break;
         case 'L':
-            logOutDir = strdup(optarg);
-            if (logOutDir == NULL)
-            {
-                statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
-                return STAT_ALLOCATE_ERROR;
-            }
+            snprintf(logOutDir, BUFSIZE, "%s", optarg);
             break;
         case 'M':
             logType |= STAT_LOG_MRN;
@@ -546,16 +560,16 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             break;
         case '?':
             statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
-            printUsage(argc, argv);
+            printUsage();
             return STAT_ARG_ERROR;
         default:
             statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
-            printUsage(argc, argv);
+            printUsage();
             return STAT_ARG_ERROR;
-        }; // switch(opt)
-    } // while (1)
+        }; /* switch(opt) */
+    } /* while (1) */
 
-    if (logOutDir != NULL && logType != 0)
+    if (strcmp(logOutDir, "NULL") != 0 && logType != 0)
     {
         statError = statFrontEnd->startLog(logType, logOutDir);
         if (statError != STAT_OK)
@@ -600,19 +614,25 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     }
     else
     {
-        printUsage(argc, argv);
+        printUsage();
         return STAT_ARG_ERROR;
     }
 
     return STAT_OK;
 }
 
+
+//! Sleep for a specified number of seconds
+/*
+    param sleepTime - the number of seconds to sleep
+*/
 void mySleep(int sleepTime)
 {
+    time_t currentTime;
+    struct tm *localTime;
+
     if (sleepTime > 0)
     {
-        time_t currentTime;
-        struct tm *localTime;
         currentTime = time(NULL);
         localTime = localtime(&currentTime);
         if (localTime == NULL)

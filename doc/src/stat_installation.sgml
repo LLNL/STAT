@@ -8,10 +8,10 @@ STAT creates wrapper scripts for the stat-cl command line and stat-gui commands.
 STAT will try to build the GUI by default.  If you need to modify your PYTHONPATH envirnment variable to search for side installed site-packages, you can do this by specifying STAT_PYTHONPATH=path during configure.  This will add the appropriate directory to the $PYTHONPATH environment variable within the stat-gui script.  To disable the building of the GUI, use the --enable-gui=no configure option.
 </para>
 <para>
-On BlueGene systems, also be sure to configure --with-bluegene.  This will enable the BGL macro for BlueGene specific compilation.  Similarly, to compile on Cray XT systems, specify --with-cray-xt.
+To compile on Cray systems, specify --with-cray-xt.  On BlueGene systems, also be sure to configure --with-bluegene.  This will enable the BGL macro for BlueGene specific compilation.  It is important to note that on BlueGene systems, you may need to use an alternate hostname for the front-end node in order to get MRNet to bind to the appropriate network interface that can communicate with the I/O nodes.  By default, STAT will append "-io" to the hostname.  Alternatively, you can specify the hostname with the STAT_FE_HOSTNAME environment variable.  
 </para>
 <para>
-An example configure line for Cray XT:
+An example configure line for Cray:
 </para>
 <informalexample>
     <screen>
@@ -21,11 +21,11 @@ An example configure line for Cray XT:
 --with-stackwalker=/tmp/work/lee218/install \
 --with-libdwarf=/tmp/work/lee218/install \
 --prefix=/tmp/work/lee218/install --with-cray-xt \
-MPICC=cc MPICXX=CC MPIF77=ftn --enable-shared LD=/usr/bin/ld.x    
+MPICC=cc MPICXX=CC MPIF77=ftn --enable-shared LD=/usr/bin/ld   
     </screen>
 </informalexample>
 <para>
-Note that specifying LD=/usr/bin/ld.x is only advised on Cray systems, as doing so on other systems may inhibit the abililty to generate shared libraries.  Next you just need to run:
+Note that specifying LD=/usr/bin/ld may be required on Cray systems to avoid using the compute node linker.  It is also worth noting that Cray includes a build of STAT as part of their system software stack.  It is typically installed in /opt/cray/stat and can be loaded via modules.  After running configure you just need to run:
 </para>
 <informalexample>
     <screen>
@@ -35,4 +35,6 @@ make install
 </informalexample>
 <para>
 Note that STAT hardcodes the paths to its daemon and filter shared object, assuming that they are in $prefix/bin and $prefix/lib respectively, thus testing should be done in the install prefix after running "make install" and the installation directory should not be moved.  The path to these components can, however, be overridden with the --daemon and --filter arguments.  Further, the STAT_PREFIX environment variable can be defined to override the hardcoded paths in STAT.
+
+STAT will also, by default, add rpaths to dependent libraries.  This behavior can be disabled by specifying "--with-rpath=no".  However, when doing so, you must be sure to set LD_LIBRARY_PATH to point to the directories containing the dependent libraries.
 </para>

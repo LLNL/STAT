@@ -1,6 +1,21 @@
 #!/bin/sh
 # @configure_input@
 export prefix=@prefix@
+
+if test -n "$STAT_PREFIX" ; then
+    export prefix=$STAT_PREFIX
+fi
+if test -n "$FGFS_PREFIX" ; then
+    export STAT_FGFS_FILTER_PATH=$FGFS_PREFIX/lib/libfgfs_filter.so
+fi
+if test -n "$MRNET_PREFIX" ; then
+    export STAT_MRNET_COMM_PATH=$MRNET_PREFIX/bin/mrnet_commnode
+fi
+if test -n "$LMON_PREFIX" ; then
+    export STAT_LMON_LAUNCHMON_ENGINE_PATH=$LMON_PREFIX/bin/launchmon
+    export STAT_LMON_PREFIX=$LMON_PREFIX
+fi
+
 export STAT_LMON_REMOTE_LOGIN=@rshcmd@
 export STAT_XPLAT_RSH=@rshcmd@
 if test -z $STAT_FGFS_FILTER_PATH; then
@@ -24,4 +39,4 @@ fi
 if test -z $LMON_FE_ENGINE_TIMEOUT; then
     export LMON_FE_ENGINE_TIMEOUT=600
 fi
-exec @prefix@/bin/STATbin -A -r 5 $@
+exec $prefix/bin/STATbin -A -r 5 $@

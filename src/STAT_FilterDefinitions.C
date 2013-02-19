@@ -228,11 +228,14 @@ void filterInit(vector<PacketPtr> &inputPackets,
                     gStatOutFp = fopen(fileName, "w");
                     if (gStatOutFp == NULL)
                         cpPrintMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open FE log file %s\n", strerror(errno), fileName);
+#ifdef MRNET40
                     if (gLogging & STAT_LOG_MRN)
                         mrn_printf_init(gStatOutFp);
+#endif
                     set_OutputLevel(mrnetOutputLevel);
                 }
             }
+            free(logDir);
         }
     }
     for (i = 0; i < inputPackets.size(); i++)
@@ -309,7 +312,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
        tries to send it.  They are safe to free up on the next invocation of
        this filter function */
     static char *sOutputByteArray = NULL;
-    int totalWidth = 0, nChildren, *edgeLabelWidths, rank, inputRank, outputRank, child, tag;
+    int totalWidth = 0, nChildren, *edgeLabelWidths = NULL, rank, inputRank, outputRank, child, tag;
     uint64_t outputByteArrayLen, byteArrayLen;
     unsigned int i, sampleType;
     char *byteArray;
@@ -504,6 +507,9 @@ void statMerge(vector<PacketPtr> &inputPackets,
 #endif
     outputPackets.push_back(newPacket);
 
+    if (edgeLabelWidths != NULL)
+        free(edgeLabelWidths);
+
     cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STAT filter completed\n");
 }
 
@@ -542,7 +548,7 @@ void fileRequestUpStream(vector<PacketPtr> &inputPackets,
                          PacketPtr &params,
                          const TopologyLocalInfo &topology)
 {
-    char *fileName, *fileContents;
+    char *fileName = NULL;
     unsigned int i;
     PacketPtr currentPacket, newPacket;
     map<string, pair<char *, unsigned long> >::iterator gFileNameToContentsMapIter;
@@ -591,6 +597,11 @@ void fileRequestUpStream(vector<PacketPtr> &inputPackets,
                     pthread_mutex_unlock(&gVisitedFileSetMutex);
                     cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d: Duplicate request for %s.\n", topology.get_Network()->get_LocalRank(), fileName);
                 }
+            }
+            if (fileName != NULL)
+            {
+                free(fileName);
+                fileName = NULL;
             }
         } /* for (i = 0; i < inputPackets.size(); i++) */
     } /* else for if (inputPackets[0]->get_Tag() == PROT_FILE_REQ_RESP) */
@@ -659,6 +670,8 @@ void fileRequestDownStream(vector<PacketPtr> &inputPackets,
                     gFileNameToContentsMap[fileName] = make_pair(fileContents, fileContentsLength);
                 pthread_mutex_unlock(&gFileNameToContentsMapMutex);
             }
+            else
+                free(fileContents);
 
             pthread_mutex_lock(&gVisitedFileSetMutex);
             visitedFileSetIter = gVisitedFileSet.find(fileName);
@@ -673,6 +686,11 @@ void fileRequestDownStream(vector<PacketPtr> &inputPackets,
             {
                 cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "ignoring file %s at CP\n", fileName);
                 pthread_mutex_unlock(&gVisitedFileSetMutex);
+            }
+            if (fileName != NULL)
+            {
+                free(fileName);
+                fileName = NULL;
             }
         }
     }

@@ -1006,6 +1006,8 @@ host[1-10,12,15-20];otherhost[30]
 
     def on_detach(self, widget, stop_list = intArray(0), stop_list_len=0):
         """Determine the process state and detach from the current job."""
+        self.proctab_file_path = None
+        self.proctab = None
         if self.attached == False:
             self.STAT = None
             self.reattach = False
@@ -1156,7 +1158,7 @@ host[1-10,12,15-20];otherhost[30]
         if keep_var_spec == False:
             self.var_spec = []
             # below is a test for local variables:
-            self.var_spec.append(("/g/g0/lee218/src/STAT/examples/src/to_test.c", 38, 5, "i"))
+            #self.var_spec.append(("/g/g0/lee218/src/STAT/examples/src/to_test.c", 38, 5, "i"))
             #self.var_spec.append(("/g/g0/lee218/src/STAT/examples/src/to_test.c", 38, 4, "i"))
         self.update_sample_options()
         ret = self.STAT.pause()
@@ -1563,6 +1565,7 @@ host[1-10,12,15-20];otherhost[30]
         if self.proctab_file_path == '':
             show_error_dialog('Failed to find process table .ptab file.', self)
             return False
+        print 'ptab file', self.proctab_file_path
 
         try:
             with open(self.proctab_file_path, 'r') as f:

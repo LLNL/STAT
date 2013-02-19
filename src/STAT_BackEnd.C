@@ -147,14 +147,14 @@ STAT_BackEnd::~STAT_BackEnd()
         proctab_ = NULL;
     }
 
+    graphlibError = graphlib_Finish();
+    if (GRL_IS_FATALERROR(graphlibError))
+        fprintf(errOutFp_, "Warning: Failed to finish graphlib\n");
+
     statFreeReorderFunctions();
     statFreeBitVectorFunctions();
     statFreeCountRepFunctions();
     statFreeMergeFunctions();
-
-    graphlibError = graphlib_Finish();
-    if (GRL_IS_FATALERROR(graphlibError))
-        fprintf(errOutFp_, "Warning: Failed to finish graphlib\n");
 
 #ifdef STAT_FGFS
     if (fgfsCommFabric_ != NULL)
@@ -248,7 +248,7 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
 StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphlib_graph_p *prefixTree3d)
 {
     int i;
-    StatCountRepEdge_t *countRepEdge;
+    StatCountRepEdge_t *countRepEdge = NULL;
     graphlib_graph_p *currentGraph;
     graphlib_error_t graphlibError;
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1};
@@ -302,7 +302,8 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
         {
             if (sampleType_ & STAT_SAMPLE_COUNT_REP)
             {
-                countRepEdge = getBitVectorCountRep(edgesIter->second.second);
+                gBePtr = this;
+                countRepEdge = getBitVectorCountRep(edgesIter->second.second, statRelativeRankToAbsoluteRank);
                 if (countRepEdge == NULL)
                 {
                     printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to translate bit vector into count + representative\n");
@@ -522,7 +523,6 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
         }
 
         proctab_[proctabSize_ - 1].mpirank = rank;
-        proctab_[proctabSize_ - 1].cnodeid = rank;
         if (remoteNode != NULL)
             proctab_[proctabSize_ - 1].pd.host_name = remoteNode;
         else
@@ -686,9 +686,9 @@ StatError_t STAT_BackEnd::connect(int argc, char **argv)
 
 StatError_t STAT_BackEnd::mainLoop()
 {
-    int tag, ackTag, intRet, nEqClasses, swNotificationFd, mrnNotificationFd, maxFd, nodeId, bitVectorLength, stopArrayLen, majorVersion, minorVersion, revisionVersion;
+    int tag = 0, ackTag, intRet, nEqClasses, swNotificationFd, mrnNotificationFd, maxFd, nodeId, bitVectorLength, stopArrayLen, majorVersion, minorVersion, revisionVersion;
     unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, *stopArray = NULL, previousSampleType = 0;
-    uint64_t byteArrayLen;
+    uint64_t byteArrayLen = 0;
     char *byteArray = NULL, *variableSpecification = NULL;
     bool boolRet, recvShouldBlock;
     Stream *stream = NULL;
@@ -843,6 +843,8 @@ StatError_t STAT_BackEnd::mainLoop()
                 if (statError != STAT_OK)
                     intRet = 1;
                 ackTag = PROT_SAMPLE_TRACES_RESP;
+                free(variableSpecification);
+                variableSpecification = NULL;
                 break;
 
             case PROT_SEND_LAST_TRACE:
@@ -912,7 +914,17 @@ StatError_t STAT_BackEnd::mainLoop()
                 }
                 byteArrayLen = statSerializeEdgeLength(edge);
                 byteArray = (char *)malloc(byteArrayLen);
+                if (byteArray == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %lu bytes for byteArray\n", byteArrayLen);
+                    if (edge != NULL && edges2d_.find(nodeId) == edges2d_.end())
+                        free(edge);
+                    return STAT_ALLOCATE_ERROR;
+                }
                 statSerializeEdge(byteArray, edge);
+                if (edge != NULL && edges2d_.find(nodeId) == edges2d_.end())
+                    statFreeEdge(edge);
+                edge = NULL;
                 ackTag = PROT_SEND_NODE_IN_EDGE_RESP;
                 break;
 
@@ -1095,7 +1107,9 @@ StatError_t STAT_BackEnd::attach()
 
 #if defined(GROUP_OPS)
     ThreadTracking::setDefaultTrackThreads(false);
+  #ifdef SW_VERSION_8_0_1
     LWPTracking::setDefaultTrackLWPs(false);
+  #endif
     if (doGroupOps_)
     {
         aInfo.reserve(proctabSize_);
@@ -1306,7 +1320,7 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
     Address loadAddr;
     LibraryState *libState;
     LibAddrPair lib;
-    Symtab *symtab;
+    Symtab *symtab = NULL;
     vector<LineNoTuple *> lines;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting source line info for address %lx\n", addr);
@@ -1349,6 +1363,7 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
         return STAT_OK;
     }
 
+
     snprintf(outBuf, BUFSIZE, "%s", lines[0]->getFile().c_str());
     *lineNum = lines[0]->getLine();
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "address %lx resolved to %s:%d\n", addr, outBuf, *lineNum);
@@ -1385,13 +1400,22 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
     for (i = 0; i < 2 && found == false; i++)
     {
         if (i == 0)
-            boolRet = func->getLocalVariables(vars);
-        else if (i == 1)
-            boolRet = func->getParams(vars);
-        if (boolRet == false)
         {
-            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to get local variables for frame %s\n", frameName.c_str());
-            return STAT_STACKWALKER_ERROR;
+            boolRet = func->getLocalVariables(vars);
+            if (boolRet == false)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to get local variables for frame %s\n", frameName.c_str());
+                return STAT_STACKWALKER_ERROR;
+            }
+        }
+        else if (i == 1)
+        {
+            boolRet = func->getParams(vars);
+            if (boolRet == false)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to get parameters for frame %s\n", frameName.c_str());
+                return STAT_STACKWALKER_ERROR;
+            }
         }
 
         for (varsIter = vars.begin(); varsIter != vars.end(); varsIter++)
@@ -1543,22 +1567,30 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
         }
         else if (statError != STAT_OK)
             printMsg(statError, __FILE__, __LINE__, "Error in getPythonFrameInfo for frame %s, pyFun = %s, pySource = %s\n", name.c_str(), pyFun, pySource);
+        if (pyFun != NULL)
+            free(pyFun);
+        if (pySource != NULL)
+            free(pySource);
     }
 
     /* Gather PC value or line number info if requested */
     if (sampleType_ & STAT_SAMPLE_PC)
     {
+#ifdef SW_VERSION_8_0_0    
         if (frame.isTopFrame() == true)
             snprintf(buf, BUFSIZE, "@0x%lx", frame.getRA());
         else
+#endif
             snprintf(buf, BUFSIZE, "@0x%lx", frame.getRA() - 1);
         name += buf;
     }
     else if (sampleType_ & STAT_SAMPLE_LINE)
     {
+#ifdef SW_VERSION_8_0_0    
         if (frame.isTopFrame() == true)
             addr = frame.getRA();
         else
+#endif
             addr = frame.getRA() - 1;
         statError = getSourceLine(frame.getWalker(), addr, fileName, &lineNum);
         if (statError != STAT_OK)
@@ -1601,7 +1633,8 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
 
 StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency)
 {
-    int nodeId, prevId, i, j, partialTraceScore, delimPos;
+    int nodeId, prevId, i, j, partialTraceScore;
+    string::size_type delimPos;
     bool boolRet, isFirstPythonFrame;
     string name, path;
     vector<Frame> currentStackWalk, bestStackWalk;
@@ -1630,6 +1663,7 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
         if (pDebug == NULL)
         {
             printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Walker contains no Process State object\n");
+            statFreeEdge(edge);
             return STAT_STACKWALKER_ERROR;
         }
         else
@@ -1752,6 +1786,8 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                             /* This indicates the end of the Python interpreter */
                             continue;
                         }
+                        if (name.find("call_function") != string::npos || name.find("fast_function") != string::npos)
+                            continue;
                     }
                     trace.push_back(name);
                 }
@@ -1883,7 +1919,6 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             else
             {
                 /* There are other paths, so just delete the parent node */
-                newChildId = 0;
                 if (nodes2d_.find(graphlibNode) != nodes2d_.end())
                     nodes2d_.erase(graphlibNode);
             }
@@ -1981,6 +2016,25 @@ bool statFrameCmp(const Frame &frame1, const Frame &frame2)
 }
 
 
+MPIR_PROCDESC_EXT *STAT_BackEnd::getProctab()
+{
+    return proctab_;
+}
+
+int STAT_BackEnd::getProctabSize()
+{
+    return proctabSize_;
+}
+
+int statRelativeRankToAbsoluteRank(int rank)
+{
+    int absoluteRank = 0;
+    if (gBePtr->getProctab() != NULL &&  rank >= 0 && rank <= gBePtr->getProctabSize())
+        absoluteRank = gBePtr->getProctab()[rank].mpirank;
+    return absoluteRank;
+}
+
+
 StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned int retryFrequency)
 {
     int dummyBranches = 0;
@@ -1990,8 +2044,10 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
     set<int> ranks;
     StatError_t statError;
 
+#ifdef SW_VERSION_8_0_1
     if (procSet_->getLWPTracking() && sampleType_ & STAT_SAMPLE_THREADS)
         procSet_->getLWPTracking()->refreshLWPs();
+#endif
 
     gBePtr = this;
 
@@ -2000,7 +2056,11 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
 #else
     CallTree tree(frame_lib_offset_cmp);
 #endif
+#ifdef SW_VERSION_8_0_1
     boolRet = walkerSet_->walkStacks(tree, !(sampleType_ & STAT_SAMPLE_THREADS));
+#else
+    boolRet = walkerSet_->walkStacks(tree);
+#endif
     if (boolRet == false)
     {
 #warning TODO: Start handling partial call stacks in group walks
@@ -2058,9 +2118,9 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
                 pDebug->detach(leaveStopped);
                 delete processMapIter->second;
             }
-            processMap_.erase(processMapIter);
-            processMapNonNull_ = processMapNonNull_ - 1;
         }
+        processMap_.clear();
+        processMapNonNull_ = 0;
     }
     return STAT_OK;
 }
@@ -2168,8 +2228,10 @@ StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mr
             printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
             return STAT_FILE_ERROR;
         }
+#ifdef MRNET40
         if (logType_ & STAT_LOG_MRN)
             mrn_printf_init(gStatOutFp);
+#endif
         set_OutputLevel(mrnetOutputLevel);
     }
 
@@ -2289,8 +2351,10 @@ void STAT_BackEnd::swDebugBufferToFile()
                     printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
                     return;
                 }
+#ifdef MRNET40
                 if (logType_ & STAT_LOG_MRN)
                     mrn_printf_init(gStatOutFp);
+#endif
             }
             fwrite(swDebugString_, 1, strlen(swDebugString_), gStatOutFp);
             
@@ -2301,7 +2365,9 @@ void STAT_BackEnd::swDebugBufferToFile()
                 return;
             }
             Dyninst::Stackwalker::setDebugChannel(swDebugFile_);
+#ifdef SW_VERSION_8_0_0
             Dyninst::ProcControlAPI::setDebugChannel(swDebugFile_);
+#endif
         }
     }
 }
@@ -2354,11 +2420,13 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
     char buffer[BUFSIZE], varName[BUFSIZE], exePath[BUFSIZE];
     static map<string, StatPythonOffsets_t *> pythonOffsetsMap;
     StatPythonOffsets_t *pythonOffsets;
-    Symtab *symtab;
+    Symtab *symtab = NULL;
     Type *type;
     vector<Field *> *components;
     Field *field;
+#ifdef SW_VERSION_8_0_0
     LibraryPool::iterator libsIter;
+#endif
     ProcDebug *pDebug = NULL;
     StatError_t statError;
 
@@ -2376,6 +2444,11 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
     if (pythonOffsetsMap.find(exePath) == pythonOffsetsMap.end())
     {
         pythonOffsets = (StatPythonOffsets_t *)malloc(sizeof(StatPythonOffsets_t));
+        if (pythonOffsets == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate memory for pythonOffsets\n");
+            return STAT_ALLOCATE_ERROR;
+        }
         *pythonOffsets = (StatPythonOffsets_t){-1, -1, -1, -1, -1, -1, -1, -1, -1, false, false};
         pythonOffsetsMap[exePath] = pythonOffsets;
     }
@@ -2667,7 +2740,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
     baseAddr = *((unsigned long long *)buffer);
     pDebug->readMem(buffer, baseAddr + pythonOffsets->obSizeOffset, sizeof(unsigned long long));
     length = *((long *)buffer);
-    if (length > BUFSIZE)
+    if (length >= BUFSIZE)
         length = BUFSIZE - 1;
     if (pythonOffsets->isUnicode == true)
     {
@@ -2678,7 +2751,6 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
             pDebug->readMem(&buffer[i], pyUnicodeObjectAddr + 2 * i, 1);
         buffer[length] = '\0';
         *pyFun = strdup(buffer);
-
     }
     else
     {
@@ -2697,7 +2769,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
     baseAddr = *((unsigned long long *)buffer);
     pDebug->readMem(buffer, baseAddr + pythonOffsets->obSizeOffset, sizeof(unsigned long long));
     length = *((long *)buffer);
-    if (length > BUFSIZE)
+    if (length >= BUFSIZE)
         length = BUFSIZE - 1;
     if (pythonOffsets->isUnicode == true)
     {
@@ -2714,7 +2786,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
         buffer[length] = '\0';
         *pySource = strdup(buffer);
     }
-    if (*pyFun == NULL)
+    if (*pySource == NULL)
     {
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to *pySource)\n", strerror(errno), buffer);
         return STAT_ALLOCATE_ERROR;
@@ -2741,6 +2813,8 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
             length = *((long *)buffer);
             pAddr = baseAddr + pythonOffsets->obSvalOffset;
         }
+        if (length >= BUFSIZE)
+            length = BUFSIZE - 1;
         pDebug->readMem(buffer, pAddr, length * sizeof(unsigned char));
         address = 0;
         lineNo = firstLineNo;
@@ -2995,6 +3069,11 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
     {
         proctabSize_ = nTasks;
         proctab_ = (MPIR_PROCDESC_EXT *)malloc(proctabSize_ * sizeof(MPIR_PROCDESC_EXT));
+        if (proctab_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d bytes for proctab_\n", proctabSize_);
+            return STAT_ALLOCATE_ERROR;
+        }
         proctab_[0].mpirank = myRank_ * nTasks;
         for (i = 0; i < proctabSize_; i++)
         {
@@ -3016,6 +3095,11 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             if (j >= nEqClasses && nEqClasses != -1)
                 break;
             statError = statBenchCreateTrace(maxDepth, j, nTasks, functionFanout, nEqClasses, i);
+            if (statError != STAT_OK)
+            {
+                printMsg(statError, __FILE__, __LINE__, "Failed to create trace %d of %d for task %d of %d\n", i + 1, nTraces, j, nTasks);
+                return statError;
+            }
         } /* for j nTasks */
 
         statError = update3dNodesAndEdges();

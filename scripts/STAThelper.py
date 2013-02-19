@@ -289,7 +289,6 @@ def label_collapsed(input):
 #
 #  \n
 def has_source_and_not_collapsed(input):
-    #return input.find('@') != -1 and (input.find('@') == input.rfind('@')) # the and is to capture collapsed nodes
     return label_has_source(input) and not label_collapsed(input)
 
 
@@ -310,7 +309,6 @@ def decompose_node(input, item = None):
         else:
             sourceLine = input[input.find('@') + 1:]
             iter_string = ''
-    #elif label_has_source(input) and label_collapsed(input) and item is not None:
     elif label_collapsed(input) and item is not None:
         if item == -1:
             return_list = []

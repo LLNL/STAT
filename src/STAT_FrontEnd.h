@@ -774,7 +774,7 @@ class STAT_FrontEnd
                    before including it in the final list
             \return STAT_OK on success
         */
-        StatError_t setCommNodeList(char *nodeList, bool checkAccess);
+        StatError_t setCommNodeList(const char *nodeList, bool checkAccess);
 
         //! Create the run specific output directory
         /*!

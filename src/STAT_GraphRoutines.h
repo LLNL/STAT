@@ -313,8 +313,9 @@ long statCountRepEdgeCheckSum(const void *edge);
 //! Translate a full bit vector edge into a count + representative edge
 /*!
     \param edge - a pointer to the edge object
+    \param relativeRankToAbsoluteRank - a pointer to a function that translates relative (daemon) rank into absolute (global/MPI) rank
     \return the count + representative version of the edge
 */
-StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge);
+StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int));
 
 #endif

@@ -25,10 +25,15 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define BUFSIZE 16384
 
 using namespace std;
+
 extern "C" {
 
-vector<graphlib_graph_p> *graphs = NULL;
-int high_rank;
+//! a vector of generated graphs
+vector<graphlib_graph_p> *gGraphs = NULL;
+
+//! the highest rank task to represent
+int gHighRank;
+
 #ifdef COUNTREP
 //! the count and representative routines
 extern graphlib_functiontable_p gStatCountRepFunctions;
@@ -37,17 +42,18 @@ extern graphlib_functiontable_p gStatCountRepFunctions;
 extern graphlib_functiontable_p gStatBitVectorFunctions;
 #endif
 
+//! Initialize graphlib and set the graph routines
 static PyObject *py_Init_Graphlib(PyObject *self, PyObject *args)
 {
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
 
-    if (!PyArg_ParseTuple(args, "i", &high_rank))
+    if (!PyArg_ParseTuple(args, "i", &gHighRank))
     {
         fprintf(stderr, "Failed to parse args, expecting (int)\n");
         return Py_BuildValue("i", -1);
     }
-    gl_err = graphlib_Init();
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_Init();
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Failed to init graphlib\n");
         return Py_BuildValue("i", -1);
@@ -62,46 +68,47 @@ static PyObject *py_Init_Graphlib(PyObject *self, PyObject *args)
     return Py_BuildValue("i", 0);
 }
 
-static PyObject *py_New_Graph(PyObject *self, PyObject *args)
+//! Create a new graph and return the handle
+static PyObject *py_newGraph(PyObject *self, PyObject *args)
 {
     int handle;
-    graphlib_graph_p new_graph;
-    graphlib_error_t gl_err;
+    graphlib_graph_p newGraph;
+    graphlib_error_t graphlibError;
 
 #ifdef COUNTREP
-    gl_err = graphlib_newGraph(&new_graph, gStatCountRepFunctions);
+    graphlibError = graphlib_newGraph(&newGraph, gStatCountRepFunctions);
 #else
-    gl_err = graphlib_newGraph(&new_graph, gStatBitVectorFunctions);
+    graphlibError = graphlib_newGraph(&newGraph, gStatBitVectorFunctions);
 #endif
-    if (GRL_IS_FATALERROR(gl_err))
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error intializing graph\n");
         return Py_BuildValue("i", -1);
     }
 
-    if (graphs == NULL)
-        graphs = new vector<graphlib_graph_p>;
-    graphs->push_back(new_graph);
-    handle = graphs->size() - 1;
+    if (gGraphs == NULL)
+        gGraphs = new vector<graphlib_graph_p>;
+    gGraphs->push_back(newGraph);
+    handle = gGraphs->size() - 1;
 
     return Py_BuildValue("i", handle);
 }
 
+//! Add a stack trace to a previously generated graph
 static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
 {
-    int depth, i, task, count, size;
-    int node_id, prev_id, handle;
+    int depth, i, task, count, size, nodeId, prevId, handle, bit, byte;
     char *trace, *ptr, *next, *tmp;
-    char path[BUFSIZE], prev_path[BUFSIZE];
+    char path[BUFSIZE], prevPath[BUFSIZE];
 #ifdef COUNTREP
     StatCountRepEdge_t *edge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
 #else
     StatBitVectorEdge_t *edge;
 #endif
-    graphlib_graph_p cur_graph, graph_ptr = NULL;
-    graphlib_error_t gl_err;
-    graphlib_nodeattr_t node_attr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-    graphlib_edgeattr_t edge_attr = {1,0,NULL,0,0,0};
+    graphlib_graph_p cur_graph, graphPtr = NULL;
+    graphlib_error_t graphlibError;
+    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
+    graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
 
     snprintf(path, BUFSIZE, "");
     if (!PyArg_ParseTuple(args, "iiis", &handle, &task, &count, &trace))
@@ -110,7 +117,7 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
         return Py_BuildValue("i", -1);
     }
 
-    graph_ptr = (*graphs)[handle];
+    graphPtr = (*gGraphs)[handle];
 
 #ifdef COUNTREP
     edge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
@@ -122,29 +129,29 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
     edge->count = 1;
     edge->representative = task;
     edge->checksum = task;
-    edge_attr.label = (void *)edge;
-    gl_err = graphlib_newGraph(&cur_graph, gStatCountRepFunctions);
-    if (GRL_IS_FATALERROR(gl_err))
+    edgeAttr.label = (void *)edge;
+    graphlibError = graphlib_newGraph(&cur_graph, gStatCountRepFunctions);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Failed to create new graph\n");
         return Py_BuildValue("i", -1);
     }
 #else
-    edge = initializeBitVectorEdge(high_rank);
+    edge = initializeBitVectorEdge(gHighRank);
     if (edge == NULL)
     {
         fprintf(stderr, "Failed to create bit edge\n");
         return Py_BuildValue("i", -1);
     }
 
-    int byte = task / STAT_BITVECTOR_BITS;
-    int bit = task % STAT_BITVECTOR_BITS;
+    byte = task / STAT_BITVECTOR_BITS;
+    bit = task % STAT_BITVECTOR_BITS;
     edge->bitVector[byte] |= STAT_GRAPH_BIT(bit);
 
-    edge_attr.label = (void *)edge;
+    edgeAttr.label = (void *)edge;
 
-    gl_err = graphlib_newGraph(&cur_graph, gStatBitVectorFunctions);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_newGraph(&cur_graph, gStatBitVectorFunctions);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Failed to create new graph\n");
         return Py_BuildValue("i", -1);
@@ -153,12 +160,12 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
 
     tmp = (char *)malloc(2 * sizeof(char));
     snprintf(tmp, 2, "/");
-    node_attr.label = (void *)tmp;
-    snprintf(path, BUFSIZE, "%s", node_attr.label);
-    node_id = 0;
-    prev_id = 0;
-    gl_err = graphlib_addNode(cur_graph, node_id, &node_attr);
-    if (GRL_IS_FATALERROR(gl_err))
+    nodeAttr.label = (void *)tmp;
+    snprintf(path, BUFSIZE, "%s", nodeAttr.label);
+    nodeId = 0;
+    prevId = 0;
+    graphlibError = graphlib_addNode(cur_graph, nodeId, &nodeAttr);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Failed to add node\n");
         return Py_BuildValue("i", -1);
@@ -177,48 +184,48 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
         }
         tmp = (char *)malloc((size + 1) * sizeof(char));
         snprintf(tmp, size, "%s", next);
-        node_attr.label = (void *)tmp;
+        nodeAttr.label = (void *)tmp;
         next += size;
-        snprintf(prev_path, BUFSIZE, "%s", path);
-        snprintf(path, BUFSIZE, "%s%s", prev_path, node_attr.label);
-        node_id = statStringHash(path);
+        snprintf(prevPath, BUFSIZE, "%s", path);
+        snprintf(path, BUFSIZE, "%s%s", prevPath, nodeAttr.label);
+        nodeId = statStringHash(path);
 
-        gl_err = graphlib_addNode(cur_graph, node_id, &node_attr);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_addNode(cur_graph, nodeId, &nodeAttr);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             fprintf(stderr, "Failed to add node\n");
             return Py_BuildValue("i", -1);
         }
 
-        gl_err = graphlib_addDirectedEdge(cur_graph, prev_id, node_id, &edge_attr);
-        if (GRL_IS_FATALERROR(gl_err))
+        graphlibError = graphlib_addDirectedEdge(cur_graph, prevId, nodeId, &edgeAttr);
+        if (GRL_IS_FATALERROR(graphlibError))
         {
             fprintf(stderr, "Failed to add edge\n");
             return Py_BuildValue("i", -1);
         }
-        prev_id = node_id;
+        prevId = nodeId;
     }
 
-    gl_err = graphlib_mergeGraphs(graph_ptr, cur_graph);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_mergeGraphs(graphPtr, cur_graph);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error merging graph\n");
         return Py_BuildValue("i", -1);
     }
 
 #ifdef COUNTREP
-    gl_err = graphlib_delEdgeAttr(edge_attr, statFreeCountRepEdge);
+    graphlibError = graphlib_delEdgeAttr(edgeAttr, statFreeCountRepEdge);
 #else
-    gl_err = graphlib_delEdgeAttr(edge_attr, statFreeEdge);
+    graphlibError = graphlib_delEdgeAttr(edgeAttr, statFreeEdge);
 #endif
-    if (GRL_IS_FATALERROR(gl_err))
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error deleting edge attr\n");
         return Py_BuildValue("i", -1);
     }
 
-    gl_err = graphlib_delGraph(cur_graph);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_delGraph(cur_graph);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error deleting graph\n");
         return Py_BuildValue("i", -1);
@@ -227,22 +234,23 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
     return Py_BuildValue("i", 0);
 }
 
+//! Merge 2 graphs
 static PyObject *py_Merge_Traces(PyObject *self, PyObject *args)
 {
     int handle1, handle2;
-    graphlib_graph_p cur_graph, graph_ptr;
-    graphlib_error_t gl_err;
+    graphlib_graph_p cur_graph, graphPtr;
+    graphlib_error_t graphlibError;
 
     if (!PyArg_ParseTuple(args, "ii", &handle1, &handle2))
     {
         fprintf(stderr, "Failed to parse args, expecting (int, int, string)\n");
         return Py_BuildValue("i", -1);
     }
-    graph_ptr = (*graphs)[handle1];
-    cur_graph = (*graphs)[handle2];
+    graphPtr = (*gGraphs)[handle1];
+    cur_graph = (*gGraphs)[handle2];
 
-    gl_err = graphlib_mergeGraphs(graph_ptr, cur_graph);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_mergeGraphs(graphPtr, cur_graph);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error merging graph\n");
         return Py_BuildValue("i", -1);
@@ -251,175 +259,178 @@ static PyObject *py_Merge_Traces(PyObject *self, PyObject *args)
     return Py_BuildValue("i", 0);
 }
 
+//! Serialze the graph to a file
 static PyObject *py_Serialize_Graph(PyObject *self, PyObject *args)
 {
-    char *buf, *filename;
+    char *buf, *fileName;
     int handle, ret;
-    uint64_t buf_len;
+    uint64_t bufLen;
     FILE *f;
-    graphlib_graph_p graph_ptr = NULL;
-    graphlib_error_t gl_err;
+    graphlib_graph_p graphPtr = NULL;
+    graphlib_error_t graphlibError;
 
-    if (!PyArg_ParseTuple(args, "is", &handle, &filename))
+    if (!PyArg_ParseTuple(args, "is", &handle, &fileName))
     {
         fprintf(stderr, "Failed to parse args, expecting (int, string)\n");
         return Py_BuildValue("i", -1);
     }
 
-    graph_ptr = (*graphs)[handle];
+    graphPtr = (*gGraphs)[handle];
 
-    gl_err = graphlib_serializeBasicGraph(graph_ptr, &buf, &buf_len);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_serializeBasicGraph(graphPtr, &buf, &bufLen);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
-        fprintf(stderr, "%d Error serializing graph %d\n", gl_err, handle);
+        fprintf(stderr, "%d Error serializing graph %d\n", graphlibError, handle);
         return Py_BuildValue("i", -1);
     }
 
-    f = fopen(filename, "w");
+    f = fopen(fileName, "w");
     if (f == NULL)
     {
-        fprintf(stderr, "%s: Error opening file %s\n", strerror(errno), filename);
+        fprintf(stderr, "%s: Error opening file %s\n", strerror(errno), fileName);
         return Py_BuildValue("i", -1);
     }
 
-    ret = fwrite(buf, sizeof(char), buf_len, f);
-    if (ret != buf_len)
+    ret = fwrite(buf, sizeof(char), bufLen, f);
+    if (ret != bufLen)
     {
-        fprintf(stderr, "%s: %d Error writing serialized graph %d to file %s\n", strerror(errno), ret, handle, filename);
+        fprintf(stderr, "%s: %d Error writing serialized graph %d to file %s\n", strerror(errno), ret, handle, fileName);
         return Py_BuildValue("i", -1);
     }
 
     ret = fclose(f);
     if (ret != 0)
     {
-        fprintf(stderr, "%s: %d Error closing file %s\n", strerror(errno), ret, filename);
+        fprintf(stderr, "%s: %d Error closing file %s\n", strerror(errno), ret, fileName);
         return Py_BuildValue("i", -1);
     }
 
     return Py_BuildValue("i", 0);
 }
 
+//! Deserialize the graph from a file and return its handle
 static PyObject *py_Deserialize_Graph(PyObject *self, PyObject *args)
 {
-    char *buf, *filename;
-    long buf_len;
+    char *buf, *fileName;
+    long bufLen;
     int handle, ret;
     FILE *f;
-    graphlib_graph_p graph_ptr = NULL;
-    graphlib_error_t gl_err;
+    graphlib_graph_p graphPtr = NULL;
+    graphlib_error_t graphlibError;
 
-    if (!PyArg_ParseTuple(args, "s", &filename))
+    if (!PyArg_ParseTuple(args, "s", &fileName))
     {
         fprintf(stderr, "Failed to parse args, expecting (int, string)\n");
         return Py_BuildValue("i", -1);
     }
 
-    f = fopen(filename, "r");
+    f = fopen(fileName, "r");
     if (f == NULL)
     {
-        fprintf(stderr, "%s: Error opening file %s\n", strerror(errno), filename);
+        fprintf(stderr, "%s: Error opening file %s\n", strerror(errno), fileName);
         return Py_BuildValue("i", -1);
     }
 
     ret = fseek(f, 0, SEEK_END);
     if (ret != 0)
     {
-        fprintf(stderr, "%s: %d Error seeking file %s\n", strerror(errno), ret, filename);
+        fprintf(stderr, "%s: %d Error seeking file %s\n", strerror(errno), ret, fileName);
         return Py_BuildValue("i", -1);
     }
 
-    buf_len = ftell(f);
-    if (buf_len < 0)
+    bufLen = ftell(f);
+    if (bufLen < 0)
     {
-        fprintf(stderr, "%s: %d Error ftell file %s\n", strerror(errno), buf_len, filename);
+        fprintf(stderr, "%s: %d Error ftell file %s\n", strerror(errno), bufLen, fileName);
         return Py_BuildValue("i", -1);
     }
 
     ret = fseek(f, 0, SEEK_SET);
     if (ret != 0)
     {
-        fprintf(stderr, "%s: %d Error seeking file %s\n", strerror(errno), ret, filename);
+        fprintf(stderr, "%s: %d Error seeking file %s\n", strerror(errno), ret, fileName);
         return Py_BuildValue("i", -1);
     }
 
-    buf = (char *)malloc(buf_len * sizeof(char));
+    buf = (char *)malloc(bufLen * sizeof(char));
     if (buf == NULL)
     {
-        fprintf(stderr, "%s: Error allocating %d bytes for file %s\n", strerror(errno), buf_len, filename);
+        fprintf(stderr, "%s: Error allocating %d bytes for file %s\n", strerror(errno), bufLen, fileName);
         return Py_BuildValue("i", -1);
     }
 
-    ret = fread(buf, buf_len, 1, f);
+    ret = fread(buf, bufLen, 1, f);
     if (ret != 1)
     {
-        fprintf(stderr, "%s: %d Error reading serialized graph from file %s.  %d of %d bytes read\n", strerror(errno), handle, filename, ret, buf_len);
+        fprintf(stderr, "%s: %d Error reading serialized graph from file %s.  %d of %d bytes read\n", strerror(errno), handle, fileName, ret, bufLen);
         return Py_BuildValue("i", -1);
     }
 
     ret = fclose(f);
     if (ret != 0)
     {
-        fprintf(stderr, "%s: %d Error closing file %s\n", strerror(errno), ret, filename);
+        fprintf(stderr, "%s: %d Error closing file %s\n", strerror(errno), ret, fileName);
         return Py_BuildValue("i", -1);
     }
 
 #ifdef COUNTREP
-    gl_err = graphlib_deserializeBasicGraph(&graph_ptr, gStatCountRepFunctions, buf, (unsigned int)buf_len);
+    graphlibError = graphlib_deserializeBasicGraph(&graphPtr, gStatCountRepFunctions, buf, (unsigned int)bufLen);
 #else
-    gl_err = graphlib_deserializeBasicGraph(&graph_ptr, gStatBitVectorFunctions, buf, (unsigned int)buf_len);
+    graphlibError = graphlib_deserializeBasicGraph(&graphPtr, gStatBitVectorFunctions, buf, (unsigned int)bufLen);
 #endif
-    if (GRL_IS_FATALERROR(gl_err))
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error serializing graph\n");
         return Py_BuildValue("i", -1);
     }
 
-    if (graphs == NULL)
-        graphs = new vector<graphlib_graph_p>;
-    graphs->push_back(graph_ptr);
-    handle = graphs->size() - 1;
+    if (gGraphs == NULL)
+        gGraphs = new vector<graphlib_graph_p>;
+    gGraphs->push_back(graphPtr);
+    handle = gGraphs->size() - 1;
 
     return Py_BuildValue("i", handle);
 }
 
+//! Output a graph to a .dot file
 static PyObject *py_Output_Graph(PyObject *self, PyObject *args)
 {
-    char *filename;
+    char *fileName;
     int handle;
-    graphlib_error_t gl_err;
-    graphlib_graph_p graph_ptr = NULL;
+    graphlib_error_t graphlibError;
+    graphlib_graph_p graphPtr = NULL;
 
-    if (!PyArg_ParseTuple(args, "is", &handle, &filename))
+    if (!PyArg_ParseTuple(args, "is", &handle, &fileName))
     {
         fprintf(stderr, "Failed to parse args, expecting (int, string)\n");
         return Py_BuildValue("i", -1);
     }
 
-    graph_ptr = (*graphs)[handle];
+    graphPtr = (*gGraphs)[handle];
 
-    gl_err = graphlib_colorGraphByLeadingEdgeLabel(graph_ptr);
-    if (GRL_IS_FATALERROR(gl_err))
+    graphlibError = graphlib_colorGraphByLeadingEdgeLabel(graphPtr);
+    if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "graphlib error coloring graph by leading edge label\n");
         return Py_BuildValue("i", -1);
     }
 
-    gl_err =  graphlib_scaleNodeWidth(graph_ptr, 80, 160);
-    if ( GRL_IS_FATALERROR(gl_err) )
+    graphlibError =  graphlib_scaleNodeWidth(graphPtr, 80, 160);
+    if ( GRL_IS_FATALERROR(graphlibError) )
     {
         fprintf(stderr, "graphlib error scaling node width\n");
         return Py_BuildValue("i", -1);
     }
 
-    gl_err = graphlib_exportGraph(filename, GRF_DOT, graph_ptr);
-    if ( GRL_IS_FATALERROR(gl_err) )
+    graphlibError = graphlib_exportGraph(fileName, GRF_DOT, graphPtr);
+    if ( GRL_IS_FATALERROR(graphlibError) )
     {
         fprintf(stderr, "graphlib error exporting graph\n");
         return Py_BuildValue("i", -1);
     }
 
-    gl_err = graphlib_delGraph(graph_ptr);
-    if ( GRL_IS_FATALERROR(gl_err) )
+    graphlibError = graphlib_delGraph(graphPtr);
+    if ( GRL_IS_FATALERROR(graphlibError) )
     {
         fprintf(stderr, "graphlib error deleting graph\n");
         return Py_BuildValue("i", -1);
@@ -428,9 +439,10 @@ static PyObject *py_Output_Graph(PyObject *self, PyObject *args)
     return Py_BuildValue("i", 0);
 }
 
+//! The Python method table for this module
 static PyMethodDef _STATmergeMethods[] = {
     {"Init_Graphlib", py_Init_Graphlib, METH_VARARGS, "graphlib init."},
-    {"New_Graph", py_New_Graph, METH_VARARGS, "create new graph."},
+    {"New_Graph", py_newGraph, METH_VARARGS, "create new graph."},
     {"Add_Trace", py_Add_Trace, METH_VARARGS, "trace generator."},
     {"Merge_Traces", py_Merge_Traces, METH_VARARGS, "trace merger."},
     {"Serialize_Graph", py_Serialize_Graph, METH_VARARGS, "serialize graph."},
@@ -439,6 +451,7 @@ static PyMethodDef _STATmergeMethods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+//! The Python initialization routine for this module
 void init_STATmerge()
 {
     Py_InitModule("_STATmerge", _STATmergeMethods);

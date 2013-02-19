@@ -32,11 +32,11 @@ With the -a option (or when automatic topology is set as default), STAT will try
     </screen>
 </informalexample>
 <para>
-Upon successful completion, STAT will write its output to a STAT_results directory within the current working directory.  Each run creates a subdirectory named after the application with a unique integer ID.  STAT's output indicates the directory created with a message such as:
+Upon successful completion, STAT will write its output to a stat_results directory within the current working directory.  Each run creates a subdirectory named after the application with a unique integer ID.  STAT's output indicates the directory created with a message such as:
 </para>
 <informalexample>
     <screen>
-  Results written to /home/user/bin/STAT_results/mpi_application.6
+  Results written to /home/user/bin/stat_results/mpi_application.6
     </screen>
 </informalexample>
 <para>
