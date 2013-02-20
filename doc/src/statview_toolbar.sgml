@@ -3,7 +3,7 @@ The main window also has several tree manipulation options <![%userguide[(<xref 
 </para>
 <![%userguide[
 <figure id="statview_toolbar">
-    <title>The STATview tree manipulation toolbar.</title>
+    <title>The stat-view tree manipulation toolbar.</title>
     <screenshot><mediaobject><imageobject>
     <imagedata scale="40" fileref="figs/statview_toolbar.png">
     </imageobject></mediaobject></screenshot>
@@ -25,7 +25,7 @@ The toolbar operations are defined as follows:
     <term><GUIbutton>Save As</GUIbutton></term>
     <listitem>
         <para>
-        Save the current graph in .dot format, which can be displayed by STATview or in an image format, such as PNG or PDF, which can be viewed on any computer with an image viewer
+        Save the current graph in .dot format, which can be displayed by stat-view or in an image format, such as PNG or PDF, which can be viewed on any computer with an image viewer
         </para>
     </listitem>
 </varlistentry>
@@ -65,7 +65,23 @@ The toolbar operations are defined as follows:
     <term><GUIbutton>[Cut] MPI</GUIbutton></term>
     <listitem>
         <para>
-        Collapse the MPI implementation frames below the MPI function call
+        Collapse the MPI implementation frames below the MPI function call.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>[Cut] Text</GUIbutton></term>
+    <listitem>
+        <para>
+        Collapse the frames below the specified text, which can be entered as a regular expression.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>Join</GUIbutton></term>
+    <listitem>
+        <para>
+        Join consecutive nodes of the same equivalence class into a single node and render in a new tab.  This is useful for condensing long call sequences.
         </para>
     </listitem>
 </varlistentry>
@@ -129,7 +145,7 @@ The toolbar operations are defined as follows:
     <term><GUIbutton>Search</GUIbutton></term>
     <listitem>
         <para>
-        Search for call paths containing specified text, taken by specified tasks, or from specified hosts
+        Search for call paths containing specified text, taken by specified tasks, or from specified hosts.  Search text may be a regular expression, using the syntax described in <ulink url="http://docs.python.org/library/re.html"></ulink>.
         </para>
     </listitem>
 </varlistentry>

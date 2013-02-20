@@ -1,4 +1,11 @@
 AC_DEFUN([X_AC_PYTHON], [
+  AC_ARG_WITH(python,
+    [AS_HELP_STRING([--with-python=path],
+      [Use the specified path to python]
+    )],
+    [PYTHON=${withval}],
+    [PYTHON=$PYTHON]
+  )
   if test -z "$PYTHON"; then
     AC_MSG_ERROR([Failed to find python in your path])
   fi    

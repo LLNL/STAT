@@ -9,6 +9,9 @@
 /* Define DEBUG flag */
 #undef DEBUG
 
+/* Graphlib 2.0 */
+#undef GRAPHLIB20
+
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
@@ -113,17 +116,18 @@
 /* Define to 1 if the system has the type `_Bool'. */
 #undef HAVE__BOOL
 
-/* MRNet 2.X */
-#undef MRNET2
-
-/* MRNet 2.2 */
-#undef MRNET22
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#undef LT_OBJDIR
 
 /* MRNet 3.X */
 #undef MRNET3
 
 /* MRNet 3.1 */
 #undef MRNET31
+
+/* MRNet 4.0 */
+#undef MRNET40
 
 /* Name of package */
 #undef PACKAGE
@@ -152,9 +156,6 @@
 /* Define to the type of arg 5 for `select'. */
 #undef SELECT_TYPE_ARG5
 
-/* Use StackWalker */
-#undef STACKWALKER
-
 /* The max number of CPs per node */
 #undef STAT_PROCS_PER_NODE
 
@@ -176,5 +177,5 @@
 /* Define to rpl_realloc if the replacement function should be used. */
 #undef realloc
 
-/* Define to `unsigned' if <sys/types.h> does not define. */
+/* Define to `unsigned int' if <sys/types.h> does not define. */
 #undef size_t

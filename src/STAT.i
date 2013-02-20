@@ -36,22 +36,30 @@ namespace std{
 
 #define STAT_UNKNOWN -1
 
-typedef enum {
-               STAT_LOG_FE = 0,
-               STAT_LOG_BE,
-               STAT_LOG_ALL,
-               STAT_LOG_NONE
-} StatLog_t;
+enum StatLogOptions_t {
+    STAT_LOG_NONE = 0x00,
+    STAT_LOG_FE = 0x01,
+    STAT_LOG_BE = 0x02,
+    STAT_LOG_CP = 0x04,
+    STAT_LOG_MRN = 0x08,
+    STAT_LOG_SW = 0x10,
+    STAT_LOG_SWERR = 0x20
+} ;
 
-typedef enum {
-    STAT_FUNCTION_NAME_ONLY = 0,
-    STAT_FUNCTION_AND_PC,
-    STAT_FUNCTION_AND_LINE
-} StatSample_t;
+enum StatSampleOptions_t {
+    STAT_SAMPLE_FUNCTION_ONLY = 0x00,
+    STAT_SAMPLE_LINE = 0x01,
+    STAT_SAMPLE_PC = 0x02,
+    STAT_SAMPLE_COUNT_REP = 0x04,
+    STAT_SAMPLE_THREADS = 0x08,
+    STAT_SAMPLE_CLEAR_ON_SAMPLE = 0x10,
+    STAT_SAMPLE_PYTHON = 0x20
+} ;
 
 typedef enum {
     STAT_LAUNCH = 0,
-    STAT_ATTACH
+    STAT_ATTACH,
+    STAT_SERIAL_ATTACH
 } StatLaunch_t;
 
 typedef enum {
@@ -107,13 +115,15 @@ class STAT_FrontEnd
 
         StatError_t attachAndSpawnDaemons(unsigned int pid, char *remoteNode = NULL);
         StatError_t launchAndSpawnDaemons(char *remoteNode = NULL, bool isStatBench = false);
-        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false, bool isStatBench = false);
-        StatError_t connectMrnetTree(bool blocking = true, bool isStatBench = false);
+        StatError_t setupForSerialAttach();
+        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false);
+        StatError_t connectMrnetTree(bool blocking = true);
+        StatError_t setupConnectedMrnetTree();
         StatError_t attachApplication(bool blocking = true);
         StatError_t pause(bool blocking = true);
         StatError_t resume(bool blocking = true);
         bool isRunning();
-        StatError_t sampleStackTraces(StatSample_t sampleType, bool withThreads, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
         StatError_t gatherLastTrace(bool blocking = true);
         StatError_t gatherTraces(bool blocking = true);
         char *getLastDotFilename();
@@ -122,9 +132,10 @@ class STAT_FrontEnd
         StatError_t detachApplication(int *stopList, int stopListSize, bool blocking = true);
         StatError_t terminateApplication(bool blocking = true);
         void printMsg(StatError_t statError, const char *sourceFile, int sourceLine, const char *fmt, ...);
-        StatError_t startLog(StatLog_t logType, char *logOutDir);
+        StatError_t startLog(unsigned char logType, char *logOutDir);
         StatError_t receiveAck(bool blocking = true);
-        StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
+        StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, int iCountRep);
+        char *getNodeInEdge(int nodeId);
 
         void printCommunicationNodeList();
         void printApplicationNodeList();
@@ -146,10 +157,13 @@ class STAT_FrontEnd
         const char *getFilterPath();
         const char *getRemoteNode();
         StatError_t addLauncherArgv(const char *launcherArg);
+        StatError_t addSerialProcess(const char *pidString);
         const char **getLauncherArgv();
         unsigned int getLauncherArgc();
         void setVerbose(StatVerbose_t verbose);
         StatVerbose_t getVerbose();
+        void setApplicationOption(StatLaunch_t applicationOption);
+        StatLaunch_t getApplicationOption();
         char *getLastErrorMessage();
         StatError_t addPerfData(const char *buf, double time);
         const char *getInstallPrefix();

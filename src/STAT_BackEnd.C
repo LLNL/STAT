@@ -16,138 +16,124 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "config.h"
 #include "STAT_BackEnd.h"
 
 using namespace std;
 using namespace MRN;
-
-#ifdef STACKWALKER
-    using namespace Dyninst;
-    using namespace Dyninst::Stackwalker;
-    using namespace Dyninst::SymtabAPI;
+using namespace Dyninst;
+using namespace Dyninst::Stackwalker;
+using namespace Dyninst::SymtabAPI;
+#ifdef SW_VERSION_8_0_0
+    using namespace Dyninst::ProcControlAPI;
+#endif
+#ifdef STAT_FGFS
+    using namespace FastGlobalFileStatus;
+    using namespace FastGlobalFileStatus::MountPointAttribute;
+    using namespace FastGlobalFileStatus::CommLayer;
 #endif
 
-StatError_t statInit(int *argc, char ***argv)
-{
-    lmon_rc_e rc;
+//! the STAT log handle, global for filter access
+FILE *gStatOutFp = NULL;
 
-    /* Call LaunchMON's Init function */
-    rc = LMON_be_init(LMON_VERSION, argc, argv);
-    if (rc != LMON_OK)
+//! a pointer to the current STAT_BackEnd object
+STAT_BackEnd *gBePtr;
+
+
+StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType)
+{
+    lmon_rc_e lmonRet;
+
+    if (launchType == STATD_LMON_LAUNCH)
     {
-        fprintf(stderr, "Failed to initialize Launchmon\n");
-        return STAT_LMON_ERROR;
+        lmonRet = LMON_be_init(LMON_VERSION, argc, argv);
+        if (lmonRet != LMON_OK)
+        {
+            fprintf(stderr, "Failed to initialize Launchmon\n");
+            return STAT_LMON_ERROR;
+        }
     }
 
     return STAT_OK;
 }
 
-StatError_t statFinalize()
+StatError_t statFinalize(StatDaemonLaunch_t launchType)
 {
-    lmon_rc_e rc;
+    lmon_rc_e lmonRet;
 
-    /* Call LaunchMON's Finalize function */
-    rc = LMON_be_finalize();
-    if (rc != LMON_OK)
+    if (launchType == STATD_LMON_LAUNCH)
     {
-        fprintf(stderr, "Failed to finalize Launchmon\n");
-        return STAT_LMON_ERROR;
+        lmonRet = LMON_be_finalize();
+        if (lmonRet != LMON_OK)
+        {
+            fprintf(stderr, "Failed to finalize Launchmon\n");
+            return STAT_LMON_ERROR;
+        }
     }
 
     return STAT_OK;
 }
 
-STAT_BackEnd::STAT_BackEnd()
+STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) : launchType_(launchType)
 {
-    char abuf[INET_ADDRSTRLEN], fileName[BUFSIZE], *envValue; 
-    FILE *f;
-    struct sockaddr_in addr, *sinp = NULL;
-    struct addrinfo *addinf = NULL;
-
-    /* get hostname and IP address */
-    gethostname(localHostName_, BUFSIZE);
-    getaddrinfo(localHostName_, NULL, NULL, &addinf);
-    if (addinf != NULL)
-        sinp = (struct sockaddr_in *)addinf->ai_addr;
-    if (sinp != NULL)
-        snprintf(localIp_, BUFSIZE, "%s", inet_ntop(AF_INET, &sinp->sin_addr, abuf, INET_ADDRSTRLEN));
-    if (addinf != NULL)
-        freeaddrinfo(addinf);
-    
+    gStatOutFp = NULL;
+    proctabSize_ = 0;
+    processMapNonNull_ = 0;
+    logType_ = 0;
+    parentHostName_ = NULL;
+    swDebugString_ = NULL;
+    swDebugFile_ = NULL;
 #ifdef BGL
     errOutFp_ = stdout;
 #else
     errOutFp_ = stderr;
 #endif
-    
-    /* Enable MRNet logging */
-    envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
-    if (envValue != NULL)
-        set_OutputLevel(atoi(envValue));
-    envValue = getenv("STAT_MRNET_DEBUG_LOG_DIRECTORY");
-    if (envValue != NULL)
-        setenv("MRNET_DEBUG_LOG_DIRECTORY", envValue, 1);
-
-    /* Code to redirect output to a file */
-    envValue = getenv("STAT_OUTPUT_REDIRECT_DIR");
-    if (envValue != NULL)
-    {
-        snprintf(fileName, BUFSIZE, "%s/%s.stdout.txt", envValue, localHostName_);
-        freopen(fileName, "w", stdout);
-        snprintf(fileName, BUFSIZE, "%s/%s.stderr.txt", envValue, localHostName_);
-        freopen(fileName, "w", stderr);
-    }
-
-#ifdef STACKWALKER
-    /* Code to setup StackWalker debug logging */
-    envValue = getenv("STAT_SW_DEBUG_LOG_DIR");
-    if (envValue != NULL)
-    {
-        snprintf(fileName, BUFSIZE, "%s/%s.sw.txt", envValue, localHostName_);
-        f = fopen(fileName, "w");
-        Dyninst::Stackwalker::setDebug(true);
-        Dyninst::Stackwalker::setDebugChannel(f); 
-    }
-#endif
-
-    processMapNonNull_ = 0;
-    logOutFp_ = NULL;
     initialized_ = false;
     connected_ = false;
     isRunning_ = false;
+#ifdef GROUP_OPS
+    doGroupOps_ = false;
+#endif
     network_ = NULL;
-    proctab_ = NULL;
-    parentHostName_ = NULL;
-    prefixTree3d_ = NULL;
-    prefixTree2d_ = NULL;
+    myRank_ = 0;
+    parentRank_ = 0;
+    parentPort_ = 0;
     broadcastStream_ = NULL;
+    proctab_ = NULL;
+    sampleType_ = 0;
+    nVariables_ = 0;
+    extractVariables_ = NULL;
+#ifdef STAT_FGFS
+    fgfsCommFabric_ = NULL;
+#endif
 }
 
 STAT_BackEnd::~STAT_BackEnd()
 {
     int i;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
+    map<int, StatBitVectorEdge_t *>::iterator nodeInEdgeMapIter;
 
-    /* delete exisitng graphs */
-    if (prefixTree3d_ != NULL)
-    {
-        gl_err = graphlib_delGraph(prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-    }
-    if (prefixTree2d_ != NULL)
-    {
-        gl_err = graphlib_delGraph(prefixTree2d_);
-        if (GRL_IS_FATALERROR(gl_err))
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-    }
+    clear2dNodesAndEdges();
+    clear3dNodesAndEdges();
 
-    /* free the parent hostname */
     if (parentHostName_ != NULL)
+    {
         free(parentHostName_);
+        parentHostName_ = NULL;
+    }
 
-    /* free the process table */
+    if (swDebugString_ != NULL)
+    {
+        free(swDebugString_);
+        swDebugString_ = NULL;
+    }
+
+    if (extractVariables_ != NULL)
+    {
+        free(extractVariables_);
+        extractVariables_ = NULL;
+    }
+
     if (proctab_ != NULL)
     {
         for (i = 0; i < proctabSize_; i++)
@@ -158,71 +144,317 @@ STAT_BackEnd::~STAT_BackEnd()
                 free(proctab_[i].pd.host_name);
         }
         free(proctab_);
+        proctab_ = NULL;
     }
+
+    graphlibError = graphlib_Finish();
+    if (GRL_IS_FATALERROR(graphlibError))
+        fprintf(errOutFp_, "Warning: Failed to finish graphlib\n");
+
+    statFreeReorderFunctions();
+    statFreeBitVectorFunctions();
+    statFreeCountRepFunctions();
+    statFreeMergeFunctions();
+
+#ifdef STAT_FGFS
+    if (fgfsCommFabric_ != NULL)
+    {
+        delete fgfsCommFabric_;
+        fgfsCommFabric_ = NULL;
+    }
+#endif
 
     /* clean up MRNet */
     if (network_ != NULL)
     {
-#ifdef MRNET3
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waiting for shutdown\n");
         network_->waitfor_ShutDown();
-#endif
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "deleting network\n");
         delete network_;
+        network_ = NULL;
     }
 }
 
-StatError_t STAT_BackEnd::Init()
+void STAT_BackEnd::clear2dNodesAndEdges()
 {
-    int tempSize;
-    lmon_rc_e rc;
+    map<int, pair<int, StatBitVectorEdge_t *> >::iterator edgesIter;
 
-    /* Register unpack function with Launchmon */
+    nodes2d_.clear();
+    for (edgesIter = edges2d_.begin(); edgesIter != edges2d_.end(); edgesIter++)
+        if (edgesIter->second.second != NULL)
+            statFreeEdge(edgesIter->second.second);
+    edges2d_.clear();
+}
+
+void STAT_BackEnd::clear3dNodesAndEdges()
+{
+    map<int, pair<int, StatBitVectorEdge_t *> >::iterator edgesIter;
+
+    nodes3d_.clear();
+    for (edgesIter = edges3d_.begin(); edgesIter != edges3d_.end(); edgesIter++)
+        if (edgesIter->second.second != NULL)
+            statFreeEdge(edgesIter->second.second);
+    edges3d_.clear();
+}
+
+
+StatError_t STAT_BackEnd::update3dNodesAndEdges()
+{
+    map<int, string>::iterator nodesIter;
+    map<int, pair<int, StatBitVectorEdge_t *> >::iterator edgesIter;
+    StatBitVectorEdge_t *edge;
+
+    for (nodesIter = nodes2d_.begin(); nodesIter != nodes2d_.end(); nodesIter++)
+        nodes3d_[nodesIter->first] = nodesIter->second;
+
+    for (edgesIter = edges2d_.begin(); edgesIter != edges2d_.end(); edgesIter++)
+    {
+        if (edges3d_.find(edgesIter->first) == edges3d_.end())
+        {
+            edge = initializeBitVectorEdge(proctabSize_);
+            if (edge == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+                return STAT_ALLOCATE_ERROR;
+            }
+            edges3d_[edgesIter->first] = make_pair(edgesIter->second.first, edge);
+        }
+        statMergeEdge(edges3d_[edgesIter->first].second, edgesIter->second.second);
+    }
+
+    return STAT_OK;
+}
+
+
+StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *edge)
+{
+    StatBitVectorEdge_t *newEdge;
+
+    if (edges2d_.find(dst) == edges2d_.end())
+    {
+        newEdge = initializeBitVectorEdge(proctabSize_);
+        if (newEdge == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize newEdge\n");
+            return STAT_ALLOCATE_ERROR;
+        }
+        edges2d_[dst] = make_pair(src, newEdge);
+    }
+    statMergeEdge(edges2d_[dst].second, edge);
+
+    return STAT_OK;
+}
+
+StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphlib_graph_p *prefixTree3d)
+{
+    int i;
+    StatCountRepEdge_t *countRepEdge = NULL;
+    graphlib_graph_p *currentGraph;
+    graphlib_error_t graphlibError;
+    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1};
+    graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
+    map<int, string> *nodes;
+    map<int, pair<int, StatBitVectorEdge_t *> > *edges;
+    map<int, string>::iterator nodesIter;
+    map<int, pair<int, StatBitVectorEdge_t *> >::iterator edgesIter;
+
+    for (i = 0; i < 2; i++)
+    {
+        if (i == 0)
+        {
+            currentGraph = prefixTree2d;
+            nodes = &nodes2d_;
+            edges = &edges2d_;
+        }
+        else
+        {
+            currentGraph = prefixTree3d;
+            nodes = &nodes3d_;
+            edges = &edges3d_;
+        }
+
+        /* Delete previously merged graphs */
+        if (*currentGraph != NULL)
+        {
+            graphlibError = graphlib_delGraph(*currentGraph);
+            if (GRL_IS_FATALERROR(graphlibError))
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
+        }
+
+        *currentGraph = createRootedGraph(sampleType_);
+        if (*currentGraph == NULL)
+        {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing graph\n");
+            return STAT_GRAPHLIB_ERROR;
+        }
+
+        for (nodesIter = (*nodes).begin(); nodesIter != (*nodes).end(); nodesIter++)
+        {
+            nodeAttr.label = (void *)nodesIter->second.c_str();
+            graphlibError = graphlib_addNode(*currentGraph, nodesIter->first, &nodeAttr);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
+                return STAT_GRAPHLIB_ERROR;
+            }
+        }
+        for (edgesIter = (*edges).begin(); edgesIter != (*edges).end(); edgesIter++)
+        {
+            if (sampleType_ & STAT_SAMPLE_COUNT_REP)
+            {
+                gBePtr = this;
+                countRepEdge = getBitVectorCountRep(edgesIter->second.second, statRelativeRankToAbsoluteRank);
+                if (countRepEdge == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to translate bit vector into count + representative\n");
+                    return STAT_ALLOCATE_ERROR;
+                }
+                edgeAttr.label = (void *)countRepEdge;
+            }
+            else
+                edgeAttr.label = (void *)edgesIter->second.second;
+            graphlibError = graphlib_addDirectedEdge(*currentGraph, edgesIter->second.first, edgesIter->first, &edgeAttr);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
+                return STAT_GRAPHLIB_ERROR;
+            }
+            if (sampleType_ & STAT_SAMPLE_COUNT_REP)
+            {
+                graphlibError = graphlib_delEdgeAttr(edgeAttr, statFreeCountRepEdge);
+                if (GRL_IS_FATALERROR(graphlibError))
+                {
+                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
+                    return STAT_GRAPHLIB_ERROR;
+                }
+            }
+        }
+    }
+
+    return STAT_OK;
+}
+
+
+StatError_t STAT_BackEnd::init()
+{
+    int intRet;
+    char abuf[INET_ADDRSTRLEN], fileName[BUFSIZE], *envValue;
+    FILE *file;
+    struct sockaddr_in *sinp = NULL;
+    struct addrinfo *addinf = NULL;
+    graphlib_error_t graphlibError;
+
+    /* Get hostname and IP address */
+    intRet = gethostname(localHostName_, BUFSIZE);
+    if (intRet != 0)
+    {
+        fprintf(errOutFp_, "Error: gethostname returned %d\n", intRet);
+        return STAT_SYSTEM_ERROR;
+    }
+    intRet = getaddrinfo(localHostName_, NULL, NULL, &addinf);
+    if (intRet != 0)
+        fprintf(errOutFp_, "Warning: getaddrinfo returned %d\n", intRet);
+    if (addinf != NULL)
+        sinp = (struct sockaddr_in *)addinf->ai_addr;
+    if (sinp != NULL)
+        snprintf(localIp_, BUFSIZE, "%s", inet_ntop(AF_INET, &sinp->sin_addr, abuf, INET_ADDRSTRLEN));
+    if (addinf != NULL)
+        freeaddrinfo(addinf);
+
+    graphlibError = graphlib_Init();
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(errOutFp_, "Failed to initialize Graphlib\n");
+        return STAT_GRAPHLIB_ERROR;
+    }
+    statInitializeReorderFunctions();
+    statInitializeBitVectorFunctions();
+    statInitializeMergeFunctions();
+    statInitializeCountRepFunctions();
+
+    /* Enable MRNet logging */
+    envValue = getenv("STAT_MRNET_OUTPUT_LEVEL");
+    if (envValue != NULL)
+        set_OutputLevel(atoi(envValue));
+    envValue = getenv("STAT_MRNET_DEBUG_LOG_DIRECTORY");
+    if (envValue != NULL)
+    {
+        intRet = setenv("MRNET_DEBUG_LOG_DIRECTORY", envValue, 1);
+        if (intRet != 0)
+            fprintf(errOutFp_, "Warning: %s: setenv returned %d\n", strerror(errno), intRet);
+    }
+
+    /* Redirect output to a file */
+    envValue = getenv("STAT_OUTPUT_REDIRECT_DIR");
+    if (envValue != NULL)
+    {
+        snprintf(fileName, BUFSIZE, "%s/%s.stdout.txt", envValue, localHostName_);
+        file = freopen(fileName, "w", stdout);
+        if (file == NULL)
+            fprintf(errOutFp_, "Warning: %s: frepoen returned NULL for stdout to file %s\n", strerror(errno), fileName);
+        snprintf(fileName, BUFSIZE, "%s/%s.stderr.txt", envValue, localHostName_);
+        file = freopen(fileName, "w", stderr);
+        if (file == NULL)
+            fprintf(errOutFp_, "Warning: %s: frepoen returned NULL for stdwerr to file %s\n", strerror(errno), fileName);
+    }
+
+#ifdef BGL
+    doGroupOps_ = true;
+#else
+    envValue = getenv("STAT_GROUP_OPS");
+    doGroupOps_ = (envValue != NULL);
+#endif
+
+    return STAT_OK;
+}
+
+
+StatError_t STAT_BackEnd::initLmon()
+{
+    int size;
+    lmon_rc_e lmonRet;
+
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering unpack function with Launchmon\n");
-    rc = LMON_be_regUnpackForFeToBe(Unpack_STAT_BE_info);
-    if (rc != LMON_OK)
+    lmonRet = LMON_be_regUnpackForFeToBe(unpackStatBeInfo);
+    if (lmonRet != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to register unpack function\n");
         return STAT_LMON_ERROR;
     }
 
-    /* Launchmon handshake */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launchmon handshaking\n");
-    rc = LMON_be_handshake(NULL);
-    if (rc != LMON_OK)
+    lmonRet = LMON_be_handshake(NULL);
+    if (lmonRet != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to handshake with Launchmon\n");
         return STAT_LMON_ERROR;
     }
 
-    /* Wait for Launchmon to be ready*/
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Waiting for launchmon to be ready\n");
-    rc = LMON_be_ready(NULL);
-    if (rc != LMON_OK)
+    lmonRet = LMON_be_ready(NULL);
+    if (lmonRet != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Launchmon failed to get ready\n");
         return STAT_LMON_ERROR;
     }
 
-    /* Allocate my process table */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Allocating process table\n");
-    rc = LMON_be_getMyProctabSize(&tempSize);
-    if (rc != LMON_OK)
+    lmonRet = LMON_be_getMyProctabSize(&size);
+    if (lmonRet != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get Process Table Size\n");
         return STAT_LMON_ERROR;
     }
-    proctab_ = (MPIR_PROCDESC_EXT *)malloc(tempSize * sizeof(MPIR_PROCDESC_EXT));
+    proctab_ = (MPIR_PROCDESC_EXT *)malloc(size * sizeof(MPIR_PROCDESC_EXT));
     if (proctab_ == NULL)
     {
-        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Error allocating process table\n");
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error allocating process table\n", strerror(errno));
         return STAT_ALLOCATE_ERROR;
     }
 
-    /* Get my process table entries */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting my process table entries\n");
-    rc = LMON_be_getMyProctab(proctab_, &proctabSize_, tempSize);
-    if (rc != LMON_OK)
+    lmonRet = LMON_be_getMyProctab(proctab_, &proctabSize_, size);
+    if (lmonRet != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get Process Table\n");
         return STAT_LMON_ERROR;
@@ -234,133 +466,243 @@ StatError_t STAT_BackEnd::Init()
     return STAT_OK;
 }
 
-StatError_t STAT_BackEnd::Connect()
+
+StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
 {
-    int i;
-    bool found;
-    lmon_rc_e rc;
-    statLeafInfoArray_t leafInfoArray;
+    static int rank = -1;
+    unsigned int pid;
+    char *remoteNode = NULL, *executablePath = NULL;
+    string::size_type delimPos;
+    string remotePid = pidString, remoteHost;
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Prepearing to connect to MRNet\n");
-
-    /* Make sure we've been initialized through Launchmon */
-    if (initialized_ == false)
+    rank++;
+    delimPos = remotePid.find_first_of("@");
+    if (delimPos != string::npos)
     {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Trying to connect when not initialized\n");
-        return STAT_LMON_ERROR;
-    }
-
-    /* Receive MRNet connection information */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Receiving connection information from FE\n");
-    rc = LMON_be_recvUsrData((void *)&leafInfoArray); 
-    if (rc != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to receive data from FE\n");
-        return STAT_LMON_ERROR;
-    }
-
-    /* Master broadcast number of daemons */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Broadcasting size of connection info to daemons\n");
-    rc = LMON_be_broadcast((void *)&(leafInfoArray.size), sizeof(int));
-    if (rc != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to broadcast num_leaves\n");
-        return STAT_LMON_ERROR;
-    }
-
-    /* Non-masters allocate space for the MRNet connection info */
-    if (LMON_be_amIMaster() == LMON_NO)
-    {
-        leafInfoArray.leaves = (statLeafInfo_t *)malloc(leafInfoArray.size * sizeof(statLeafInfo_t));
-        if (leafInfoArray.leaves == NULL)
+        executablePath = strdup(remotePid.substr(0, delimPos).c_str());
+        if (executablePath == NULL)
         {
-            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d x %d = %dB of memory for leaf info\n", leafInfoArray.size, sizeof(statLeafInfo_t), leafInfoArray.size*sizeof(statLeafInfo_t));
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to executablePath\n", strerror(errno), remotePid.substr(0, delimPos).c_str());
+            return STAT_ALLOCATE_ERROR;
+        }
+        remotePid = remotePid.substr(delimPos + 1, remotePid.length());
+    }
+    else
+    {
+        executablePath = strdup("output");
+        if (executablePath == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup to executablePath\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
     }
 
-    /* Master broadcast MRNet connection information to all daemons */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Broadcasting connection information to all daemons\n");
-    rc = LMON_be_broadcast((void *)(leafInfoArray.leaves), leafInfoArray.size * sizeof(statLeafInfo_t));
-    if (rc != LMON_OK)
+    delimPos = remotePid.find_first_of(":");
+    if (delimPos != string::npos)
     {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to broadcast num_leaves\n");
-        return STAT_LMON_ERROR;
-    }
-
-    /* Find my MRNet personality  */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for my connection information\n");
-    found = false;
-    for (i = 0; i < leafInfoArray.size; i++)
-    {
-        string prettyHost, leafPrettyHost;
-        XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
-        XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
-        if (prettyHost == leafPrettyHost)
+        remoteHost = remotePid.substr(0, delimPos);
+        remoteNode = strdup(remoteHost.c_str());
+        if (remoteNode == NULL)
         {
-            found = true;
-            parentHostName_ = strdup(leafInfoArray.leaves[i].parentHostName);
-            if (parentHostName_ == NULL)
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to remoteNode\n", strerror(errno), remotePid.c_str());
+            return STAT_ALLOCATE_ERROR;
+        }
+        pid = atoi((remotePid.substr(delimPos + 1, remotePid.length())).c_str());
+    }
+    else
+        pid = atoi(remotePid.c_str());
+
+    if (strcmp(remoteHost.c_str(), "localhost") == 0 || strcmp(remoteHost.c_str(), localHostName_) == 0)
+    {
+        proctabSize_++;
+        proctab_ = (MPIR_PROCDESC_EXT *)realloc(proctab_, proctabSize_ * sizeof(MPIR_PROCDESC_EXT));
+        if (proctab_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
+            return STAT_ALLOCATE_ERROR;
+        }
+
+        proctab_[proctabSize_ - 1].mpirank = rank;
+        if (remoteNode != NULL)
+            proctab_[proctabSize_ - 1].pd.host_name = remoteNode;
+        else
+        {
+            proctab_[proctabSize_ - 1].pd.host_name = strdup("localhost");
+            if (proctab_[proctabSize_ - 1].pd.host_name == NULL)
             {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed on call to strdup()\n");
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup to proctab_[%d]\n", strerror(errno), proctabSize_ - 1);
                 return STAT_ALLOCATE_ERROR;
             }
-            parentPort_ = leafInfoArray.leaves[i].parentPort;
-            parentRank_ = leafInfoArray.leaves[i].parentRank;
-            myRank_ = leafInfoArray.leaves[i].rank;
-            break;
         }
+        proctab_[proctabSize_ - 1].pd.executable_name = executablePath;
+        proctab_[proctabSize_ - 1].pd.pid = pid;
     }
-    if (found == false)
-    {
-        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to find MRNet parent info\n");
-        return STAT_MRNET_ERROR;
-    }
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found MRNet connection info, parent hostname = %s, parent port = %d, my MRNet rank = %d\n", parentHostName_, parentPort_, myRank_);
 
-    /* Connect to the MRNet Network */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Connecting to MRNet network\n");
-#ifdef MRNET22
+    initialized_ = true;
+    return STAT_OK;
+}
+
+StatError_t STAT_BackEnd::connect(int argc, char **argv)
+{
+    int i;
+    bool found;
     char *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
-    snprintf(parentPort, BUFSIZE, "%d", parentPort_);
-    snprintf(parentRank, BUFSIZE, "%d", parentRank_);
-    snprintf(myRank, BUFSIZE, "%d", myRank_);
-    param[0] = NULL;
-    param[1] = parentHostName_;
-    param[2] = parentPort;
-    param[3] = parentRank;
-    param[4] = localHostName_;
-    param[5] = myRank;
-    printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"Calling CreateNetworkBE\n"); 
-    network_ = Network::CreateNetworkBE(6, param);
-    printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"End of create network be\n");
-#else
-    network_ = new Network(parentHostName_, parentPort_, parentRank_, localHostName_, myRank_);
-#endif
-    if(network_ == NULL)
-    {
-        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "backend_init() failed\n");
-        return STAT_MRNET_ERROR;
-    }
+    string prettyHost, leafPrettyHost;
+    lmon_rc_e lmonRet;
+    StatLeafInfoArray_t leafInfoArray;
 
-    /* Free the Leaf Info array */
-    if (leafInfoArray.leaves != NULL)
-        free(leafInfoArray.leaves);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Prepearing to connect to MRNet\n");
+
+    if (argc == 0 || argv == NULL)
+    {
+        if (initialized_ == false)
+        {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Trying to connect when not initialized\n");
+            return STAT_LMON_ERROR;
+        }
+
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Receiving connection information from FE\n");
+        lmonRet = LMON_be_recvUsrData((void *)&leafInfoArray);
+        if (lmonRet != LMON_OK)
+        {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to receive data from FE\n");
+            return STAT_LMON_ERROR;
+        }
+
+        /* Master broadcast number of daemons */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Broadcasting size of connection info to daemons\n");
+        lmonRet = LMON_be_broadcast((void *)&(leafInfoArray.size), sizeof(int));
+        if (lmonRet != LMON_OK)
+        {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to broadcast num_leaves\n");
+            return STAT_LMON_ERROR;
+        }
+
+        /* Non-masters allocate space for the MRNet connection info */
+        if (LMON_be_amIMaster() == LMON_NO)
+        {
+            leafInfoArray.leaves = (StatLeafInfo_t *)malloc(leafInfoArray.size * sizeof(StatLeafInfo_t));
+            if (leafInfoArray.leaves == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d x %d = %dB of memory for leaf info\n", leafInfoArray.size, sizeof(StatLeafInfo_t), leafInfoArray.size*sizeof(StatLeafInfo_t));
+                return STAT_ALLOCATE_ERROR;
+            }
+        }
+
+        /* Master broadcast MRNet connection information to all daemons */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Broadcasting connection information to all daemons\n");
+        lmonRet = LMON_be_broadcast((void *)(leafInfoArray.leaves), leafInfoArray.size * sizeof(StatLeafInfo_t));
+        if (lmonRet != LMON_OK)
+        {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to broadcast num_leaves\n");
+            return STAT_LMON_ERROR;
+        }
+
+        /* Find my MRNet personality  */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for my connection information\n");
+        found = false;
+        XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
+        for (i = 0; i < leafInfoArray.size; i++)
+        {
+            XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
+            if (prettyHost == leafPrettyHost || strcmp(leafPrettyHost.c_str(), localIp_) == 0)
+            {
+                found = true;
+                parentHostName_ = strdup(leafInfoArray.leaves[i].parentHostName);
+                if (parentHostName_ == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to parentHostName_)\n", strerror(errno), leafInfoArray.leaves[i].parentHostName);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                parentPort_ = leafInfoArray.leaves[i].parentPort;
+                parentRank_ = leafInfoArray.leaves[i].parentRank;
+                myRank_ = leafInfoArray.leaves[i].rank;
+                break;
+            }
+        }
+        if (found == false)
+        {
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to find MRNet parent info\n");
+            return STAT_MRNET_ERROR;
+        }
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found MRNet connection info, parent hostname = %s, parent port = %d, my MRNet rank = %d\n", parentHostName_, parentPort_, myRank_);
+
+        /* Connect to the MRNet Network */
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Connecting to MRNet network\n");
+        snprintf(parentPort, BUFSIZE, "%d", parentPort_);
+        snprintf(parentRank, BUFSIZE, "%d", parentRank_);
+        snprintf(myRank, BUFSIZE, "%d", myRank_);
+        param[0] = NULL;
+        param[1] = parentHostName_;
+        param[2] = parentPort;
+        param[3] = parentRank;
+        param[4] = localHostName_;
+        param[5] = myRank;
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Calling CreateNetworkBE with 6 args:\n");
+        for (i = 0; i < 6; i++)
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\targv[%d] = %s\n", i, param[i]);
+        network_ = Network::CreateNetworkBE(6, param);
+        if (network_ == NULL)
+        {
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "CreateNetworkBE() failed\n");
+            return STAT_MRNET_ERROR;
+        }
+        printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"CreateNetworkBE successfully completed\n");
+
+        if (leafInfoArray.leaves != NULL)
+            free(leafInfoArray.leaves);
+    } /* if (argc == 0 || argv == NULL) */
+    else
+    {
+        /* We were launched by MRNet */
+        /* Store my connection information */
+        parentHostName_ = strdup(argv[1]);
+        if (parentHostName_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to parentHostName_\n", strerror(errno), argv[1]);
+            return STAT_ALLOCATE_ERROR;
+        }
+        parentPort_ = atoi(argv[2]);
+        parentRank_ = atoi(argv[3]);
+        myRank_ = atoi(argv[5]);
+
+        /* Connect to the MRNet Network */
+        printMsg(STAT_LOG_MESSAGE, __FILE__ ,__LINE__, "Calling CreateNetworkBE with %d args:\n", argc);
+        for (i = 0; i < argc; i++)
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\targv[%d] = %s\n", i, argv[i]);
+        network_ = Network::CreateNetworkBE(6, argv);
+        if (network_ == NULL)
+        {
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "CreateNetworkBE() failed\n");
+            return STAT_MRNET_ERROR;
+        }
+        printMsg(STAT_LOG_MESSAGE,__FILE__,__LINE__,"CreateNetworkBE successfully completed\n");
+    } /* else (argc == 0 || argv == NULL) */
 
     connected_ = true;
+
     return STAT_OK;
 }
 
 StatError_t STAT_BackEnd::mainLoop()
 {
-    int tag = 0, retval, nEqClasses, swNotificationFd, mrnNotificationFd, max_fd;
-    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, sampleType, withThreads, clearOnSample, obyteArrayLen;
-    char *obyteArray = NULL, *variableSpecification;
-    Stream *stream;
-    fd_set readfds, writefds, exceptfds;
+    int tag = 0, ackTag, intRet, nEqClasses, swNotificationFd, mrnNotificationFd, maxFd, nodeId, bitVectorLength, stopArrayLen, majorVersion, minorVersion, revisionVersion;
+    unsigned int nTraces, traceFrequency, nTasks, functionFanout, maxDepth, nRetries, retryFrequency, *stopArray = NULL, previousSampleType = 0;
+    uint64_t byteArrayLen = 0;
+    char *byteArray = NULL, *variableSpecification = NULL;
+    bool boolRet, recvShouldBlock;
+    Stream *stream = NULL;
+    fd_set readFds, writeFds, exceptFds;
     PacketPtr packet;
     StatError_t statError;
-    graphlib_error_t gl_err;
+    graphlib_error_t graphlibError;
+    graphlib_graph_p prefixTree2d = NULL, prefixTree3d = NULL;
+    StatBitVectorEdge_t *edge;
+    map<int, Walker *>::iterator processMapIter;
+    ProcDebug *pDebug;
+#ifdef STAT_FGFS
+    MRNetSymbolReaderFactory *msrf;
+#endif
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Beginning to execute main loop\n");
 
@@ -372,7 +714,6 @@ StatError_t STAT_BackEnd::mainLoop()
 
     do
     {
-#ifdef STACKWALKER    
         /* Set the stackwalker notification file descriptor */
         if (processMap_.size() > 0 and processMapNonNull_ > 0)
             swNotificationFd = ProcDebug::getNotificationFD();
@@ -382,344 +723,278 @@ StatError_t STAT_BackEnd::mainLoop()
         if (swNotificationFd != -1)
         {
             /* set the MRNet notification FD if StackWalker FD set, otherwise we can just use blocking receives */
-#ifdef MRNET3            
-            mrnNotificationFd = network_->get_EventNotificationFd(Event::DATA_EVENT);
-#else            
-            mrnNotificationFd = network_->get_EventNotificationFd(DATA_EVENT);
-#endif            
+            mrnNotificationFd = network_->get_EventNotificationFd(MRN::Event::DATA_EVENT);
+
             /* setup the select call for the MRNet and SW FDs */
             if (mrnNotificationFd > swNotificationFd)
-                max_fd = mrnNotificationFd + 1;
+                maxFd = mrnNotificationFd + 1;
             else
-                max_fd = swNotificationFd + 1;
-            FD_ZERO(&readfds);
-            FD_ZERO(&writefds);
-            FD_ZERO(&exceptfds);
-            FD_SET(mrnNotificationFd, &readfds);
-            FD_SET(swNotificationFd, &readfds);
+                maxFd = swNotificationFd + 1;
+            FD_ZERO(&readFds);
+            FD_ZERO(&writeFds);
+            FD_ZERO(&exceptFds);
+            FD_SET(mrnNotificationFd, &readFds);
+            FD_SET(swNotificationFd, &readFds);
 
             /* call select to get pending requests */
-            retval = select(max_fd, &readfds, &writefds, &exceptfds, NULL);
-            if (retval < 0 && errno != EINTR)
+            intRet = select(maxFd, &readFds, &writeFds, &exceptFds, NULL);
+            if (intRet < 0 && errno != EINTR)
             {
                 printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "%s: select failed\n", strerror(errno));
-                //TODO: do we really want to exit?
                 return STAT_SYSTEM_ERROR;
             }
-            if (FD_ISSET(mrnNotificationFd, &readfds))
+            if (FD_ISSET(mrnNotificationFd, &readFds))
             {
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Handling MRNet event on FD %d\n", mrnNotificationFd);
-#ifdef MRNET3
-                network_->clear_EventNotificationFd(Event::DATA_EVENT);
-#else                
-                network_->clear_EventNotificationFd(DATA_EVENT);
-#endif                
+                network_->clear_EventNotificationFd(MRN::Event::DATA_EVENT);
             }
-            else if (FD_ISSET(swNotificationFd, &readfds))
+            else if (FD_ISSET(swNotificationFd, &readFds))
             {
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Handling debug event on FD %d\n", swNotificationFd);
-                bool result;
-                map<int, Walker *>::iterator iter;
-                result = ProcDebug::handleDebugEvent(false);
-                if (result == false)
+                boolRet = ProcDebug::handleDebugEvent(false);
+                if (boolRet == false)
                 {
-                    printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Error handling debug events: %s\n", getLastErrorMsg());
-                    //TODO: do we really want to exit?
-                    //return STAT_STACKWALKER_ERROR;
+                   printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Error handling debug events: %s\n", Stackwalker::getLastErrorMsg());
+                    return STAT_STACKWALKER_ERROR;
                 }
-                
-                /* Check is target processes exited, if so, set Walker to NULL */
-                for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+
+                /* Check if target processes exited, if so, set Walker to NULL */
+                for (processMapIter = processMap_.begin(); processMapIter != processMap_.end(); processMapIter++)
                 {
-                    if (iter->second == NULL)
+                    if (processMapIter->second == NULL)
                         continue;
-                    ProcDebug *pdebug = dynamic_cast<ProcDebug *>(iter->second->getProcessState());
-                    if (pdebug)
+                    pDebug = dynamic_cast<ProcDebug *>(processMapIter->second->getProcessState());
+                    if (pDebug != NULL)
                     {
-                        if (pdebug->isTerminated())
+                        if (pDebug->isTerminated() == true)
                         {
-                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Task %d has exited\n", iter->first);
-                            delete iter->second;
+                            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Task %d has exited\n", processMapIter->first);
+                            delete processMapIter->second;
                             processMapNonNull_ = processMapNonNull_ - 1;
-                            iter->second = NULL;
+                            processMapIter->second = NULL;
                             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Process map now contains %d processes, non-null count = %d\n", processMap_.size(), processMapNonNull_);
                         }
                     }
                 }
                 continue;
             }
-        }
-#endif        
+        } /* if (swNotificationFd != -1) */
+
         /* Receive the packet from the STAT FE */
-        /* Use non-blocking recv to catch any false positive events */
-        retval = network_->recv(&tag, packet, &stream, false);
-        if (retval == 0)
+        recvShouldBlock = (swNotificationFd == -1);
+        intRet = network_->recv(&tag, packet, &stream, recvShouldBlock);
+        if (intRet == 0)
             continue;
-        else if (retval != 1)
+        else if (intRet != 1)
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::recv() failure\n");
             return STAT_MRNET_ERROR;
         }
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Packet received with tag %d\n", tag);
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Packet received with tag %d (first = %d)\n", tag, FirstApplicationTag);
 
         /* Initialize return value to error code */
-        retval = 1;
+        intRet = 1;
+        ackTag = -1;
 
         switch(tag)
         {
             case PROT_ATTACH_APPLICATION:
-                /* Attach to the application */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to attach\n");
-                statError = Attach();
+                statError = attach();
                 if (statError == STAT_OK)
-                    retval = 0;
-
-                /* Send ack */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attach complete, sending ackowledgement\n");
-                if (sendAck(stream, PROT_ATTACH_APPLICATION_RESP, retval) != STAT_OK)
-                {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_ATTACH_APPLICATION_RESP) failed\n");
-                    return STAT_MRNET_ERROR;
-                }
+                    intRet = 0;
+                ackTag = PROT_ATTACH_APPLICATION_RESP;
                 break;
 
             case PROT_PAUSE_APPLICATION:
-                /* Pause to the application */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to pause\n");
-                statError = Pause();
+                statError = pause();
                 if (statError == STAT_OK)
-                    retval = 0;
-
-                /* Send ack */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pause complete, sending ackowledgement\n");
-                if (sendAck(stream, PROT_PAUSE_APPLICATION_RESP, retval) != STAT_OK)
-                {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_PAUSE_APPLICATION_RESP) failed\n");
-                    return STAT_MRNET_ERROR;
-                }
+                    intRet = 0;
+                ackTag = PROT_PAUSE_APPLICATION_RESP;
                 break;
 
             case PROT_RESUME_APPLICATION:
-                /* Resume to the application */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to resume\n");
-                statError = Resume();
+                statError = resume();
                 if (statError == STAT_OK)
-                    retval = 0;
-
-                /* Send ack */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resume complete, sending ackowledgement\n");
-                if (sendAck(stream, PROT_RESUME_APPLICATION_RESP, retval) != STAT_OK)
-                {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_RESUME_APPLICATION_RESP) failed\n");
-                    return STAT_MRNET_ERROR;
-                }
+                    intRet = 0;
+                ackTag = PROT_RESUME_APPLICATION_RESP;
                 break;
 
             case PROT_SAMPLE_TRACES:
-                /* Unpack the message */
-                if (packet->unpack("%ud %ud %ud %ud %ud %ud %ud %s", &nTraces, &traceFrequency, &nRetries, &retryFrequency, &sampleType, &withThreads, &clearOnSample, &variableSpecification) == -1)
+                if (packet->unpack("%ud %ud %ud %ud %ud %s", &nTraces, &traceFrequency, &nRetries, &retryFrequency, &sampleType_, &variableSpecification) == -1)
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_SAMPLE_TRACES) failed\n");
-                    if (sendAck(stream, PROT_SAMPLE_TRACES_RESP, retval) != STAT_OK)
+                    if (sendAck(stream, PROT_SAMPLE_TRACES_RESP, intRet) != STAT_OK)
                     {
-                        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_SAMPLE_TRACES_RESP) failed\n");
+                        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "sendAck(PROT_SAMPLE_TRACES_RESP) failed\n");
                         return STAT_MRNET_ERROR;
                     }
                     return STAT_MRNET_ERROR;
                 }
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to sample %d traces each %d us with %d retries every %d us\n", nTraces, traceFrequency, nRetries, retryFrequency);
 
-                /* Gather stack traces */
-                statError = sampleStackTraces(nTraces, traceFrequency, nRetries, retryFrequency, sampleType, withThreads, clearOnSample, variableSpecification);
+                /* When switching between count + rep and full list, we need to clear previous samples */
+                if ((previousSampleType ^ sampleType_) & STAT_SAMPLE_COUNT_REP)
+                    sampleType_ |= STAT_SAMPLE_CLEAR_ON_SAMPLE;
+                previousSampleType = sampleType_;
+
+                statError = sampleStackTraces(nTraces, traceFrequency, nRetries, retryFrequency, variableSpecification);
                 if (statError == STAT_OK)
-                    retval = 0;
-
-                /* Send ack */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sampling complete, sending ackowledgement\n");
-                if (sendAck(stream, PROT_SAMPLE_TRACES_RESP, retval) != STAT_OK)
-                {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_SAMPLE_TRACES_RESP) failed\n");
-                    return STAT_MRNET_ERROR;
-                }
-
+                    intRet = 0;
+                statError = generateGraphs(&prefixTree2d, &prefixTree3d);
+                if (statError != STAT_OK)
+                    intRet = 1;
+                ackTag = PROT_SAMPLE_TRACES_RESP;
+                free(variableSpecification);
+                variableSpecification = NULL;
                 break;
 
             case PROT_SEND_LAST_TRACE:
-                /* Send merged traces to the FE */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to send traces to the FE\n");
-
-                /* Free previously allocated byte arrays */
-                if (obyteArray != NULL)
+                /* Free previously allocated byte array */
+                if (byteArray != NULL)
                 {
-                    free(obyteArray);
-                    obyteArray = NULL;
+                    free(byteArray);
+                    byteArray = NULL;
                 }
 
-                /* Serialize 2D graph */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Serializing 2D graph\n");
-                gl_err = graphlib_serializeGraph(prefixTree2d_, &obyteArray, &obyteArrayLen);
-                if (GRL_IS_FATALERROR(gl_err))
+                graphlibError = graphlib_serializeBasicGraph(prefixTree2d, &byteArray, &byteArrayLen);
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
-                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 3D prefix tree\n");
+                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 2D prefix tree\n");
                     return STAT_GRAPHLIB_ERROR;
                 }
-
-                /* Send */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending graphs to FE\n");
-                if (stream->send(PROT_SEND_LAST_TRACE_RESP, "%ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
-                {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send() failure\n");
-                    return STAT_MRNET_ERROR;
-                }
-                if (stream->flush() == -1)
-                {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::flush() failure\n");
-                    return STAT_MRNET_ERROR;
-                }
-
+                ackTag = PROT_SEND_LAST_TRACE_RESP;
                 break;
 
             case PROT_SEND_TRACES:
-                /* Send merged traces to the FE */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to send traces to the FE\n");
-
-                /* Free previously allocated byte arrays */
-                if (obyteArray != NULL)
+                /* Free previously allocated byte array */
+                if (byteArray != NULL)
                 {
-                    free(obyteArray);
-                    obyteArray = NULL;
+                    free(byteArray);
+                    byteArray = NULL;
                 }
 
-                /* Serialize 3D graph */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Serializing 3D graph\n");
-                gl_err = graphlib_serializeGraph(prefixTree3d_, &obyteArray, &obyteArrayLen);
-                if (GRL_IS_FATALERROR(gl_err))
+                graphlibError = graphlib_serializeBasicGraph(prefixTree3d, &byteArray, &byteArrayLen);
+                if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize 3D prefix tree\n");
                     return STAT_GRAPHLIB_ERROR;
                 }
-
-                /* Send */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending graphs to FE\n");
-                if (stream->send(PROT_SEND_TRACES_RESP, "%ac %d %d", obyteArray, obyteArrayLen, proctabSize_, myRank_) == -1)
-                {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send() failure\n");
-                    return STAT_MRNET_ERROR;
-                }
-                if (stream->flush() == -1)
-                {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::flush() failure\n");
-                    return STAT_MRNET_ERROR;
-                }
-
+                ackTag = PROT_SEND_TRACES_RESP;
                 break;
 
-            case PROT_DETACH_APPLICATION:
-                /* Detach from the application */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to detach\n");
-
-                /* Unpack message */
-                unsigned int *stopArray;
-                int stopArrayLen;
-                if (packet->unpack("%aud", &stopArray, &stopArrayLen) == -1)
+            case PROT_SEND_NODE_IN_EDGE:
+                if (packet->unpack("%d", &nodeId) == -1)
                 {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_DETACH_APPLICATION) failed\n");
-                    if (sendAck(stream, PROT_DETACH_APPLICATION_RESP, retval) != STAT_OK)
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_SEND_NODE_IN_EDGE) failed\n");
+                    if (sendAck(stream, PROT_SEND_NODE_IN_EDGE_RESP, intRet) != STAT_OK)
                     {
-                        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_DETACH_APPLICATION_RESP) failed\n");
+                        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "sendAck(PROT_SEND_NODE_IN_EDGE_RESP) failed\n");
                         return STAT_MRNET_ERROR;
                     }
                     return STAT_MRNET_ERROR;
                 }
 
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching, leaving %d processes stopped\n", stopArrayLen);
-                statError = Detach(stopArray, stopArrayLen);
-                if (statError ==  STAT_OK)
-                    retval = 0;
-
-                /* Send ack */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching complete, sending ackowledgement\n");
-                if (sendAck(stream, PROT_DETACH_APPLICATION_RESP, retval) != STAT_OK)
+                /* Free previously allocated byte array */
+                if (byteArray != NULL)
                 {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_DETACH_APPLICATION_RESP) failed\n");
+                    free(byteArray);
+                    byteArray = NULL;
+                }
+
+                /* Find the requested edge label or create an empty dummy one */
+                if (edges2d_.find(nodeId) != edges2d_.end())
+                    edge = edges2d_[nodeId].second;
+                else
+                {
+                    edge = initializeBitVectorEdge(proctabSize_);
+                    if (edge == NULL)
+                    {
+                        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+                        return STAT_ALLOCATE_ERROR;
+                    }
+                }
+                byteArrayLen = statSerializeEdgeLength(edge);
+                byteArray = (char *)malloc(byteArrayLen);
+                if (byteArray == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %lu bytes for byteArray\n", byteArrayLen);
+                    if (edge != NULL && edges2d_.find(nodeId) == edges2d_.end())
+                        free(edge);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                statSerializeEdge(byteArray, edge);
+                if (edge != NULL && edges2d_.find(nodeId) == edges2d_.end())
+                    statFreeEdge(edge);
+                edge = NULL;
+                ackTag = PROT_SEND_NODE_IN_EDGE_RESP;
+                break;
+
+            case PROT_DETACH_APPLICATION:
+                if (packet->unpack("%aud", &stopArray, &stopArrayLen) == -1)
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_DETACH_APPLICATION) failed\n");
+                    if (sendAck(stream, PROT_DETACH_APPLICATION_RESP, intRet) != STAT_OK)
+                    {
+                        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "sendAck(PROT_DETACH_APPLICATION_RESP) failed\n");
+                        return STAT_MRNET_ERROR;
+                    }
                     return STAT_MRNET_ERROR;
                 }
+
+                statError = detach(stopArray, stopArrayLen);
+                if (statError ==  STAT_OK)
+                    intRet = 0;
+                if (stopArray != NULL)
+                    free(stopArray);
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching complete, sending ackowledgement\n");
+                ackTag = PROT_DETACH_APPLICATION_RESP;
                 break;
 
             case PROT_TERMINATE_APPLICATION:
-                /* Terminate the application */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to terminate application\n");
-                statError = terminateApplication();
+                statError = terminate();
                 if (statError ==  STAT_OK)
-                    retval = 0;
-
-                /* Send ack */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Termination complete, sending ackowledgement\n");
-                if (sendAck(stream, PROT_TERMINATE_APPLICATION_RESP, retval) != STAT_OK)
-                {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_TERMINATE_APPLICATION_RESP) failed\n");
-                    return STAT_MRNET_ERROR;
-                }
-
+                    intRet = 0;
+                ackTag = PROT_TERMINATE_APPLICATION_RESP;
                 break;
 
             case PROT_STATBENCH_CREATE_TRACES:
-                /* Create stack traces */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to create traces\n");
-
-                /* Unpack message */
-                if (packet->unpack("%ud %ud %ud %ud %d", &maxDepth, &nTasks, &nTraces, &functionFanout, &nEqClasses) == -1)
+                if (packet->unpack("%ud %ud %ud %ud %d %ud", &maxDepth, &nTasks, &nTraces, &functionFanout, &nEqClasses, &sampleType_) == -1)
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_STATBENCH_CREATE_TRACES) failed\n");
-                    if (sendAck(stream, PROT_STATBENCH_CREATE_TRACES_RESP, retval) != STAT_OK)
+                    if (sendAck(stream, PROT_STATBENCH_CREATE_TRACES_RESP, intRet) != STAT_OK)
                     {
                         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_STATBENCH_CREATE_TRACES_RESP) failed\n");
                         return STAT_MRNET_ERROR;
                     }
                     return STAT_MRNET_ERROR;
                 }
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to create traces with max depth = %d, num tasks = %d, num traces = %d, function fanout = %d, equivalence classes = %d\n", maxDepth, nTasks, nTraces, functionFanout, nEqClasses);
 
-                /* Create stack traces */
                 statError = statBenchCreateTraces(maxDepth, nTasks, nTraces, functionFanout, nEqClasses);
                 if (statError == STAT_OK)
-                    retval = 0;
-
-                /* Send ack */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Finished creating traces, sending ackowledgement\n");
-                if (sendAck(stream, PROT_STATBENCH_CREATE_TRACES_RESP, retval) != STAT_OK)
-                {
-                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_STATBENCH_CREATE_TRACES_RESP) failed\n");
-                    return STAT_MRNET_ERROR;
-                }
-
+                    intRet = 0;
+                statError = generateGraphs(&prefixTree2d, &prefixTree3d);
+                if (statError != STAT_OK)
+                    intRet = 1;
+                ackTag = PROT_STATBENCH_CREATE_TRACES_RESP;
                 break;
 
             case PROT_CHECK_VERSION:
-                /* Check version */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to check version\n");
-
-                /* Unpack message */
-                int major, minor, revision;
-                if (packet->unpack("%d %d %d", &major, &minor, &revision) == -1)
+                if (packet->unpack("%d %d %d", &majorVersion, &minorVersion, &revisionVersion) == -1)
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_CHECK_VERSION) failed\n");
-                    if (sendAck(stream, PROT_CHECK_VERSION_RESP, retval) != STAT_OK)
+                    if (sendAck(stream, PROT_CHECK_VERSION_RESP, intRet) != STAT_OK)
                     {
-                        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_CHECK_VERSION_RESP) failed\n");
+                        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "sendAck(PROT_CHECK_VERSION_RESP) failed\n");
                         return STAT_MRNET_ERROR;
                     }
                     return STAT_MRNET_ERROR;
                 }
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to compare my version %d.%d.%d to the FE version %d.%d.%d\n", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION, major, minor, revision);
-
-                /* Compare version numbers */
-                if (major == STAT_MAJOR_VERSION && minor == STAT_MINOR_VERSION && revision == STAT_REVISION_VERSION)
-                    retval = 0;
-
-                /* Send ack packet */
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Finished comparing version, sending ackowledgement\n");
-                if (stream->send(PROT_CHECK_VERSION_RESP, "%d %d %d %d %d", major, minor, revision, retval, 0) == -1)
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to compare my version %d.%d.%d to the FE version %d.%d.%d\n", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION, majorVersion, minorVersion, revisionVersion);
+                if (majorVersion == STAT_MAJOR_VERSION && minorVersion == STAT_MINOR_VERSION && revisionVersion == STAT_REVISION_VERSION)
+                    intRet = 0;
+                if (intRet != 0)
+                    printMsg(STAT_VERSION_ERROR, __FILE__, __LINE__, "Daemon reports version mismatch: FE = %d.%d.%d, Daemon = %d.%d.%d\n", majorVersion, minorVersion, revisionVersion, STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Finished comparing version, sending ackowledgement with return value %d\n", intRet);
+                if (stream->send(PROT_CHECK_VERSION_RESP, "%d %d %d %d %d", majorVersion, minorVersion, revisionVersion, intRet, 0) == -1)
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send() failure\n");
                     return STAT_MRNET_ERROR;
@@ -729,17 +1004,39 @@ StatError_t STAT_BackEnd::mainLoop()
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::flush() failure\n");
                     return STAT_MRNET_ERROR;
                 }
-
-                if (retval != 0)
-                    printMsg(STAT_VERSION_ERROR, __FILE__, __LINE__, "Daemon reports version mismatch: FE = %d.%d.%d, Daemon = %d.%d.%d\n", major, minor, revision, STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
-
                 break;
 
             case PROT_SEND_BROADCAST_STREAM:
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received broadcast stream\n");
                 broadcastStream_ = stream;
-                //GLL TODO: send an ack?
+                intRet = 0;
+                ackTag = PROT_SEND_BROADCAST_STREAM_RESP;
                 break;
+
+#ifdef STAT_FGFS
+            case PROT_SEND_FGFS_STREAM:
+                boolRet = MRNetCommFabric::initialize((void *)network_, (void *)stream);
+                if (boolRet == false)
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize FGFS CommFabric\n");
+                    return STAT_MRNET_ERROR;
+                }
+                fgfsCommFabric_ = new MRNetCommFabric();
+                boolRet = AsyncGlobalFileStatus::initialize(fgfsCommFabric_);
+                if (boolRet == false)
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to initialize AsyncGlobalFileStatus\n");
+                    return STAT_MRNET_ERROR;
+                }
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "FGFS setup complete\n");
+                break;
+
+            case PROT_FILE_REQ:
+                msrf = new MRNetSymbolReaderFactory(Walker::getSymbolReader(), network_, stream);
+                Walker::setSymbolReader(msrf);
+                intRet = 0;
+                ackTag = PROT_FILE_REQ_RESP;
+                break;
+#endif /* FGFS */
 
             case PROT_EXIT:
                 /* Exit */
@@ -747,182 +1044,216 @@ StatError_t STAT_BackEnd::mainLoop()
 
             default:
                 /* Unknown tag */
-                printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Unknown Protocol: %d\n", tag);
+                printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Unknown Tag %d, first = %d, last = %d\n", tag, PROT_ATTACH_APPLICATION, PROT_SEND_NODE_IN_EDGE_RESP);
                 break;
-        } /* switch */
+        } /* switch(tag) */
+
+        if (ackTag == PROT_SEND_NODE_IN_EDGE_RESP || ackTag == PROT_SEND_LAST_TRACE_RESP || ackTag == PROT_SEND_TRACES_RESP)
+        {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE\n");
+            bitVectorLength = statBitVectorLength(proctabSize_);
+#ifdef MRNET40
+            if (stream->send(ackTag, "%Ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
+#else
+            if (stream->send(ackTag, "%ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
+#endif
+            {
+                printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send(%d) failure\n", ackTag);
+                return STAT_MRNET_ERROR;
+            }
+            if (stream->flush() == -1)
+            {
+                printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::flush() failure\n");
+                return STAT_MRNET_ERROR;
+            }
+        }
+        else if (ackTag != -1)
+        {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "sending ackowledgement with tag %d (first = %d) and return value %d\n", ackTag, FirstApplicationTag, intRet);
+            if (sendAck(broadcastStream_, ackTag, intRet) != STAT_OK)
+            {
+                printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "sendAck(%d) failed\n", ackTag);
+                return STAT_MRNET_ERROR;
+            }
+        }
+
     } while (tag != PROT_EXIT);
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received message to exit\n");
 
     /* Free allocated byte arrays */
-    if (obyteArray != NULL)
+    if (byteArray != NULL)
     {
-        free(obyteArray);
-        obyteArray = NULL;
+        free(byteArray);
+        byteArray = NULL;
     }
 
     return STAT_OK;
 }
 
-StatError_t STAT_BackEnd::Attach()
+
+StatError_t STAT_BackEnd::attach()
 {
     int i;
-    StatError_t ret;
-#ifdef STACKWALKER
     Walker *proc;
-#else
-    BPatch_process * proc;
+    map<int, Walker *>::iterator processMapIter;
+#if defined(GROUP_OPS)
+    vector<ProcessSet::AttachInfo> aInfo;
+    ProcessSet::AttachInfo pAttach;
+    Process::ptr pcProc;
+#endif
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
+
+#if defined(GROUP_OPS)
+    ThreadTracking::setDefaultTrackThreads(false);
+  #ifdef SW_VERSION_8_0_1
+    LWPTracking::setDefaultTrackLWPs(false);
+  #endif
+    if (doGroupOps_)
+    {
+        aInfo.reserve(proctabSize_);
+        for (i = 0; i < proctabSize_; i++)
+        {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+            pAttach.pid = proctab_[i].pd.pid;
+            pAttach.executable = proctab_[i].pd.executable_name;
+            pAttach.error_ret = ProcControlAPI::err_none;
+            aInfo.push_back(pAttach);
+        }
+        procSet_ = ProcessSet::attachProcessSet(aInfo);
+        walkerSet_ = WalkerSet::newWalkerSet();
+    }
 #endif
 
     /* Attach to the processes in the process table */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
     for (i = 0; i < proctabSize_; i++)
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
-#ifdef STACKWALKER
-        proc = Walker::newWalker(proctab_[i].pd.pid, proctab_[i].pd.executable_name);
-        if (proc == NULL)
+
+#if defined(GROUP_OPS)
+        if (doGroupOps_)
         {
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, getLastErrorMsg());
+            pcProc = aInfo[i].proc;
+            proc = pcProc ? Walker::newWalker(pcProc) : NULL;
+            if (proc != NULL)
+            {
+                pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
+                walkerSet_->insert(proc);
+            }
         }
-#else
-        proc = bpatch_.processAttach(NULL, proctab_[i].pd.pid);
-        if (proc == NULL)
-        {
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "DynInst ProcessAttach to task %d, pid %d failed\n", proctab_[i].mpirank, proctab_[i].pd.pid);
-        }
+        else
 #endif
+        {
+            proc = Walker::newWalker(proctab_[i].pd.pid, proctab_[i].pd.executable_name);
+        }
+
+        if (proc == NULL)
+        {
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "StackWalker Attach to task rank %d, pid %d failed with message '%s'\n", proctab_[i].mpirank, proctab_[i].pd.pid, Dyninst::Stackwalker::getLastErrorMsg());
+            swDebugBufferToFile();
+        }
+
         processMap_[proctab_[i].mpirank] = proc;
         if (proc != NULL)
             processMapNonNull_++;
     }
+    for (i = 0, processMapIter = processMap_.begin(); processMapIter != processMap_.end(); i++, processMapIter++)
+        procsToRanks_.insert(make_pair(processMapIter->second, i));
     isRunning_ = false;
 
     return STAT_OK;
 }
 
-StatError_t STAT_BackEnd::Pause()
+
+StatError_t STAT_BackEnd::pause()
 {
-    /* Pause all processes */
-#ifdef STACKWALKER
-    map<int, Walker *>::iterator iter;
-#else    
-    map<int,BPatch_process *>::iterator iter;
-#endif
+    map<int, Walker *>::iterator processMapIter;
+
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
-    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+
+#if defined(GROUP_OPS)
+    if (doGroupOps_)
+        procSet_->stopProcs();
+    else
+#endif
     {
-        pauseImpl(iter->second);
+        for (processMapIter = processMap_.begin(); processMapIter != processMap_.end(); processMapIter++)
+           pauseProcess(processMapIter->second);
     }
     isRunning_ = false;
 
     return STAT_OK;
 }
 
-StatError_t STAT_BackEnd::Resume()
+
+StatError_t STAT_BackEnd::resume()
 {
-    /* Resume all processes */
-#ifdef STACKWALKER
-    map<int, Walker *>::iterator iter;
-#else    
-    map<int,BPatch_process *>::iterator iter;
-#endif
+    map<int, Walker *>::iterator processMapIter;
+
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
-    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+#if defined(GROUP_OPS)
+    if (doGroupOps_)
+        procSet_->continueProcs();
+    else
+#endif
     {
-        resumeImpl(iter->second);
+        for (processMapIter = processMap_.begin(); processMapIter != processMap_.end(); processMapIter++)
+            resumeProcess(processMapIter->second);
     }
     isRunning_ = true;
 
     return STAT_OK;
 }
 
-#ifdef STACKWALKER        
-StatError_t STAT_BackEnd::pauseImpl(Walker *walker)
+
+StatError_t STAT_BackEnd::pauseProcess(Walker *walker)
 {
-    /* Pause the process */
-    bool ret;
+    bool boolRet;
+    ProcDebug *pDebug;
+
     if (walker != NULL)
     {
-        ProcDebug *pdebug = dynamic_cast<ProcDebug *>(walker->getProcessState());
-        if (pdebug == NULL)
+        pDebug = dynamic_cast<ProcDebug *>(walker->getProcessState());
+        if (pDebug == NULL)
         {
             printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to dynamic_cast ProcDebug pointer\n");
             return STAT_STACKWALKER_ERROR;
         }
-        if (pdebug->isTerminated())
+        if (pDebug->isTerminated())
             return STAT_OK;
-        ret = pdebug->pause();
-        if (ret == false)
+        boolRet = pDebug->pause();
+        if (boolRet == false)
             printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to pause process\n");
     }
     return STAT_OK;
 }
 
-StatError_t STAT_BackEnd::resumeImpl(Walker *walker)
+
+StatError_t STAT_BackEnd::resumeProcess(Walker *walker)
 {
-    /* Resume the process */
-    bool ret;
+    bool boolRet;
+    ProcDebug *pDebug;
+
     if (walker != NULL)
     {
-        ProcDebug *pdebug = dynamic_cast<ProcDebug *>(walker->getProcessState());
-        if (pdebug == NULL)
+        pDebug = dynamic_cast<ProcDebug *>(walker->getProcessState());
+        if (pDebug == NULL)
         {
             printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to dynamic_cast ProcDebug pointer\n");
             return STAT_STACKWALKER_ERROR;
         }
-        if (pdebug->isTerminated())
+        if (pDebug->isTerminated())
             return STAT_OK;
-        ret = pdebug->resume();
-        if (ret == false)
+        boolRet = pDebug->resume();
+        if (boolRet == false)
             printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to resume process\n");
     }
     return STAT_OK;
 }
-#else
-StatError_t STAT_BackEnd::pauseImpl(BPatch_process *proc)
-{
-    /* Pause the process */
-    bool ret;
-    if (proc != NULL)
-    {
-        ret = proc->stopExecution();
-        if (ret == false)
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to pause process\n");
-    }
-    return STAT_OK;
-}
 
-StatError_t STAT_BackEnd::resumeImpl(BPatch_process *proc)
-{
-    /* Resume the process */
-    bool ret;
-    if (proc != NULL)
-    {
-        ret = proc->continueExecution();
-        if (ret == false)
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to resume process\n");
-    }
-    return STAT_OK;
-}
-#endif      
 
-#ifdef SBRS
-int bcastWrapper(void *buf, int size)
-{
-    LMON_be_broadcast(buf, size);
-    return 0;
-}
-
-int isMasterWrapper()
-{
-    if (LMON_be_amIMaster() == LMON_YES)
-        return 1;
-    return 0;
-}
-#endif
-
-StatError_t STAT_BackEnd::parseVariableSpecification(char *variableSpecification, statVariable_t **outBuf, int *nVariables)
+StatError_t STAT_BackEnd::parseVariableSpecification(char *variableSpecification)
 {
     int nElements, i;
     string cur, spec, temp;
@@ -937,34 +1268,34 @@ StatError_t STAT_BackEnd::parseVariableSpecification(char *variableSpecification
     nElements = atoi(temp.c_str());
     if (nElements < 0)
         nElements = 0;
-    *nVariables = nElements;
+    nVariables_ = nElements;
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d elements in variable specification\n", nElements);
-    (*outBuf) = (statVariable_t *)malloc(nElements * sizeof(statVariable_t));
-    if ((*outBuf) == NULL)
+    extractVariables_ = (StatVariable_t *)malloc(nElements * sizeof(StatVariable_t));
+    if (extractVariables_ == NULL)
     {
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d elements\n", nElements);
     }
-    cur = spec.substr(delimPos + 1, spec.length());
 
     /* Get each element */
+    cur = spec.substr(delimPos + 1, spec.length());
     for (i = 0; i < nElements; i++)
     {
         /* Get the file name */
         delimPos = cur.find_first_of(":");
         temp = cur.substr(0, delimPos);
-        snprintf((*outBuf)[i].fileName, BUFSIZE, "%s", temp.c_str());
+        snprintf(extractVariables_[i].fileName, BUFSIZE, "%s", temp.c_str());
         cur = cur.substr(delimPos + 1, cur.length());
 
         /* Get the line number */
         delimPos = cur.find_first_of(".");
         temp = cur.substr(0, delimPos);
-        (*outBuf)[i].lineNum = atoi(temp.c_str());
+        extractVariables_[i].lineNum = atoi(temp.c_str());
         cur = cur.substr(delimPos + 1, cur.length());
 
         /* Get the stack depth */
         delimPos = cur.find_first_of("$");
         temp = cur.substr(0, delimPos);
-        (*outBuf)[i].depth = atoi(temp.c_str());
+        extractVariables_[i].depth = atoi(temp.c_str());
         cur = cur.substr(delimPos + 1, cur.length());
 
         /* Get the variable name */
@@ -973,8 +1304,8 @@ StatError_t STAT_BackEnd::parseVariableSpecification(char *variableSpecification
         else
             delimPos = cur.find_first_of(",");
         temp = cur.substr(0, delimPos);
-        snprintf((*outBuf)[i].variableName, BUFSIZE, "%s", temp.c_str());
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "elements: %s %d %d %s\n", (*outBuf)[i].fileName, (*outBuf)[i].lineNum, (*outBuf)[i].depth, (*outBuf)[i].variableName);        
+        snprintf(extractVariables_[i].variableName, BUFSIZE, "%s", temp.c_str());
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "element: %s %d %d %s\n", extractVariables_[i].fileName, extractVariables_[i].lineNum, extractVariables_[i].depth, extractVariables_[i].variableName);
         if (i != nElements - 1)
             cur = cur.substr(delimPos + 1, cur.length());
     }
@@ -982,16 +1313,16 @@ StatError_t STAT_BackEnd::parseVariableSpecification(char *variableSpecification
     return STAT_OK;
 }
 
-#ifdef STACKWALKER
+
 StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf, int *lineNum)
 {
-    bool ret;
+    bool boolRet;
     Address loadAddr;
     LibraryState *libState;
     LibAddrPair lib;
-    Symtab *symtab;
+    Symtab *symtab = NULL;
     vector<LineNoTuple *> lines;
-    
+
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting source line info for address %lx\n", addr);
 
     *lineNum = 0;
@@ -1003,21 +1334,21 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
     }
 
     libState = proc->getProcessState()->getLibraryTracker();
-    if (!libState)
+    if (libState == NULL)
     {
         printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to get LibraryState\n");
         snprintf(outBuf, BUFSIZE, "?");
         return STAT_OK;
     }
-    ret = libState->getLibraryAtAddr(addr, lib);
-    if (!ret)
+    boolRet = libState->getLibraryAtAddr(addr, lib);
+    if (boolRet == false)
     {
         printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to get library at address 0x%lx\n", addr);
         snprintf(outBuf, BUFSIZE, "?");
         return STAT_OK;
     }
-    ret = Symtab::openFile(symtab, lib.first);
-    if (ret == false || symtab == NULL)
+    boolRet = Symtab::openFile(symtab, lib.first);
+    if (boolRet == false || symtab == NULL)
     {
         printMsg(STAT_WARNING, __FILE__, __LINE__, "Symtab failed to open file %s\n", lib.first.c_str());
         snprintf(outBuf, BUFSIZE, "?");
@@ -1025,395 +1356,326 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
     }
     symtab->setTruncateLinePaths(false);
     loadAddr = lib.second;
-    ret = symtab->getSourceLines(lines, addr - loadAddr);
-    if (!ret)
+    boolRet = symtab->getSourceLines(lines, addr - loadAddr);
+    if (boolRet == false)
     {
         snprintf(outBuf, BUFSIZE, "?");
         return STAT_OK;
     }
 
+
     snprintf(outBuf, BUFSIZE, "%s", lines[0]->getFile().c_str());
     *lineNum = lines[0]->getLine();
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%lx resolved to %s:%d\n", addr, outBuf, *lineNum);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "address %lx resolved to %s:%d\n", addr, outBuf, *lineNum);
 
     return STAT_OK;
 }
 
-StatError_t STAT_BackEnd::getVariable(vector<Frame> swalk, unsigned int frame, char *variableName, char *outBuf)
-{
-#ifdef PROTOTYPE
-    int result;
-    bool ret;
-    char buf[BUFSIZE];
-    Function *func = NULL;
-    localVar *var;
-    vector<localVar *> vars;
-    vector<localVar *>::iterator iter;
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for variable %s\n", variableName);
 
-    func = getFunctionForFrame(swalk[frame]);
+StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, char *outBuf, unsigned int outBufSize)
+{
+    int intRet;
+#if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
+    int i;
+    bool boolRet, found = false;
+    char buf[BUFSIZE];
+    string frameName;
+    vector<Frame> frames;
+    Function *func = NULL;
+    localVar *var = NULL;
+    vector<localVar *> vars;
+    vector<localVar *>::iterator varsIter;
+
+    frame.getName(frameName);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for variable %s in frame %s\n", variableName, frameName.c_str());
+
+    frames.push_back(frame);
+    func = getFunctionForFrame(frame);
     if (func == NULL)
     {
-        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to get function for this frame\n");
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to get function for frame %s\n", frameName.c_str());
         return STAT_STACKWALKER_ERROR;
     }
 
-    ret = func->getLocalVariables(vars);
-    if (ret == false)
+    for (i = 0; i < 2 && found == false; i++)
     {
-        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to get local variables for this function\n");
-        return STAT_STACKWALKER_ERROR;
-    }
-
-    for (iter = vars.begin(); iter != vars.end(); iter++)
-    {
-        var = *iter;
-        if (strcmp(var->getName().c_str(), variableName) == 0)
+        if (i == 0)
         {
-            result = getLocalVariableValue(*iter, swalk, frame, buf, BUFSIZE);
-            if (result != glvv_Success)
+            boolRet = func->getLocalVariables(vars);
+            if (boolRet == false)
             {
-                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to get variable %s for this function\n", variableName);
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to get local variables for frame %s\n", frameName.c_str());
                 return STAT_STACKWALKER_ERROR;
             }
-            if (var->getType()->getSize() == 8)
-                snprintf(outBuf, BUFSIZE, "$%s=%d", variableName, *((int *)buf));
-            else if (var->getType()->getSize() == 4)
-                snprintf(outBuf, BUFSIZE, "$%s=%d", variableName, *((int *)buf));
+        }
+        else if (i == 1)
+        {
+            boolRet = func->getParams(vars);
+            if (boolRet == false)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to get parameters for frame %s\n", frameName.c_str());
+                return STAT_STACKWALKER_ERROR;
+            }
+        }
+
+        for (varsIter = vars.begin(); varsIter != vars.end(); varsIter++)
+        {
+            var = *varsIter;
+            if (strcmp(var->getName().c_str(), variableName) == 0)
+            {
+                intRet = getLocalVariableValue(*varsIter, frames, 0, outBuf, outBufSize);
+                if (intRet != glvv_Success)
+                {
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Failed to get variable %s for frame %s\n", variableName, frameName.c_str());
+                    return STAT_STACKWALKER_ERROR;
+                }
+                found = true;
+                break;
+            }
         }
     }
- 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s\n", outBuf);
-#else    
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s in frame %s\n", outBuf, frameName.c_str());
+#else
     printMsg(STAT_WARNING, __FILE__, __LINE__, "Prototype variable extraction feature not enabled!\n");
-    snprintf(outBuf, BUFSIZE, "$%s=-1", variableName);
-#endif    
-    return STAT_OK;
-}
-
-#else
-//! Translates an address into a source file and line number
-/*!
-    \param func - the current process
-    \param addr - the address to translate
-    \param[out] outBuf - the source file name
-    \param[out] lineNum - the line number
-    \return STAT_OK on success
-*/
-StatError_t STAT_BackEnd::getSourceLine(BPatch_function *func, unsigned long addr, char *outBuf, int *lineNum)
-{
-    bool ret;
-    const char *fileName;
-    char *functionName, *variableName;
-    BPatch_module *mod;
-    BPatch_Vector<BPatch_statement> stmts;
-
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting source line info for address %lx\n", addr);
-    *lineNum = 0;
-    if (func == NULL)
-    {
-        snprintf(outBuf, BUFSIZE, "@??");
-        return STAT_OK;
-    }
-    mod = func->getModule();
-    ret = mod->getSourceLines(addr, stmts);
-    if (ret == false)
-    {
-        snprintf(outBuf, BUFSIZE, "@??");
-        return STAT_OK;
-    }
-
-    *lineNum = stmts[0].lineNumber();
-    fileName = stmts[0].fileName();
-    
-    snprintf(outBuf, BUFSIZE, "%s", fileName);
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%lx resolved to %s:%d\n", addr, outBuf, *lineNum);
-    return STAT_OK;
-}
-
-StatError_t STAT_BackEnd::getVariable(BPatch_process *proc, char *functionName, char *variableName, char *outBuf)
-{
-    int var;
-
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting variable %s from function %s\n", functionName, variableName);
-    if (functionName != NULL && variableName != NULL)
-    {
-        BPatch_addressSpace *app = static_cast<BPatch_addressSpace *>(proc);
-        BPatch_image *app_image = app->getImage();
-        BPatch_Vector<BPatch_function *> found_funcs;
-        if ((NULL == app_image->findFunction(functionName, found_funcs)) || !found_funcs.size())
-        {
-            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find function %s\n", functionName);
-            return STAT_OK;
-        }
-        if (1 < found_funcs.size())
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Found multiple functions named %s\n", functionName);
-        BPatch_Vector<BPatch_point *> *func_point = found_funcs[0]->findPoint(BPatch_subroutine);
-        if (!func_point || ((*func_point).size() == 0))
-        {
-            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find point for function %s\n", functionName);
-            return STAT_OK;
-        }
-        BPatch_variableExpr *expr = app_image->findVariable(*(*func_point)[0], variableName);
-        if (expr == NULL)
-        {
-            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find variable %s\n", variableName);
-            return STAT_OK;
-        }
-        expr->readValue(&var);
-        snprintf(outBuf, BUFSIZE, "$%s=%d", variableName, var);
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Variable %s from function %s = %d\n", functionName, variableName, var);
-    }
-
-    return STAT_OK;
-}    
+    intRet = -1;
+    memcpy(outBuf, &intRet, sizeof(int));
 #endif
+    return STAT_OK;
+}
 
-StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, unsigned int clearOnSample, char *variableSpecification)
+
+StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, char *variableSpecification)
 {
-    int j, retval, nVariables = 0;
+    int j;
     unsigned int i;
-    bool wasRunning = isRunning_;
-    graphlib_graph_p currentGraph = NULL;
-    graphlib_error_t gl_err;
-    StatError_t ret;
-    statVariable_t *extractVariables = NULL;
-#ifdef STACKWALKER
-    map<int, Walker *>::iterator iter;
-#else
-    map<int,BPatch_process *>::iterator iter;
-#endif
-    
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample stack traces\n");
+    bool wasRunning, isLastTrace;
+    graphlib_error_t graphlibError;
+    StatError_t statError;
+    map<int, Walker *>::iterator processMapIter;
+    map<int, StatBitVectorEdge_t *>::iterator nodeInEdgeMapIter;
 
-#ifdef SBRS
-    char **libraryList;
-    int nlib;
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with variables %s\n", nTraces, traceFrequency, nRetries, retryFrequency, variableSpecification);
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Broadcasting target process files\n");
+    wasRunning = isRunning_;
+    if (sampleType_ & STAT_SAMPLE_CLEAR_ON_SAMPLE)
+        clear3dNodesAndEdges();
 
-    /* Pause process to yield CPU */
-    if (wasRunning)
-    {
-        for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-        {
-            ret = pauseImpl(iter->second);
-            if (ret != STAT_OK)
-                printMsg(ret, __FILE__, __LINE__, "Failed to pause process\n");
-        }
-        isRunning_ = False;
-    }
-
-    /* Broadcast file contents */
-    sbrs_bind_bcast(bcastWrapper);
-    sbrs_bind_is_master(isMasterWrapper);
-    libraryList = sbrs_fet_liblist(proctab_[0].pd.executable_name, &nlib);
-    sbrs_bcast_binary_list("/tmp", proctab_[0].pd.executable_name, libraryList, nlib);
-    sbrs_enable_interp();
-
-    /* Set process back to running */
-    if (wasRunning)
-    {
-        for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-        {
-            ret = resumeImpl(iter->second);
-            if (ret != STAT_OK)
-                printMsg(ret, __FILE__, __LINE__, "Failed to pause process\n");
-        }
-        isRunning_ = True;
-    }
-#endif
-
-    /* Initialize graphlib if we haven't already done so */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Initializing graphlib with process table size = %d\n", proctabSize_);
-    gl_err = graphlib_InitVarEdgeLabels(proctabSize_);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
-    /* Delete previously merged graphs */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deleting any previously mereged trees\n");
-    if (prefixTree3d_ != NULL && clearOnSample == 1)
-    {
-        gl_err = graphlib_delGraph(prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-        prefixTree3d_ = NULL;
-    }
-    if (prefixTree2d_ != NULL)
-    {
-        gl_err = graphlib_delGraph(prefixTree2d_);
-        if (GRL_IS_FATALERROR(gl_err))
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-    }
-
-    /* Create graphs */
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating graphs\n");
-    if (prefixTree3d_ == NULL)
-    {
-        gl_err = graphlib_newGraph(&prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 3D graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-    }
-    gl_err = graphlib_newGraph(&prefixTree2d_);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 2D graph\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
-    /* Parse the variable specification */
     if (strcmp(variableSpecification, "NULL") != 0)
     {
-        ret = parseVariableSpecification(variableSpecification, &extractVariables, &nVariables);
-        if (ret != STAT_OK)
+        statError = parseVariableSpecification(variableSpecification);
+        if (statError != STAT_OK)
         {
-            printMsg(ret, __FILE__, __LINE__, "Failed to parse variable specification\n");
-            return ret;
+            printMsg(statError, __FILE__, __LINE__, "Failed to parse variable specification\n");
+            return statError;
         }
     }
 
-    /* Gather stack traces and merge */
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering and merging %d traces from each task\n", nTraces);
     for (i = 0; i < nTraces; i++)
     {
-        /* Pause or resume the process as necessary when gathering multiple traces */
-        if (wasRunning == false && nTraces != 1 && (i == 0 || i == nTraces - 1))
+        clear2dNodesAndEdges();
+        isLastTrace = (i == nTraces - 1);
+
+        /* Pause process as necessary */
+        if (isRunning_)
         {
-            for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+            statError = pause();
+            if (statError != STAT_OK)
+                printMsg(statError, __FILE__, __LINE__, "Failed to pause processes\n");
+        }
+
+        /* Collect call stacks from each process */
+#if defined(GROUP_OPS)
+        if (doGroupOps_)
+            getStackTraceFromAll(nRetries, retryFrequency);
+        else
+#endif
+        {
+            for (processMapIter = processMap_.begin(), j = 0; processMapIter != processMap_.end(); processMapIter++, j++)
             {
-                if (i == 0)
+                statError = getStackTrace(processMapIter->second, j, nRetries, retryFrequency);
+                if (statError != STAT_OK)
                 {
-                    ret = resumeImpl(iter->second);
-                    if (ret != STAT_OK)
-                        printMsg(ret, __FILE__, __LINE__, "StackWalker returned false on resume\n");
-                    isRunning_ = true;
-                }    
-                else if (i == nTraces - 1)
-                {
-                    ret = pauseImpl(iter->second);
-                    if (ret != STAT_OK)
-                        printMsg(ret, __FILE__, __LINE__, "StackWalker returned false on resume\n");
-                    isRunning_ = false;
-                }    
+                    printMsg(statError, __FILE__, __LINE__, "Error getting graph %d of %d\n", i + 1, nTraces);
+                    return statError;
+                }
             }
         }
 
-        j = -1;
-        for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+        /* Continue the process if necessary */
+        if (isLastTrace == false || wasRunning == true)
         {
-            j++;
+            statError = resume();
+            if (statError != STAT_OK)
+                printMsg(statError, __FILE__, __LINE__, "Failed to resume processes\n");
+        }
 
-            /* Create return graph */
-            gl_err = graphlib_newGraph(&currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-
-            /* Get the stack trace */
-            ret = getStackTrace(currentGraph, iter->second, j, nRetries, retryFrequency, sampleType, withThreads, extractVariables, nVariables);
-            if (ret != STAT_OK)
-            {
-                printMsg(ret, __FILE__, __LINE__, "Error getting graph %d of %d\n", i+1, nTraces);
-                return ret;
-            }
-
-            /* Merge cur graph into retGraph */
-            gl_err = graphlib_mergeGraphsRanked(prefixTree3d_, currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-            if (i == nTraces - 1)
-            {
-                gl_err = graphlib_mergeGraphsRanked(prefixTree2d_, currentGraph);
-                if (GRL_IS_FATALERROR(gl_err))
-                {
-                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
-                    return STAT_GRAPHLIB_ERROR;
-                }
-            }
-
-            /* Free up current graph */
-            gl_err = graphlib_delGraph(currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-
-        } /* for iter */
-        if (i != nTraces - 1)
+        if (isLastTrace == false)
             usleep(traceFrequency * 1000);
+
+        statError = update3dNodesAndEdges();
+        if (statError != STAT_OK)
+        {
+            printMsg(statError, __FILE__, __LINE__, "Error updating 3d nodes and edges for trace %d of %d\n", i + 1, nTraces);
+            return statError;
+        }
     } /* for i */
 
-    if (extractVariables != NULL)
-        free(extractVariables);
+    if (extractVariables_ != NULL)
+    {
+        free(extractVariables_);
+        extractVariables_ = NULL;
+    }
 
     return STAT_OK;
 }
 
-#ifdef STACKWALKER
-StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, statVariable_t *extractVariables, int nVariables)
+
+std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
 {
-    int nodeId, prevId, i, j, k, partialVal, lineNum, pos;
-    bool ret;
-    char buf[BUFSIZE], fileName[BUFSIZE];
+    int lineNum, i, value, pyLineNo;
+    bool boolRet;
+    char buf[BUFSIZE], fileName[BUFSIZE], *pyFun = NULL, *pySource = NULL;
+    string name;
     Address addr;
     StatError_t statError;
-    string name, path, tester;
-    vector<Frame> swalk, partial;
-    vector<string> trace;
-    graphlib_error_t gl_err;
-#ifdef GRL_DYNAMIC_NODE_NAME
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-#else
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,"",-1};
-#endif
-    graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
-    graphlib_graph_p currentGraph = NULL;
-    vector<Dyninst::THR_ID> threads;
-    ProcDebug *processState = NULL;
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d\n", rank);
+    boolRet = frame.getName(name);
+    if (boolRet == false)
+        name = "[unknown]";
+    else if (name == "")
+        name = "[empty]";
+
+    /* Gather Python script level traces if requested */
+    if (sampleType_ & STAT_SAMPLE_PYTHON && name.find("PyEval_EvalFrameEx") != string::npos)
+    {
+        statError = getPythonFrameInfo(frame.getWalker(), frame, &pyFun, &pySource, &pyLineNo);
+        if (statError == STAT_OK && pyFun != NULL && pySource != NULL)
+        {
+            if (sampleType_ & STAT_SAMPLE_LINE)
+            {
+                snprintf(buf, BUFSIZE, "%s@%s:%d", pyFun, pySource, pyLineNo);
+                name = buf;
+            }
+            else
+                name = pyFun;
+            free(pyFun);
+            free(pySource);
+            isPyTrace_ = true;
+            return name;
+        }
+        else if (statError != STAT_OK)
+            printMsg(statError, __FILE__, __LINE__, "Error in getPythonFrameInfo for frame %s, pyFun = %s, pySource = %s\n", name.c_str(), pyFun, pySource);
+        if (pyFun != NULL)
+            free(pyFun);
+        if (pySource != NULL)
+            free(pySource);
+    }
+
+    /* Gather PC value or line number info if requested */
+    if (sampleType_ & STAT_SAMPLE_PC)
+    {
+#ifdef SW_VERSION_8_0_0    
+        if (frame.isTopFrame() == true)
+            snprintf(buf, BUFSIZE, "@0x%lx", frame.getRA());
+        else
+#endif
+            snprintf(buf, BUFSIZE, "@0x%lx", frame.getRA() - 1);
+        name += buf;
+    }
+    else if (sampleType_ & STAT_SAMPLE_LINE)
+    {
+#ifdef SW_VERSION_8_0_0    
+        if (frame.isTopFrame() == true)
+            addr = frame.getRA();
+        else
+#endif
+            addr = frame.getRA() - 1;
+        statError = getSourceLine(frame.getWalker(), addr, fileName, &lineNum);
+        if (statError != STAT_OK)
+        {
+            printMsg(statError, __FILE__, __LINE__, "Failed to get source line information for %s\n", name.c_str());
+            return name;
+        }
+        name += "@";
+        name += fileName;
+        if (lineNum != 0)
+        {
+            snprintf(buf, BUFSIZE, ":%d", lineNum);
+            name += buf;
+        }
+        if (extractVariables_ != NULL)
+        {
+            for (i = 0; i < nVariables_; i++)
+            {
+                if (strcmp(fileName, extractVariables_[i].fileName) == 0 &&
+                    lineNum == extractVariables_[i].lineNum &&
+                    depth == extractVariables_[i].depth)
+                {
+                    statError = getVariable(frame, extractVariables_[i].variableName, buf, BUFSIZE);
+                    value = *((int *)buf);
+                    snprintf(buf, BUFSIZE, "$%s=%d", extractVariables_[i].variableName, value);
+                    if (statError != STAT_OK)
+                    {
+                       printMsg(statError, __FILE__, __LINE__, "Failed to get variable information for $%s in %s\n", extractVariables_[i].variableName, name.c_str());
+                       continue;
+                    }
+                    name += buf;
+                }
+            }
+        } /* if (extractVariables_ != NULL) */
+    } /* else if (sampleType_ & STAT_SAMPLE_LINE) */
+
+    return name;
+}
+
+
+StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency)
+{
+    int nodeId, prevId, i, j, partialTraceScore;
+    string::size_type delimPos;
+    bool boolRet, isFirstPythonFrame;
+    string name, path;
+    vector<Frame> currentStackWalk, bestStackWalk;
+    vector<string> trace, outTrace;
+    StatBitVectorEdge_t *edge;
+    vector<Dyninst::THR_ID> threads;
+    ProcDebug *pDebug;
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d of %d\n", rank, proctabSize_);
 
     /* Set edge label */
-    gl_err = graphlib_setEdgeByTask(&edgeattr.edgelist, rank);
-    if (GRL_IS_FATALERROR(gl_err))
+    edge = initializeBitVectorEdge(proctabSize_);
+    if (edge == NULL)
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to set edge by rank\n");
-        return STAT_GRAPHLIB_ERROR;
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+        return STAT_ALLOCATE_ERROR;
     }
+    edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
 
     /* If we're not attached return a trace denoting the task has exited */
     if (proc == NULL)
         threads.push_back(NULL_THR_ID);
     else
     {
-        processState = dynamic_cast<ProcDebug *>(proc->getProcessState());
-        if (processState == NULL)
+        pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
+        if (pDebug == NULL)
         {
             printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Walker contains no Process State object\n");
+            statFreeEdge(edge);
             return STAT_STACKWALKER_ERROR;
         }
         else
         {
-            if (processState->isTerminated() || withThreads == 0)
+            if (pDebug->isTerminated() || !(sampleType_ & STAT_SAMPLE_THREADS))
                 threads.push_back(NULL_THR_ID);
             else
             {
-                ret = proc->getAvailableThreads(threads);
-                if (ret != true)
+                boolRet = proc->getAvailableThreads(threads);
+                if (boolRet != true)
                 {
-                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Get threads failed... using null thread id instead\n");
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Get threads failed... using null thread id instead to just check main thread\n");
                     threads.push_back(NULL_THR_ID);
                 }
             }
@@ -1423,85 +1685,50 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
     /* Loop over the threads and get the traces */
     for (j = 0; j < threads.size(); j++)
     {
-        /* Initialize loop iteration specific variables */
         trace.clear();
         prevId = 0;
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from thread %d of %d\n", j, threads.size());
-
-        /* Create current working graph */
-        gl_err = graphlib_newGraph(&currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        /* Create graph root */
         path = "";
-#ifdef GRL_DYNAMIC_NODE_NAME
-        nodeattr.name = strdup("/");
-#else
-        snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "/");
-#endif
-        gl_err = graphlib_addNode(currentGraph, 0, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-        free(nodeattr.name);
-#endif
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
+        partialTraceScore = 0;
 
         if (proc == NULL)
-        {
-            /* We're not attached so return a trace denoting the task has exited */
-            trace.push_back("[task_exited]");
-        }
+            trace.push_back("[task_exited]"); /* We're not attached so return a trace denoting the task has exited */
         else
         {
-            /* Get the stack trace */
-            partialVal = 0;
             for (i = 0; i <= nRetries; i++)
             {
-                /* Try to walk the stack */
-                swalk.clear();
-                ret = proc->walkStack(swalk, threads[j]);
-                if (swalk.size() < 1)
+                currentStackWalk.clear();
+                boolRet = proc->walkStack(currentStackWalk, threads[j]);
+                if (boolRet == false && currentStackWalk.size() < 1)
                 {
-                    if (ret == false)
-                        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d, thread %d id %d with StackWalker error %s\n", i, nRetries, j, threads[j], getLastErrorMsg());
-                    else
-                        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d, thread %d id %d with no stack frames\n", i, nRetries, j, threads[j]);
+                   printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d, thread %d id %d with StackWalker error %s\n", i, nRetries, j, threads[j], Stackwalker::getLastErrorMsg());
                     if (i < nRetries)
                     {
                         if (isRunning_ == false)
-                            resumeImpl(proc);
+                            resumeProcess(proc);
                         usleep(retryFrequency);
                         if (isRunning_ == false)
-                            pauseImpl(proc);
+                            pauseProcess(proc);
                     }
                     continue;
                 }
 
                 /* Get the name of the top frame */
-                ret = swalk[swalk.size() - 1].getName(name);
-                if (ret == false)
+                boolRet = currentStackWalk[currentStackWalk.size() - 1].getName(name);
+                if (boolRet == false)
                 {
-                    if (partialVal < 1)
+                    if (partialTraceScore < 1)
                     {
-                        /* This is the best trace so far */
-                        partialVal = 1;
-                        partial = swalk;
+                        partialTraceScore = 1;
+                        bestStackWalk = currentStackWalk;
                     }
                     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY: top of stack = unknown frame on attempt %d of %d\n", i, nRetries);
                     if (i < nRetries)
                     {
                         if (isRunning_ == false)
-                            resumeImpl(proc);
+                            resumeProcess(proc);
                         usleep(retryFrequency);
                         if (isRunning_ == false)
-                            pauseImpl(proc);
+                            pauseProcess(proc);
                     }
                     continue;
                 }
@@ -1509,575 +1736,400 @@ StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, Walker *proc,
                 /* Make sure the top frame contains the string "start" (for main thread only) */
                 if (name.find("start", 0) == string::npos && j == 0)
                 {
-                    if (partialVal < 2)
+                    if (partialTraceScore < 2)
                     {
-                        /* This is the best trace so far */
-                        partialVal = 2;
-                        partial = swalk;
+                        partialTraceScore = 2;
+                        bestStackWalk = currentStackWalk;
                     }
                     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY: top of stack '%s' not start on attempt %d of %d\n", name.c_str(), i, nRetries);
                     if (i < nRetries)
                     {
                         if (isRunning_ == false)
-                            resumeImpl(proc);
+                            resumeProcess(proc);
                         usleep(retryFrequency);
                         if (isRunning_ == false)
-                            pauseImpl(proc);
+                            pauseProcess(proc);
                     }
                     continue;
                 }
 
                 /* The trace looks good so we'll use this one */
-                partial = swalk;
+                bestStackWalk = currentStackWalk;
                 break;
             }
 
             /* Check to see if we got a complete stack trace */
-            if (i > nRetries && partialVal < 1)
+            if (i > nRetries && partialTraceScore < 1)
             {
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "StackWalker reported an error in walking the stack: %s\n", getLastErrorMsg());
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "StackWalker reported an error in walking the stack: %s\n", Stackwalker::getLastErrorMsg());
                 trace.push_back("StackWalker_Error");
             }
             else
             {
                 /* Get the name of each frame */
-                for (i = partial.size() - 1; i >= 0; i = i - 1)
+                isFirstPythonFrame = true;
+                isPyTrace_ = false;
+                for (i = bestStackWalk.size() - 1; i >= 0; i = i - 1)
                 {
-                    string name;
-                    ret = partial[i].getName(name);
-
-                    /* Handle an error or empty frame name */
-                    if (ret == false)
-                        name = "[unknown]";
-                    else if (name == "")
-                        name = "[empty]";
-
-                    /* Gather PC value or line number info if requested */
-                    if (sampleType == STAT_FUNCTION_AND_PC)
+                    name = getFrameName(bestStackWalk[i], bestStackWalk.size() - i + 1);
+                    if (sampleType_ & STAT_SAMPLE_PYTHON)
                     {
-                        if (i == 0)
-                            snprintf(buf, BUFSIZE, "@0x%lx", partial[i].getRA());
-                        else
-                            snprintf(buf, BUFSIZE, "@0x%lx", partial[i].getRA()-1);
-                        name += buf;
-                    }
-                    else if (sampleType == STAT_FUNCTION_AND_LINE)
-                    {
-                        if (i == 0)
-                            addr = partial[i].getRA();
-                        else
-                            addr = partial[i].getRA() - 1;
-                        statError = getSourceLine(proc, addr, fileName, &lineNum);
-                        if (statError != STAT_OK)
+                        if (isPyTrace_ == true && isFirstPythonFrame == true)
                         {
-                            printMsg(statError, __FILE__, __LINE__, "Failed to get source line information for %s\n", name.c_str());
+                            /* This is our new root, drop preceding frames */
+                            trace.clear();
+                            isFirstPythonFrame = false;
+                        }
+
+                        if (name.find("PyCFunction_Call") != string::npos)
+                        {
+                            /* This indicates the end of the Python interpreter */
                             continue;
                         }
-                        name += "@";
-                        name += fileName;
-                        if (lineNum != 0)
-                        {
-                            snprintf(buf, BUFSIZE, ":%d", lineNum);
-                            name += buf;
-                        }
-                        if (extractVariables != NULL)
-                        {
-                            for (k = 0; k < nVariables; k++)
-                            {
-                                if (strcmp(fileName, extractVariables[k].fileName) == 0 && lineNum == extractVariables[k].lineNum && partial.size() - i + 1 == extractVariables[k].depth)
-                                {
-                                    statError = getVariable(partial, i, extractVariables[k].variableName, buf);
-                                    if (statError != STAT_OK)
-                                    {
-                                        printMsg(statError, __FILE__, __LINE__, "Failed to get variable information for $%s in %s\n", extractVariables[k].variableName, name.c_str());
-                                        continue;
-                                    }
-                                    name += buf;
-                                }
-                            }
-                        }
+                        if (name.find("call_function") != string::npos || name.find("fast_function") != string::npos)
+                            continue;
                     }
                     trace.push_back(name);
                 }
             }
-        } /* else proc == NULL */
+        } /* else branch of if (proc == NULL) */
 
-        /* Get the name of the frames and add it to the graph */
         for (i = 0; i < trace.size(); i++)
         {
             /* Add \ character before '<' and '>' characters for dot format */
-            tester = trace[i];
-            pos = -2;
+            delimPos = -2;
             while (1)
             {
-                pos = trace[i].find('<', pos + 2);
-                if (pos == string::npos)
+                delimPos = trace[i].find('<', delimPos + 2);
+                if (delimPos == string::npos)
                     break;
-                trace[i].insert(pos, "\\");    
+                trace[i].insert(delimPos, "\\");
             }
-            pos = -2;
+            delimPos = -2;
             while (1)
             {
-                pos = trace[i].find('>', pos + 2);
-                if (pos == string::npos)
+                delimPos = trace[i].find('>', delimPos + 2);
+                if (delimPos == string::npos)
                     break;
-                trace[i].insert(pos, "\\");    
+                trace[i].insert(delimPos, "\\");
             }
+            outTrace.push_back(trace[i]);
+        }
 
-            /* Add the node and edge to the graph */
-            path += trace[i].c_str();
-            nodeId = string_hash(path.c_str());
-#ifdef GRL_DYNAMIC_NODE_NAME
-            nodeattr.name = strdup(trace[i].c_str());
-#else
-            if (trace[i].length() >= GRL_MAX_NAME_LENGTH)
-            {
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "...%s", trace[i].substr(trace[i].length() - GRL_MAX_NAME_LENGTH + 4, GRL_MAX_NAME_LENGTH - 2).c_str());
-            }
-            else
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "%s", trace[i].c_str());
-#endif
-            gl_err = graphlib_addNode(currentGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-            free(nodeattr.name);
-#endif
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-            gl_err = graphlib_addDirectedEdge(currentGraph, prevId, nodeId, &edgeattr);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
+        for (i = 0; i < outTrace.size(); i++)
+        {
+            path += outTrace[i].c_str();
+            nodeId = statStringHash(path.c_str());
+            nodes2d_[nodeId] = outTrace[i];
+            update2dEdge(prevId, nodeId, edge);
             prevId = nodeId;
         }
+        outTrace.clear();
+    } /* for j thread */
 
-        /* Merge cur graph into retGraph */
-        gl_err = graphlib_mergeGraphsRanked(retGraph, currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        /* Free up current graph */
-        gl_err = graphlib_delGraph(currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-    } /* for thread iter */
-
-    gl_err = graphlib_delEdgeAttr(edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
+    statFreeEdge(edge);
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Trace successfully gathered from task rank %d\n", rank);
     return STAT_OK;
 }
 
-#else
-StatError_t STAT_BackEnd::getStackTrace(graphlib_graph_p retGraph, BPatch_process *proc, int rank, unsigned int nRetries, unsigned int retryFrequency, unsigned int sampleType, unsigned int withThreads, statVariable_t *extractVariables, int nVariables)
+#if defined(GROUP_OPS)
+StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, FrameNode *stackwalkerNode, string nodeIdNames, set<pair<Walker *, THR_ID> > *errorThreads, set<int> &outputRanks, bool &abort, int branches)
 {
-    int nodeId, prevId, i, partialVal, lineNum, pos;
-    bool ret = false;
-    unsigned int j, k;
-    char buf[BUFSIZE], fileName[BUFSIZE], functionName[BUFSIZE], *returnAddress;
-    string path, name, tester;
-    graphlib_error_t gl_err;
-#ifdef GRL_DYNAMIC_NODE_NAME
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-#else
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,"",-1};
-#endif
-    graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
-    graphlib_graph_p currentGraph = NULL;
-    BPatch_function *func;
-    BPatch_Vector <BPatch_frame> swalk, partial;
-    BPatch_Vector <BPatch_thread *> threads, *allThreads;
-    vector<string> trace;
+    int rank, newChildId, maxAncestorBranches;
+    bool myAbort = false, allMyChildrenAbort = true;
+    set<int> myRanks, kidsRanks;
+    set<int>::iterator myRanksIter;
+    string name, newNodeIdNames;
+    frame_set_t &children = stackwalkerNode->getChildren();
+    frame_set_t::iterator childrenIter;
+    Frame *frame;
+    FrameNode *child;
+    set<FrameNode *> kids;
+    set<FrameNode *>::iterator kidsIter;
+    map<string, set<FrameNode*> > childrenNames;
+    map<string, set<FrameNode*> >::iterator childrenNamesIter;
+    THR_ID threadId;
+    Walker *walker;
+    map<Walker *, int>::iterator procsToRanksIter;
+    graphlib_error_t graphlibError;
+    StatBitVectorEdge_t *edge;
     StatError_t statError;
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d\n", rank);
+    /* Add the Frame associated with stackwalkerNode to the graphlibGraph, below the given graphlibNode */
+    /* Note: Lots of complexity here to deal with adding edge labels (all the std::set work). We could get rid of this if graphlib had graph traversal functions. */
 
-    /* Set the edge label */
-    gl_err = graphlib_setEdgeByTask(&edgeattr.edgelist, rank);
-    if (GRL_IS_FATALERROR(gl_err))
+    /* Traversal 1: Get names for each child in the FrameNode graph.  Merge like-names together into the childrenNames map. */
+    maxAncestorBranches = branches;
+    if (children.size() > maxAncestorBranches)
+        maxAncestorBranches = children.size();
+    for (childrenIter = children.begin(); childrenIter != children.end(); childrenIter++)
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to set edge by rank\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
-    /* If we're not attached return a trace denoting the task has exited */
-    if (proc == NULL)
-        threads.push_back(NULL);
-    else
-    {
-        /* If the task has terminated return a trace denoting the task has exited */
-        if (proc->isTerminated())
-            threads.push_back(NULL);
-        else
+        child = *childrenIter;
+        frame = child->getFrame();
+        if (frame == NULL)
         {
-            /* Get DynInst BPatch threads */
-            allThreads = bpatch_.getThreads();
-            for (j = 0; j < allThreads->size(); j++)
+            /* We hit a thread, that means the end of the callstack. Add the associated rank to our edge label set. */
+            threadId = child->getThread();
+            if (threadId == NULL_LWP)
             {
-//                if (withThreads == 0)
-//                {
-                    if ((*allThreads)[j]->getProcess() == proc)
-                    {
-                        threads.push_back((*allThreads)[j]);
-                        break;
-                    }
-//                }
-//                else
-//                    threads.push_back((*allThreads)[j]);
-            }
-        }
-    }
-
-    /* Loop over the threads and get the traces */
-    for (j = 0; j < threads.size(); j++)
-    {
-        /* Initialize loop iteration specific variables */
-        trace.clear();
-        prevId = 0;
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from thread %d of %d\n", j, threads.size());
-
-        /* Create current working graph */
-        gl_err = graphlib_newGraph(&currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating new graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        /* Create graph root */
-        path = "";
-#ifdef GRL_DYNAMIC_NODE_NAME
-        nodeattr.name = strdup("/");
-#else
-        snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "/");
-#endif
-        gl_err = graphlib_addNode(currentGraph, 0, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-        free(nodeattr.name);
-#endif
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding sentinel node to graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        if (threads[j] == NULL)
-            trace.push_back("[task_exited]");
-        else
-        {
-            /* Get the stack trace */
-            partialVal = 0;
-            for (i = 0; i <= nRetries; i++)
-            {
-                swalk.clear();
-                ret = threads[j]->getCallStack(swalk);
-                if (ret == false && swalk.size() < 1)
-                {
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d\n", i, nRetries, j);
-                    if (i < nRetries)
-                    {
-                        if (isRunning_ == false)
-                            resumeImpl(proc);
-                        usleep(retryFrequency);
-                        if (isRunning_ == false)
-                            pauseImpl(proc);
-                    }
-                    continue;
-                }
-
-                /* Get the name of the top frame */
-                func = swalk[swalk.size() - 1].findFunction();
-                if (func == NULL)
-                {
-                    if (partialVal < 1)
-                    {
-                        /* This is the best trace so far */
-                        partialVal = 1;
-                        partial = swalk;
-                    }
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY: top of stack = unknown frame on attempt %d of %d\n", i, nRetries);
-                    if (i < nRetries)
-                    {
-                        if (isRunning_ == false)
-                            resumeImpl(proc);
-                        usleep(retryFrequency);
-                        if (isRunning_ == false)
-                            pauseImpl(proc);
-                    }
-                    continue;
-                }
-                func->getName(functionName, BUFSIZE);
-                name = functionName;
-
-                /* Make sure the top frame contains the string "start" (for main thread only) */
-                if (name.find("start", 0) == string::npos && j == 0)
-                {
-                    if (partialVal < 2)
-                    {
-                        /* This is the best trace so far */
-                        partialVal = 2;
-                        partial = swalk;
-                    }
-                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY: top of stack '%s' not start on attempt %d of %d\n", name.c_str(), i, nRetries);
-                    if (i < nRetries)
-                    {
-                        if (isRunning_ == false)
-                            resumeImpl(proc);
-                        usleep(retryFrequency);
-                        if (isRunning_ == false)
-                            pauseImpl(proc);
-                    }
-                    continue;
-                }
-
-                /* The trace looks good so we'll use this one */
-                partial = swalk;
-                break;
-            }
-
-            /* Check to see if we got a complete stack trace */
-            if (i > nRetries && partialVal < 1)
-            {
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "DynInst reported an error in walking the stack\n");
-                trace.push_back("StackWalker_Error");
-            }
-            else
-            {
-                for (i = partial.size() - 1; i >= 0; i--)
-                {
-                    /* Get the frame */
-                    func = partial[i].findFunction();
-        
-                    /* Get the frame name */
-                    if (func == NULL)
-                        name = "[unknown]";
-                    else
-                    {
-                        func->getName(functionName, BUFSIZE);
-                        name = functionName;
-                    }
-                    if (name == "")
-                        name = "[empty]";
-        
-                    if (sampleType == STAT_FUNCTION_AND_PC)
-                    {
-                        returnAddress = (char *)partial[i].getPC();
-                        if (i == 0)
-                            snprintf(buf, BUFSIZE, "@%p", returnAddress);
-                        else
-                        {
-                            returnAddress = returnAddress - 1;
-                            snprintf(buf, BUFSIZE, "@%p", returnAddress);
-                        }
-                        name += buf;
-                    }
-                    else if (sampleType == STAT_FUNCTION_AND_LINE)
-                    {
-                        returnAddress = (char *)partial[i].getPC();
-                        if (i != 0)
-                            returnAddress = returnAddress - 1;
-                        statError = getSourceLine(func, (unsigned long)returnAddress, fileName, &lineNum);
-                        if (statError != STAT_OK)
-                        {
-                            printMsg(statError, __FILE__, __LINE__, "Failed to get source line information for %s\n", name.c_str());
-                            continue;
-                        }
-                        name += "@";
-                        name += fileName;
-                        if (lineNum != 0)
-                        {
-                            snprintf(buf, BUFSIZE, ":%d", lineNum);
-                            name += buf;
-                        }        
-                        if (extractVariables != NULL)
-                        {
-                            for (k = 0; k < nVariables; k++)
-                            {
-                                if (strcmp(fileName, extractVariables[k].fileName) == 0 && lineNum == extractVariables[k].lineNum && partial.size() - i + 1 == extractVariables[k].depth)
-                                {
-                                    statError = getVariable(proc, functionName, extractVariables[k].variableName, buf);
-                                    if (statError != STAT_OK)
-                                    {
-                                        printMsg(statError, __FILE__, __LINE__, "Failed to get variable information for $%s in %s\n", extractVariables[k].variableName, name.c_str());
-                                        continue;
-                                    }
-                                    name += buf;
-                                }
-                            }
-                        }
-                    }
-                    trace.push_back(name);
-                } // for i = partial.size()
-            } // else (got a usable stack)
-        } //else threads[j] != NULL
-
-        /* Get the name of the frames and add it to the graph */
-        for (i = 0; i < trace.size(); i++)
-        {
-            /* Add \ character before '<' and '>' characters for dot format */
-            tester = trace[i];
-            pos = -2;
-            while (1)
-            {
-                pos = trace[i].find('<', pos + 2);
-                if (pos == string::npos)
-                    break;
-                trace[i].insert(pos, "\\");    
-            }
-            pos = -2;
-            while (1)
-            {
-                pos = trace[i].find('>', pos + 2);
-                if (pos == string::npos)
-                    break;
-                trace[i].insert(pos, "\\");    
-            }
-
-            /* Add the node and edge to the graph */
-            path += trace[i].c_str();
-            nodeId = string_hash(path.c_str());
-#ifdef GRL_DYNAMIC_NODE_NAME
-            nodeattr.name = strdup(trace[i].c_str());
-#else
-            if (trace[i].length() >= GRL_MAX_NAME_LENGTH)
-            {
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "...%s", trace[i].substr(trace[i].length() - GRL_MAX_NAME_LENGTH + 4, GRL_MAX_NAME_LENGTH - 2).c_str());
-            }
-            else
-                snprintf(nodeattr.name, GRL_MAX_NAME_LENGTH, "%s", trace[i].c_str());
-#endif
-            gl_err = graphlib_addNode(currentGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-            free(nodeattr.name);
-#endif
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-            gl_err = graphlib_addDirectedEdge(currentGraph, prevId, nodeId, &edgeattr);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-            prevId = nodeId;
-        }
-
-        /* Merge cur graph into retGraph */
-        gl_err = graphlib_mergeGraphsRanked(retGraph, currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-        /* Free up current graph */
-        gl_err = graphlib_delGraph(currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
-
-    } /* thread iteration */
-    gl_err = graphlib_delEdgeAttr(edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Trace successfully gathered from task rank %d\n", rank);
-    return STAT_OK;
-}
-#endif
-
-StatError_t STAT_BackEnd::Detach(unsigned int *stopArray, int stopArrayLen)
-{
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes\n");
-#ifdef STACKWALKER
-    int i;
-    bool leaveStopped;
-    map<int, Walker *>::iterator iter;
-    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-    {
-        leaveStopped = false;
-        if (iter->second != NULL)
-        {
-            ProcDebug *pdebug = dynamic_cast<ProcDebug *>(iter->second->getProcessState());
-            if (pdebug == NULL)
-            {
-                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to dynamic_cast ProcDebug pointer\n");
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Thread ID is NULL\n");
                 return STAT_STACKWALKER_ERROR;
             }
-#ifndef BGL            
-            for (i = 0; i < stopArrayLen; i++)
+            walker = child->getWalker();
+            if (walker == NULL)
             {
-                if (stopArray[i] == iter->first)
-                {
-                    leaveStopped = true;
-                    break;
-                }
-            }            
-#endif            
-            pdebug->detach(leaveStopped);
-            delete iter->second;
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Walker is NULL\n");
+                return STAT_STACKWALKER_ERROR;
+            }
+
+            if (errorThreads && child->hadError())
+            {
+                /* This stackwalk ended in an error.  Don't add it to the tree, instead return it via errorThreads.  This may lead to edges with no associated ranks, those are cleaned below. */
+                errorThreads->insert(make_pair(walker, threadId));
+                continue;
+            }
+
+            procsToRanksIter = procsToRanks_.find(walker);
+            if (procsToRanksIter == procsToRanks_.end())
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed fo find walker in procsToRanks_ map\n");
+                return STAT_STACKWALKER_ERROR;
+            }
+            rank = procsToRanksIter->second;
+            outputRanks.insert(rank);
+            allMyChildrenAbort = false;
+            continue;
         }
-        processMap_.erase(iter);
-        processMapNonNull_ = processMapNonNull_ - 1;
+        name = getFrameName(*frame);
+        childrenNames[name].insert(child);
     }
-#else
-    map<int,BPatch_process *>::iterator iter;
-    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
+
+    /* Traversal 2: For each unique name, create a new graphlib node and add it */
+    for (childrenNamesIter = childrenNames.begin(); childrenNamesIter != childrenNames.end(); childrenNamesIter++)
     {
-        if ((*iter).second != NULL)
+        myAbort = false;
+        name = childrenNamesIter->first;
+        kids = childrenNamesIter->second;
+
+        if (isPyTrace_ == true && name.find("<module>") != string::npos)
         {
-            iter->second->stopExecution();
-            if (iter->second->detach(!isRunning_) == false)
-                printMsg(STAT_DETACH_ERROR, __FILE__, __LINE__, "DETACH %d FAILED\n", iter->first);
+            /* Delete Python interpreter frames */
+            if (branches == 1)
+                clear2dNodesAndEdges(); /* There is only a single path from __start to here, so we can delete the whole graph */
+            else
+            {
+                /* There are other paths, so just delete the parent node */
+                if (nodes2d_.find(graphlibNode) != nodes2d_.end())
+                    nodes2d_.erase(graphlibNode);
+            }
+            myAbort = true;
+            nodeIdNames = "";
+            graphlibNode = 0;
         }
-        processMap_.erase(iter);
-        processMapNonNull_ = processMapNonNull_ - 1;
+
+        if (isPyTrace_ == true && (name.find("call_function") != string::npos || name.find("fast_function") != string::npos) || name.find("PyCFunction_Call") != string::npos)
+        {
+            /* We're in a python interpreter frame, don't add this node and use the previous parent node for the next edge */
+            newNodeIdNames = nodeIdNames;
+            newChildId = graphlibNode;
+        }
+        else
+        {
+            newNodeIdNames = nodeIdNames + name;
+            newChildId = statStringHash(newNodeIdNames.c_str());
+            nodes2d_[newChildId] = name;
+        }
+
+        /* Traversal 2.1: For each new node, recursively add its children to the graph */
+        myRanks.clear();
+        for (kidsIter = kids.begin(); kidsIter != kids.end(); kidsIter++)
+        {
+            kidsRanks.clear();
+            child = *kidsIter;
+            statError = addFrameToGraph(stackwalkerGraph, newChildId, child, newNodeIdNames, errorThreads, kidsRanks, abort, maxAncestorBranches);
+            if (statError != STAT_OK)
+            {
+                printMsg(statError, __FILE__, __LINE__, "Error adding frame to graph\n");
+                return statError;
+            }
+            if (abort == false)
+                allMyChildrenAbort = false;
+            myRanks.insert(kidsRanks.begin(), kidsRanks.end());
+        }
+
+        if (myRanks.empty())
+        {
+            if (nodes2d_.find(newChildId) != nodes2d_.end())
+                nodes2d_.erase(newChildId);
+            continue;
+        }
+
+        /* Create the edge between this new node and our parent */
+        if (graphlibNode != newChildId && abort == false)
+        {
+            edge = initializeBitVectorEdge(proctabSize_);
+            if (edge == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+                return STAT_ALLOCATE_ERROR;
+            }
+            for (myRanksIter = myRanks.begin(); myRanksIter != myRanks.end(); myRanksIter++)
+            {
+                rank = *myRanksIter;
+                edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
+            }
+            update2dEdge(graphlibNode, newChildId, edge);
+            statFreeEdge(edge);
+        } /* if (graphlibNode != newChildId) */
+
+        if (abort == false)
+            outputRanks.insert(myRanks.begin(), myRanks.end());
+    } /* for (childrenNamesIter = childrenNames.begin()...) */
+
+    abort = false;
+    if (myAbort == true || allMyChildrenAbort == true)
+        abort = true; /* this is what I return */
+    if (allMyChildrenAbort == true && graphlibNode != 0)
+    {
+        if (nodes2d_.find(graphlibNode) != nodes2d_.end())
+            nodes2d_.erase(graphlibNode);
     }
-#endif
 
     return STAT_OK;
 }
 
-StatError_t STAT_BackEnd::terminateApplication()
+
+bool statFrameCmp(const Frame &frame1, const Frame &frame2)
+{
+    int depth = -1;
+    string name1, name2;
+
+#ifdef PROTOTYPE_TO
+    /* TODO: compute the depth of each frame for variable extraction */
+#endif
+    name1 = gBePtr->getFrameName(frame1, depth);
+    name2 = gBePtr->getFrameName(frame2, depth);
+
+    if (name1.compare(name2) < 0)
+        return true;
+    return false;
+}
+
+
+StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned int retryFrequency)
+{
+    int dummyBranches = 0;
+    unsigned int i;
+    bool boolRet, dummyAbort = false;
+    string dummyString;
+    set<int> ranks;
+    StatError_t statError;
+
+#ifdef SW_VERSION_8_0_1
+    if (procSet_->getLWPTracking() && sampleType_ & STAT_SAMPLE_THREADS)
+        procSet_->getLWPTracking()->refreshLWPs();
+#endif
+
+    gBePtr = this;
+
+#if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
+    CallTree tree(statFrameCmp);
+#else
+    CallTree tree(frame_lib_offset_cmp);
+#endif
+#ifdef SW_VERSION_8_0_1
+    boolRet = walkerSet_->walkStacks(tree, !(sampleType_ & STAT_SAMPLE_THREADS));
+#else
+    boolRet = walkerSet_->walkStacks(tree);
+#endif
+    if (boolRet == false)
+    {
+#warning TODO: Start handling partial call stacks in group walks
+    }
+
+    isPyTrace_ = false;
+    statError = addFrameToGraph(&tree, 0, tree.getHead(), dummyString, NULL, ranks, dummyAbort, dummyBranches);
+    if (statError != STAT_OK)
+    {
+        printMsg(statError, __FILE__, __LINE__, "Failed to getStackTraceFromAll\n");
+        return statError;
+    }
+
+    return STAT_OK;
+}
+#endif /* if defined(GROUP_OPS) */
+
+
+MPIR_PROCDESC_EXT *STAT_BackEnd::getProctab()
+{
+    return proctab_;
+}
+
+int STAT_BackEnd::getProctabSize()
+{
+    return proctabSize_;
+}
+
+int statRelativeRankToAbsoluteRank(int rank)
+{
+    int absoluteRank = 0;
+    if (gBePtr->getProctab() != NULL &&  rank >= 0 && rank <= gBePtr->getProctabSize())
+        absoluteRank = gBePtr->getProctab()[rank].mpirank;
+    return absoluteRank;
+}
+
+
+StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
+{
+    int i;
+    bool leaveStopped;
+    map<int, Walker *>::iterator processMapIter;
+    ProcDebug *pDebug;
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
+
+#if defined(GROUP_OPS)
+    if (doGroupOps_)
+        procSet_->detach();
+    else
+#endif
+    {
+        for (processMapIter = processMap_.begin(); processMapIter != processMap_.end(); processMapIter++)
+        {
+            leaveStopped = false;
+            if (processMapIter->second != NULL)
+            {
+                pDebug = dynamic_cast<ProcDebug *>(processMapIter->second->getProcessState());
+                if (pDebug == NULL)
+                {
+                    printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to dynamic_cast ProcDebug pointer\n");
+                    return STAT_STACKWALKER_ERROR;
+                }
+#ifndef BGL
+                for (i = 0; i < stopArrayLen; i++)
+                {
+                    if (stopArray[i] == processMapIter->first)
+                    {
+                        leaveStopped = true;
+                        break;
+                    }
+                }
+#endif
+                pDebug->detach(leaveStopped);
+                delete processMapIter->second;
+            }
+        }
+        processMap_.clear();
+        processMapNonNull_ = 0;
+    }
+    return STAT_OK;
+}
+
+
+StatError_t STAT_BackEnd::terminate()
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Terminating application processes\n");
-#ifdef STACKWALKER
-#else
-    map<int,BPatch_process *>::iterator iter;
-    for (iter = processMap_.begin(); iter != processMap_.end(); iter++)
-    {
-        if ((*iter).second != NULL)
-        {
-            if (iter->second->terminateExecution() == false)
-                printMsg(STAT_TERMINATE_ERROR, __FILE__, __LINE__, "TERMINATE %d FAILED\n", iter->first);
-        }
-        processMap_.erase(iter);
-        processMapNonNull_ = processMapNonNull_ - 1;
-    }
-#endif
+#warning TODO: Fill in terminate
 
     return STAT_OK;
 }
@@ -2089,7 +2141,6 @@ StatError_t STAT_BackEnd::sendAck(Stream *stream, int tag, int val)
        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send reply failed\n");
        return STAT_MRNET_ERROR;
    }
-
    if (stream->flush() == -1)
    {
        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::flush() failure\n");
@@ -2099,16 +2150,17 @@ StatError_t STAT_BackEnd::sendAck(Stream *stream, int tag, int val)
    return STAT_OK;
 }
 
-int Unpack_STAT_BE_info(void *buf, int bufLen, void *data)
+int unpackStatBeInfo(void *buf, int bufLen, void *data)
 {
-    statLeafInfoArray_t *leafInfoArray = (statLeafInfoArray_t *)data;
-    int i, j, nChildren, nParents, k, currentParentPort, currentParentRank;
-    char *ptr = (char *)buf, currentParent[STAT_MAX_BUF_LEN];
+    int parent, daemon, nChildren, nParents, child, currentParentPort, currentParentRank;
+    char currentParent[STAT_MAX_BUF_LEN];
+    char *ptr = (char *)buf;
+    StatLeafInfoArray_t *leafInfoArray = (StatLeafInfoArray_t *)data;
 
     /* Get the number of daemons and set up the leaf info array */
     memcpy((void *)&(leafInfoArray->size), ptr, sizeof(int));
     ptr += sizeof(int);
-    leafInfoArray->leaves = (statLeafInfo_t *)malloc(leafInfoArray->size * sizeof(statLeafInfo_t));
+    leafInfoArray->leaves = (StatLeafInfo_t *)malloc(leafInfoArray->size * sizeof(StatLeafInfo_t));
     if (leafInfoArray->leaves == NULL)
     {
         fprintf(stderr, "Master daemon failed to allocate leaf info array\n");
@@ -2118,8 +2170,8 @@ int Unpack_STAT_BE_info(void *buf, int bufLen, void *data)
     /* Get MRNet parent node info for each daemon */
     memcpy((void *)&nParents, ptr, sizeof(int));
     ptr += sizeof(int);
-    j = -1;
-    for (i = 0; i < nParents; i++)
+    daemon = -1;
+    for (parent = 0; parent < nParents; parent++)
     {
         /* Get the parent host name, port, rank and child count */
         strncpy(currentParent, ptr, STAT_MAX_BUF_LEN);
@@ -2132,70 +2184,104 @@ int Unpack_STAT_BE_info(void *buf, int bufLen, void *data)
         ptr += sizeof(int);
 
         /* Iterate over this parent's children */
-        for (k = 0; k < nChildren; k++)
+        for (child = 0; child < nChildren; child++)
         {
-            j++;
-            if (j >= leafInfoArray->size)
+            daemon++;
+            if (daemon >= leafInfoArray->size)
             {
-                fprintf(stderr, "Failed to unpack STAT info from the front end.  Expecting only %d daemons, but received %d\n", leafInfoArray->size, j);
+                fprintf(stderr, "Failed to unpack STAT info from the front end.  Expecting only %d daemons, but received %d\n", leafInfoArray->size, daemon);
                 return -1;
             }
 
             /* Fill in the parent information */
-            strncpy((leafInfoArray->leaves)[j].parentHostName, currentParent, STAT_MAX_BUF_LEN);
-            (leafInfoArray->leaves)[j].parentRank = currentParentRank;
-            (leafInfoArray->leaves)[j].parentPort = currentParentPort;
+            strncpy((leafInfoArray->leaves)[daemon].parentHostName, currentParent, STAT_MAX_BUF_LEN);
+            (leafInfoArray->leaves)[daemon].parentRank = currentParentRank;
+            (leafInfoArray->leaves)[daemon].parentPort = currentParentPort;
 
             /* Get the daemon host name */
-            strncpy((leafInfoArray->leaves)[j].hostName, ptr, STAT_MAX_BUF_LEN);
-            ptr += strlen((leafInfoArray->leaves)[j].hostName) + 1;
+            strncpy((leafInfoArray->leaves)[daemon].hostName, ptr, STAT_MAX_BUF_LEN);
+            ptr += strlen((leafInfoArray->leaves)[daemon].hostName) + 1;
 
             /* Get the daemon rank */
-            memcpy(&((leafInfoArray->leaves)[j].rank), ptr, sizeof(int));
+            memcpy(&((leafInfoArray->leaves)[daemon].rank), ptr, sizeof(int));
             ptr += sizeof(int);
         }
-    } /* for i */
+    } /* for parent */
 
     return 0;
 }
 
-unsigned int string_hash(const char *str)
-{
-    unsigned int hash = 0;
-    int c;
 
-    while (c = *(str++))
-        hash = c + (hash << 6) + (hash << 16) - hash;
-
-    return hash;
-}
-
-StatError_t STAT_BackEnd::startLog(char *logOutDir)
+StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mrnetOutputLevel)
 {
     char fileName[BUFSIZE];
-    snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir, localHostName_);
-    logOutFp_ = fopen(fileName, "w");
-    if (logOutFp_ == NULL)
+    
+    logType_ = logType;
+    snprintf(logOutDir_, BUFSIZE, "%s", logOutDir);
+
+    if (logType_ & STAT_LOG_BE || logType_ & STAT_LOG_SW)
     {
-        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
-        return STAT_FILE_ERROR;
+        snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir, localHostName_);
+        gStatOutFp = fopen(fileName, "w");
+        if (gStatOutFp == NULL)
+        {
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
+            return STAT_FILE_ERROR;
+        }
+#ifdef MRNET40
+        if (logType_ & STAT_LOG_MRN)
+            mrn_printf_init(gStatOutFp);
+#endif
+        set_OutputLevel(mrnetOutputLevel);
     }
+
+    if (logType_ & STAT_LOG_SWERR || logType_ & STAT_LOG_SW)
+    {
+        if (logType_ & STAT_LOG_SW)
+            swDebugFile_ = gStatOutFp;
+        else
+        {
+            if (swDebugString_ != NULL)
+            {
+                free(swDebugString_);
+                swDebugString_ = NULL;
+            }
+            swDebugString_ = (char *)malloc(STAT_SW_DEBUG_BUFFER_LENGTH);
+            if (swDebugString_ == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc returned NULL for swDebugString_\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            swDebugFile_ = fmemopen(swDebugString_, STAT_SW_DEBUG_BUFFER_LENGTH - 1, "w");
+            if (swDebugFile_ == NULL)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "%s: fmemopen failed\n", strerror(errno));
+                return STAT_STACKWALKER_ERROR;
+            }
+        }
+        Dyninst::Stackwalker::setDebug(true);
+        Dyninst::Stackwalker::setDebugChannel(swDebugFile_);
+#ifdef SW_VERSION_8_0_0
+        Dyninst::ProcControlAPI::setDebug(true);
+        Dyninst::ProcControlAPI::setDebugChannel(swDebugFile_);
+#endif
+    }
+
     return STAT_OK;
 }
+
 
 void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int sourceLine, const char *fmt, ...)
 {
     va_list args;
-    char timeString[BUFSIZE];
+    char timeString[BUFSIZE], msg[BUFSIZE];
     const char *timeFormat = "%b %d %T";
     time_t currentTime;
     struct tm *localTime;
 
-    /* If this is a log message and we're not logging, then return */
-    if (statError == STAT_LOG_MESSAGE && logOutFp_ == NULL)
+    if (statError == STAT_LOG_MESSAGE && !(logType_ & STAT_LOG_BE))
         return;
 
-    /* Get the time */
     currentTime = time(NULL);
     localTime = localtime(&currentTime);
     if (localTime == NULL)
@@ -2203,42 +2289,551 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     else
         strftime(timeString, BUFSIZE, timeFormat, localTime);
 
-    if (statError != STAT_LOG_MESSAGE && statError != STAT_WARNING)
+    if (statError != STAT_LOG_MESSAGE)
     {
-        /* Print the error to the screen (or designated error file) */
         fprintf(errOutFp_, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
-        fprintf(errOutFp_, "%s: STAT returned error type ", localHostName_);
-        statPrintErrorType(statError, errOutFp_);
-        fprintf(errOutFp_, ": ");
-        va_start(args, fmt);
-        vfprintf(errOutFp_, fmt, args);
-        va_end(args);
-    }
-    else if (statError == STAT_WARNING)
-    {
-        /* Print the warning message to error output */
-        fprintf(errOutFp_, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
-        fprintf(errOutFp_, "%s: STAT_WARNING: ", localHostName_);
+        if (statError == STAT_WARNING)
+            fprintf(errOutFp_, "%s: STAT_WARNING: ", localHostName_);
+        else
+        {
+            fprintf(errOutFp_, "%s: STAT returned error type ", localHostName_);
+            statPrintErrorType(statError, errOutFp_);
+            fprintf(errOutFp_, ": ");
+        }
         va_start(args, fmt);
         vfprintf(errOutFp_, fmt, args);
         va_end(args);
     }
 
     /* Print the message to the log */
-    if (logOutFp_ != NULL)
+    if (gStatOutFp != NULL && logType_ & STAT_LOG_BE)
     {
-        fprintf(logOutFp_, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
-        if (statError != STAT_LOG_MESSAGE && statError != STAT_STDOUT && statError != STAT_VERBOSITY)
+        if (logType_ & STAT_LOG_MRN)
         {
-            fprintf(logOutFp_, "%s: STAT returned error type ", localHostName_);
-            statPrintErrorType(statError, logOutFp_);
-            fprintf(logOutFp_, ": ");
+            va_start(args, fmt);
+            vsnprintf(msg, BUFSIZE, fmt, args);
+            va_end(args);
+            mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
         }
-        va_start(args, fmt);
-        vfprintf(logOutFp_, fmt, args);
-        va_end(args);
-        fflush(logOutFp_);
+        else
+        {
+            fprintf(gStatOutFp, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
+            if (statError != STAT_LOG_MESSAGE && statError != STAT_STDOUT && statError != STAT_VERBOSITY)
+            {
+                fprintf(gStatOutFp, "%s: STAT returned error type ", localHostName_);
+                statPrintErrorType(statError, gStatOutFp);
+                fprintf(gStatOutFp, ": ");
+            }
+            va_start(args, fmt);
+            vfprintf(gStatOutFp, fmt, args);
+            va_end(args);
+            fflush(gStatOutFp);
+        }
     }
+}
+
+        
+void STAT_BackEnd::swDebugBufferToFile()
+{
+    char fileName[BUFSIZE];
+
+    if (logType_ & STAT_LOG_SWERR)
+    {
+        if (gStatOutFp != NULL && swDebugFile_ != NULL)
+        {
+            fclose(swDebugFile_);
+            if (gStatOutFp == NULL)
+            {
+                snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir_, localHostName_);
+                gStatOutFp = fopen(fileName, "w");
+                if (gStatOutFp == NULL)
+                {
+                    printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
+                    return;
+                }
+#ifdef MRNET40
+                if (logType_ & STAT_LOG_MRN)
+                    mrn_printf_init(gStatOutFp);
+#endif
+            }
+            fwrite(swDebugString_, 1, strlen(swDebugString_), gStatOutFp);
+            
+            swDebugFile_ = fmemopen(swDebugString_, STAT_SW_DEBUG_BUFFER_LENGTH - 1, "w");
+            if (swDebugFile_ == NULL)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "%s: fmemopen failed\n", strerror(errno));
+                return;
+            }
+            Dyninst::Stackwalker::setDebugChannel(swDebugFile_);
+#ifdef SW_VERSION_8_0_0
+            Dyninst::ProcControlAPI::setDebugChannel(swDebugFile_);
+#endif
+        }
+    }
+}
+
+
+vector<Field *> *STAT_BackEnd::getComponents(Type *type)
+{
+    typeTypedef *tt;
+    typeStruct *ts;
+    vector<Field *> *components;
+
+    tt = type->getTypedefType();
+    if (tt == NULL)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getTypeDefType returned NULL\n");
+        return NULL;
+    }
+
+    type = tt->getConstituentType();
+    if (type == NULL)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getConstituentType returned NULL\n");
+        return NULL;
+    }
+
+    ts = type->getStructType();
+    if (ts == NULL)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getStructType returned NULL\n");
+        return NULL;
+    }
+
+    components = ts->getComponents();
+    if (components == NULL)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getComponents returned NULL\n");
+        return NULL;
+    }
+    return components;
+}
+
+
+StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, char **pyFun, char **pySource, int *pyLineNo)
+{
+#ifdef PROTOTYPE_PY
+    int i, found = 0, fLastIVal = -1, address, lineNo, firstLineNo;
+    long length, pAddr;
+    unsigned long long baseAddr, pyCodeObjectBaseAddr, pyUnicodeObjectAddr;
+    bool boolRet;
+    char buffer[BUFSIZE], varName[BUFSIZE], exePath[BUFSIZE];
+    static map<string, StatPythonOffsets_t *> pythonOffsetsMap;
+    StatPythonOffsets_t *pythonOffsets;
+    Symtab *symtab = NULL;
+    Type *type;
+    vector<Field *> *components;
+    Field *field;
+#ifdef SW_VERSION_8_0_0
+    LibraryPool::iterator libsIter;
+#endif
+    ProcDebug *pDebug = NULL;
+    StatError_t statError;
+
+    pDebug = static_cast<ProcDebug *>(proc->getProcessState());
+    if (pDebug == NULL)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "dynamic_cast returned NULL\n");
+        return STAT_STACKWALKER_ERROR;
+    }
+    snprintf(exePath, BUFSIZE, "%s", pDebug->getExecutablePath().c_str());
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attempting to get Python frame information for %s\n", exePath);
+
+    /* Check for cached offsets and create a new cache if not found */
+    if (pythonOffsetsMap.find(exePath) == pythonOffsetsMap.end())
+    {
+        pythonOffsets = (StatPythonOffsets_t *)malloc(sizeof(StatPythonOffsets_t));
+        if (pythonOffsets == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate memory for pythonOffsets\n");
+            return STAT_ALLOCATE_ERROR;
+        }
+        *pythonOffsets = (StatPythonOffsets_t){-1, -1, -1, -1, -1, -1, -1, -1, -1, false, false};
+        pythonOffsetsMap[exePath] = pythonOffsets;
+    }
+    else
+        pythonOffsets = pythonOffsetsMap[exePath];
+
+    /* Find all necessary variable field offsets */
+    if (pythonOffsets->coNameOffset == -1 || pythonOffsets->coFileNameOffset == -1 || pythonOffsets->obSizeOffset == -1 || pythonOffsets->obSvalOffset == -1 || pythonOffsets->coFirstLineNoOffset == -1 || pythonOffsets->coLnotabOffset == -1 || pythonOffsets->fLastIOffset == -1)
+    {
+        boolRet = Symtab::openFile(symtab, pDebug->getExecutablePath().c_str());
+        if (boolRet == false)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "openFile returned false for %s\n", pDebug->getExecutablePath().c_str());
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        /* PyFrameObject used for line number calculation */
+        boolRet = symtab->findType(type, "PyFrameObject");
+        if (boolRet == false)
+        {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "PyFrameObject not found in %s\n", pDebug->getExecutablePath().c_str());
+#ifdef SW_VERSION_8_0_0
+            /* Look for libpython* and then search for PyFrameObject in there */
+            found = 0;
+            Process::ptr proccessPtr = pDebug->getProc();
+            LibraryPool &libs = proccessPtr->libraries();
+            for (libsIter = libs.begin(); libsIter != libs.end(); libsIter++)
+            {
+                Library::ptr libraryPtr = *libsIter;
+                if (libraryPtr->getName().find("libpython") == string::npos)
+                    continue;
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for PyFrameObject in %s\n", libraryPtr->getName().c_str());
+                boolRet = Symtab::openFile(symtab, libraryPtr->getName().c_str());
+                if (boolRet == false)
+                    continue;
+                boolRet = symtab->findType(type, "PyFrameObject");
+                if (boolRet == true)
+                {
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found PyFrameObject in %s\n", libraryPtr->getName().c_str());
+                    found = 1;
+                    break;
+                }
+            }
+            if (found == 0)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find PyFrameObject in libraries\n");
+                return STAT_STACKWALKER_ERROR;
+            }
+#else
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "findType returned false for PyFrameObject\n");
+            return STAT_STACKWALKER_ERROR;
+#endif
+        }
+
+        components = getComponents(type);
+        if (components == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getComponents returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        for (i = 0; i < components->size(); i++)
+        {
+            field = (*components)[i];
+            if (strcmp(field->getName().c_str(), "f_lasti") == 0)
+            {
+                pythonOffsets->fLastIOffset = field->getOffset() / 8;
+                break;
+            }
+        }
+
+        /* PyCodeObject used for line number calculation and for various name fields */
+        boolRet = symtab->findType(type, "PyCodeObject");
+        if (boolRet == false)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "findType returned NULL for PyCodeObject\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        components = getComponents(type);
+        if (components == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getComponents returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        found = 0;
+        for (i = 0; i < components->size(); i++)
+        {
+            if (found == 4)
+                break;
+            field = (*components)[i];
+            if (strcmp(field->getName().c_str(), "co_firstlineno") == 0)
+            {
+                pythonOffsets->coFirstLineNoOffset = field->getOffset() / 8;
+                found++;
+            }
+            else if (strcmp(field->getName().c_str(), "co_lnotab") == 0)
+            {
+                pythonOffsets->coLnotabOffset = field->getOffset() / 8;
+                found++;
+            }
+            else if (strcmp(field->getName().c_str(), "co_filename") == 0)
+            {
+                pythonOffsets->coFileNameOffset = field->getOffset() / 8;
+                found++;
+            }
+            else if (strcmp(field->getName().c_str(), "co_name") == 0)
+            {
+                pythonOffsets->coNameOffset = field->getOffset() / 8;
+                found++;
+            }
+        }
+
+        /* PyStringObject used in Pyton 2.X for name container */
+        boolRet = symtab->findType(type, "PyStringObject");
+        if (boolRet == false)
+        {
+            /* Python 3.X removed the PyStringObject type */
+            /* PyUnicodeObject used in Pyton 3.2 for name container */
+            boolRet = symtab->findType(type, "PyUnicodeObject");
+            if (boolRet == false)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "findType returned false for PyStringObject and PyUnicodeObject\n");
+                return STAT_STACKWALKER_ERROR;
+            }
+            pythonOffsets->isUnicode = true;
+            pythonOffsets->isPython3 = true;
+        }
+
+        components = getComponents(type);
+        if (components == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getComponents returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        found = 0;
+        for (i = 0; i < components->size(); i++)
+        {
+            if (found == 2)
+                break;
+            field = (*components)[i];
+            if (pythonOffsets->isUnicode == true)
+            {
+                /* Python 3.2 */
+                /* Note Python 3.3 will run through here, but won't find these fields.  We will deal with this later */
+                if (strcmp(field->getName().c_str(), "str") == 0)
+                {
+                    pythonOffsets->obSvalOffset = field->getOffset() / 8;
+                    found++;
+                }
+                else if (strcmp(field->getName().c_str(), "length") == 0)
+                {
+                    pythonOffsets->obSizeOffset = field->getOffset() / 8;
+                    found++;
+                }
+            }
+            else
+            {
+                /* Python 2.X */
+                if (strcmp(field->getName().c_str(), "ob_sval") == 0)
+                {
+                    pythonOffsets->obSvalOffset = field->getOffset() / 8;
+                    found++;
+                }
+                else if (strcmp(field->getName().c_str(), "ob_size") == 0)
+                {
+                    pythonOffsets->obSizeOffset = field->getOffset() / 8;
+                    found++;
+                }
+            }
+        } /* for i */
+    } /* if any static offset field == -1, i.e., has not been set yet */
+
+    if (pythonOffsets->obSvalOffset == -1 and pythonOffsets->obSizeOffset == -1 and pythonOffsets->isUnicode == true)
+    {
+        /* Python 3.3 uses PyASCIIObject string for name container */
+        boolRet = symtab->findType(type, "PyASCIIObject");
+        if (boolRet == false)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "findType returned false for PyASCIIObject\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        components = getComponents(type);
+        if (components == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getComponents returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        for (i = 0; i < components->size(); i++)
+        {
+            field = (*components)[i];
+            if (strcmp(field->getName().c_str(), "length") == 0)
+            {
+                pythonOffsets->obSizeOffset = field->getOffset() / 8;
+                break;
+            }
+        }
+        pythonOffsets->obSvalOffset = type->getSize() + 4; /* string right after object, not exactly sure why + 4 necessary */
+        pythonOffsets->isUnicode = false; /* the data is stored as regular C string in this case */
+    }
+
+    if (pythonOffsets->isPython3 == true && pythonOffsets->pyVarObjectObSizeOffset == -1 && pythonOffsets->pyBytesObjectObSvalOffset == -1)
+    {
+        boolRet = symtab->findType(type, "PyVarObject");
+        if (boolRet == false)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "findType returned false for PyVarObject\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        components = getComponents(type);
+        if (components == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getComponents returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        for (i = 0; i < components->size(); i++)
+        {
+            field = (*components)[i];
+            if (strcmp(field->getName().c_str(), "ob_size") == 0)
+            {
+                pythonOffsets->pyVarObjectObSizeOffset = field->getOffset() / 8;
+                break;
+            }
+        }
+
+        boolRet = symtab->findType(type, "PyBytesObject");
+        if (boolRet == false)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "findType returned false for PyString Object and PyVarObject\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        components = getComponents(type);
+        if (components == NULL)
+        {
+            printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "getComponents returned NULL\n");
+            return STAT_STACKWALKER_ERROR;
+        }
+
+        for (i = 0; i < components->size(); i++)
+        {
+            field = (*components)[i];
+            if (strcmp(field->getName().c_str(), "ob_sval") == 0)
+            {
+                pythonOffsets->pyBytesObjectObSvalOffset = field->getOffset() / 8;
+                break;
+            }
+        }
+    } /* if is Python 3 and static fields not set */
+
+    if (pythonOffsets->coNameOffset == -1 || pythonOffsets->coFileNameOffset == -1 || pythonOffsets->obSizeOffset == -1 || pythonOffsets->obSvalOffset == -1 || pythonOffsets->coFirstLineNoOffset == -1 || pythonOffsets->coLnotabOffset == -1 || pythonOffsets->fLastIOffset == -1)
+    {
+         printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to find offsets for Python script source and line info %d %d %d %d %d %d %d\n", pythonOffsets->coNameOffset, pythonOffsets->coFileNameOffset, pythonOffsets->obSizeOffset, pythonOffsets->obSvalOffset, pythonOffsets->coFirstLineNoOffset, pythonOffsets->coLnotabOffset, pythonOffsets->fLastIOffset);
+         return STAT_STACKWALKER_ERROR;
+    }
+
+    snprintf(varName, BUFSIZE, "f");
+    statError = getVariable(frame, varName, buffer, BUFSIZE);
+    if (statError != STAT_OK)
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Failed to get Local Variable Value for f\n");
+        /* We will at least try to get the file name and return -1 for the line number */
+    }
+    else
+    {
+        pyCodeObjectBaseAddr = *((unsigned long long *)buffer);
+        pDebug->readMem(buffer, pyCodeObjectBaseAddr + pythonOffsets->fLastIOffset, sizeof(int));
+        fLastIVal = *((int *)buffer);
+    }
+
+    /* Get the base address for the co variable */
+    snprintf(varName, BUFSIZE, "co");
+    statError = getVariable(frame, varName, buffer, BUFSIZE);
+    if (statError != STAT_OK)
+    {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed to get Local Variable Value for co\n");
+        return STAT_STACKWALKER_ERROR;
+    }
+    pyCodeObjectBaseAddr = *((unsigned long long *)buffer);
+
+    /* Get the Python function name */
+    pDebug->readMem(buffer, pyCodeObjectBaseAddr + pythonOffsets->coNameOffset, sizeof(unsigned long long));
+    baseAddr = *((unsigned long long *)buffer);
+    pDebug->readMem(buffer, baseAddr + pythonOffsets->obSizeOffset, sizeof(unsigned long long));
+    length = *((long *)buffer);
+    if (length >= BUFSIZE)
+        length = BUFSIZE - 1;
+    if (pythonOffsets->isUnicode == true)
+    {
+        pDebug->readMem(buffer, baseAddr + pythonOffsets->obSvalOffset, sizeof(unsigned long long));
+        pyUnicodeObjectAddr = *((unsigned long long *)buffer);
+        /* We can read every other byte to get the C string representation of the unicode */
+        for (i = 0; i < length; i++)
+            pDebug->readMem(&buffer[i], pyUnicodeObjectAddr + 2 * i, 1);
+        buffer[length] = '\0';
+        *pyFun = strdup(buffer);
+    }
+    else
+    {
+        pDebug->readMem(buffer, baseAddr + pythonOffsets->obSvalOffset, length);
+        buffer[length] = '\0';
+        *pyFun = strdup(buffer);
+    }
+    if (*pyFun == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to *pyFun)\n", strerror(errno), buffer);
+        return STAT_ALLOCATE_ERROR;
+    }
+
+    /* Get the Python source file name */
+    pDebug->readMem(buffer, pyCodeObjectBaseAddr + pythonOffsets->coFileNameOffset, sizeof(unsigned long long));
+    baseAddr = *((unsigned long long *)buffer);
+    pDebug->readMem(buffer, baseAddr + pythonOffsets->obSizeOffset, sizeof(unsigned long long));
+    length = *((long *)buffer);
+    if (length >= BUFSIZE)
+        length = BUFSIZE - 1;
+    if (pythonOffsets->isUnicode == true)
+    {
+        pDebug->readMem(buffer, baseAddr + pythonOffsets->obSvalOffset, sizeof(unsigned long long));
+        pyUnicodeObjectAddr = *((unsigned long long *)buffer);
+        for (i = 0; i < length; i++)
+            pDebug->readMem(&buffer[i], pyUnicodeObjectAddr + 2 * i, 1);
+        buffer[length] = '\0';
+        *pySource = strdup(buffer);
+    }
+    else
+    {
+        pDebug->readMem(buffer, baseAddr + pythonOffsets->obSvalOffset, length);
+        buffer[length] = '\0';
+        *pySource = strdup(buffer);
+    }
+    if (*pySource == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to *pySource)\n", strerror(errno), buffer);
+        return STAT_ALLOCATE_ERROR;
+    }
+
+    /* Get the Python source line number */
+    if (fLastIVal != -1)
+    {
+        pDebug->readMem(buffer, pyCodeObjectBaseAddr + pythonOffsets->coFirstLineNoOffset, sizeof(unsigned long long));
+        baseAddr = *((unsigned long long *)buffer);
+        pDebug->readMem(buffer, baseAddr + pythonOffsets->obSvalOffset, sizeof(int));
+        firstLineNo = *((int *)buffer);
+        pDebug->readMem(buffer, pyCodeObjectBaseAddr + pythonOffsets->coLnotabOffset, sizeof(unsigned long long));
+        baseAddr = *((unsigned long long *)buffer);
+        if (pythonOffsets->isPython3 == true)
+        {
+            pDebug->readMem(buffer, baseAddr + pythonOffsets->pyVarObjectObSizeOffset, sizeof(unsigned long long));
+            length = *((long *)buffer);
+            pAddr = baseAddr + pythonOffsets->pyBytesObjectObSvalOffset;
+        }
+        else
+        {
+            pDebug->readMem(buffer, baseAddr + pythonOffsets->obSizeOffset, sizeof(unsigned long long));
+            length = *((long *)buffer);
+            pAddr = baseAddr + pythonOffsets->obSvalOffset;
+        }
+        if (length >= BUFSIZE)
+            length = BUFSIZE - 1;
+        pDebug->readMem(buffer, pAddr, length * sizeof(unsigned char));
+        address = 0;
+        lineNo = firstLineNo;
+        for (i = 0; i < length; i = i + 2)
+        {
+            address += buffer[i];
+            if (address > fLastIVal)
+                break;
+            lineNo += buffer[i + 1];
+        }
+        *pyLineNo = lineNo;
+    }
+    else
+        *pyLineNo = -1;
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found Python frame information %s@%s:%d\n", *pyFun, *pySource, *pyLineNo);
+#endif
+
+    return STAT_OK;
 }
 
 
@@ -2248,24 +2843,24 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
 
 StatError_t STAT_BackEnd::statBenchConnectInfoDump()
 {
-    int i, count, ret, fd;
-    unsigned int bytesWritten = 0;
+    int i, count, intRet, fd;
+    unsigned int bytesWritten;
     char fileName[BUFSIZE], data[BUFSIZE], *ptr;
-    struct stat buf;
-    lmon_rc_e rc;
-    statLeafInfoArray_t leafInfoArray;
+    string prettyHost, leafPrettyHost;
+    lmon_rc_e lmonRet;
+    StatLeafInfoArray_t leafInfoArray;
 
     /* Master daemon receive MRNet connection information */
-    rc = LMON_be_recvUsrData((void *)&leafInfoArray);
-    if (rc != LMON_OK)
+    lmonRet = LMON_be_recvUsrData((void *)&leafInfoArray);
+    if (lmonRet != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to receive data from FE\n");
         return STAT_LMON_ERROR;
     }
 
     /* Master broadcast number of daemons */
-    rc = LMON_be_broadcast((void *)&(leafInfoArray.size), sizeof(int));
-    if (rc != LMON_OK)
+    lmonRet = LMON_be_broadcast((void *)&(leafInfoArray.size), sizeof(int));
+    if (lmonRet != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to broadcast num_leaves\n");
         return STAT_LMON_ERROR;
@@ -2274,7 +2869,7 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
     /* Non-masters allocate space for the MRNet connection info */
     if (LMON_be_amIMaster() == LMON_NO)
     {
-        leafInfoArray.leaves = (statLeafInfo_t *)malloc(leafInfoArray.size * sizeof(statLeafInfo_t));
+        leafInfoArray.leaves = (StatLeafInfo_t *)malloc(leafInfoArray.size * sizeof(StatLeafInfo_t));
         if (leafInfoArray.leaves == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate memory for leaf info\n");
@@ -2283,8 +2878,8 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
     }
 
     /* Master broadcast MRNet connection information to all daemons */
-    rc = LMON_be_broadcast((void *)(leafInfoArray.leaves), leafInfoArray.size * sizeof(statLeafInfo_t));
-    if (rc != LMON_OK)
+    lmonRet = LMON_be_broadcast((void *)(leafInfoArray.leaves), leafInfoArray.size * sizeof(StatLeafInfo_t));
+    if (lmonRet != LMON_OK)
     {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to broadcast num_leaves\n");
         return STAT_LMON_ERROR;
@@ -2296,15 +2891,12 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
         kill(proctab_[i].pd.pid, SIGCONT);
 
     /* Find MRNet personalities for all STATBench Daemons on this node */
-    count = -1;
-    for (i = 0; i < leafInfoArray.size; i++)
+    for (i = 0, count = -1; i < leafInfoArray.size; i++)
     {
-        string prettyHost, leafPrettyHost;
         XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
         XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
         if (prettyHost == leafPrettyHost)
         {
-            /* Increment the find count and make sure it's not too large */
             count++;
             if (count >= proctabSize_)
             {
@@ -2312,17 +2904,16 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
                 return STAT_LMON_ERROR;
             }
 
-            /* Create the named fifo for this daemon, if it doesn't already exist */
+            /* Wait for the daemon emulator to create its fifo then write its connection info */
             snprintf(fileName, BUFSIZE, "/tmp/%s.%d.statbench.txt", localHostName_, count);
             while (1)
             {
-                ret = stat(fileName, &buf);
-                if (ret == 0)
+                intRet = access(fileName, W_OK);
+                if (intRet == 0)
                     break;
                 usleep(1000);
             }
 
-            /* Open the fifo for writing */
             fd = open(fileName, O_WRONLY);
             if (fd == -1)
             {
@@ -2331,25 +2922,23 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
                 return STAT_FILE_ERROR;
             }
 
-            /* Write the MRNet connection information to the fifo */
             snprintf(data, BUFSIZE, "%s %d %d %d %d", leafInfoArray.leaves[i].parentHostName, leafInfoArray.leaves[i].parentPort, leafInfoArray.leaves[i].parentRank, leafInfoArray.leaves[i].rank, proctab_[count].mpirank);
             bytesWritten = 0;
             while (bytesWritten < strlen(data))
             {
                 ptr = data + bytesWritten;
-                ret = write(fd, ptr, strlen(ptr));
-                if (ret == -1)
+                intRet = write(fd, ptr, strlen(ptr));
+                if (intRet == -1)
                 {
                     printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: write() to fifo %s failed\n", strerror(errno), fileName);
                     remove(fileName);
                     return STAT_FILE_ERROR;
                 }
-                bytesWritten += ret;
+                bytesWritten += intRet;
             }
 
-            /* Close the file descriptor */
-            ret = close(fd);
-            if (ret != 0)
+            intRet = close(fd);
+            if (intRet != 0)
             {
                 printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: close() failed for fifo %s, fd %d\n", strerror(errno), fileName, fd);
                 remove(fileName);
@@ -2358,19 +2947,17 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
         }
     }
 
-    /* Remove the FIFOs */
     for (i = 0; i <= count; i++)
     {
         snprintf(fileName, BUFSIZE, "/tmp/%s.%d.statbench.txt", localHostName_, i);
-        ret = remove(fileName);
-        if (ret != 0)// && errno != ENOENT)
+        intRet = remove(fileName);
+        if (intRet != 0)
         {
             printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: remove() failed for fifo %s\n", strerror(errno), fileName);
             return STAT_FILE_ERROR;
         }
     }
 
-    /* Free the Leaf Info array */
     if (leafInfoArray.leaves != NULL)
         free(leafInfoArray.leaves);
 
@@ -2379,17 +2966,14 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
 
 StatError_t STAT_BackEnd::statBenchConnect()
 {
-    int i, ret, fd, bytesRead = 0, inPort, inParentRank, inRank, mpiRank;
-    char fileName[BUFSIZE], inHostName[BUFSIZE], data[BUFSIZE], *ptr;
+    int i, intRet, fd, bytesRead, inPort, inParentRank, inRank, mpiRank;
+    char fileName[BUFSIZE], inHostName[BUFSIZE], data[BUFSIZE], *ptr, *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
 
     for (i = 0; i < 8192; i++)
     {
-        /* Set up my file name */
         snprintf(fileName, BUFSIZE, "/tmp/%s.%d.statbench.txt", localHostName_, i);
-    
-        /* Make the fifo if the helper hasn't already done so */
-        ret = mkfifo(fileName, S_IRUSR | S_IWUSR);
-        if (ret != 0)
+        intRet = mkfifo(fileName, S_IRUSR | S_IWUSR);
+        if (intRet != 0)
         {
             if (errno == EEXIST)
                 continue;
@@ -2402,7 +2986,6 @@ StatError_t STAT_BackEnd::statBenchConnect()
         break;
     }
 
-    /* Open the fifo for reading */
     fd = open(fileName, O_RDONLY);
     if (fd == -1)
     {
@@ -2411,22 +2994,20 @@ StatError_t STAT_BackEnd::statBenchConnect()
         return STAT_FILE_ERROR;
     }
 
-    /* Read in my MRNet connection info */
     bytesRead = 0;
     do
     {
         ptr = data + bytesRead;
-        ret = read(fd, ptr, BUFSIZE - bytesRead);
-        if (ret == -1)
+        intRet = read(fd, ptr, BUFSIZE - bytesRead);
+        if (intRet == -1)
         {
             printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: read() from fifo %s fd %d failed\n", strerror(errno), fileName, fd);
             remove(fileName);
             return STAT_FILE_ERROR;
         }
-        bytesRead += ret;
-    } while (ret > 0);
+        bytesRead += intRet;
+    } while (intRet > 0);
 
-    /* Extract the information from the received string */
     if (sscanf(data, "%s %d %d %d %d", inHostName, &inPort, &inParentRank, &inRank, &mpiRank) == -1)
     {
         printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: sscanf() failed to find MRNet connection info\n", strerror(errno));
@@ -2434,13 +3015,17 @@ StatError_t STAT_BackEnd::statBenchConnect()
         return STAT_MRNET_ERROR;
     }
     parentHostName_ = strdup(inHostName);
+    if (parentHostName_ == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to parentHostName_)\n", strerror(errno), inHostName);
+        return STAT_ALLOCATE_ERROR;
+    }
     parentPort_ = inPort;
     parentRank_ = inParentRank;
     myRank_ = inRank;
 
-    /* Close the fifo fd */
-    ret = close(fd);
-    if (ret == -1)
+    intRet = close(fd);
+    if (intRet == -1)
     {
         printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: close() failed for fifo %s, fd %d\n", strerror(errno), fileName, fd);
         remove(fileName);
@@ -2448,8 +3033,6 @@ StatError_t STAT_BackEnd::statBenchConnect()
     }
 
     /* Connect to the MRNet Network */
-#ifdef MRNET22
-    char *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
     snprintf(parentPort, BUFSIZE, "%d", parentPort_);
     snprintf(parentRank, BUFSIZE, "%d", parentRank_);
     snprintf(myRank, BUFSIZE, "%d", myRank_);
@@ -2460,10 +3043,7 @@ StatError_t STAT_BackEnd::statBenchConnect()
     param[4] = localHostName_;
     param[5] = myRank;
     network_ = Network::CreateNetworkBE(6, param);
-#else
-    network_ = new Network(parentHostName_, parentPort_, parentRank_, localHostName_, myRank_);
-#endif
-    if(network_ == NULL)
+    if (network_ == NULL)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "backend_init() failed\n");
         return STAT_MRNET_ERROR;
@@ -2476,285 +3056,133 @@ StatError_t STAT_BackEnd::statBenchConnect()
     return STAT_OK;
 }
 
+
 StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses)
 {
-    graphlib_graph_p currentGraph;
-    graphlib_error_t gl_err;
-    unsigned int i, j;
     static int init = 0;
+    unsigned int i, j;
+    StatError_t statError;
 
-    /* Initialize graphlib if we haven't already done so */
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating traces with max depth = %d, num tasks = %d, num traces = %d, function fanout = %d, equivalence classes = %d, sample type = %u\n", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, sampleType_);
+
     if (init == 0)
     {
         proctabSize_ = nTasks;
-        proctab_ = (MPIR_PROCDESC_EXT *)malloc(proctabSize_*sizeof(MPIR_PROCDESC_EXT));
-        proctab_[0].mpirank = myRank_*nTasks;
+        proctab_ = (MPIR_PROCDESC_EXT *)malloc(proctabSize_ * sizeof(MPIR_PROCDESC_EXT));
+        if (proctab_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d bytes for proctab_\n", proctabSize_);
+            return STAT_ALLOCATE_ERROR;
+        }
+        proctab_[0].mpirank = myRank_ * nTasks;
         for (i = 0; i < proctabSize_; i++)
         {
             proctab_[i].pd.executable_name = NULL;
             proctab_[i].pd.host_name = NULL;
+            proctab_[i].mpirank = proctab_[0].mpirank + i;
         }
         init++;
-        gl_err = graphlib_InitVarEdgeLabels(nTasks);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
     }
 
-    /* Delete previously merged graphs */
-    if (prefixTree3d_ != NULL)
-    {
-        gl_err = graphlib_delGraph(prefixTree3d_);
-        if (GRL_IS_FATALERROR(gl_err))
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-    }
-    if (prefixTree2d_ != NULL)
-    {
-        gl_err = graphlib_delGraph(prefixTree2d_);
-        if (GRL_IS_FATALERROR(gl_err))
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-    }
+    clear3dNodesAndEdges();
 
-    /* Create graphs */
-    gl_err = graphlib_newGraph(&prefixTree3d_);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 3D graph\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-    gl_err = graphlib_newGraph(&prefixTree2d_);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing 2D graph\n");
-        return STAT_GRAPHLIB_ERROR;
-    }
-
-    /* Loop around the number of traces to gather */
     for (i = 0; i < nTraces; i++)
     {
-        /* Loop around the number of tasks I'm emulating */
+        clear2dNodesAndEdges();
         for (j = 0; j < nTasks; j++)
         {
-            /* Create the trace for this task */
-            currentGraph = statBenchCreateTrace(maxDepth, j, functionFanout, nEqClasses, i);
-            if (currentGraph == NULL)
+            /* We now create the full eq class set at once */
+            if (j >= nEqClasses && nEqClasses != -1)
+                break;
+            statError = statBenchCreateTrace(maxDepth, j, nTasks, functionFanout, nEqClasses, i);
+            if (statError != STAT_OK)
             {
-                printMsg(STAT_SAMPLE_ERROR, __FILE__, __LINE__, "Error creating trace\n");
-                return STAT_SAMPLE_ERROR;
+                printMsg(statError, __FILE__, __LINE__, "Failed to create trace %d of %d for task %d of %d\n", i + 1, nTraces, j, nTasks);
+                return statError;
             }
+        } /* for j nTasks */
 
-            /* Merge cur graph into retGraph */
-            gl_err = graphlib_mergeGraphsRanked(prefixTree3d_, currentGraph);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
-                return STAT_GRAPHLIB_ERROR;
-            }
-
-            /* Merge the current graph for 2D analysis */
-            if (i == 0)
-            {
-                gl_err = graphlib_mergeGraphsRanked(prefixTree2d_, currentGraph);
-                if (GRL_IS_FATALERROR(gl_err))
-                {
-                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error merging graphs\n");
-                    return STAT_GRAPHLIB_ERROR;
-                }
-            }
-
-            /* Free up the temporary graph if it's not being stored as an eq class */
-            if (nEqClasses == -1)
-            {
-                gl_err = graphlib_delGraph(currentGraph);
-                if (GRL_IS_FATALERROR(gl_err))
-                {
-                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-                    return STAT_GRAPHLIB_ERROR;
-                }
-            }
+        statError = update3dNodesAndEdges();
+        if (statError != STAT_OK)
+        {
+            printMsg(statError, __FILE__, __LINE__, "Error updating 3d nodes and edges for trace %d of %d\n", i + 1, nTraces);
+            return statError;
         }
-    }
+    } /* for i nTraces */
 
     return STAT_OK;
 }
 
-graphlib_graph_p STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int functionFanout, int nEqClasses, unsigned int iter)
+
+StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int nTasks, unsigned int functionFanout, int nEqClasses, unsigned int iteration)
 {
-    int depth, i, nodeId, prevId;
-    char temp[8192];
-    static vector<graphlib_graph_p> generated_graphs;
+    int depth, i, nodeId, prevId, currentTask;
+    char frame[BUFSIZE];
     string path;
-    graphlib_graph_p retGraph;
-    graphlib_error_t gl_err;
-#ifdef GRL_DYNAMIC_NODE_NAME
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-#else
-    graphlib_nodeattr_t nodeattr = {1,0,20,GRC_LIGHTGREY,0,0,"",-1};
-#endif
-    graphlib_edgeattr_t edgeattr = {1,0,NULL,0,0,0};
+    StatBitVectorEdge_t *edge;
 
-    /* set the edge label */
-    gl_err = graphlib_setEdgeByTask(&edgeattr.edgelist, task);
-    if (GRL_IS_FATALERROR(gl_err))
+    edge = initializeBitVectorEdge(proctabSize_);
+    if (edge == NULL)
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "o set edge by task\n");
-        return NULL;
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+        return STAT_ALLOCATE_ERROR;
     }
-
-    /* See if we've already generated a graph for this equivalence class and iteration */
-    if (task == 0 && nEqClasses != -1)
+    if (nEqClasses == -1)
     {
-        for (i = 0; i < generated_graphs.size(); i++)
+        edge->bitVector[task / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(task % STAT_BITVECTOR_BITS);
+    }
+    else
+    {
+        for (i = 0; i < nTasks / nEqClasses; i++)
         {
-            /* Free up the graph previously cached graphs */
-            gl_err = graphlib_delGraph(generated_graphs[i]);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
-                return NULL;
-            }
+            currentTask = task + i * nEqClasses;
+
+            edge->bitVector[currentTask / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(currentTask % STAT_BITVECTOR_BITS);
         }
-        generated_graphs.clear();
-    }
-    if (nEqClasses != -1 && task >= nEqClasses)
-    {
-        if (generated_graphs.size() > task % nEqClasses)
+        if (nTasks % nEqClasses > task)
         {
-            /* modify the edges with the proper rank */
-            graphlib_modifyEdgeAttr(generated_graphs[task % nEqClasses], &edgeattr);
-            gl_err = graphlib_delEdgeAttr(edgeattr);
-            if (GRL_IS_FATALERROR(gl_err))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
-                return NULL;
-            }
-            return generated_graphs[task % nEqClasses];
+            currentTask = task + i * nEqClasses;
+            edge->bitVector[currentTask / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(currentTask % STAT_BITVECTOR_BITS);
         }
     }
 
-    /* create return graph */
-    gl_err = graphlib_newGraph(&retGraph);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
-        return NULL;
-    }
-
-    /* Create graph root */
-#ifdef GRL_DYNAMIC_NODE_NAME
-    nodeattr.name = strdup("/");
-#else
-    sprintf(nodeattr.name, "/");
-#endif
-    path = nodeattr.name;
-    nodeId = 0;
-    gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-    free(nodeattr.name);
-#endif
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
-        return NULL;
-    }
-    prevId = nodeId;
+    path = "/";
+    prevId = 0;
 
     /* Create artificial libc_start_main */
-#ifdef GRL_DYNAMIC_NODE_NAME
-    nodeattr.name = strdup("__libc_start_main");
-#else
-    sprintf(nodeattr.name, "__libc_start_main");
-#endif
-    path += nodeattr.name;
-    nodeId = string_hash(path.c_str());
-    gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-    free(nodeattr.name);
-#endif
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
-        return NULL;
-    }
-    gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
-        return NULL;
-    }
+    path += "__libc_start_main";
+    nodeId = statStringHash(path.c_str());
+    nodes2d_[nodeId] = "__libc_start_main";
+    update2dEdge(prevId, nodeId, edge);
     prevId = nodeId;
 
     /* Create artificial main */
-#ifdef GRL_DYNAMIC_NODE_NAME
-    nodeattr.name = strdup("main");
-#else
-    sprintf(nodeattr.name, "main");
-#endif
-    path += nodeattr.name;
-    nodeId = string_hash(path.c_str());
-    gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-    free(nodeattr.name);
-#endif
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
-        return NULL;
-    }
-    gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
-        return NULL;
-    }
+    path += "main";
+    nodeId = statStringHash(path.c_str());
+    nodes2d_[nodeId] = "main";
+    update2dEdge(prevId, nodeId, edge);
     prevId = nodeId;
 
     /* Seed the random number generator based on my equivalence class */
     if (nEqClasses == -1) /* no limit */
-        srand(task + 999999 * iter);
+        srand(task + 999999 * iteration);
     else
-        srand(task % nEqClasses +  999999 * iter);
+        srand(task % nEqClasses +  999999 * (1 + iteration));
 
-    /* Generate a atack trace and add it to the graph */
     depth = rand() % maxDepth;
     for (i = 0; i < depth; i++)
     {
-#ifdef GRL_DYNAMIC_NODE_NAME
-        snprintf(temp, 8192, "depth%dfun%d", i, rand() % functionFanout);
-        nodeattr.name = strdup(temp);
-#else
-        sprintf(nodeattr.name, "depth%dfun%d", i, rand() % functionFanout);
-#endif
-        path += nodeattr.name;
-        nodeId = string_hash(path.c_str());
-        gl_err = graphlib_addNode(retGraph, nodeId, &nodeattr);
-#ifdef GRL_DYNAMIC_NODE_NAME
-        free(nodeattr.name);
-#endif
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add node\n");
-            return NULL;
-        }
-        gl_err = graphlib_addDirectedEdge(retGraph, prevId, nodeId, &edgeattr);
-        if (GRL_IS_FATALERROR(gl_err))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to add edge\n");
-            return NULL;
-        }
+        snprintf(frame, BUFSIZE, "depth%dfun%d", i, rand() % functionFanout);
+        path += frame;
+        nodeId = statStringHash(path.c_str());
+        nodes2d_[nodeId] = frame;
+        update2dEdge(prevId, nodeId, edge);
         prevId = nodeId;
     }
-    gl_err = graphlib_delEdgeAttr(edgeattr);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
-        return NULL;
-    }
 
-    if (nEqClasses != -1)
-        generated_graphs.push_back(retGraph);
-    return retGraph;
+    statFreeEdge(edge);
+
+    return STAT_OK;
 }
+
 

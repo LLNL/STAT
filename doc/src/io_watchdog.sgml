@@ -17,5 +17,5 @@ You will then need to run your application with the --io-watchdog <command>srun<
     </screen>
 </informalexample>
 <para>
-When STAT is invoked, it will create a STAT_results directory in the current working directory, as it would in a typical STAT run.  The outputted .dot files can then be viewed with <command>STATview</command>.  For more details about using IO Watchdog, refer to the IO Watchdog README file in /usr/local/tools/io-watchdog/README.
+When STAT is invoked, it will create a stat_results directory in the current working directory, as it would in a typical STAT run.  The outputted .dot files can then be viewed with <command>stat-view</command>.  For more details about using IO Watchdog, refer to the IO Watchdog README file in /usr/local/tools/io-watchdog/README.
 </para>

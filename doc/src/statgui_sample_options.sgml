@@ -3,7 +3,7 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
 </para>
 <![%userguide[
 <figure id="statgui_sample_multiple_dialog">
-    <title>The STATGUI operation toolbar.</title>
+    <title>The stat-gui operation toolbar.</title>
     <screenshot><mediaobject><imageobject>
     <imagedata scale="50" fileref="figs/statgui_sample_multiple_dialog.png">
     </imageobject></mediaobject></screenshot>
@@ -22,10 +22,26 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term><GUIbutton>Gather Python Traces</GUIbutton></term>
+    <listitem>
+        <para>
+        Where applicable, gather Python script level stack traces, rather than show the Python interpreter stack traces.  This requires the Python interpreter being debugged to be built with -g and preferrably -O0.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>function only</GUIbutton> | <GUIbutton>function and pc</GUIbutton> | <GUIbutton>function and line</GUIbutton></term>
     <listitem>
         <para>
         Sample traces with function name only, or function name with the CPU program counter, or function name with the source file and line number.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term><GUIbutton>full list</GUIbutton> | <GUIbutton>count and representative</GUIbutton></term>
+    <listitem>
+        <para>
+        Sample traces with the full task list or just the count and a single representative.  When gathering the count and representative, you can actually query an individual STAT graph node (through the left-click menu) for the full edge label, as long as the STAT session is still attached.
         </para>
     </listitem>
 </varlistentry>
@@ -41,7 +57,7 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     <term><GUIbutton># Retries/Retry Frequency</GUIbutton> (Advanced)</term>
     <listitem>
         <para>
-        Sometimes a process may be in a state (i.e., function prologue or epilogue) such that a complete stack trace may not be obtainable.  This option controls how many times to retry sampling and how often to wait between retries to try and get a complete trace.
+        Sometimes a process may be in a state (i.e., function prologue or epilogue) such that a complete stack trace may not be obtainable.  This option controls how many times to retry sampling and how often to wait (in microseconds) between retries to try and get a complete trace.
         </para>
     </listitem>
 </varlistentry>
@@ -57,7 +73,7 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     <term><GUIbutton>Gather Individual Samples</GUIbutton></term>
     <listitem>
         <para>
-        When sampling multiple traces over time, this option enables STAT to gather all of the intermediate 2D prefix trees in addition to the fully merged 3D prefix tree.
+        When sampling multiple traces over time, this option enables STAT to gather all of the intermediate 2D prefix trees in addition to the fully merged 3D prefix tree.  The traces will be displayed in individual tabs.
         </para>
     </listitem>
 </varlistentry>

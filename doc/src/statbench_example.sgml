@@ -1,9 +1,9 @@
 <para>
-In the simplest form, you can invoke STATBench, from within a parallel allocation, with no arguments.  This will run through with the default settings:
+In the simplest form, you can invoke stat-bench, from within a parallel allocation, with no arguments.  This will run through with the default settings:
 </para>
 <informalexample>
     <screen>
-  % STATBench
+  % stat-bench
     </screen>
 </informalexample>
 <para>
@@ -11,7 +11,7 @@ To model your target machine architecture, you can specify the number of tasks t
 </para>
 <informalexample>
     <screen>
-  % STATBench --numtasks 16
+  % stat-bench --numtasks 16
     </screen>
 </informalexample>
 <para>
@@ -19,7 +19,7 @@ You may also want to model a specific application.  For instance, you may have a
 </para>
 <informalexample>
     <screen>
-  % STATBench --eqclasses 5 --maxdepth 17 --branch 5 --traces 4
+  % stat-bench --eqclasses 5 --maxdepth 17 --branch 5 --traces 4
     </screen>
 </informalexample>
 <para>
@@ -27,6 +27,6 @@ At larger scales, you may want to employ a more scalable tree topology.  For exa
 </para>
 <informalexample>
     <screen>
-  % STATBench --fanout 32 --nodes atlas[1-4] --procs 8
+  % stat-bench --fanout 32 --nodes atlas[1-4] --procs 8
     </screen>
 </informalexample>

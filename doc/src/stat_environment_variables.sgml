@@ -35,6 +35,14 @@ Several environment variables influence STAT and its dependent packages.  Note t
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>STAT_FGFS_FILTER_PATH=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the STAT FGFS filter shared object <replaceable class="parameter">path</replaceable> instead of the default.  <replaceable class="parameter">path</replaceable> must be set to the full path of the STAT_FilterDefinitions.so shared object file.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>STAT_MRNET_OUTPUT_LEVEL=<replaceable class="parameter">level</replaceable></term>
     <listitem>
         <para>
@@ -59,6 +67,14 @@ Several environment variables influence STAT and its dependent packages.  Note t
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>STAT_CONNECT_TIMEOUT=<replaceable class="parameter">seconds</replaceable></term>
+    <listitem>
+        <para>
+        Set the STAT connection timeout to <replaceable class="parameter">seconds</replaceable>, after which STAT will try to continue with any subset of daemons that have connected.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>STAT_MRNET_DEBUG_LOG_DIRECTORY=<replaceable class="parameter">directory</replaceable></term>
     <listitem>
         <para>
@@ -71,14 +87,6 @@ Several environment variables influence STAT and its dependent packages.  Note t
     <listitem>
         <para>
         Redirect stdout and stderr to a set of hostname specific files in <replaceable class="parameter">directory</replaceable>.
-        </para>
-    </listitem>
-</varlistentry>
-<varlistentry>
-    <term>STAT_SW_DEBUG_LOG_DIR=<replaceable class="parameter">directory</replaceable></term>
-    <listitem>
-        <para>
-        Enable StackWalker debug logging to a set of hostname specific files in <replaceable class="parameter">directory</replaceable>.
         </para>
     </listitem>
 </varlistentry>
@@ -111,6 +119,38 @@ Several environment variables influence STAT and its dependent packages.  Note t
     <listitem>
         <para>
         Allow up to <replaceable class="parameter">count</replaceable> communication processes to be launched per node.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_FE_HOSTNAME=<replaceable class="parameter">value</replaceable></term>
+    <listitem>
+        <para>
+        Set the STAT Front End hostname to <replaceable class="parameter">value</replaceable>.  This may be necessary for example on BlueGene systems to use the proper network interface for the I/O nodes to connect back to.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_CHECK_NODE_ACCESS=<replaceable class="parameter">value</replaceable></term>
+    <listitem>
+        <para>
+        Set to any value to have STAT check user access to any specified nodes before launching communication processes.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_GROUP_OPS=<replaceable class="parameter">value</replaceable></term>
+    <listitem>
+        <para>
+        Set to any value to enable Stackwalker's group operations.  Group operations may help with performance when a single daemon needs to manage a large number of target processes.  This is on by default on BG/Q systems.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>STAT_LMON_PREFIX=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Sets the LaunchMON installation prefix to <replaceable class="parameter">path</replaceable>.
         </para>
     </listitem>
 </varlistentry>

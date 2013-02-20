@@ -1,9 +1,55 @@
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
-<html><head>
-<title>404 Not Found</title>
-</head><body>
-<h1>Not Found</h1>
-<p>The requested URL /documentation/.gitignore was not found on this server.</p>
-<hr>
-<address>Apache/2.2.3 (Red Hat) Server at adept.llnl.gov Port 80</address>
-</body></html>
+*~
+.DS_Store
+*.pyc
+autom4te.cache
+*.a
+*.so
+*.o
+*.bak
+*.dot
+.*.swp
+*.gz
+*.la
+*.lo
+Makefile
+config.h
+config.log
+config.status
+doc/refman/
+doc/src/INSTALL
+doc/src/LICENSE
+doc/userguide/html/
+examples/src/.deps/
+examples/src/blah.Tpo
+examples/src/hw
+examples/src/mpi_ringtopo
+examples/src/mpi_ringtopo_defunct
+examples/src/rank_test
+examples/src/to_test
+libtool
+logs/
+man/manpage.links
+man/manpage.log
+man/manpage.refs
+scripts/STAT
+scripts/STATBench
+scripts/STATGUI
+scripts/STATview
+scripts/core_stack_merge
+scripts/stat-bench
+scripts/stat-cl
+scripts/stat-gui
+scripts/stat-view
+src/.deps/
+src/.libs/
+src/STATBenchD
+src/STATBenchbin
+src/STATD
+src/STATbin
+src/ssa_be_link.sh
+src/ssa_fe_link.sh
+stamp-h1
+stat_results
+TODO
+extra_stuff
+slurm-*.out

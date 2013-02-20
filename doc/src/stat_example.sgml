@@ -12,7 +12,7 @@ The most typical usage is to invoke STAT on the job launcher's PID:
   16842 pts/0    00:00:00 srun
   16871 pts/0    00:00:00 ps
   
-  % STAT 16482
+  % stat-cl 16482
     </screen>
 </informalexample>
 <para>
@@ -20,7 +20,7 @@ You can also launch your application under STAT's control with the -C option.  A
 </para>
 <informalexample>
     <screen>
-  % STAT -C srun mpi_application arg1 arg2
+  % stat-cl -C srun mpi_application arg1 arg2
     </screen>
 </informalexample>
 <para>
@@ -28,17 +28,17 @@ With the -a option (or when automatic topology is set as default), STAT will try
 </para>
 <informalexample>
     <screen>
-  % STAT --fanout 32 --nodes atlas[1-4] --procs 8 16482
+  % stat-cl --fanout 32 --nodes atlas[1-4] --procs 8 16482
     </screen>
 </informalexample>
 <para>
-Upon successful completion, STAT will write its output to a STAT_results directory within the current working directory.  Each run creates a subdirectory named after the application with a unique integer ID.  STAT's output indicates the directory created with a message such as:
+Upon successful completion, STAT will write its output to a stat_results directory within the current working directory.  Each run creates a subdirectory named after the application with a unique integer ID.  STAT's output indicates the directory created with a message such as:
 </para>
 <informalexample>
     <screen>
-  Results written to /home/user/bin/STAT_results/mpi_application.6
+  Results written to /home/user/bin/stat_results/mpi_application.6
     </screen>
 </informalexample>
 <para>
-Within that directory will be one or more files with a .dot extension.  These .dot files can be viewed with <command>STATview</command>.
+Within that directory will be one or more files with a .dot extension.  These .dot files can be viewed with <command>stat-view</command>.
 </para>

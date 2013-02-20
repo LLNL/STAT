@@ -19,29 +19,58 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <sys/resource.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/stat.h>
+#ifdef STAT_FGFS
+  #include <stdint.h>
+  #include <cstring>
+#endif
 #include "config.h"
 #include "mrnet/Packet.h"
 #include "graphlib.h"
+#include "STAT_GraphRoutines.h"
 #include "STAT.h"
+#include "graphlib.h"
 
 using namespace MRN;
 using namespace std;
 
-extern int CUR_OUTPUT_LEVEL; 
-#define mrn_dbg( x, y ) \
-do { \
-    if( MRN::CUR_OUTPUT_LEVEL >= x ){           \
-        y;                                      \
-    }                                           \
-} while(0)
-
 extern "C" {
 
+/* Externals from STAT's graphlib routines */
+//! the bit vector filter routines to append bit vectors
+extern graphlib_functiontable_p gStatMergeFunctions;
+
+//! the count and representative routines
+extern graphlib_functiontable_p gStatCountRepFunctions;
+
+//! the final bit vector width
+extern int gStatGraphRoutinesTotalWidth;
+
+//! the input list of bit vector widths
+extern int *gStatGraphRoutinesEdgeLabelWidths;
+
+//! the current index into the bit vector
+extern int gStatGraphRoutinesCurrentIndex;
+
 //! The MRNet format string for the STAT filter
-const char *STAT_Merge_format_string = "%ac %d %d";
+#ifdef MRNET40
+const char *statMerge_format_string = "%Ac %d %d %ud";
+#else
+const char *statMerge_format_string = "%ac %d %d %ud";
+#endif
 
 //! The MRNet format string for the STAT version check
 const char *STAT_checkVersion_format_string = "%d %d %d %d %d";
+
+//! The MRNet format string for the STAT filter initialization
+const char *filterInit_format_string = "%uc %s %d";
+
+//! Global variable for file pointer
+FILE *gStatOutFp = NULL;
+
+//! Global variable for logging level
+unsigned char gLogging = STAT_LOG_NONE;
+
 
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
 //! Increases nofile and nproc limits to maximum
@@ -52,18 +81,18 @@ const char *STAT_checkVersion_format_string = "%d %d %d %d %d";
 */
 StatError_t increaseCoreLimit()
 {
-    struct rlimit rlim[1];
+    struct rlimit rLim[1];
     StatError_t statError = STAT_OK;
 
-    if (getrlimit(RLIMIT_CORE, rlim) < 0)
+    if (getrlimit(RLIMIT_CORE, rLim) < 0)
     {
         perror("getrlimit failed:\n");
         statError = STAT_SYSTEM_ERROR;
     }
-    else if (rlim->rlim_cur < rlim->rlim_max)
+    else if (rLim->rlim_cur < rLim->rlim_max)
     {
-        rlim->rlim_cur = rlim->rlim_max;
-        if (setrlimit (RLIMIT_CORE, rlim) < 0)
+        rLim->rlim_cur = rLim->rlim_max;
+        if (setrlimit(RLIMIT_CORE, rLim) < 0)
         {
             perror("Unable to increase max no. files:");
             statError = STAT_SYSTEM_ERROR;
@@ -73,14 +102,161 @@ StatError_t increaseCoreLimit()
 }
 #endif
 
+
+//! The filter's logging/error messaging routine
+/*!
+    \param statError - the STAT error type
+    \param sourceFile - the source file where the error was reported
+    \param sourceLine - the source line where the error was reported
+    \param fmt - the output format string
+    \param ... - any variables to output
+*/
+void cpPrintMsg(StatError_t statError, const char *sourceFile, int sourceLine, const char *fmt, ...)
+{
+    va_list arg;
+    char timeString[BUFSIZE], msg[BUFSIZE];
+    const char *timeFormat = "%b %d %T";
+    time_t currentTime;
+    struct tm *localTime;
+
+    /* If this is a log message and we're not logging, then return */
+    if (statError == STAT_LOG_MESSAGE && gStatOutFp == NULL)
+        return;
+
+    /* Get the time */
+    currentTime = time(NULL);
+    localTime = localtime(&currentTime);
+    if (localTime == NULL)
+        snprintf(timeString, BUFSIZE, "NULL");
+    else
+        strftime(timeString, BUFSIZE, timeFormat, localTime);
+
+    if (statError != STAT_LOG_MESSAGE && statError != STAT_STDOUT && statError != STAT_VERBOSITY)
+    {
+        /* Print the error to the screen (or designated error file) */
+        fprintf(stderr, "<%s> <%s:% 4d> ", timeString, sourceFile, sourceLine);
+        fprintf(stderr, "STAT returned error type ");
+        statPrintErrorType(statError, stderr);
+        fprintf(stderr, ": ");
+        va_start(arg, fmt);
+        vfprintf(stderr, fmt, arg);
+        va_end(arg);
+    }
+
+    /* Print the message to the log */
+    if (gStatOutFp != NULL)
+    {
+        if (gLogging & STAT_LOG_MRN)
+        {
+            va_start(arg, fmt);
+            vsnprintf(msg, BUFSIZE, fmt, arg);
+            va_end(arg);
+            mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+        }
+        else
+        {
+            if (sourceLine != -1 && sourceFile != NULL)
+                fprintf(gStatOutFp, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
+            if (statError != STAT_LOG_MESSAGE && statError != STAT_STDOUT && statError != STAT_VERBOSITY)
+            {
+                fprintf(gStatOutFp, "STAT returned error type ");
+                statPrintErrorType(statError, gStatOutFp);
+                fprintf(gStatOutFp, ": ");
+            }
+            va_start(arg, fmt);
+            vfprintf(gStatOutFp, fmt, arg);
+            va_end(arg);
+            fflush(gStatOutFp);
+        }
+    }
+}
+
+
+//! initialize the filter
+/*!
+    \param inputPackets - the vector of input packets
+    \param[out] outputPackets - the vector of output packets
+    \param[out] outputPacketsReverse - the vector of output packets to send to the BackEnds (not used)
+    \param filterState - pointer to the filter state (not used)
+    \param params - the current configuration settings for the filtern instance (not used)
+    \param topology - the MRNet topology
+
+    Initialize graphlib and the STAT Graph Routines. Create the log file.
+*/
+void filterInit(vector<PacketPtr> &inputPackets,
+                vector<PacketPtr> &outputPackets,
+                vector<PacketPtr> &outputPacketsReverse,
+                void **filterState,
+                PacketPtr &params,
+                const TopologyLocalInfo &topology)
+{
+    char *logDir;
+    char fileName[BUFSIZE], hostName[BUFSIZE];
+    int intRet, mrnetOutputLevel;
+    unsigned int i;
+    graphlib_error_t graphlibError;
+
+    graphlibError = graphlib_Init();
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to initialize graphlib\n");
+        return;
+    }
+    statInitializeReorderFunctions();
+    statInitializeBitVectorFunctions();
+    statInitializeCountRepFunctions();
+    statInitializeMergeFunctions();
+
+    if (inputPackets[0]->get_Tag() == PROT_SEND_BROADCAST_STREAM)
+    {
+        for (i = 0; i < inputPackets.size(); i++)
+        {
+            if (inputPackets[i]->unpack("%uc %s %d", &gLogging, &logDir, &mrnetOutputLevel) == -1)
+                cpPrintMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to unpack packet\n");
+            if (topology.get_Network()->is_LocalNodeInternal())
+            {
+                if (gLogging & STAT_LOG_CP)
+                {
+                    /* Create the log directory */
+                    intRet = mkdir(logDir, S_IRUSR | S_IWUSR | S_IXUSR);
+                    if (intRet == -1 && errno != EEXIST)
+                        cpPrintMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: mkdir failed to create log directory %s\n", strerror(errno), logDir);
+                    intRet = gethostname(hostName, BUFSIZE);
+                    if (intRet != 0)
+                        cpPrintMsg(STAT_WARNING, __FILE__, __LINE__, "Warning, Failed to get hostName\n");
+                    snprintf(fileName, BUFSIZE, "%s/%s.STATfilter.%d.log", logDir, hostName, topology.get_Rank());
+                    gStatOutFp = fopen(fileName, "w");
+                    if (gStatOutFp == NULL)
+                        cpPrintMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open FE log file %s\n", strerror(errno), fileName);
+#ifdef MRNET40
+                    if (gLogging & STAT_LOG_MRN)
+                        mrn_printf_init(gStatOutFp);
+#endif
+                    set_OutputLevel(mrnetOutputLevel);
+                }
+            }
+            free(logDir);
+        }
+    }
+    for (i = 0; i < inputPackets.size(); i++)
+        outputPackets.push_back(inputPackets[i]);
+}
+
 //! A message to check the version of various components
 /*!
     \param inputPackets - the vector of input packets
-    \param outputPackets - the vector of output packets
+    \param[out] outputPackets - the vector of output packets
+    \param[out] outputPacketsReverse - the vector of output packets to send to the BackEnds (not used)
+    \param filterState - pointer to the filter state (not used)
+    \param params - the current configuration settings for the filtern instance (not used)
+    \param topology - the MRNet topology (not used)
 */
 void STAT_checkVersion(vector<PacketPtr> &inputPackets,
                        vector<PacketPtr> &outputPackets,
-                       void **)
+                       vector<PacketPtr> &outputPacketsReverse,
+                       void **filterState,
+                       PacketPtr &params,
+                       const TopologyLocalInfo &topology)
 {
     PacketPtr currentPacket;
     int major, minor, revision, i;
@@ -103,10 +279,7 @@ void STAT_checkVersion(vector<PacketPtr> &inputPackets,
         /* Prepare the output values */
         if (major != STAT_MAJOR_VERSION || minor != STAT_MINOR_VERSION || revision != STAT_REVISION_VERSION)
         {
-#ifdef MRNET31        
-            mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_checkVersion", stderr, "Filter reports version mismatch: FE = %d.%d.%d, Filter = %d.%d.%d\n", major, minor, revision, STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION));
-#endif
-            fprintf(stderr, "Filter reports version mismatch: FE = %d.%d.%d, Filter = %d.%d.%d\n", major, minor, revision, STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
+            cpPrintMsg(STAT_VERSION_ERROR, __FILE__, __LINE__, "Filter reports version mismatch: FE = %d.%d.%d, Filter = %d.%d.%d\n", major, minor, revision, STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
             filterCount += 1;
         }
 
@@ -117,32 +290,39 @@ void STAT_checkVersion(vector<PacketPtr> &inputPackets,
     }
 }
 
+
 //! Merges graphs from incoming packets into a single out packet
 /*!
     \param inputPackets - the vector of input packets
-    \param outputPackets - the vector of output packets
+    \param[out] outputPackets - the vector of output packets
+    \param[out] outputPacketsReverse - the vector of output packets to send to the BackEnds (not used)
+    \param filterState - pointer to the filter state (not used)
+    \param params - the current configuration settings for the filtern instance (not used)
+    \param topology - the MRNet topology (not used)
 */
-void STAT_Merge(vector<PacketPtr> &inputPackets,
-                vector<PacketPtr> &outputPackets,
-                void ** /* client data */)
+void statMerge(vector<PacketPtr> &inputPackets,
+               vector<PacketPtr> &outputPackets,
+               vector<PacketPtr> &outputPacketsReverse,
+               void **filterState,
+               PacketPtr &params,
+               const TopologyLocalInfo &topology)
 {
-    static int totalWidth;
-    int nChildren, *edgeLabelWidths, rank, inputRank, outputRank;
-    unsigned int outputByteArrayLen;
-    graphlib_graph_p returnGraph = NULL, currentGraph = NULL;
-    graphlib_error_t gl_err;
-    map<int,int> childrenOrder;
-    map<int,int>::iterator iter;
     /* The byte arrays are declared static so we can manage the allocated memory
-       This is because we need to be assured that the data exists when MRNet 
-       tries to send it.  They are safe to free up on the next invocation of 
+       This is because we need to be assured that the data exists when MRNet
+       tries to send it.  They are safe to free up on the next invocation of
        this filter function */
-    static char *outputByteArray;
-    DataType type;
-    unsigned int byteArrayLen, i, j;
+    static char *sOutputByteArray = NULL;
+    int totalWidth = 0, nChildren, *edgeLabelWidths = NULL, rank, inputRank, outputRank, child, tag;
+    uint64_t outputByteArrayLen, byteArrayLen;
+    unsigned int i, sampleType;
     char *byteArray;
-    int child;
+    map<int, int> childrenOrder;
+    map<int, int>::iterator childrenOrderIter;
+    DataType type;
+    graphlib_graph_p returnGraph = NULL, currentGraph = NULL;
+    graphlib_error_t graphlibError;
     PacketPtr currentPacket;
+    StatBitVectorEdge_t *edge, *retEdge;
 
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
 //    static int init = 0;
@@ -151,16 +331,17 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
 //    init++;
 #endif
 
-#ifdef MRNET31        
-    mrn_dbg(5, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "STAT filter invoked\n"));
-#endif
+    cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STAT filter invoked\n");
 
     /* Delete byte arrays from previous iterations */
-    if (outputByteArray != NULL)
-        free(outputByteArray);
+    if (sOutputByteArray != NULL)
+    {
+        free(sOutputByteArray);
+        sOutputByteArray = NULL;
+    }
 
-    /* We want to make sure we're processing packets in the same order 
-       every time the filter is invoked.  That way, we know where in the 
+    /* We want to make sure we're processing packets in the same order
+       every time the filter is invoked.  That way, we know where in the
        final bit vector to place each incoming bit vector */
     for (i = 0; i < inputPackets.size(); i++)
     {
@@ -168,112 +349,354 @@ void STAT_Merge(vector<PacketPtr> &inputPackets,
         rank = (*currentPacket)[2]->get_int32_t();
         childrenOrder[rank] = i;
     }
+    sampleType = (*inputPackets[0])[3]->get_uint32_t();
+    tag = inputPackets[0]->get_Tag();
 
-    /* Initialize graphlib */
     nChildren = inputPackets.size();
     edgeLabelWidths = (int *)malloc(nChildren * sizeof(int));
     if (edgeLabelWidths == NULL)
     {
-#ifdef MRNET31        
-        mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "%s: Failed to allocate edgeLabelWidths\n", strerror(errno)));
-#endif
+        cpPrintMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate edgeLabelWidths\n", strerror(errno));
         return;
     }
-    i = 0;
-    for (iter = childrenOrder.begin(); iter != childrenOrder.end(); iter++)
+    for (childrenOrderIter = childrenOrder.begin(), i = 0; childrenOrderIter != childrenOrder.end(); childrenOrderIter++, i++)
     {
-        currentPacket = inputPackets[iter->second];
+        currentPacket = inputPackets[childrenOrderIter->second];
         edgeLabelWidths[i] = (*currentPacket)[1]->get_int32_t();
-        i++;
-    }
-    gl_err = graphlib_InitVarEdgeLabelsConn(nChildren, edgeLabelWidths, &totalWidth);
-    free(edgeLabelWidths);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-#ifdef MRNET31        
-        mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to initialize graphlib\n"));
-#endif
-        return;
+        totalWidth += edgeLabelWidths[i];
     }
 
-    /* Initialize the result graphs */
-    gl_err = graphlib_newGraph(&returnGraph);
-    if (GRL_IS_FATALERROR(gl_err))
+    if (tag == PROT_SEND_NODE_IN_EDGE_RESP)
     {
-#ifdef MRNET31        
-        mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to create new graph\n"));
-#endif
-        return;
-    }
-
-    /* Loop around the packets in order of lowest task rank and merge into output */
-    rank = -1;
-    for (iter = childrenOrder.begin(); iter != childrenOrder.end(); iter++)
-    {
-        rank++;
-        child = iter->second;
-        currentPacket = inputPackets[child];
-
-        /* Deserialize 1st graph in packet element [0] */
-        byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
-        gl_err = graphlib_deserializeGraphConn(rank, &currentGraph, byteArray, byteArrayLen);
-        if (GRL_IS_FATALERROR(gl_err))
+        retEdge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
+        if (retEdge == NULL)
         {
-#ifdef MRNET31        
-            mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to deserialize graph %d\n", rank));
-#endif
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to malloc edge\n", strerror(errno));
+            return;
+        }
+        retEdge->length = totalWidth;
+        retEdge->bitVector = (StatBitVector_t *)calloc(retEdge->length, STAT_BITVECTOR_BYTES);
+        if (retEdge->bitVector == NULL)
+        {
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "%s: Failed to calloc %d longs for edge->bitVector\n", strerror(errno), retEdge->length);
             return;
         }
 
-        /* Merge graph 1 into 1st returnGraph */
-        gl_err = graphlib_mergeGraphsRanked(returnGraph, currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
+        /* Loop around the packets in order of lowest task rank and merge into output */
+        for (childrenOrderIter = childrenOrder.begin(), rank = 0; childrenOrderIter != childrenOrder.end(); childrenOrderIter++, rank++)
         {
-#ifdef MRNET31        
-            mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to merge graph %d\n", rank));
+            child = childrenOrderIter->second;
+            currentPacket = inputPackets[child];
+
+            /* Deserialize edge in packet element [0] */
+#ifdef MRNET40
+            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
+#else
+            unsigned int unsignedIntByteArrayLen;
+            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &unsignedIntByteArrayLen));
+            byteArrayLen = unsignedIntByteArrayLen;
 #endif
-            return;
+            gStatGraphRoutinesTotalWidth = totalWidth;
+            gStatGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
+            gStatGraphRoutinesCurrentIndex = rank;
+            statFilterDeserializeEdge((void **)&edge, byteArray, byteArrayLen);
+            statMergeEdge(retEdge, edge);
+            statFreeEdge(edge);
+
+            /* Add the array of ranks associated with this packet */
+            inputRank = (*currentPacket)[2]->get_int32_t();
+            if (rank == 0)
+                outputRank = inputRank;
+            else if (inputRank < outputRank)
+                outputRank = inputRank;
         }
 
-        /* Delete the current graph since we no longer need it */
-        gl_err = graphlib_delGraph(currentGraph);
-        if (GRL_IS_FATALERROR(gl_err))
+        outputByteArrayLen = statSerializeEdgeLength(retEdge);
+        sOutputByteArray = (char *)malloc(outputByteArrayLen);
+        if (sOutputByteArray == NULL)
         {
-#ifdef MRNET31        
-            mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to delete graph %d\n", rank));
-#endif
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__,"%s: Failed to malloc sOutputByteArray\n", strerror(errno));
             return;
         }
-
-        /* Add the array of ranks associated with this packet */
-        inputRank = (*currentPacket)[2]->get_int32_t();
-        if (rank == 0)
-            outputRank = inputRank;
-        else if (inputRank < outputRank)
-            outputRank = inputRank;
-    }
-
-    /* Now to finish up: serialize both result graphs to create output packet */
-    gl_err = graphlib_serializeGraph(returnGraph, &outputByteArray, &outputByteArrayLen);
-    if (GRL_IS_FATALERROR(gl_err))
+        statSerializeEdge(sOutputByteArray, retEdge);
+        statFreeEdge(retEdge);
+    } /* if (tag == PROT_SEND_NODE_IN_EDGE_RESP) */
+    else
     {
-#ifdef MRNET31        
-        mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to serialize output graph\n"));
+        /* Initialize the result graphs */
+        if (sampleType & STAT_SAMPLE_COUNT_REP)
+            graphlibError = graphlib_newGraph(&returnGraph, gStatCountRepFunctions);
+        else
+            graphlibError = graphlib_newGraph(&returnGraph, gStatMergeFunctions);
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__,"Failed to create new graph\n");
+            return;
+        }
+
+        /* Loop around the packets in order of lowest task rank and merge into output */
+        for (childrenOrderIter = childrenOrder.begin(), rank = 0; childrenOrderIter != childrenOrder.end(); childrenOrderIter++, rank++)
+        {
+            child = childrenOrderIter->second;
+            currentPacket = inputPackets[child];
+
+            /* Deserialize graph in packet element [0] */
+#ifdef MRNET40
+            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
+#else
+            unsigned int unsignedIntByteArrayLen;
+            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &unsignedIntByteArrayLen));
+            byteArrayLen = unsignedIntByteArrayLen;
 #endif
-        return;
-    }
-    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), inputPackets[0]->get_Tag(), "%ac %d %d", outputByteArray, outputByteArrayLen, totalWidth, outputRank));
+            if (sampleType & STAT_SAMPLE_COUNT_REP)
+                graphlibError = graphlib_deserializeBasicGraph(&currentGraph, gStatCountRepFunctions, byteArray, byteArrayLen);
+            else
+            {
+                gStatGraphRoutinesTotalWidth = totalWidth;
+                gStatGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
+                gStatGraphRoutinesCurrentIndex = rank;
+                graphlibError = graphlib_deserializeBasicGraph(&currentGraph, gStatMergeFunctions, byteArray, byteArrayLen);
+            }
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to deserialize graph %d\n", rank);
+                return;
+            }
+
+            graphlibError = graphlib_mergeGraphs(returnGraph, currentGraph);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph %d\n", rank);
+                return;
+            }
+
+            graphlibError = graphlib_delGraph(currentGraph);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to delete graph %d\n", rank);
+                return;
+            }
+
+            /* Add the array of ranks associated with this packet */
+            inputRank = (*currentPacket)[2]->get_int32_t();
+            if (rank == 0)
+                outputRank = inputRank;
+            else if (inputRank < outputRank)
+                outputRank = inputRank;
+        }
+
+        graphlibError = graphlib_serializeBasicGraph(returnGraph, &sOutputByteArray, &outputByteArrayLen);
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to serialize output graph\n");
+            return;
+        }
+
+        graphlibError = graphlib_delGraph(returnGraph);
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to delete output graph\n");
+            return;
+        }
+    } /* else from if (tag == PROT_SEND_NODE_IN_EDGE_RESP) */
+
+#ifdef MRNET40
+    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), tag, "%Ac %d %d %ud", sOutputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
+#else
+    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), tag, "%ac %d %d %ud", sOutputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
+#endif
     outputPackets.push_back(newPacket);
 
-    /* Delete the result graphs since we no longer need them */
-    gl_err = graphlib_delGraph(returnGraph);
-    if (GRL_IS_FATALERROR(gl_err))
-    {
-#ifdef MRNET31        
-        mrn_dbg(1, mrn_printf(__FILE__, __LINE__, "STAT_Merge", stderr, "Failed to delete output graph\n"));
-#endif
-        return;
-    }
+    if (edgeLabelWidths != NULL)
+        free(edgeLabelWidths);
+
+    cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STAT filter completed\n");
 }
+
+
+#ifdef STAT_FGFS
+/* New Filters for solving the Scalabilty problem of accesing files */
+
+//! Cached file contents
+map<string, pair<char*, unsigned long> > gFileNameToContentsMap;
+
+//! The set of files that have been requested
+set<string> gVisitedFileSet;
+
+//! A mutex to protect the cached file map
+pthread_mutex_t gFileNameToContentsMapMutex;
+
+//! A mutex to protect the visited file set
+pthread_mutex_t gVisitedFileSetMutex;
+
+//! The MRNet format string for the file request upstream filter
+const char *fileRequestUpStream_format_string = "%s";
+
+//! Handles requests for file contents from children. Sends cached contents if available
+/*!
+    \param inputPackets - the vector of input packets
+    \param[out] outputPackets - the vector of output packets
+    \param[out] outputPacketsReverse - the vector of output packets to send to the BackEnds (not used)
+    \param filterState - pointer to the filter state (not used)
+    \param params - the current configuration settings for the filtern instance (not used)
+    \param topology - the MRNet topology
+*/
+void fileRequestUpStream(vector<PacketPtr> &inputPackets,
+                         vector<PacketPtr> &outputPackets,
+                         vector<PacketPtr> &outputPacketsReverse,
+                         void **filterState,
+                         PacketPtr &params,
+                         const TopologyLocalInfo &topology)
+{
+    char *fileName = NULL;
+    unsigned int i;
+    PacketPtr currentPacket, newPacket;
+    map<string, pair<char *, unsigned long> >::iterator gFileNameToContentsMapIter;
+
+    cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "File request up stream filter begin.\n");
+
+    if (inputPackets[0]->get_Tag() == PROT_FILE_REQ_RESP)
+    {
+        newPacket = inputPackets[0];
+        outputPackets.push_back(newPacket);
+    }
+    else
+    {
+        for (i = 0; i < inputPackets.size(); i++)
+        {
+            currentPacket = inputPackets[i];
+            currentPacket->unpack("%s", &fileName);
+            pthread_mutex_lock(&gFileNameToContentsMapMutex);
+            gFileNameToContentsMapIter = gFileNameToContentsMap.find(fileName);
+            if (gFileNameToContentsMapIter != gFileNameToContentsMap.end())
+            {
+                pthread_mutex_unlock(&gFileNameToContentsMapMutex);
+                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending cached result for %s in reverse.\n", fileName);
+                PacketPtr newPacketReverse(new Packet(inputPackets[0]->get_StreamId(),
+#ifdef MRNET40
+                                           inputPackets[0]->get_Tag(), "%Ac %s", gFileNameToContentsMapIter->second.first,
+#else
+                                           inputPackets[0]->get_Tag(), "%ac %s", gFileNameToContentsMapIter->second.first,
+#endif
+                                           gFileNameToContentsMapIter->second.second, fileName));
+                outputPacketsReverse.push_back(newPacketReverse);
+            }
+            else
+            {
+                pthread_mutex_unlock(&gFileNameToContentsMapMutex);
+                pthread_mutex_lock(&gVisitedFileSetMutex);
+                if (gVisitedFileSet.find(fileName) == gVisitedFileSet.end())
+                {
+                    gVisitedFileSet.insert(fileName);
+                    pthread_mutex_unlock(&gVisitedFileSetMutex);
+                    cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Noting request for %s.\n", fileName);
+                    outputPackets.push_back(inputPackets[i]);
+                }
+                else
+                {
+                    pthread_mutex_unlock(&gVisitedFileSetMutex);
+                    cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d: Duplicate request for %s.\n", topology.get_Network()->get_LocalRank(), fileName);
+                }
+            }
+            if (fileName != NULL)
+            {
+                free(fileName);
+                fileName = NULL;
+            }
+        } /* for (i = 0; i < inputPackets.size(); i++) */
+    } /* else for if (inputPackets[0]->get_Tag() == PROT_FILE_REQ_RESP) */
+
+    cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "File request up stream filter end.\n");
+}
+
+//! The MRNet format string for the file request upstream filter
+#ifdef MRNET40
+const char *fileRequestDownStream_format_string = "%Ac %s";
+#else
+const char *fileRequestDownStream_format_string = "%ac %s";
+#endif
+
+//! Handles file contents sent from parent, cachces contents if last level of CPs
+/*!
+    \param inputPackets - the vector of input packets
+    \param[out] outputPackets - the vector of output packets
+    \param[out] outputPacketsReverse - the vector of output packets to send to the BackEnds (not used)
+    \param filterState - pointer to the filter state (not used)
+    \param params - the current configuration settings for the filtern instance (not used)
+    \param topology - the MRNet topology
+*/
+void fileRequestDownStream(vector<PacketPtr> &inputPackets,
+                           vector<PacketPtr> &outputPackets,
+                           vector<PacketPtr> &outputPacketsReverse,
+                           void **filterState,
+                           PacketPtr &params,
+                           const TopologyLocalInfo &topology)
+{
+    char *fileContents, *fileName;
+    unsigned long fileContentsLength;
+    unsigned int i;
+    PacketPtr currentPacket, newPacket;
+    set<string>::iterator visitedFileSetIter;
+    map<string, pair<char*, unsigned long> >::iterator fileNameToContentsMapIter;
+
+    cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "File request down stream filter begin.\n");
+
+    if (inputPackets[0]->get_Tag() == PROT_FILE_REQ)
+    {
+        cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "PROT_FILE_REQ\n");
+        pthread_mutex_init(&gFileNameToContentsMapMutex, NULL);
+        pthread_mutex_init(&gVisitedFileSetMutex, NULL);
+        newPacket = inputPackets[0];
+        outputPackets.push_back(newPacket);
+    }
+    else
+    {
+        cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "!PROT_FILE_REQ\n");
+
+        for (i = 0; i < inputPackets.size(); i++)
+        {
+            currentPacket = inputPackets[i];
+#ifdef MRNET40
+            currentPacket->unpack("%Ac %s", &fileContents, &fileContentsLength, &fileName);
+#else
+            currentPacket->unpack("%ac %s", &fileContents, &fileContentsLength, &fileName);
+#endif
+            if (topology.get_Network()->is_LocalNodeInternal())
+            {
+                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "caching contents of %s at CP length %lu\n", fileName, fileContentsLength);
+                pthread_mutex_lock(&gFileNameToContentsMapMutex);
+                fileNameToContentsMapIter = gFileNameToContentsMap.find(fileName);
+                if (fileNameToContentsMapIter == gFileNameToContentsMap.end())
+                    gFileNameToContentsMap[fileName] = make_pair(fileContents, fileContentsLength);
+                pthread_mutex_unlock(&gFileNameToContentsMapMutex);
+            }
+            else
+                free(fileContents);
+
+            pthread_mutex_lock(&gVisitedFileSetMutex);
+            visitedFileSetIter = gVisitedFileSet.find(fileName);
+            if (visitedFileSetIter != gVisitedFileSet.end())
+            {
+                gVisitedFileSet.erase(visitedFileSetIter);
+                pthread_mutex_unlock(&gVisitedFileSetMutex);
+                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "passing along contents of %s, length %lu at CP\n", fileName, fileContentsLength);
+                outputPackets.push_back(inputPackets[i]);
+            }
+            else
+            {
+                cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "ignoring file %s at CP\n", fileName);
+                pthread_mutex_unlock(&gVisitedFileSetMutex);
+            }
+            if (fileName != NULL)
+            {
+                free(fileName);
+                fileName = NULL;
+            }
+        }
+    }
+    cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "File request down stream filter end.\n");
+}
+
+#endif /* STAT_FGFS */
 
 } /* extern "C" */

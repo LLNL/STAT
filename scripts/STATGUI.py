@@ -16,24 +16,38 @@ Redistribution and use in source and binary forms, with or without modification,
         Redistributions of source code must retain the above copyright notice, this list of conditions and the disclaimer below.
         Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the disclaimer (as noted below) in the documentation and/or other materials provided with the distribution.
         Neither the name of the LLNS/LLNL nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-        
+
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "1.1.0"
+__version__ = "2.0.0"
 
 import STAThelper
-from STAThelper import *
+from STAThelper import var_spec_to_string, get_task_list
 import STATview
-from STATview import *
+from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
 import sys, DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import *
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_LOG_NONE, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON
 import commands
+import subprocess
 import shelve
 import time
 import string
+import os
+import gtk
+import gobject
+import re
+from collections import defaultdict
 
+## The ProcTab class stores the process table
+class ProcTab(object):
+    def __init__(self):
+        self.launcher_host = None
+        self.launcher_pid = None
+        self.executable_path = None
+        self.executable_paths = []
+        self.process_list = []
 
 ## The STATGUI window adds STAT operations to the STATview window.
 class STATGUI(STATDotWindow):
@@ -65,52 +79,69 @@ class STATGUI(STATDotWindow):
                 pass
         self.STAT = STAT_FrontEnd()
         self.properties_window = None
-        self.proctab_file = None
+        self.proctab_file_path = None
+        self.proctab = None
         self.attached = False
         self.reattach = False
-        self.combo_boxes = {}
-        self.spinners = {}
-        self.types = {}
+        self.serial_process_list = None
+        self.serial_attach = False
         self.sample_task_list = ['Sample Stack Traces', 'Gather Stack Traces', 'Render Stack Traces']
         self.attach_task_list = ['Launch Daemons', 'Connect to Daemons', 'Attach to Application']
         self.attach_task_list += self.sample_task_list
-        self.types['Topology Type'] = ['automatic', 'depth', 'max fanout', 'custom']
-        self.types['Verbosity Type'] = ['error', 'stdout', 'full']
-        self.types['Sample Type'] = ['function only', 'function and pc', 'function and line']
-        self.types['Remote Host Shell'] = ['rsh', 'ssh']
-        self.options = {}
-        self.options['Remote Host'] = "localhost"
-        self.options['Remote Host Shell'] = "rsh"
-        self.options['PID'] = None
-        self.options['Launcher Exe'] = ''
-        self.options['Topology Type'] = 'automatic'
-        self.options['Topology'] = '1'
-        self.options['Share App Nodes'] = True
-        self.options['Tool Daemon Path'] = self.STAT.getToolDaemonExe()
-        self.options['Filter Path'] = self.STAT.getFilterPath()
-        self.options['Job Launcher'] = 'mpirun|srun|orterun'
-        self.options['Log Dir'] = os.environ['HOME']
-        self.options['Log Frontend'] = False
-        self.options['Log Backend'] = False
+        types = { 'Topology Type'     : ['automatic', 'depth', 'max fanout', 'custom'],
+                  'Verbosity Type'    : ['error', 'stdout', 'full'],
+                  'Sample Type'       : ['function only', 'function and pc', 'function and line'],
+                  'Edge Type'         : ['full list', 'count and representative'],
+                  'Remote Host Shell' : ['rsh', 'ssh'] }
+        if not hasattr(self, "types"):
+            self.types = {}
+        for opt in types:
+            self.types[opt] = types[opt]
+        options = { 'Remote Host'                      : "localhost",
+                    'Remote Host Shell'                : "rsh",
+                    'PID'                              : None,
+                    'Launcher Exe'                     : '',
+                    'Serial PID'                       : None,
+                    'Serial Exe'                       : '',
+                    'Serial Process List'              : '',
+                    'Topology Type'                    : 'automatic',
+                    'Topology'                         : '1',
+                    'Share App Nodes'                  : True,
+                    'Tool Daemon Path'                 : self.STAT.getToolDaemonExe(),
+                    'Filter Path'                      : self.STAT.getFilterPath(),
+                    'Job Launcher'                     : 'mpirun|srun|orterun|aprun',
+                    'Log Dir'                          : os.environ['HOME'],
+                    'Log Frontend'                     : False,
+                    'Log Backend'                      : False,
+                    'Log CP'                           : False,
+                    'Log SW'                           : False,
+                    'Log SWERR'                        : False,
+                    'Use MRNet Printf'                 : False,
+                    'Verbosity Type'                   : 'error',
+                    'Communication Nodes'              : '',
+                    'Communication Processes per Node' : 8,
+                    'Num Traces'                       : 10,
+                    'Trace Frequency (ms)'             : 1000,
+                    'Num Retries'                      : 5,
+                    'Retry Frequency (us)'             : 10,
+                    'With Threads'                     : False,
+                    'Gather Python Traces'             : False,
+                    'Clear On Sample'                  : True,
+                    'Gather Individual Samples'        : False,
+                    'Run Time Before Sample (sec)'     : 0,
+                    'Sample Type'                      : 'function only',
+                    'Edge Type'                        : 'full list',
+                    'DDT Path'                         : STAThelper._which('ddt'),
+                    'DDT LaunchMON Prefix'             : '/usr/local',
+                    'TotalView Path'                   : STAThelper._which('totalview') }
+        if not hasattr(self, "options"):
+            self.options = {}
+        for option in options:
+            self.options[option] = options[option]
         if 'STAT_LMON_DEBUG_BES' in os.environ:
             self.options['Debug Backends'] = True
         else:
             self.options['Debug Backends'] = False
-        self.options['Verbosity Type'] = 'error'
-        self.options['Communication Nodes'] = ''
-        self.options['Communication Processes per Node'] = 8
-        self.options['Num Traces'] = 10
-        self.options['Trace Frequency (ms)'] = 1000
-        self.options['Num Retries'] = 5
-        self.options['Retry Frequency (ms)'] = 10
-        self.options['With Threads'] = False
-        self.options['Clear On Sample'] = True
-        self.options['Gather Individual Samples'] = False
-        self.options['Run Time Before Sample (sec)'] = 0
-        self.options['Sample Type'] = 'function only'
-        self.options['DDT Path'] = STAThelper._which('ddt')
-        self.options['DDT LaunchMON Prefix'] = '/usr/local'
-        self.options['TotalView Path'] = STAThelper._which('totalview')
 
         # Check for site default options then for user default options
         site_options_path = '%s/etc/STAT/STAT.conf' %self.STAT.getInstallPrefix()
@@ -118,46 +149,52 @@ class STATGUI(STATDotWindow):
         for path in [site_options_path, user_options_path]:
             if os.path.exists(path):
                 try:
-                    f = open(path, 'r')
-                except:
-                    sys.stderr.write('failed to open preferences file %s\n' %(path))
-                    continue
-                for line in f.readlines():
-                    if line[0] == '#':
-                        continue
-                    split_line = line.split('=')
-                    if len(split_line) != 2:
-                        sys.stderr.write('invalid preference specification %s in file %s\n' %(line.strip('\n'), path))
-                        continue
-                    option = string.lstrip(string.rstrip(split_line[0]))
-                    value = string.lstrip(string.rstrip(split_line[1]))
-                    if option in self.options.keys():
-                        if type(self.options[option]) == type(1):
-                            value = int(value)
-                        elif type(self.options[option]) == type(True):
-                            if string.lower(value) == 'true':
-                                value = True
-                            elif string.lower(value) == 'false':
-                                value = False
-                            else:
-                                sys.stderr.write('invalid value %s for option %s as specified in file %s.  Expecting either "true" or "false".\n' %(value, option, path))
+                    with open(path, 'r') as f:
+                        for line in f:
+                            if line[0] == '#':
                                 continue
-                        self.options[option] = value
-                    elif option == 'Source Search Path':
-                        if os.path.exists(value):
-                            search_paths['source'].append(value)
-                        else:
-                            sys.stderr.write('search path %s specified in %s is not accessible\n' %(value, path))
-                    elif option == 'Include Search Path':
-                        if os.path.exists(value):
-                            search_paths['include'].append(value)
-                        else:
-                            sys.stderr.write('search path %s specified in %s is not accessible\n' %(value, path))
-                    else:
-                        sys.stderr.write('invalid option %s in file %s\n' %(option, path))
+                            split_line = line.split('=')
+                            if len(split_line) != 2:
+                                sys.stderr.write('invalid preference specification %s in file %s\n' %(line.strip('\n'), path))
+                                continue
+                            option = string.lstrip(string.rstrip(split_line[0]))
+                            value = string.lstrip(string.rstrip(split_line[1]))
+                            if option in self.options.keys():
+                                if type(self.options[option]) == int:
+                                    value = int(value)
+                                elif type(self.options[option]) == bool:
+                                    if string.lower(value) == 'true':
+                                        value = True
+                                    elif string.lower(value) == 'false':
+                                        value = False
+                                    else:
+                                        sys.stderr.write('invalid value %s for option %s as specified in file %s.  Expecting either "true" or "false".\n' %(value, option, path))
+                                        continue
+                                self.options[option] = value
+                            elif option == 'Source Search Path':
+                                if os.path.exists(value):
+                                    search_paths['source'].append(value)
+                                else:
+                                    sys.stderr.write('search path %s specified in %s is not accessible\n' %(value, path))
+                            elif option == 'Include Search Path':
+                                if os.path.exists(value):
+                                    search_paths['include'].append(value)
+                                else:
+                                    sys.stderr.write('search path %s specified in %s is not accessible\n' %(value, path))
+                            else:
+                                sys.stderr.write('invalid option %s in file %s\n' %(option, path))
+                except IOError as e:
+                    sys.stderr.write('%s\nfailed to open preferences file %s\n' %(repr(e), path))
+                    continue
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    sys.stderr.write('%s\nfailed to process preferences file %s\n' %(repr(e), path))
+                    continue
 
         self.var_spec = []
         self.filter_entry = None
+        self.serial_filter_entry = None
         uimanager = gtk.UIManager()
         self.actiongroup = gtk.ActionGroup('Commands')
         actions = []
@@ -183,17 +220,12 @@ class STATGUI(STATDotWindow):
             count += 1
             if line.find('menuitem action="SaveAs') != -1:
                 break
-        lines.insert(count, '            <menuitem action="SavePrefs"/>') 
-        lines.insert(count, '            <menuitem action="LoadPrefs"/>') 
-        lines.insert(count, '            <separator/>') 
-        lines.insert(count, '            <menuitem action="Properties"/>') 
-        lines.insert(count, '            <separator/>') 
+        lines.insert(count, '            <menuitem action="Properties"/>')
+        lines.insert(count, '            <separator/>')
         STATDotWindow.ui = ''
         for line in lines:
             STATDotWindow.ui += line + '\n'
         menu_actions = []
-        menu_actions.append(('LoadPrefs', gtk.STOCK_OPEN, '_Load Preferences', '<control>L', 'Save current preference settings', self.on_load_prefs))
-        menu_actions.append(('SavePrefs', gtk.STOCK_SAVE_AS, 'Save _Preferences', '<control>P', 'Load saved preference settings', self.on_save_prefs))
         menu_actions.append(('Properties', gtk.STOCK_PROPERTIES, 'P_roperties', '<control>R', 'View application properties', self.on_properties))
         menu_actions.append(('About', gtk.STOCK_ABOUT, None, None, None, self.on_about))
         STATDotWindow.__init__(self, menu_actions)
@@ -227,25 +259,15 @@ host[1-10,12,15-20];otherhost[30]
                     host_list.append(node_name)
             else:
                 host_list.append(host)
-        tasks = ''
-        ret = self.set_proctab_file()
+        ret = self.set_proctab()
         if ret == False:
             return False
-        try:
-            f = open(self.proctab_file, 'r')
-        except:
-            show_error_dialog('failed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %self.proctab_file, self)
-            return False
-        lines = f.readlines()
-        lines = lines[1:]
-        for line in lines:
-            line = line.split()
-            host_pid = line[1]
-            host = host_pid.split(':')[0]
+        tasks = ''
+        for rank, host, pid, exe_index in self.proctab.process_list:
             if match_case_check_box.get_active() == False:
                 host = host.lower()
             if host in host_list:
-                tasks += line[0] + ','
+                tasks += str(rank) + ','
         tasks = tasks[0:-1]
         self.get_current_graph().focus_tasks(tasks)
         return True
@@ -260,7 +282,7 @@ host[1-10,12,15-20];otherhost[30]
         about_dialog.set_license(__license__)
         about_dialog.set_wrap_license(80)
         version = intArray(3)
-        if self.STAT == None:
+        if self.STAT is None:
             self.STAT = STAT_FrontEnd()
         self.STAT.getVersion(version)
         about_dialog.set_version('%d.%d.%d' %(version[0], version[1], version[2]))
@@ -289,60 +311,7 @@ host[1-10,12,15-20];otherhost[30]
             elif state == 'busy':
                 action.set_sensitive(False)
 
-    def on_load_prefs(self, action):
-        """Load user-saved preferences from a file."""
-        chooser = gtk.FileChooserDialog(title = "Load Preferences", action = gtk.FILE_CHOOSER_ACTION_OPEN, buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
-        chooser.set_default_response(gtk.RESPONSE_OK)
-        filter = gtk.FileFilter()
-        filter.set_name('STAT Prefs File')
-        filter.add_pattern("*.SPF")
-        chooser.add_filter(filter)
-        filter = gtk.FileFilter()
-        filter.set_name('All files')
-        filter.add_pattern("*")
-        chooser.add_filter(filter)
-        chooser.set_current_folder('%s/.STAT' %os.environ['HOME'])
-        if chooser.run() == gtk.RESPONSE_OK:
-            filename = chooser.get_filename() 
-            try:
-                shelf = shelve.open(filename)
-                for key in self.options.keys():
-                    self.options[key] = shelf[key]
-                shelf.close()    
-            except:
-                show_error_dialog('Failed to load preferences file %s\n' %filename, self)
-        chooser.destroy()    
-
-    def on_save_prefs(self, action):        
-        """Save user preferences to a file."""
-        chooser = gtk.FileChooserDialog(title = "Save Preferences", action = gtk.FILE_CHOOSER_ACTION_SAVE, buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
-        chooser.set_default_response(gtk.RESPONSE_OK)
-        chooser.set_do_overwrite_confirmation(True)
-        filter = gtk.FileFilter()
-        filter.set_name('STAT Prefs File')
-        filter.add_pattern("*.SPF")
-        chooser.add_filter(filter)
-        filter = gtk.FileFilter()
-        filter.set_name('All files')
-        filter.add_pattern("*")
-        chooser.add_filter(filter)
-        chooser.set_current_folder('%s/.STAT' %os.environ['HOME'])
-        if chooser.run() == gtk.RESPONSE_OK:
-            filter = chooser.get_filter()
-            ext = ''
-            if filter.get_name() == 'STAT Prefs File':
-                ext = '.SPF'
-            filename = chooser.get_filename() + ext
-            try:
-                shelf = shelve.open(filename)
-                for key in self.options.keys():
-                    shelf[key] = self.options[key]
-                shelf.close()    
-            except:
-                show_error_dialog('Failed to save preferences file %s\n' %filename, self)
-        chooser.destroy()    
-
-    def on_properties(self, action):   
+    def on_properties(self, action):
         """Display a window with application properties."""
         if self.attached == False:
             show_error_dialog('Application properties only available after attaching\n', self)
@@ -355,29 +324,31 @@ host[1-10,12,15-20];otherhost[30]
         num_nodes = self.STAT.getNumApplNodes()
         num_procs = self.STAT.getNumApplProcs()
         appl_exe = self.STAT.getApplExe()
-        self.set_proctab_file()
-        try:
-            f = open(self.proctab_file, 'r')
-            lines = f.readlines()
-            # resort by MPI rank (instead of hostname)
-            process_table = lines[0] 
-            entries = range(len(lines[1:]))
-            for line in lines[1:]:
-                num = int(line.split()[0])
-                entries[num] = line
-            for entry in entries:
-                process_table += entry
-        except:
-            process_table = ''
+        ret = self.set_proctab()
+        if ret == False:
+            show_error_dialog('Failed to set process table file\n', self)
+            return False
+
+        process_table = ''
+        job_launcher = "%s:%d" %(self.proctab.launcher_host, self.proctab.launcher_pid)
+        entries = range(len(self.proctab.process_list))
+        for rank, host, pid, exe_index in self.proctab.process_list:
+            entries[rank] = '%d %s:%d %d\n' %(rank, host, pid, exe_index)
+        for entry in entries:
+            process_table += entry
+
         self.properties_window = gtk.Window()
         self.properties_window.set_title('Properties')
         self.properties_window.connect('destroy', self.on_properties_destroy)
         vbox = gtk.VBox()
 
-        frame = gtk.Frame('Application Executable')
+        frame = gtk.Frame('Application Executable(s) (index:path)')
         text_view = gtk.TextView()
         text_buffer = gtk.TextBuffer()
-        text_buffer.set_text(appl_exe)
+        exes = ''
+        for i in range(len(self.proctab.executable_paths)):
+            exes += ('%d:%s\n' %(i, self.proctab.executable_paths[i]))
+        text_buffer.set_text(exes)
         text_view.set_buffer(text_buffer)
         text_view.set_wrap_mode(False)
         text_view.set_editable(False)
@@ -407,7 +378,19 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(text_view)
         vbox.pack_start(frame, False, False, 0)
 
-        frame = gtk.Frame('Process Table')
+        if self.STAT.getApplicationOption() != STAT_SERIAL_ATTACH:
+            frame = gtk.Frame('Job Launcher (host:PID)')
+            text_view = gtk.TextView()
+            text_buffer = gtk.TextBuffer()
+            text_buffer.set_text(job_launcher)
+            text_view.set_buffer(text_buffer)
+            text_view.set_wrap_mode(False)
+            text_view.set_editable(False)
+            text_view.set_cursor_visible(False)
+            frame.add(text_view)
+            vbox.pack_start(frame, False, False, 0)
+
+        frame = gtk.Frame('Process Table (rank host:PID exe_index)')
         text_view = gtk.TextView()
         text_view.set_size_request(400, 200)
         text_buffer = gtk.TextBuffer()
@@ -421,12 +404,16 @@ host[1-10,12,15-20];otherhost[30]
         sw.add(text_view)
         frame.add(sw)
         vbox.pack_start(frame, True, True, 0)
+        global blahblah
+        blahblah = text_buffer
 
         self.properties_window.add(vbox)
         self.properties_window.show_all()
-       
+
     def on_properties_destroy(self, action):
         """Clean up the properties window."""
+        global blahblah
+        blahblah.set_text('')
         self.properties_window = None
 
     def pid_toggle_cb(self, action, pid, command):
@@ -434,17 +421,31 @@ host[1-10,12,15-20];otherhost[30]
         self.options['PID'] = pid
         self.options['Launcher Exe'] = command
 
+    def serial_pid_toggle_cb(self, action, pid, command):
+        """A callback to modify the PID option."""
+        self.options['Serial PID'] = pid
+        self.options['Serial Exe'] = command
+
+    def on_add_serial_process(self, widget, attach_dialog, serial_process_list_entry):
+        text = serial_process_list_entry.get_text()
+        text += ' %s@%s:%s ' %(self.options['Serial Exe'], self.options['Remote Host'], self.options['Serial PID'])
+        text = serial_process_list_entry.set_text(text)
+        attach_dialog.show_all()
+
     def on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
         """Generate a wait dialog and search for user processes."""
         stat_wait_dialog.show_wait_dialog_and_run(self._on_update_process_listing, (widget, frame, attach_dialog, filter), [], attach_dialog)
 
-    def _on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
-        """Searche for user processes."""
+    def on_update_serial_process_listing(self, widget, frame, attach_dialog, filter=None):
+        """Generate a wait dialog and search for user processes."""
+        stat_wait_dialog.show_wait_dialog_and_run(self._on_update_serial_process_listing, (widget, frame, attach_dialog, filter), [], attach_dialog)
+
+    def _on_update_process_listing2(self, attach_dialog, filter, vbox, is_parallel):
+        """Search for user processes."""
         self.options['Remote Host Shell'] = self.types['Remote Host Shell'][self.combo_boxes['Remote Host Shell'].get_active()]
-        vbox = gtk.VBox()
         if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
             output = commands.getoutput('ps xw')
-        else:    
+        else:
             output = commands.getoutput('%s %s ps xw' %(self.options['Remote Host Shell'], self.options['Remote Host']))
             if output.find('Hostname not found') != -1 or output.find('PID') == -1:
                 show_error_dialog('Failed to get process listing for %s' %self.options['Remote Host'], attach_dialog)
@@ -459,15 +460,13 @@ host[1-10,12,15-20];otherhost[30]
         line = output[0].split()
         pid_index = 0
         command_index = 0
-        counter = 0
-        for token in line:
+        for counter, token in enumerate(line):
             if token == 'PID':
                 pid_index = counter
             elif token == 'COMMAND':
                 command_index = counter
-            counter += 1
-        counter = 0
         filter_compiled_re = re.compile(filter.get_text())
+        started = False
         for line in output[1:]:
             try:
                 text = '% 5d ' %int(line.split()[pid_index])
@@ -477,18 +476,30 @@ host[1-10,12,15-20];otherhost[30]
                 continue
             if filter != None:
                 if filter.get_text() != '':
-                    if filter_compiled_re.search(text) == None:
+                    if filter_compiled_re.search(text) is None:
                         continue
-            if counter == 0:
+            if started == False:
+                started = True
                 radio_button = gtk.RadioButton(None, text)
                 radio_button.set_active(True)
-                self.options['PID'] = int(line.split()[pid_index])
-                self.options['Launcher Exe'] = line.split()[command_index]
-            else:    
+                if is_parallel:
+                    self.options['PID'] = int(line.split()[pid_index])
+                    self.options['Launcher Exe'] = line.split()[command_index]
+                else:
+                    self.options['Serial PID'] = int(line.split()[pid_index])
+                    self.options['Serial Exe'] = line.split()[command_index]
+            else:
                 radio_button = gtk.RadioButton(radio_button, text)
-            radio_button.connect("toggled", self.pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
+            if is_parallel:
+                radio_button.connect("toggled", self.pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
+            else:
+                radio_button.connect("toggled", self.serial_pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
             vbox.pack_start(radio_button, False, False, 0)
-            counter += 1
+
+
+    def _on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
+        vbox = gtk.VBox()
+        self._on_update_process_listing2(attach_dialog, filter, vbox, True)
         try:
             if self.sw != None:
                 frame.remove(self.sw)
@@ -500,16 +511,36 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(self.sw)
         attach_dialog.show_all()
 
+    def _on_update_serial_process_listing(self, widget, frame, attach_dialog, filter=None):
+        vbox = gtk.VBox()
+        self._on_update_process_listing2(attach_dialog, filter, vbox, False)
+        try:
+            if self.serial_sw != None:
+                frame.remove(self.serial_sw)
+        except:
+            pass
+        self.serial_sw = gtk.ScrolledWindow()
+        self.serial_sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self.serial_sw.add_with_viewport(vbox)
+        frame.add(self.serial_sw)
+        attach_dialog.show_all()
+
     def on_update_remote_host(self, w, frame, attach_dialog, entry):
         """Callback to search a remote host for processes."""
         self.options['Remote Host'] = entry.get_text()
         entry.set_text(self.options['Remote Host'])
         self.on_update_process_listing(w, frame, attach_dialog, self.filter_entry)
 
+    def on_update_serial_remote_host(self, w, frame, attach_dialog, entry):
+        """Callback to search a remote host for processes."""
+        self.options['Remote Host'] = entry.get_text()
+        entry.set_text(self.options['Remote Host'])
+        self.on_update_serial_process_listing(w, frame, attach_dialog, self.serial_filter_entry)
+
     def on_cancel_attach(self, widget, dialog):
         """Callback to handle canceling of attach dialog."""
-        dialog.destroy()            
-    
+        dialog.destroy()
+
     def manipulate_cb(self, widget, data, node):
         """Overloaded manipulate callback to handle variable search."""
         STATDotWindow.manipulate_cb(self, widget, data, node)
@@ -533,7 +564,7 @@ host[1-10,12,15-20];otherhost[30]
 
     def check_for_loop_variable(self):
         """Searches for loop ordering variables.
-        
+
         If found, prompt user to gather stack trace with variable values."""
         found = False
         for node in self.get_current_graph().nodes:
@@ -576,7 +607,7 @@ host[1-10,12,15-20];otherhost[30]
             dialog.vbox.pack_start(hbox, False, False, 0)
             dialog.show_all()
             dialog.run()
-    
+
     def new_tab_and_sample(self):
         """Create a new tab and gather a stack sample"""
         page = self.notebook.get_current_page()
@@ -604,7 +635,7 @@ host[1-10,12,15-20];otherhost[30]
                 self.on_to_traverse_least_progress(None)
         self.get_current_graph().adjust_dims()
         self.get_current_widget().zoom_to_fit()
-                
+
 
     def run_and_destroy_dialog(self, function, args, dialog):
         """Run the specified function and destroys the specified dialog."""
@@ -613,10 +644,17 @@ host[1-10,12,15-20];otherhost[30]
 
     def on_reattach(self, action):
         """Attach to the same job as the previous session.
-        
+
         Also gather a stack trace.
         """
-        self.attach_cb(None, None)
+        if self.serial_attach == True:
+            if self.STAT is None:
+                self.STAT = STAT_FrontEnd()
+            for process in self.process_list.split():
+                self.STAT.addSerialProcess(process)
+            self.attach_cb(None, False, True, STAT_SERIAL_ATTACH)
+        else:
+            self.attach_cb(None, False, False, STAT_ATTACH)
         return True
 
     def on_attach(self, action):
@@ -624,56 +662,112 @@ host[1-10,12,15-20];otherhost[30]
         if self.reattach == True and self.STAT != None:
             self.STAT.shutDown()
             self.STAT = None
-        self.STAT = STAT_FrontEnd()
+        if self.STAT is None:
+            self.STAT = STAT_FrontEnd()
         self.options['PID'] = None
         self.options['Launcher Exe'] = ''
+        self.options['Serial PID'] = None
+        self.options['Serial Exe'] = ''
         attach_dialog = gtk.Dialog('Attach', self)
         attach_dialog.set_default_size(400, 400)
         notebook = gtk.Notebook()
         notebook.set_tab_pos(gtk.POS_TOP)
         notebook.set_scrollable(False)
-        process_frame = gtk.Frame('Current Processes')
+
+        # parallel attach
+        process_frame = gtk.Frame('Current Process List')
         vbox = gtk.VBox()
-        self.pack_combo_box(vbox, 'Remote Host Shell')
-        self.pack_entry_and_button(self.options['Remote Host'], self.on_update_remote_host, process_frame, attach_dialog, "Search Remote Host", vbox)
-        vbox.pack_start(process_frame, True, True, 0)
         hbox = gtk.HBox()
-        button = gtk.Button(stock = gtk.STOCK_REFRESH)
-        button.connect("clicked", lambda w: self.on_update_process_listing(w, process_frame, attach_dialog, self.filter_entry))
-        hbox.pack_start(button, False, False, 10)
+        self.pack_entry_and_button(self.options['Remote Host'], self.on_update_remote_host, process_frame, attach_dialog, "Search Remote Host", hbox)
+        hbox.pack_start(gtk.VSeparator(), False, False, 5)
+        self.pack_combo_box(hbox, 'Remote Host Shell')
+        vbox.pack_start(hbox, False, False, 0)
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label('Filter Process List'), False, False, 5)
         self.filter_entry = self.pack_entry_and_button(self.options['Job Launcher'], self.on_update_process_listing, process_frame, attach_dialog, "Filter", hbox, True, True, 0)
         vbox.pack_start(hbox, False, False, 0)
-        vbox.pack_start(gtk.HSeparator(), False, False, 0)
-        hbox = gtk.HButtonBox()
+        vbox.pack_start(process_frame, True, True, 0)
+        hbox = gtk.HBox()
+        button = gtk.Button("Refresh Process List")
+        button.connect("clicked", lambda w: self.on_update_process_listing(w, process_frame, attach_dialog, self.filter_entry))
+        hbox.pack_start(button, True, True, 10)
+        vbox.pack_start(hbox, False, False, 0)
+        vbox.pack_start(gtk.HSeparator(), False, False, 10)
+        hbox = gtk.HBox()
         button = gtk.Button(stock = gtk.STOCK_CANCEL)
         button.connect("clicked", lambda w: self.on_cancel_attach(w, attach_dialog))
-        hbox.pack_end(button, False, False, 0)
+        hbox.pack_start(button, False, False, 0)
         button = gtk.Button("Attach")
-        button.connect("clicked", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.attach_cb, (w, attach_dialog), self.attach_task_list, attach_dialog))
-        hbox.pack_end(button, False, False, 0)
+        button.connect("clicked", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.attach_cb, (attach_dialog, False, False, STAT_ATTACH), self.attach_task_list, attach_dialog))
+        hbox.pack_start(button, True, True, 0)
         vbox.pack_start(hbox, False, False, 0)
         label = gtk.Label('Attach')
         notebook.append_page(vbox, label)
 
+        # launch
         vbox = gtk.VBox()
         hbox=gtk.HBox()
         hbox.pack_start(gtk.Label('Enter application launch string:'), False, False, 0)
         vbox.pack_start(hbox, False, False, 10)
         entry = gtk.Entry()
         entry.set_max_length(8192)
-        entry.connect("activate", lambda w: self.launch_application_cb(entry, w, attach_dialog))
+        entry.connect("activate", lambda w: self.launch_application_cb(entry, attach_dialog))
         vbox.pack_start(entry, False, False, 0)
         hbox = gtk.HButtonBox()
         button = gtk.Button(stock = gtk.STOCK_CANCEL)
         button.connect("clicked", lambda w: self.on_cancel_attach(w, attach_dialog))
         hbox.pack_end(button, False, False, 0)
         button = gtk.Button("Launch")
-        button.connect("clicked", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.launch_application_cb, (entry, w, attach_dialog), self.attach_task_list, attach_dialog))
+        button.connect("clicked", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.launch_application_cb, (entry, attach_dialog), self.attach_task_list, attach_dialog))
         hbox.pack_start(button, False, False, 0)
         vbox.pack_end(hbox, False, False, 0)
         label = gtk.Label('Launch')
         notebook.append_page(vbox, label)
 
+        # serial attach tab
+        serial_process_frame = gtk.Frame('Current Process List')
+        vbox = gtk.VBox()
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label('Search Host'), False, False, 5)
+        self.pack_entry_and_button(self.options['Remote Host'], self.on_update_serial_remote_host, serial_process_frame, attach_dialog, "Search", hbox)
+        hbox.pack_start(gtk.VSeparator(), False, False, 5)
+        self.pack_combo_box(hbox, 'Remote Host Shell')
+        vbox.pack_start(hbox, False, False, 0)
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label('Filter Process List'), False, False, 5)
+        self.serial_filter_entry = self.pack_entry_and_button("", self.on_update_serial_process_listing, serial_process_frame, attach_dialog, "Filter", hbox, True, True, 0)
+        vbox.pack_start(hbox, False, False, 0)
+        vbox.pack_start(serial_process_frame, True, True, 0)
+        hbox = gtk.HBox()
+        button = gtk.Button("Refresh Process List")
+        button.connect("clicked", lambda w: self.on_update_serial_process_listing(w, serial_process_frame, attach_dialog, self.serial_filter_entry))
+        hbox.pack_start(button, False, False, 10)
+        button = gtk.Button("Add Process to Attach List")
+        hbox.pack_start(button, True, True, 10)
+        self.serial_process_list_entry = gtk.Entry()
+        self.serial_process_list_entry.set_max_length(1024)
+        self.serial_process_list_entry.set_text(self.options['Serial Process List'])
+        button.connect("clicked", lambda w: self.on_add_serial_process(w, attach_dialog, self.serial_process_list_entry))
+        vbox.pack_start(hbox, False, False, 10)
+        hbox = gtk.HBox()
+        label = gtk.Label("Attach List")
+        hbox.pack_start(label, False, False, 10)
+        self.serial_process_list_entry.connect("activate", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.attach_serial_processes_cb, (self.serial_process_list_entry, attach_dialog), self.attach_task_list, attach_dialog))
+        hbox.pack_start(self.serial_process_list_entry, True, True, 0)
+        vbox.pack_start(hbox, False, False, 0)
+        vbox.pack_start(gtk.HSeparator(), False, False, 10)
+        hbox = gtk.HBox()
+        button = gtk.Button(stock = gtk.STOCK_CANCEL)
+        button.connect("clicked", lambda w: self.on_cancel_attach(w, attach_dialog))
+        hbox.pack_start(button, False, False, 10)
+        button = gtk.Button("Attach to Attach List")
+        button.connect("clicked", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.attach_serial_processes_cb, (self.serial_process_list_entry, attach_dialog), self.attach_task_list, attach_dialog))
+        hbox.pack_start(button, True, True, 0)
+        vbox.pack_start(hbox, False, False, 0)
+        label = gtk.Label('Serial Attach')
+        notebook.append_page(vbox, label)
+
+        # sample options
         vbox = gtk.VBox()
         self.pack_sample_options(vbox, False, True)
         hbox = gtk.HBox()
@@ -684,6 +778,7 @@ host[1-10,12,15-20];otherhost[30]
         label = gtk.Label('Sample Options')
         notebook.append_page(vbox, label)
 
+        # topology options
         vbox = gtk.VBox()
         frame = gtk.Frame('Topology Options')
         vbox2 = gtk.VBox()
@@ -702,6 +797,7 @@ host[1-10,12,15-20];otherhost[30]
         label = gtk.Label('Topology')
         notebook.append_page(vbox, label)
 
+        # misc options
         vbox = gtk.VBox()
         frame = gtk.Frame('Tool Paths')
         vbox2 = gtk.VBox()
@@ -713,7 +809,11 @@ host[1-10,12,15-20];otherhost[30]
         vbox2 = gtk.VBox()
         self.pack_check_button(vbox2, 'Log Frontend')
         self.pack_check_button(vbox2, 'Log Backend')
+        self.pack_check_button(vbox2, 'Log CP')
+        self.pack_check_button(vbox2, 'Log SW')
+        self.pack_check_button(vbox2, 'Log SWERR')
         self.pack_string_option(vbox2, 'Log Dir', attach_dialog)
+        self.pack_check_button(vbox2, 'Use MRNet Printf')
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 5)
         frame = gtk.Frame('Misc')
@@ -731,46 +831,76 @@ host[1-10,12,15-20];otherhost[30]
         notebook.append_page(vbox, label)
 
         self.on_update_process_listing(None, process_frame, attach_dialog, self.filter_entry)
+        self.on_update_serial_process_listing(None, serial_process_frame, attach_dialog, self.serial_filter_entry)
         attach_dialog.vbox.pack_start(notebook, True, True, 0)
         attach_dialog.show_all()
         attach_dialog.run()
         self.sw = None
+        self.serial_sw = None
 
-    def launch_application_cb(self, entry, widget, attach_dialog):
+    def attach_serial_processes_cb(self, entry, attach_dialog):
+        """Callback to attach to serial processes."""
+        processes = entry.get_text()
+        self.serial_attach = True
+        self.process_list = processes
+        processes = processes.split()
+        if len(processes) <= 0:
+            show_error_dialog('No processes selected.  Please select processes\nto attach to by selecting the desired radio\nbuttons and clicking "Add Serial Process" or by\nmanually entering host:pid pairs in the text entry.', self)
+            return False
+        if self.STAT is None:
+            self.STAT = STAT_FrontEnd()
+        for process in processes:
+            self.STAT.addSerialProcess(process)
+        self.attach_cb(attach_dialog, False, True, STAT_SERIAL_ATTACH)
+
+    def launch_application_cb(self, entry, attach_dialog):
         """Callback to launch an application under STAT's control."""
         args = entry.get_text()
         args = args.split()
+        if len(args) <= 0:
+            show_error_dialog('No launch string specified.  Please enter\nthe application launch string.\n', self)
+            return False
         self.options['Launcher Exe'] = args[0]
         for arg in args:
             self.STAT.addLauncherArgv(arg)
-        self.attach_cb(widget, attach_dialog, True)
+        self.attach_cb(attach_dialog, True, False, STAT_LAUNCH)
 
-    def attach_cb(self, widget, attach_dialog, launch=False):
+    def attach_cb(self, attach_dialog, launch, serial, application_option=STAT_ATTACH):
         """Callback to attach to a job and gather a stack trace."""
+        if serial == False:
+            self.serial_attach = False
+            self.process_list = None
+        else:
+            self.serial_attach = True
         stat_wait_dialog.update_progress_bar(0.01)
         if attach_dialog != None:
             attach_dialog.destroy()
         self.options['Topology Type'] = self.types['Topology Type'][self.combo_boxes['Topology Type'].get_active()]
         self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
         self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
-        if self.STAT == None:
+        if self.STAT is None:
             self.STAT = STAT_FrontEnd()
-        if launch == False:
-            if self.options['PID'] == None:
+        if launch == False and serial == False:
+            if self.options['PID'] is None:
                 show_error_dialog('No job selected.  Please select a valid\njob launcher process to attach to.\n', self)
                 return False
-
 
         self.STAT.setToolDaemonExe(self.options['Tool Daemon Path'])
         self.STAT.setFilterPath(self.options['Filter Path'])
         logType = STAT_LOG_NONE
-        if self.options['Log Frontend'] and self.options['Log Backend']:
-            logType = STAT_LOG_ALL
-        elif self.options['Log Frontend']:
-            logType = STAT_LOG_FE
-        elif self.options['Log Backend']:
-            logType = STAT_LOG_BE
-        if self.options['Log Frontend'] or self.options['Log Backend']:
+        if self.options['Log Frontend']:
+            logType |= STAT_LOG_FE
+        if self.options['Log Backend']:
+            logType |= STAT_LOG_BE
+        if self.options['Log CP']:
+            logType |= STAT_LOG_CP
+        if self.options['Log SW']:
+            logType |= STAT_LOG_SW
+        if self.options['Log SWERR']:
+            logType |= STAT_LOG_SWERR
+        if self.options['Use MRNet Printf']:
+            logType |= STAT_LOG_MRN
+        if logType != STAT_LOG_NONE:
             ret = self.STAT.startLog(logType, self.options['Log Dir'])
             if ret != STAT_OK:
                 show_error_dialog('Failed to Start Log:\n%s' %self.STAT.getLastErrorMessage(), self)
@@ -790,16 +920,23 @@ host[1-10,12,15-20];otherhost[30]
         self.STAT.setProcsPerNode(self.options['Communication Processes per Node'])
         stat_wait_dialog.update_progress_bar(0.05)
 
+        self.STAT.setApplicationOption(application_option)
         if launch == False:
-            if self.options['Remote Host'] != "localhost":
-                ret = self.STAT.attachAndSpawnDaemons(self.options['PID'], self.options['Remote Host'])
+            if serial == False:
+                if self.options['Remote Host'] != "localhost":
+                    ret = self.STAT.attachAndSpawnDaemons(self.options['PID'], self.options['Remote Host'])
+                else:
+                    ret = self.STAT.attachAndSpawnDaemons(self.options['PID'])
             else:
-                ret = self.STAT.attachAndSpawnDaemons(self.options['PID'])
+                ret = self.STAT.setupForSerialAttach()
         else:
             if self.options['Remote Host'] != "localhost":
                 ret = self.STAT.launchAndSpawnDaemons(self.options['Remote Host'])
             else:
                 ret = self.STAT.launchAndSpawnDaemons()
+            if self.options['PID'] is None:
+                self.set_proctab()
+                self.options['PID'] = self.proctab.launcher_pid
         if 'LMON_DEBUG_BES' in os.environ:
             del os.environ['LMON_DEBUG_BES']
         if ret != STAT_OK:
@@ -826,16 +963,22 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return False
 
-        while 1:
-            if gtk.events_pending():
-                gtk.main_iteration()
-            ret = self.STAT.connectMrnetTree(False)
-            if ret == STAT_OK:
-                break
-            elif ret != STAT_PENDING_ACK:
-                show_error_dialog('Failed to connect to MRNet tree:\n%s' %self.STAT.getLastErrorMessage(), self)
-                self.on_fatal_error()
-                return ret
+        if application_option != STAT_SERIAL_ATTACH:
+            while 1:
+                if gtk.events_pending():
+                    gtk.main_iteration()
+                ret = self.STAT.connectMrnetTree(False)
+                if ret == STAT_OK:
+                    break
+                elif ret != STAT_PENDING_ACK:
+                    show_error_dialog('Failed to connect to MRNet tree:\n%s' %self.STAT.getLastErrorMessage(), self)
+                    self.on_fatal_error()
+                    return ret
+        ret = self.STAT.setupConnectedMrnetTree();
+        if ret != STAT_OK:
+            show_error_dialog('Failed to setup STAT:\n%s' %self.STAT.getLastErrorMessage(), self)
+            self.on_fatal_error()
+            return False
 
         stat_wait_dialog.update(0.15)
         ret = self.STAT.attachApplication(False)
@@ -863,13 +1006,17 @@ host[1-10,12,15-20];otherhost[30]
 
     def on_detach(self, widget, stop_list = intArray(0), stop_list_len=0):
         """Determine the process state and detach from the current job."""
+        self.proctab_file_path = None
+        self.proctab = None
         if self.attached == False:
             self.STAT = None
             self.reattach = False
+            self.proctab_file_path = None
+            self.proctab = None
             return True
         self.var_spec = []
         self.show_all()
-           
+
         ret = self.STAT.detachApplication(stop_list, stop_list_len, False)
         if ret != STAT_OK:
             show_error_dialog('Failed to detach from application:\n%s' %self.STAT.getLastErrorMessage(), self)
@@ -904,7 +1051,7 @@ host[1-10,12,15-20];otherhost[30]
                     sys.stderr.write('Failed to detach from application:\n%s\n' %self.STAT.getLastErrorMessage())
                 self.STAT.shutDown()
             self.STAT = None
-        gtk.main_quit()    
+        gtk.main_quit()
 
     def on_pause(self, action=None):
         """Callback to pause the job."""
@@ -958,7 +1105,7 @@ host[1-10,12,15-20];otherhost[30]
         except:
             pass
         self.options['Num Retries'] = int(self.spinners['Num Retries'].get_value())
-        self.options['Retry Frequency (ms)'] = int(self.spinners['Retry Frequency (ms)'].get_value())
+        self.options['Retry Frequency (us)'] = int(self.spinners['Retry Frequency (us)'].get_value())
         try:
             self.options['Run Time Before Sample (sec)'] = int(self.spinners['Run Time Before Sample (sec)'].get_value())
         except:
@@ -966,7 +1113,7 @@ host[1-10,12,15-20];otherhost[30]
 
     def sleep(self, seconds):
         """Sleep for specified time with a progress bar."""
-        for i in range(int(seconds * 100)):
+        for i in xrange(int(seconds * 100)):
             stat_wait_dialog.update_progress_bar(float(i) / seconds / 100)
             time.sleep(.01)
 
@@ -982,7 +1129,7 @@ host[1-10,12,15-20];otherhost[30]
             stat_wait_dialog.show_wait_dialog_and_run(self.sleep, (self.options['Run Time Before Sample (sec)'],), [], self)
         if sample_function == self.sample_multiple:
             stat_wait_dialog.show_wait_dialog_and_run(sample_function, (), self.sample_task_list, self, True)
-        else:    
+        else:
             stat_wait_dialog.show_wait_dialog_and_run(sample_function, (), self.sample_task_list, self)
 
     def on_sample(self, action, multiple):
@@ -1010,6 +1157,9 @@ host[1-10,12,15-20];otherhost[30]
         ret_val = STAT_OK
         if keep_var_spec == False:
             self.var_spec = []
+            # below is a test for local variables:
+            #self.var_spec.append(("/g/g0/lee218/src/STAT/examples/src/to_test.c", 38, 5, "i"))
+            #self.var_spec.append(("/g/g0/lee218/src/STAT/examples/src/to_test.c", 38, 4, "i"))
         self.update_sample_options()
         ret = self.STAT.pause()
         stat_wait_dialog.update_progress_bar(0.35)
@@ -1018,12 +1168,22 @@ host[1-10,12,15-20];otherhost[30]
             show_error_dialog('Failed to pause application during sample stack trace operation:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
             return ret
-        sample_type = STAT_FUNCTION_NAME_ONLY
+
+        sample_type = 0
         if self.options['Sample Type'] == 'function and pc':
-            sample_type = STAT_FUNCTION_AND_PC
-        elif self.options['Sample Type'] == 'function and line':
-            sample_type = STAT_FUNCTION_AND_LINE
-        ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 1, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
+            sample_type += STAT_SAMPLE_PC
+        if self.options['Sample Type'] == 'function and line':
+            sample_type += STAT_SAMPLE_LINE
+        if self.options['Edge Type'] != 'full list':
+            sample_type += STAT_SAMPLE_COUNT_REP
+        if self.options['With Threads']:
+            sample_type += STAT_SAMPLE_THREADS
+        if self.options['Gather Python Traces']:
+            sample_type += STAT_SAMPLE_PYTHON
+        if self.options['Clear On Sample']:
+            sample_type += STAT_SAMPLE_CLEAR_ON_SAMPLE
+        ret = self.STAT.sampleStackTraces(sample_type, 1, 1, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
+
         if ret != STAT_OK:
             show_error_dialog('Failed to sample stack trace:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
@@ -1057,12 +1217,15 @@ host[1-10,12,15-20];otherhost[30]
         stat_wait_dialog.update(0.70)
         filename = self.STAT.getLastDotFilename()
         try:
-            f = file(filename, 'rt')
-        except:
-            show_error_dialog('Failed to open file %s' %filename, self)
+            with open(filename, 'r') as f:
+                self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
+                self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+        except IOError as e:
+            show_error_dialog('%s\nFailed to open file %s' %(repr(e), filename), self)
             return ret
-        self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
-        self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+        except Exception as e:
+            show_error_dialog('%s\nFailed to process file %s' %(repr(e), filename), self)
+            return ret
         stat_wait_dialog.update(1.0)
         if ret_val != STAT_OK:
             show_error_dialog('An error was detected:\n%s' %self.STAT.getLastErrorMessage(), self)
@@ -1076,7 +1239,8 @@ host[1-10,12,15-20];otherhost[30]
         self.update_sample_options()
         stat_wait_dialog.update_progress_bar(0.01)
 
-        for i in range(self.options['Num Traces']):
+        previous_clear = self.options['Clear On Sample']
+        for i in xrange(self.options['Num Traces']):
             if stat_wait_dialog.cancelled == True:
                 stat_wait_dialog.cancelled = False
                 break
@@ -1092,12 +1256,20 @@ host[1-10,12,15-20];otherhost[30]
                 return ret
             self.set_action_sensitivity('paused')
 
-            sample_type = STAT_FUNCTION_NAME_ONLY
+            sample_type = 0
             if self.options['Sample Type'] == 'function and pc':
-                sample_type = STAT_FUNCTION_AND_PC
-            elif self.options['Sample Type'] == 'function and line':
-                sample_type = STAT_FUNCTION_AND_LINE
-            ret = self.STAT.sampleStackTraces(sample_type, self.options['With Threads'], self.options['Clear On Sample'], 1, 0, self.options['Num Retries'], self.options['Retry Frequency (ms)'], False, var_spec_to_string(self.var_spec))
+                sample_type += STAT_SAMPLE_PC
+            if self.options['Sample Type'] == 'function and line':
+                sample_type += STAT_SAMPLE_LINE
+            if self.options['Edge Type'] != 'full list':
+                sample_type += STAT_SAMPLE_COUNT_REP
+            if self.options['With Threads']:
+                sample_type += STAT_SAMPLE_THREADS
+            if self.options['Gather Python Traces']:
+                sample_type += STAT_SAMPLE_PYTHON
+            if self.options['Clear On Sample']:
+                sample_type += STAT_SAMPLE_CLEAR_ON_SAMPLE
+            ret = self.STAT.sampleStackTraces(sample_type, 1, 0, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
             if ret != STAT_OK:
                 if ret == STAT_APPLICATION_EXITED:
                     ret_val = STAT_APPLICATION_EXITED
@@ -1121,7 +1293,6 @@ host[1-10,12,15-20];otherhost[30]
             if ret == STAT_APPLICATION_EXITED:
                 ret_val = STAT_APPLICATION_EXITED
                 break
-                    
 
             if self.options['Gather Individual Samples'] == True:
                 ret = self.STAT.gatherLastTrace(False)
@@ -1141,15 +1312,18 @@ host[1-10,12,15-20];otherhost[30]
                         return ret
                 filename = self.STAT.getLastDotFilename()
                 try:
-                    f = file(filename, 'rt')
-                except:
-                    show_error_dialog('Failed to open file %s' %filename, self)
+                    with open(filename, 'r') as f:
+                        page = self.notebook.get_current_page()
+                        self.create_new_tab(page + 1)
+                        self.notebook.set_current_page(page + 1)
+                        self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
+                        self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+                except IOError as e:
+                    show_error_dialog('%s\nFailed to open file %s' %(repr(e), filename), self)
                     return False
-                page = self.notebook.get_current_page()
-                self.create_new_tab(page + 1)
-                self.notebook.set_current_page(page + 1)
-                self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
-                self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+                except Exception as e:
+                    show_error_dialog('%s\nFailed to process file %s' %(repr(e), filename), self)
+                    return False
 
             stat_wait_dialog.update_progress_bar(float(i) / self.options['Num Traces'])
             if ret_val != STAT_OK:
@@ -1162,10 +1336,11 @@ host[1-10,12,15-20];otherhost[30]
                 elif ret != STAT_OK:
                     return ret
                 self.set_action_sensitivity('running')
-                for i in range(int(self.options['Trace Frequency (ms)'] / 10)):
+                for i in xrange(int(self.options['Trace Frequency (ms)'] / 10)):
                     time.sleep(.01)
                     if gtk.events_pending():
                         gtk.main_iteration()
+        self.options['Clear On Sample'] = previous_clear
         stat_wait_dialog.update(0.91)
         ret = self.STAT.gatherTraces(False)
         if ret != STAT_OK:
@@ -1185,24 +1360,27 @@ host[1-10,12,15-20];otherhost[30]
         stat_wait_dialog.update(0.95)
         filename = self.STAT.getLastDotFilename()
         try:
-            f = file(filename, 'rt')
-        except:
-            show_error_dialog('Failed to open file %s' %filename, self)
+            with open(filename, 'r') as f:
+                if self.options['Gather Individual Samples'] == True:
+                    page = self.notebook.get_current_page()
+                    self.create_new_tab(page + 1)
+                    self.notebook.set_current_page(page + 1)
+                else:
+                    self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
+                self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+        except IOError as e:
+            show_error_dialog('%s\nFailed to open file %s' %(repr(e), filename), self)
             return False
-        if self.options['Gather Individual Samples'] == True:
-            page = self.notebook.get_current_page()
-            self.create_new_tab(page + 1)
-            self.notebook.set_current_page(page + 1)
-        else:
-            self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
-        self.set_dotcode(f.read(), filename, self.notebook.get_current_page())
+        except Exception as e:
+            show_error_dialog('%s\nFailed to process file %s' %(repr(e), filename), self)
+            return False
         stat_wait_dialog.update(1.0)
         if ret_val != STAT_OK:
             show_error_dialog('An error was detected:\n%s' %self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
-            
+
         return ret_val
-    
+
     def on_identify_num_eq_classes(self, action):
         """Callback to identify equivalence classes."""
         if self.get_current_graph().cur_filename == '':
@@ -1223,8 +1401,6 @@ host[1-10,12,15-20];otherhost[30]
             in_range = False
             task_count = 0
             task_list, fill_color_string, font_color_string = eq_class
-            if task_list == []:
-                continue
             for num in task_list:
                 task_count += 1
                 if num == prev + 1:
@@ -1273,6 +1449,7 @@ host[1-10,12,15-20];otherhost[30]
         all_button.connect('toggled', lambda w: self.on_toggle_eq(w, 'all', 'all_button'))
         none_button.connect('toggled', lambda w: self.on_toggle_eq(w, 'all', 'none_button'))
         for item in classes:
+            hbox = gtk.HBox()
             rep_button = gtk.RadioButton(None)
             all_button = gtk.RadioButton(rep_button)
             none_button = gtk.RadioButton(rep_button)
@@ -1280,7 +1457,6 @@ host[1-10,12,15-20];otherhost[30]
             all_button.connect('toggled', lambda w: self.on_toggle_eq(w, classes.index(item), 'all_button'))
             none_button.connect('toggled', lambda w: self.on_toggle_eq(w, classes.index(item), 'none_button'))
             rep_button.set_active(True)
-            hbox = gtk.HBox()
             item['rep_button'] = rep_button
             item['all_button'] = all_button
             item['none_button'] = none_button
@@ -1367,75 +1543,105 @@ host[1-10,12,15-20];otherhost[30]
             self.eq_state[type].set_active(True)
         self.dont_recurse = False
         return True
-        
-    def set_proctab_file(self):
-        if self.proctab_file == None:
-            self.proctab_file = ''
-            try:
-                out_dir = self.STAT.getOutDir()
-                file_prefix = self.STAT.getFilePrefix()
-                self.proctab_file = out_dir + '/' + file_prefix + '.ptab'
-            except:
-                pass
-            if not os.path.exists(self.proctab_file):
-                directory = os.path.dirname(os.path.abspath(self.get_current_graph().cur_filename))
-                self.proctab_file = ''
-                for file in os.listdir(directory):
-                    if file.find('.ptab') != -1:
-                        self.proctab_file = directory + '/' + file
-                        break
-            if self.proctab_file == '':
-                show_error_dialog('Failed to find process table .ptab file.', self)
-                return False
-        
+
+    def set_proctab(self):
+        if self.proctab_file_path != None and self.proctab != None:
+            return True
+
+        self.proctab_file_path = ''
+        try:
+            out_dir = self.STAT.getOutDir()
+            file_prefix = self.STAT.getFilePrefix()
+            self.proctab_file_path = out_dir + '/' + file_prefix + '.ptab'
+        except:
+            pass
+        if not os.path.exists(self.proctab_file_path):
+            directory = os.path.dirname(os.path.abspath(self.get_current_graph().cur_filename))
+            self.proctab_file_path = ''
+            for file in os.listdir(directory):
+                if file.find('.ptab') != -1:
+                    self.proctab_file_path = directory + '/' + file
+                    break
+        if self.proctab_file_path == '':
+            show_error_dialog('Failed to find process table .ptab file.', self)
+            return False
+        print 'ptab file', self.proctab_file_path
+
+        try:
+            with open(self.proctab_file_path, 'r') as f:
+                launcher = f.next().strip('\n').split(':')
+                self.proctab = ProcTab()
+                self.proctab.launcher_host = launcher[0]
+                self.proctab.launcher_pid = int(launcher[1])
+                for line in f:
+                    line = line.strip('\n').split()
+                    rank = int(line[0])
+                    host_pid = line[1].split(':')
+                    host = host_pid[0]
+                    pid = int(host_pid[1])
+                    exe = line[2]
+                    if exe in self.proctab.executable_paths:
+                        index = self.proctab.executable_paths.index(exe)
+                    else:
+                        index = len(self.proctab.executable_paths)
+                        self.proctab.executable_paths.append(exe)
+                    if self.proctab.executable_path is None:
+                        self.proctab.executable_path = exe
+                    self.proctab.process_list.append((rank, host, pid, index))
+        except IOError as e:
+            show_error_dialog('%s\nfailed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %(repr(e), self.proctab_file_path), self)
+            return False
+        except Exception as e:
+            show_error_dialog('%s\nfailed to process process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %(repr(e), self.proctab_file_path), self)
+            return False
+        return True
+
 
     def launch_debugger_cb(self, widget, args):
         """Callback to launch full-featured debugger on a subset of tasks."""
         debugger, eq_dialog = args
-        eq_dialog.destroy()
         subset_list = []
         for item in self.eq_state['classes']:
-            if item['rep_button'].get_active() == True:
+            if item['rep_button'].get_active() == True and len(item['class']) > 0:
                 subset_list.append(item['class'][0])
-            elif item['all_button'].get_active() == True:
+            elif item['all_button'].get_active() == True and len(item['class']) > 0:
                 subset_list += item['class']
         additional_tasks = '[' + self.eq_state['entry'].get_text().strip(' ').strip('[').strip(']') + ']'
         task_list_set = set(get_task_list(additional_tasks) + subset_list)
         subset_list = list(task_list_set)
+        if subset_list == []:
+            show_error_dialog('No tasks selected.  Please choose a subset of tasks to debug', self)
+            return False
+        eq_dialog.destroy()
         # use current STAT session to determine job launcher PID
-        ret = self.set_proctab_file()
+        ret = self.set_proctab()
         if ret == False:
             return False
-        try:
-            f = open(self.proctab_file, 'r')
-        except:
-            show_error_dialog('failed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %self.proctab_file, self)
-            return False
-        lines = f.readlines()
-        launcher = lines[0].strip('\n')
-        lines = lines[1:]
-        pids = []
-        executable = lines[0].split()[2]
-        executable_path = executable
-        cancel = False
-        while os.path.exists(executable_path) == False:
+        executable = self.proctab.executable_path
+        self.executable_path = executable
+        self.cancel = False
+        while os.path.exists(self.executable_path) == False and self.cancel == False:
             # Open dialog prompting for base path
-            dialog = gtk.Dialog('Please enter the base path for the executable')
-            label = gtk.Label('Failed to find executable:\n%s\nPlease enter the base path' %executable)
+            dialog = gtk.Dialog('Please enter the full path for the executable')
+            label = gtk.Label('Failed to find executable:\n%s\nPlease enter the executable full path' %self.executable_path)
             dialog.vbox.pack_start(label, True, True, 0)
             entry = gtk.Entry()
             entry.set_max_length(8192)
-            entry.connect("activate", lambda w: dialog.destroy())
+            def activate_entry(entry, dialog):
+                self.executable_path = entry.get_text()
+                dialog.destroy()
+            entry.connect("activate", lambda w: activate_entry(entry, dialog))
             dialog.vbox.pack_start(entry, True, True, 0)
             hbox = gtk.HButtonBox()
             button = gtk.Button(stock = gtk.STOCK_CANCEL)
             def cancel_entry(dialog):
                 entry.set_text('cancel_operation')
+                self.cancel = True
                 dialog.destroy()
             button.connect("clicked", lambda w: cancel_entry(dialog))
             hbox.pack_start(button, False, False, 0)
             button = gtk.Button(stock = gtk.STOCK_OK)
-            button.connect("clicked", lambda w: dialog.destroy())
+            button.connect("clicked", lambda w: activate_entry(entry, dialog))
             hbox.pack_start(button, False, False, 0)
             dialog.vbox.pack_start(hbox, False, False, 0)
             dialog.show_all()
@@ -1443,13 +1649,16 @@ host[1-10,12,15-20];otherhost[30]
             if entry.get_text() == 'cancel_operation':
                 dialog.destroy()
                 return False
-            executable_path = entry.get_text() + '/' + executable
-        for line in lines:
-            line = line.split()
-            for rank in subset_list:
-                if int(line[0]) == rank:
-                    pids.append(line[1])
-                    break
+        if self.cancel == True:
+            return False
+        pids = []
+        hosts = []
+        exes = []
+        for rank, host, pid, exe_index in self.proctab.process_list:
+            if rank in subset_list:
+                pids.append(pid)
+                hosts.append(host)
+                exes.append(self.proctab.executable_paths[exe_index])
         arg_list = []
         if debugger == 'TotalView':
             filepath = self.options['TotalView Path']
@@ -1457,39 +1666,44 @@ host[1-10,12,15-20];otherhost[30]
                 show_error_dialog('Failed to locate executable totalview\ndefault: %s\n' %filepath, self)
                 return
             arg_list.append(filepath)
-            arg_list.append('-parallel_attach')
-            arg_list.append('yes')
-            if self.options['Remote Host'] not in ['localhost', '']:
-                arg_list.append('-remote')
-                arg_list.append(self.options['Remote Host'])
-            arg_list.append('-pid')
-            arg_list.append(launcher[launcher.find(':')+1:])
-            str_list = ''
-            for rank in subset_list:
-                str_list += '%s ' %(rank)
-            arg_list.append('-default_parallel_attach_subset=%s' %(str_list))
-            # "-e g" added for BlueGene work around
-            arg_list.append('-e')
-            arg_list.append('g')
-            arg_list.append(self.options['Launcher Exe'])
+            if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH:
+                arg_list.append('-e')
+                for counter, rank in enumerate(subset_list):
+                    if counter == 0:
+                        cli_command = "set new_pid [dattach -r %s -e %s %d] ;" %(hosts[counter], exes[counter], pids[counter])
+                    else:
+                        cli_command += " dattach -r %s -g $CGROUP($new_pid) -e %s %d ;" %(hosts[counter], exes[counter], pids[counter])
+                arg_list.append(cli_command)
+            else:
+                arg_list.append('-parallel_attach')
+                arg_list.append('yes')
+                if self.options['Remote Host'] not in ['localhost', '']:
+                    arg_list.append('-remote')
+                    arg_list.append(self.options['Remote Host'])
+                arg_list.append('-pid')
+                arg_list.append(str(self.proctab.launcher_pid))
+                str_list = ''
+                for rank in subset_list:
+                    str_list += '%s ' %(rank)
+                arg_list.append('-default_parallel_attach_subset=%s' %(str_list))
+                arg_list.append(self.options['Launcher Exe'])
         elif debugger == 'DDT':
             filepath = self.options['DDT Path']
             if not filepath or not os.access(filepath, os.X_OK):
                 show_error_dialog('Failed to locate executable ddt\ndefault: %s\n' %filepath, self)
                 return
-    
+
             # Look for LaunchMON installation for DDT 2.5+
             ddt_lmon_prefix = self.options['DDT LaunchMON Prefix']
             ddt_lmon_lib = '%s/lib' %(ddt_lmon_prefix)
             ddt_lmon_launchmon = '%s/bin/launchmon' %(ddt_lmon_prefix)
-            if not ddt_lmon_launchmon or not os.access(ddt_lmon_launchmon, os.X_OK) or not ddt_lmon_lib:
-                # DDT 2.4 / DDT 2.5+ w/o LanchMON
-                print ddt_lmon_launchmon, ddt_lmon_lib, os.access(ddt_lmon_launchmon, os.X_OK)
+            if not ddt_lmon_launchmon or not os.access(ddt_lmon_launchmon, os.X_OK) or not ddt_lmon_lib or self.serial_attach == True:
+                # DDT 2.4 / DDT 2.5+ w/o LanchMON / serial processes
                 arg_list.append(filepath)
                 arg_list.append('-attach')
-                arg_list.append(executable_path)
-                for pid in pids:
-                    arg_list.append(pid)
+                arg_list.append(self.executable_path)
+                for counter, pid in enumerate(pids):
+                    arg_list.append('%s:%d' %(hosts[counter], pid))
             else:
                 # DDT 2.5+ with LaunchMON
                 arg_list.append("env")
@@ -1497,7 +1711,7 @@ host[1-10,12,15-20];otherhost[30]
                 arg_list.append("LMON_LAUNCHMON_ENGINE_PATH=%s" %(ddt_lmon_launchmon))
                 arg_list.append(filepath)
                 arg_list.append("-attach-mpi")
-                arg_list.append(launcher[launcher.find(':')+1:])
+                arg_list.append(str(self.proctab.launcher_pid))
                 arg_list.append("-subset")
                 rank_list_arg = ''
                 for rank in subset_list:
@@ -1506,7 +1720,7 @@ host[1-10,12,15-20];otherhost[30]
                     else:
                         rank_list_arg += ',%d' %rank
                 arg_list.append(rank_list_arg)
-                arg_list.append(executable_path)
+                arg_list.append(self.executable_path)
 
         sys.stdout.write('fork exec %s %s\n' %(debugger, arg_list))
         # First Detach STAT!!!
@@ -1519,6 +1733,28 @@ host[1-10,12,15-20];otherhost[30]
             self.on_detach(None, stop_list, len(subset_list))
         if os.fork() == 0:
             self.exec_and_exit(arg_list)
+
+    def get_full_edge_label(self, widget, button_clicked, node):
+        edge_label = self.STAT.getNodeInEdge(int(node.node_name))
+        old_label = node.edge_label
+        node.edge_label = edge_label
+        task_list = get_task_list(edge_label)
+        node.num_leaf_tasks = -1
+        if node.edge_label_id in STATview.task_label_id_to_list:
+            STATview.task_label_id_to_list[node.edge_label_id] = task_list
+        if old_label in STATview.task_label_to_list:
+            del STATview.task_label_to_list[old_label]
+        for inode in self.get_current_graph().nodes:
+            if inode.edge_label == old_label:
+                inode.edge_label = edge_label
+                inode.num_leaf_tasks = -1
+                if inode.edge_label_id in STATview.task_label_id_to_list:
+                    STATview.task_label_id_to_list[inode.edge_label_id] = task_list
+        try:
+            self.my_dialog.destroy()
+        except:
+            pass
+        self.on_node_clicked(widget, button_clicked, node)
 
     def on_fatal_error(self):
         """Handle fatal error."""
@@ -1534,76 +1770,29 @@ host[1-10,12,15-20];otherhost[30]
         subprocess.call(arg_list)
         sys.exit(0)
 
-    def update_option(self, w, label, parent_window, option):        
-        """Generate text entry dialog to update the specified option."""
-        dialog = gtk.Dialog('Update %s' %option, parent_window)
-        entry = gtk.Entry()
-        entry.set_max_length(1024)
-        entry.set_text(self.options[option])
-        entry.connect("activate", lambda w: self.on_update_option(w, entry, label, dialog, option))
-        dialog.vbox.pack_start(entry, True, True, 0)
-        hbox = gtk.HButtonBox()
-        button = gtk.Button(stock = gtk.STOCK_CANCEL)
-        button.connect("clicked", lambda w: dialog.destroy())
-        hbox.pack_start(button, False, False, 0)
-        button = gtk.Button(stock = gtk.STOCK_OK)
-        button.connect("clicked", lambda w: self.on_update_option(w, entry, label, dialog, option))
-        hbox.pack_start(button, False, False, 0)
-        dialog.vbox.pack_start(hbox, False, False, 0)
-        dialog.show_all()
-        dialog.run()
-
-    def on_update_option(self, w, entry, label, dialog, option):
-        """Callback to update the specified option."""
-        self.options[option] = entry.get_text()
-        entry.set_text('')
-        label.set_text('%s: %s' %(option, self.options[option]))
-        dialog.destroy()
-
-    def pack_entry_and_button(self, entry_text, function, frame, dialog, button_text, box, fill=False, center=False, pad=0):
-        """Generates a text entry and activation button."""
-        hbox = gtk.HBox()
-        entry = gtk.Entry()
-        entry.set_max_length(1024)
-        entry.set_text(entry_text)
-        entry.connect("activate", lambda w: apply(function, (w, frame, dialog, entry)))
-        hbox.pack_start(entry, True, True, 0)
-        button = gtk.Button(button_text)
-        button.connect("clicked", lambda w: apply(function, (w, frame, dialog, entry)))
-        hbox.pack_start(button, False, False, 0)
-        box.pack_start(hbox, fill, center, pad)
-        return entry
-
-    def pack_radio_buttons(self, box, option):
-        """Pack a set of radio buttons for a specified option."""
-        for type in self.types[option]:
-            if type == self.types[option][0]:
-                radio_button = gtk.RadioButton(None, type)
-            else:
-                radio_button = gtk.RadioButton(radio_button, type)
-            if type == self.options[option]:
-                radio_button.set_active(True)
-                self.toggle_radio_button(None, (option, type))
-            radio_button.connect('toggled', self.toggle_radio_button, (option, type))
-            box.pack_start(radio_button, False, False, 0)
-
-    def toggle_radio_button(self, action, data):
-        """Callback to toggle on/off a radio button."""
-        option, type = data
-        self.options[option] = type
-
     def pack_sample_options(self, vbox, multiple, attach=False):
         """Pack the sample options into the specified vbox."""
         frame = gtk.Frame('Per Sample Options')
         vbox2 = gtk.VBox()
         self.pack_check_button(vbox2, 'With Threads', False, False, 5)
-        self.pack_radio_buttons(vbox2, 'Sample Type')
+        self.pack_check_button(vbox2, 'Gather Python Traces', False, False, 5)
+        frame2 = gtk.Frame('Stack Frame (node) Sample Options')
+        vbox3 = gtk.VBox()
+        self.pack_radio_buttons(vbox3, 'Sample Type')
+        frame2.add(vbox3)
+        vbox2.pack_start(frame2, False, False, 5)
+        frame2 = gtk.Frame('Process Set (edge) Sample Options')
+        vbox3 = gtk.VBox()
+        self.pack_radio_buttons(vbox3, 'Edge Type')
+        frame2.add(vbox3)
+        vbox2.pack_start(frame2, False, False, 5)
+
         if attach == False:
             self.pack_spinbutton(vbox2, 'Run Time Before Sample (sec)')
         expander = gtk.Expander("Advanced")
         hbox = gtk.HBox()
         self.pack_spinbutton(hbox, 'Num Retries')
-        self.pack_spinbutton(hbox, 'Retry Frequency (ms)')
+        self.pack_spinbutton(hbox, 'Retry Frequency (us)')
         expander.add(hbox)
         vbox2.pack_start(expander, False, False, 5)
         frame.add(vbox2)
@@ -1619,57 +1808,6 @@ host[1-10,12,15-20];otherhost[30]
             self.pack_check_button(vbox2, 'Clear On Sample')
             frame.add(vbox2)
             vbox.pack_start(frame, False, False, 5)
-
-    def pack_spinbutton(self, box, option):
-        """Pack a spin button into the spcified box for the specified option."""
-        hbox = gtk.HBox()
-        label = gtk.Label(option)
-        hbox.pack_start(label, False, False, 0)
-        adj = gtk.Adjustment(1.0, 0.0, 1000000.0, 1.0, 100.0, 0.0)
-        spinner = gtk.SpinButton(adj, 0, 0)
-        spinner.set_value(self.options[option])
-        hbox.pack_start(spinner, False, False, 0)
-        box.pack_start(hbox, False, False, 10)
-        self.spinners[option] = spinner
-
-    def pack_combo_box(self, box, option):
-        """Pack a combo box into the spcified box for the specified option."""
-        hbox = gtk.HBox()
-        hbox.pack_start(gtk.Label("Specify %s:" %option), False, False, 0)
-        combo_box = gtk.combo_box_new_text()
-        for type in self.types[option]:
-            combo_box.append_text(type)
-        combo_box.set_active(self.types[option].index(self.options[option]))
-        hbox.pack_start(combo_box, False, False, 10)    
-        self.combo_boxes[option] = combo_box
-        box.pack_start(hbox, False, False, 0)
-
-    def pack_check_button(self, box, option, center=False, expand=False, pad=0):
-        """Pack a check button into the specified box for the specified option."""
-        check_button = gtk.CheckButton(option)
-        if self.options[option] == True:
-            check_button.set_active(True)
-        else:
-            check_button.set_active(False)
-        check_button.connect('toggled', lambda w: self.on_toggle_check_button(w, option))
-        box.pack_start(check_button, center, expand, pad)
-
-    def on_toggle_check_button(self, widget, option):
-        """Callback to toggle on/off a check button."""
-        if self.options[option] == True:
-            self.options[option] = False
-        else:            
-            self.options[option] = True
-
-    def pack_string_option(self, box, option, parent_window):
-        """Pack a button into the specified box that generates a text entry dialog for the specified option."""
-        hbox = gtk.HBox()
-        label =  gtk.Label('%s: %s' %(option, self.options[option]))
-        hbox.pack_start(label, False, False, 0)
-        box.pack_start(hbox, False, False, 10)
-        button = gtk.Button('Modify %s' %option)
-        button.connect("clicked", lambda w: self.update_option(w, label, parent_window, option))
-        box.pack_start(button, False, False, 0)
 
 def STATGUI_main(argv):
     """The STATGUI main."""

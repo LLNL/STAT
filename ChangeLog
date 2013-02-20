@@ -1,3 +1,289 @@
+2013-02-16 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : moved statRelativeRankToAbsoluteRank out of GROUP_OPS #ifdef
+
+2013-02-15 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : need to strdup remoteNode into proctab for serial attach
+	* doc/src/* : updated documentation
+
+2013-02-08 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : added STAT_FE_HOSTNAME env variable
+	* scripts/*.in : check for [STAT|LMON|MRNET]_PREFIX env vars and adjust	paths accordingly
+	* config/x_ac_debuglibs.m4 : added --enable-[libdwarf|stackwalker|-rpm to look for includes/libs in /usr
+
+2013-01-30 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : use std::string instead of char * for topo generation
+	* : Fixed memory leaks, dead code, etc. identified by Intel's Static Security Analysis Tool
+
+2013-01-30 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : clear proctab on detach
+	* : MRNet 3.0 and MRNet 3.1 backwards compatibility fixes
+	* : StackWalker 8.0 and 2.0 backwards compatibility fixes
+	* src/STAT_GraphRoutines.[C,h], src/STAT_BackEnd.[C,h] : fixed count+rep graph (need to translate daemon-local rank to MPI rank)
+
+2013-01-29 Gregory L. Lee <lee218@llnl.gov>
+	* : Fixed some memory leaks identified by Inspector
+	* src/STAT_BackEnd.C : fixed Python truncating of "[call|fast]_function"
+
+2013-01-28 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_GraphRoutines.C : fixed handling of function tables when	previously allocated
+
+2013-01-22 Gregory L. Lee <lee218@llnl.gov>
+	* : code clean up
+	* src/STAT_BackEnd.C : fixed Python offset caching
+	* src/STAT_BackEnd.C : moved code from constructor to init routine
+
+2013-01-15 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.[C] : added -l SW and -l SWERR args
+	* scripts/STATGUI.py : SW and SWERR log check boxes
+	* src/STATD.C : added -l args
+	* src/STAT_FrontEnd.[C,h] : added stackwalker debug log args to daemonArgv
+	* src/STAT_BackEnd.[C,h] : capture stackwalker deubg logs on request/error
+	* src/STAT_BackEnd.[C] : removed STAT_SW_DEBUG_LOG_DIR env var
+
+2013-01-14 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/bg_core_backtrace.py : added --jobid option to delinate traces. Also warns if multiple job IDs detected in core files
+
+2013-01-07 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FilterDefinitions.C : code cleanup + rename of static and global vars
+	* src/STAT_GraphRoutines.C : code cleanup + removed GRAPH_FONT_SIZE macro
+
+2013-01-03 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : fixed STATBench MRNet rank to MPI rank map
+	* src/STAT_FrontEnd.[h,C] : added isStatBench_ to class variables
+	* src/STAT_GraphRoutines.[h,C] : added getBitVectorCountRep function
+	* src/STAT_BackEnd.[h,c] : maintain nodes and (full bit vector) edges for 2D and 3D graphs in STAT_BackEnd object and construct appropriate type of graph after all gathered. This fixes sample multiple with count + rep.
+
+2013-01-02 Gregory L. Lee <lee218@llnl.gov>
+	* : clearOnSample moved to Stat_Sample_t bit flag
+
+2012-12-28 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.h : new bit flags enum for sample options
+	* : removed withPython, withThreads, Stat_Sample_t usage in favor of bit flags
+
+2012-12-27 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : store map of offsets based on exe for Python frame info in case we have multiple Python interpreters
+	* src/STAT_BackEnd.C : Python debugging fixed for group ops!
+	* src/STAT_BackEnd.C : get exe path from ProcessState for Python frame info, instead of proctab[0]
+
+2012-12-26 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_GraphRoutines.C : modified createRootedGraph to take sample type instead of function table
+	* src/STAT_BackEnd.C : fixed missing __start frame with group ops
+
+2012-12-21 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : modified getFrameName and getVariable to take a single Frame, rather than a vector of frames
+	* src/STAT_BackEnd.C : getVariable modified to check parameters too
+	* src/STAT_BackEnd.C : getVariable modified to return raw data, variable extraction code translates to text
+	* src/STAT_BackEnd.C : getVariable function used for Python debugging
+	* src/STAT_BackEnd.C : added statFrameCmp for group ops to support variable extraction
+	* src/STAT_BackEnd.C : moved Python script name resolution to getFrameName
+
+2012-12-20 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : dynamically turn off group ops when doing variable extraction
+	* src/STAT_FrontEnd.C : added STAT_CHECK_NODE_ACCESS env var
+	* doc/src/stat_environment_variables.sgml : updated list of env vars
+
+2012-12-19 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : concatenate unique exe names to create applExe_
+
+2012-12-14 Gregory L. Lee <lee218@llnl.gov>
+	* src/*.[C,h] : renamed "ret" variables to reflect return type
+	* src/STAT[Bench]D.C : cleaner handling of errors, delete STAT_BackEnd object and call statFinalize as appropriate
+	* src/STAT_BackEnd.C : cleaner distinction between statInit, statFinalize, constructor, and destructor
+
+2012-12-14 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.[C] : support for Python 3.2 and 3.3 traces
+	* src/STAT_BackEnd.[C,h] : getComponents function created to get components of a given type
+
+2012-12-12 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.[C,h] : rewrite to style guidelines
+	* src/STAT_BackEnd.C : for Python debugging, look for symbols in libraries (for case when Python built with --enable-shared)
+
+2012-12-11 Gregory L. Lee <lee218@llnl.gov>
+	* : updated documentation for retry frequency in micro (not milli) seconds
+
+2012-12-06 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_*[C,h] : Allow STAT to be run on serial process w/ command line option
+	* scripts/STATGUI.py : GUI support for serial process attaching
+	* doc/src/stat_options.sgml : added serial attach option
+	* src/*.C : check strdup calls for NULL return value
+
+2012-11-02 Gregory L. Lee <lee218@llnl.gov>
+	* doc/src/* : updated documentation
+	* src/STAT_*.[C,h], config/x_ac_graphlib.m4 : removed graphlib 1.X support
+	* src/STAT_*.[C,h], config/x_ac_mrnet.m4 : removed MRNet 2.X support
+
+2012-11-01 Gregory L. Lee <lee218@llnl.gov>
+	* src/MRNetSymbolReader.h : extern FILE *statOutFp
+
+2012-10-31 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_GraphRoutines.C : merge functions return void *
+	* src/STAT_GraphRoutines.C : statNodeToText return strdup
+
+2012-10-24 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.h src/STAT_FrontEnd.C, src/STAT_BackEnd.C
+	src/STAT_FilterDefinitions.C : define statOutFp in .C files
+
+2012-10-19 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : use getpwuid() instead of getlogin()	
+
+2012-10-18 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : fixed bug in thread stack traces
+	* src/STAT_FrontEnd.C : fixed memory bug in receiveStackTraces
+	* config/x_ac_debuglibs.m4 : added additional StackWalker version support
+
+2012-08-20 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.[C,h], src/STAT_BackEnd.[C,h], scripts/STATGUI.py,
+	doc/src/* configure.ac src/STAT.[i,C] : added prototype feature to
+	gather Python-level stack traces (--enable-python-debug)
+	* src/MRNetSymbolReader.h, src/STAT_FrontEnd.[C,h],
+	src/STAT_BackEnd.[C,h]: updated FastGlobalFileStat->FastGlobalFileStatus
+
+2012-08-20 Gregory L. Lee <lee218@llnl.gov>
+	* doc/src/* : updated man pages and command references to lowercase
+	versions
+	* doc/src/stat_changelog.sgml : new documentation section to highlight
+	changes
+
+2012-08-10 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added menuitem to modify select preferences
+	* scripts/STATview.py, scripts/STATGUI.py : added/moved
+	options/preferences to STATview.py
+	* scripts/STATview.py : option to modify truncation of nodes in front or
+	back and to set max length
+
+2012-08-09 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added ability to cut based on a regex
+
+2012-07-30 Gregory L. Lee <lee218@llnl.gov>
+	* configure.ac, config/*.m4 : added ability to disable rpath (on by
+	default)
+
+2012-07-24 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.[h,C], src/STAT_GraphRoutines.[h,C] : moved
+	createRootedGraph and string_hash (renamed to statStringHash) to
+	STAT_GraphRoutines
+	* src/STAT_FrontEnd.[h,C] : keep track of daemon errors and denote in
+	stack traces
+	* src/STAT_BackEnd.[h,C], src/STAT_GraphRoutines.[h,C],
+	src/STAT_FrontEnd.[h,C] : created helper function to initialize bit vector
+	edges
+	* : removed trailing white spaces
+
+2012-07-23 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py, scripts/STATGUI.py : fixed caching of edge labels w/
+	count + rep
+
+2012-07-20 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py, scripts/xdot.py : updated to latest xdot
+
+2012-07-19 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.[C,h],src/STAT_FilterDefinitions.C,
+	src/STAT_BackEnd.[C,h], src/STAT.[i,h], scripts/STATview.py,
+	scripts/STATGUI.py : added ability to gather full edge labels
+
+2012-07-17 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : add 1 to rank for checksum in count + rep case to
+	account for rank 0
+	* scripts/STAThelper.py, scripts/STATview.py : moved node query functions
+	from STAThelper.py to STATview.py
+	* scripts/STATview.py : proper handling of eq class identification for
+	count + rep case
+
+2012-07-14 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_GraphRoutines.[C,h], src/STAT_FrontEnd.[C,h],
+	src/STAT_FilterDefinitions.C src/STAT_BackEnd.[C,h], src/STAT.[i,h,C],
+	src/STATBench.C, scripts/STAThelper.py, scripts/STATview.py,
+	scripts/STATGUI.py, doc/src/* : added count + representative level of
+	detail
+
+2012-07-13 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_debuglibs.m4 : fixed stackwalker test to capture older versions
+
+2012-07-12 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added ability to view source of collapsed/joined nodes
+	* scripts/STATview.py : added ability to hide MPI with collapsed/joined nodes
+
+2012-07-07 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added repr strings for node and edge classes
+	* scripts/STATview.py : don't check for $DISPLAY on Windows
+	* scripts/STATview.py : don't import STAThelper components that require pygments if pygments not available
+	* scripts/STATview.py : fixed handling of join with hidden nodes/edges
+	* scripts/STATview.py : fixed handling of hide mpi with line info
+
+2012-07-03 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py scripts/STAThelper.py : added routines to collapse equivalence classes
+
+2012-06-27 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C src/STAT_FrontEnd.C src/STAT_FilterDefinitions.C src/STAT_GraphRoutines.[h,C] : fixed memory leaks
+
+2012-06-26 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STAThelper.py scripts/STATview.py scripts/STATGUI.py : code cleanup, improved fault handling, and various optimizations
+
+2012-06-18 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATmerge.py scripts/core_stack_merge.in scripts/bg_core_backtrace.py scripts/stat_merge_base.py src/STAT_merge.C : added files for STAT merge script
+	* : updated configure/Makefile inputs to build merge tools
+
+2012-05-03 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C src/STAT_FrontEnd.C src/STAT_FilterDefinitions.C :	use basic graph implementation of [de]serialize to avoid copying unused parameters
+	* src/STAT_BackEnd.C : calloc num BYTES not BITS for bit vector
+
+2012-05-02 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C src/STAT_FrontEnd.C src/STAT_FilterDefinitions.C :	graphlib 2.X and 1.X separation with ifdefs
+	* src/STAT_GraphRoutines.[C,h] : typdef for the bit vector scalar type
+	* config/x_ac_graphlib.m4, src/Makefile.am : conditional build of STAT_GraphRoutines for graphlib 2.0 only
+
+2012-04-27 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : STATBench support for graphlib 2.0
+	* scripts/STATview.py : fixed handling of '<' and '>' in create_temp (add escape character)
+
+2012-04-21 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.[h,C] : Added support for graphlib 2.0
+	* src/STAT_FrontEnd.[h,C] : Added support for graphlib 2.0
+	* src/STAT_FilterDefinitions.[h,C] : Added support for graphlib 2.0
+
+2012-04-20 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_graphlib.m4 : added graphlib 2.0 check
+	* src/STAT_GraphRoutines.[C,h] : new graphlib 2.0 STAT routines
+	* src/Makefile.am : support for STAT_GraphRoutines.[C,h]
+
+2012-04-05 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : made failure to open log non-fatal
+	* src/STAT_FrontEnd.C : various fixes for logging
+
+2012-03-29 Gregory L. Lee <lee218@llnl.gov>
+	* configure.ac config/x_ac_launchmon.m4 src/STAT_FrontEnd.C scripts/STATGUI.in scripts/STAT.in : added LMON_PREFIX
+
+2012-03-28 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_graphlib.m4 : added graphlib 1.6 check
+	* src/STAT_BackEnd.C src/STAT_FilterDefinitions.C : use unsigned long for byte array len with graphlib 1.6
+	* src/STAT[_FrontEnd|_BackEnd|FilterDefinitions].C src/MRNetSymbolReader.h: use %Ac instead of %ac for MRNet 4.0
+	* src/STAT_FrontEnd.C : check for daemon exit when waiting for file	request
+	* config/x_ac_mrnet.m4 : Changed MRNet 3.2 to MRNet 4.0
+	* config/* : updated libtool components with `libtoolize -f -c` on RHEL 6
+
+2012-02-01 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_mrnet.m4 : Added check for MRNet 3.2 (uint64_t array size)
+
+2012-01-31 Gregory L. Lee <lee218@llnl.gov>
+	* : changes to support MRNet's use of uint64_t instead of uint32_t for array size
+
+2012-01-20 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/stat-[cl,gui,view,bench] : new lowercase commands linked to mixed/upper case commands
+
+2012-01-04 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : compare leaf info to localIp_ when searching for parent info
+
+2012-01-02 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT[_FrontEnd|_BackEnd|FilterDefinitions].[C.h] : STAT_MRNET_OUTPUT_LEVEL propagated from FE to CPs and BEs
+
+2011-12-28 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.h : removed STAT_Log_t in favor of StatLogOptions_t bit flags
+	* src/STAT[_FrontEnd|_BackEnd|FilterDefinitions].[C.h] : Allow logging of CPs
+
+2011-12-23 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT[_FrontEnd|_BackEnd].[C.h] : allow optional use of MRNet printf for STAT logging
+	* src/STATD.C] : use getopt for option parsing
+
 2011-12-12 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C : fixed handling of case where swalk.size() < 1 but walkStack returns true
 
@@ -23,6 +309,19 @@
 2011-09-23 Gregory L. Lee <lee218@llnl.gov>
 	* : fixed errors reported by Intel's Static Security Checker tool
 
+2011-09-21 Gregory L. Lee <lee218@llnl.gov>
+	* : send broadcast stream to BE upon creation of broadcast stream
+	* : use broadcast stream (sum filter) for file request stream creation ack
+
+2011-09-20 Gregory L. Lee <lee218@llnl.gov>
+	* : integrated FGFS (Fast Global File Stat)
+
+2011-09-19 Gregory L. Lee <lee218@llnl.gov>
+	* configure.ac : added enable switches for temporal ordering and fgfs
+	* config/x_ac_fgfs.m4 : added check for fgfs header and lib
+	* config/x_ac_enable_debug.m4 : fixed debug flag propagation
+	* : integrated MRNet-based file broadcast
+
 2011-08-19 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : disable failure recovery for CRAYXT
 
@@ -46,7 +345,7 @@
 	* src/STAT_FrontEnd.C : use new Cray attributes in MRNet 3.1
 
 2011-06-02 Gregory L. Lee <lee218@llnl.gov>
-	* scripts/STAT.in, scripts/STATGUI.in : set LMON_FE_ENGINE_TIMEOUT 
+	* scripts/STAT.in, scripts/STATGUI.in : set LMON_FE_ENGINE_TIMEOUT
 	* configure.ac : added getrlimit and setrlimit tests
 
 2011-06-01 Gregory L. Lee <lee218@llnl.gov>
@@ -147,7 +446,7 @@
 	* : tag version 1.0.0
 	* src/STAT_FrontEnd.[h,C] : added freeRemapTree function to clear allocated memory
 	* src/STAT_timer.[h,C] : removed implementation from .h and placed in new .C file
-	* src/STAT_FrontEnd.C, src/STAT_BackEnd.C, scripts/STAT.in, scripts/STATGUI.in : added 
+	* src/STAT_FrontEnd.C, src/STAT_BackEnd.C, scripts/STAT.in, scripts/STATGUI.in : added
 		STAT_MRNET_DEBUG_LOG_DIRECTORY, STAT_XPLAT_RSH, and STAT_LMON_REMOTE_LOGIN environment variables
 	* src/STAT_FrontEnd.[h,C] : added topologySize_ member for MRNet 2.2 backwards compatibility
 
@@ -310,7 +609,7 @@
 	* look for site default options in $prefix/share/.STATrc and over write with user default options in $HOME/.STATrc
 	* added Remote Host Shell option and combo box in attach dialog
 	* applied patch from Dane Gardner for better handling of import gtk exceptions
-	* applied patch from Dane Gardner for searching $PATH for default TotalView and DDT 
+	* applied patch from Dane Gardner for searching $PATH for default TotalView and DDT
 
 2010-03-12 Gregory L. Lee <lee218@llnl.gov>
 	* Implemented leave subset stopped on detach
@@ -507,7 +806,7 @@
 
 2008-09-08 Gregory L. Lee <lee218@llnl.gov>	
 	* STAT now increases max proc and max fd to hard limits
-	* Added ability for user to specify comm node topology 
+	* Added ability for user to specify comm node topology
 
 2008-09-05 Gregory L. Lee <lee218@llnl.gov>	
 	* Connection info sent to daemons based on MRNet(2.0)'s # of leaves reported instead of assuming they all worked

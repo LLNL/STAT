@@ -59,7 +59,7 @@
     <term>-D, --daemon <replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
-        Specify the full path <replaceable class="parameter">path</replaceable> to the STATBench daemon executable.  Use this only if you wish to override the default.
+        Specify the full path <replaceable class="parameter">path</replaceable> to the STATBenchD daemon executable.  Use this only if you wish to override the default.
         </para>
     </listitem>
 </varlistentry>
@@ -67,7 +67,7 @@
     <term>-F, --filter <replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
-        Specify the full path <replaceable class="parameter">path</replaceable> to the STATBench filter shared object.  Use this only if you wish to override the default.
+        Specify the full path <replaceable class="parameter">path</replaceable> to the stat-bench filter shared object.  Use this only if you wish to override the default.
         </para>
     </listitem>
 </varlistentry>
@@ -120,10 +120,18 @@
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term>-l, --log <cmdsynopsis><group><arg><replaceable class="parameter">FE</replaceable></arg><arg><replaceable class="parameter">BE</replaceable></arg><arg><replaceable class="parameter">ALL</replaceable></arg></group></cmdsynopsis></term>
+    <term>-U, --countrep</term>
     <listitem>
         <para>
-        Enable debug logging of the <replaceable class="parameter">FE</replaceable>, <replaceable class="parameter">BE</replaceable>, or <replaceable class="parameter">ALL</replaceable>.
+        Only gather edge labels with the task count and a single representative.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-l, --log <cmdsynopsis><group><arg><replaceable class="parameter">FE</replaceable></arg><arg><replaceable class="parameter">BE</replaceable></arg><arg><replaceable class="parameter">CP</replaceable></arg></group></cmdsynopsis></term>
+    <listitem>
+        <para>
+        Enable debug logging of the <replaceable class="parameter">FE</replaceable> frontend, <replaceable class="parameter">BE</replaceable> backend, or <replaceable class="parameter">CP</replaceable> communication process. Multiple log options may be specified (i.e., -l FE -l BE).
         </para>
     </listitem>
 </varlistentry>
@@ -132,6 +140,14 @@
     <listitem>
         <para>
         Dump logging output into <replaceable class="parameter">log_directory</replaceable>.  To be used with the <option>--log</option> option.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-M, --mrnetprintf</term>
+    <listitem>
+        <para>
+        Use MRNet's printf for STAT debug logging.
         </para>
     </listitem>
 </varlistentry>

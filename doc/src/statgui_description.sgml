@@ -11,6 +11,6 @@ STAT includes a graphical user interface (GUI) to run STAT and to visualize STAT
 ]]>
 <![%manpage[
 <para>
-STATGUI is a GUI that drives STAT, the Stack Trace Analysis Tool, and allows you to interactively control the sampling of stack traces from your parallel application.  STATGUI is built on STATview and provides the same call tree manipulation operations.  For more on these operations see <command>STATview</command>.
+stat-gui is a GUI that drives STAT, the Stack Trace Analysis Tool, and allows you to interactively control the sampling of stack traces from your parallel application.  stat-gui is built on stat-view and provides the same call tree manipulation operations.  For more on these operations see <command>stat-view</command>.
 </para>
 ]]>

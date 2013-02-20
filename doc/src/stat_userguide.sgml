@@ -10,6 +10,7 @@
 <!ENTITY stat_description SYSTEM "stat_description.sgml">
 <!ENTITY stat_dependencies SYSTEM "stat_dependencies.sgml">
 <!ENTITY stat_installation SYSTEM "stat_installation.sgml">
+<!ENTITY stat_changelog SYSTEM "stat_changelog.sgml">
 <!ENTITY io_watchdog SYSTEM "io_watchdog.sgml">
 <!ENTITY statview_description SYSTEM "statview_description.sgml">
 <!ENTITY statview_node_menu SYSTEM "statview_node_menu.sgml">
@@ -51,6 +52,7 @@
     <author><firstname>Dorian C.</firstname><surname>Arnold</surname></author>
     <author><firstname>Dong H.</firstname><surname>Ahn</surname></author>
     <author><firstname>Bronis R.</firstname><surname>de Supinski</surname></author>
+    <author><firstname>Matthew P.</firstname><surname>LeGendre</surname></author>
     <author><firstname>Barton P.</firstname><surname>Miller</surname></author>
     <author><firstname>Martin</firstname><surname>Schulz</surname></author>
 </bookinfo>
@@ -68,26 +70,30 @@
     &stat_overview
 </chapter>
 <chapter>
+    <title>Changelog</title>
+    &stat_changelog
+</chapter>
+<chapter>
     <title>Installing STAT</title>
     <section><title>Dependent Packages</title>&stat_dependencies</section>
     <section><title>Installation</title>&stat_installation</section>
 </chapter>
 <chapter>
-    <title>Using the STAT Command</title>
+    <title>Using the stat-cl Command</title>
     <section><title>Description</title>&stat_description</section>
-    <section><title>STAT Options</title>&stat_options</section>
+    <section><title>stat-cl Options</title>&stat_options</section>
     <section><title>STAT Usage Example</title>&stat_example</section>
 </chapter>
 <chapter>
-    <title>Using the STATview GUI</title>
+    <title>Using the stat-view GUI</title>
     <section><title>Description</title>&statview_description</section>
-    <section><title>The STATview Node Menu</title>&statview_node_menu</section>
-    <section><title>The STATview Toolbar</title>&statview_toolbar</section>
+    <section><title>The stat-view Node Menu</title>&statview_node_menu</section>
+    <section><title>The stat-view Toolbar</title>&statview_toolbar</section>
 </chapter>
 <chapter>
-    <title>Using the STAT GUI</title>
+    <title>Using the stat-gui GUI</title>
     <section><title>Description</title>&statgui_description</section>
-    <section><title>The STAT GUI Toolbar</title>&statgui_toolbar</section>
+    <section><title>The stat-gui GUI Toolbar</title>&statgui_toolbar</section>
     <section><title>Sample Options</title>&statgui_sample_options</section>
     <section><title>Equivalence Classes and Subset Debugging</title>&statgui_eq_class</section>
     <![%llnluserguide[<section><title>Availability</title>&stat_llnl_availability</section>]]>
@@ -104,10 +110,10 @@
     <section><title>Running STAT in a Batch Script</title>&stat_batch_script</section>
 </chapter>
 <chapter>
-    <title>Using the STATBench Emulator</title>
+    <title>Using the stat-bench Emulator</title>
     <section><title>Description</title>&statbench_description</section>
-    <section><title>STATBench Options</title>&statbench_options</section>
-    <section><title>STATBench Usage Example</title>&statbench_example</section>
+    <section><title>stat-bench Options</title>&statbench_options</section>
+    <section><title>stat-bench Usage Example</title>&statbench_example</section>
 </chapter>
 <chapter>
     <title>Troubleshooting Guide</title>

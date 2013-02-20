@@ -70,15 +70,23 @@ intArray_swigregister(intArray)
 intArray_frompointer = _STAT.intArray_frompointer
 
 STAT_UNKNOWN = _STAT.STAT_UNKNOWN
+STAT_LOG_NONE = _STAT.STAT_LOG_NONE
 STAT_LOG_FE = _STAT.STAT_LOG_FE
 STAT_LOG_BE = _STAT.STAT_LOG_BE
-STAT_LOG_ALL = _STAT.STAT_LOG_ALL
-STAT_LOG_NONE = _STAT.STAT_LOG_NONE
-STAT_FUNCTION_NAME_ONLY = _STAT.STAT_FUNCTION_NAME_ONLY
-STAT_FUNCTION_AND_PC = _STAT.STAT_FUNCTION_AND_PC
-STAT_FUNCTION_AND_LINE = _STAT.STAT_FUNCTION_AND_LINE
+STAT_LOG_CP = _STAT.STAT_LOG_CP
+STAT_LOG_MRN = _STAT.STAT_LOG_MRN
+STAT_LOG_SW = _STAT.STAT_LOG_SW
+STAT_LOG_SWERR = _STAT.STAT_LOG_SWERR
+STAT_SAMPLE_FUNCTION_ONLY = _STAT.STAT_SAMPLE_FUNCTION_ONLY
+STAT_SAMPLE_LINE = _STAT.STAT_SAMPLE_LINE
+STAT_SAMPLE_PC = _STAT.STAT_SAMPLE_PC
+STAT_SAMPLE_COUNT_REP = _STAT.STAT_SAMPLE_COUNT_REP
+STAT_SAMPLE_THREADS = _STAT.STAT_SAMPLE_THREADS
+STAT_SAMPLE_CLEAR_ON_SAMPLE = _STAT.STAT_SAMPLE_CLEAR_ON_SAMPLE
+STAT_SAMPLE_PYTHON = _STAT.STAT_SAMPLE_PYTHON
 STAT_LAUNCH = _STAT.STAT_LAUNCH
 STAT_ATTACH = _STAT.STAT_ATTACH
+STAT_SERIAL_ATTACH = _STAT.STAT_SERIAL_ATTACH
 STAT_VERBOSE_ERROR = _STAT.STAT_VERBOSE_ERROR
 STAT_VERBOSE_STDOUT = _STAT.STAT_VERBOSE_STDOUT
 STAT_VERBOSE_FULL = _STAT.STAT_VERBOSE_FULL
@@ -129,8 +137,10 @@ class STAT_FrontEnd(_object):
     __del__ = lambda self : None;
     def attachAndSpawnDaemons(*args): return _STAT.STAT_FrontEnd_attachAndSpawnDaemons(*args)
     def launchAndSpawnDaemons(*args): return _STAT.STAT_FrontEnd_launchAndSpawnDaemons(*args)
+    def setupForSerialAttach(*args): return _STAT.STAT_FrontEnd_setupForSerialAttach(*args)
     def launchMrnetTree(*args): return _STAT.STAT_FrontEnd_launchMrnetTree(*args)
     def connectMrnetTree(*args): return _STAT.STAT_FrontEnd_connectMrnetTree(*args)
+    def setupConnectedMrnetTree(*args): return _STAT.STAT_FrontEnd_setupConnectedMrnetTree(*args)
     def attachApplication(*args): return _STAT.STAT_FrontEnd_attachApplication(*args)
     def pause(*args): return _STAT.STAT_FrontEnd_pause(*args)
     def resume(*args): return _STAT.STAT_FrontEnd_resume(*args)
@@ -146,6 +156,7 @@ class STAT_FrontEnd(_object):
     def startLog(*args): return _STAT.STAT_FrontEnd_startLog(*args)
     def receiveAck(*args): return _STAT.STAT_FrontEnd_receiveAck(*args)
     def statBenchCreateStackTraces(*args): return _STAT.STAT_FrontEnd_statBenchCreateStackTraces(*args)
+    def getNodeInEdge(*args): return _STAT.STAT_FrontEnd_getNodeInEdge(*args)
     def printCommunicationNodeList(*args): return _STAT.STAT_FrontEnd_printCommunicationNodeList(*args)
     def printApplicationNodeList(*args): return _STAT.STAT_FrontEnd_printApplicationNodeList(*args)
     def getLauncherPid(*args): return _STAT.STAT_FrontEnd_getLauncherPid(*args)
@@ -166,10 +177,13 @@ class STAT_FrontEnd(_object):
     def getFilterPath(*args): return _STAT.STAT_FrontEnd_getFilterPath(*args)
     def getRemoteNode(*args): return _STAT.STAT_FrontEnd_getRemoteNode(*args)
     def addLauncherArgv(*args): return _STAT.STAT_FrontEnd_addLauncherArgv(*args)
+    def addSerialProcess(*args): return _STAT.STAT_FrontEnd_addSerialProcess(*args)
     def getLauncherArgv(*args): return _STAT.STAT_FrontEnd_getLauncherArgv(*args)
     def getLauncherArgc(*args): return _STAT.STAT_FrontEnd_getLauncherArgc(*args)
     def setVerbose(*args): return _STAT.STAT_FrontEnd_setVerbose(*args)
     def getVerbose(*args): return _STAT.STAT_FrontEnd_getVerbose(*args)
+    def setApplicationOption(*args): return _STAT.STAT_FrontEnd_setApplicationOption(*args)
+    def getApplicationOption(*args): return _STAT.STAT_FrontEnd_getApplicationOption(*args)
     def getLastErrorMessage(*args): return _STAT.STAT_FrontEnd_getLastErrorMessage(*args)
     def addPerfData(*args): return _STAT.STAT_FrontEnd_addPerfData(*args)
     def getInstallPrefix(*args): return _STAT.STAT_FrontEnd_getInstallPrefix(*args)

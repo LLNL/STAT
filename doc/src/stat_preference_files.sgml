@@ -116,10 +116,26 @@ Here is a list of options:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>Gather Python Traces = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to gather Python script level stack traces, rather than show the Python interpreter stack traces.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>Sample Type = <replaceable class="parameter">function only|function and pc|function and line</replaceable></term>
     <listitem>
         <para>
-        Controls the granularity of the stack traces gathered.
+        Controls the granularity of the nodes in the gathered stack traces.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Edge Type = <replaceable class="parameter">full list|count and representative</replaceable></term>
+    <listitem>
+        <para>
+        Controls the granularity of the edges in the gathered stack traces.
         </para>
     </listitem>
 </varlistentry>
@@ -168,6 +184,30 @@ Here is a list of options:
     <listitem>
         <para>
         Controls whether to enable debug logging of the STAT backend.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Log CP = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to enable debug logging of the STAT communication processes.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Log SW = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to enable debug logging of Stackwalker by the STAT backend.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Log SWERR = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to enable debug logging of Stackwalker by the STAT backend when a Stackwalker error is detected.
         </para>
     </listitem>
 </varlistentry>

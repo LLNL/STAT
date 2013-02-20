@@ -118,7 +118,7 @@ Installation
    the option --with-procspernode=number, generally set to the number
    of cores per node.
 
-   STAT creates wrapper scripts for the STAT command line and STATGUI
+   STAT creates wrapper scripts for the stat-cl command line and stat-gui
    commands. These wrappers set appropriate paths for the launchmon and
    mrnet_commnode executables, based on the the --with-launchmon and
    --with-mrnet configure options, thus it is important to specify both

@@ -14,9 +14,11 @@ Redistribution and use in source and binary forms, with or without modification,
         Redistributions of source code must retain the above copyright notice, this list of conditions and the disclaimer below.
         Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the disclaimer (as noted below) in the documentation and/or other materials provided with the distribution.
         Neither the name of the LLNS/LLNL nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-        
+
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."""
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
+__version__ = "2.0.0"
+
 import os.path
 import string
 import time
@@ -25,12 +27,7 @@ import sys
 ## A variable to determine whther we have the pygments module for syntax hilighting
 have_pygments = True
 try:
-    import pygments
-    from pygments import highlight
     from pygments.formatter import Formatter
-    from pygments.lexers import CLexer
-    from pygments.lexers import CppLexer
-    from pygments.lexers import FortranLexer
 except:
     have_pygments = False
 
@@ -95,7 +92,7 @@ mpi_functions = ['mpi_file_iwrite_shared', 'mpi_info_set', 'mpio_request_c2f',\
 'mpi_waitany', 'mpi_file_iread_at', 'mpi_info_get', 'mpi_waitsome',\
 'mpi_file_iread_shared', 'mpi_info_get_nkeys', 'mpi_wtick', 'mpi_file_iwrite',\
 'mpi_info_get_nthkey', 'mpi_wtime', 'mpi_file_iwrite_at',\
-'mpi_info_get_valuelen', 'mpi_file_iwrite_shared', 'mpi_info_set'] 
+'mpi_info_get_valuelen', 'mpi_file_iwrite_shared', 'mpi_info_set']
 
 ## A global variable to store to pygments highlighted source lines
 pygments_lines = []
@@ -110,7 +107,7 @@ if have_pygments:
             Formatter.__init__(self, **options)
             self.styles = {}
             for token, style in self.style:
-                start = '' 
+                start = ''
                 end = ''
                 newline_end = '\n'
                 newline_start = ''
@@ -139,18 +136,16 @@ if have_pygments:
                     end = newline_end + end + '</STATviewcolor>\n'
                     newline_end = ''
                 self.styles[token] = (start, end)
-   
+
         def format(self, tokensource, outfile):
             """Define the output format, generate the pygments_list."""
             lastval = ''
             lasttype = None
             last_style_end_newline = False
             last_value_end_newline = True
-    
+
             # parse step to generate structure
             current_line = []
-            global pygments_lines
-            pygments_lines = []
             for ttype, value in tokensource:
                 color = '#000000'
                 bold = False
@@ -175,13 +170,13 @@ if have_pygments:
                     if value != values[-1] and len(values) != 1:
                         pygments_lines.append(current_line)
                         current_line = []
-    
+
             # parse step to generate dummy format
             for ttype, value in tokensource:
                 outfile.write(value)
 
 
-## \param function_name - the edge label string 
+## \param function_name - the edge label string
 #  \return true if the input function is an MPI function
 #
 #  \n
@@ -194,18 +189,9 @@ def is_MPI(function_name):
         return True
     return False
 
-## A global table to avoid redundant task list generation
-task_label_to_list = {}
 
-## A global table to avoid unnecessary parsing of long label strings
-task_label_id_to_list = {}
-
-## A counter to keep track of unique label IDs
-next_label_id = -1
-
-
-## \param label - the edge label string 
-#  \return a list of integer ranks 
+## \param label - the edge label string
+#  \return a list of integer ranks
 #
 #  \n
 def get_task_list(label):
@@ -213,10 +199,7 @@ def get_task_list(label):
     colon_pos = label.find(':')
     if colon_pos != -1:
         # this is just a count and representative
-        if label.find('label') != -1:
-            label = label[colon_pos + 2:-3]
-        elif label.find('[') != -1:
-            label = label[colon_pos + 2:-1]
+        label = label[colon_pos + 2:label.find(']')]
     else:
         # this is a full node list
         if label.find('label') != -1:
@@ -240,7 +223,7 @@ def get_task_list(label):
     return task_list
 
 
-## \param label - the edge label string 
+## \param label - the edge label string
 #  \return the number of tasks
 #
 #  \n
@@ -250,130 +233,13 @@ def get_num_tasks(label):
     if colon_pos != -1:
         # this is just a count and representative
         if label.find('label') != -1:
-            label = label[8:colon_pos]
+            count = label[8:colon_pos]
         elif label.find('[') != -1:
-            label = label[0:colon_pos]
-        return int(label)
+            count = label[0:colon_pos]
+        return int(count)
     else:
         # this is a full node list
         return len(get_task_list(label))
-
-
-## \param node - the node
-#  \return the task list
-#
-#  \n
-def get_node_task_list(node):
-    """Get the task list corresponding to the node's edge label.
-
-    First see if we have this label indexed to avoid duplicate generation."""
-
-    global next_label_id
-    if node.edge_label_id in task_label_id_to_list.keys(): 
-        return task_label_id_to_list[node.edge_label_id]
-    colon_pos = node.edge_label.find(':')
-    if colon_pos != -1:
-        # this is just a count and representative
-        key = node.edge_label
-    else:
-        # this is a full node list
-        if node.edge_label.find('label') != -1:
-            key = node.edge_label[9:-3]
-        elif node.edge_label.find('[') != -1:
-            key = node.edge_label[1:-1]
-        else:
-            key = node.edge_label
-    if key in task_label_to_list.keys():
-        task_list = task_label_to_list[key]
-    else:
-        task_list = get_task_list(key)
-    next_label_id += 1
-    task_label_to_list[key] = task_list
-    task_label_id_to_list[next_label_id] = task_list
-    node.edge_label_id = next_label_id
-    return task_list
-
-
-## \param task_list - the list of tasks
-#  \return the string representation
-#
-#  \n
-def list_to_string(task_list):
-    """Translate a list of tasks into a range string."""
-    global next_label_id
-    if task_list in task_label_id_to_list.keys(): 
-        return task_label_id_to_list[task_list]
-    for key in task_label_to_list.keys():
-        if task_list == task_label_to_list[key]:
-            return key.replace(',', ', ')
-    ret = ''
-    in_range = False
-    first_iteration = True
-    range_start = -1
-    range_end = -1
-    last_val = -1
-    for task in task_list:
-        if in_range:
-            if task == last_val + 1:
-                range_end = task
-            else:
-                ret += '%d, %d' %(last_val, task)
-                in_range = False
-        else:
-            if first_iteration:
-                ret += '%d' %(task)
-                first_iteration = False
-            else:   
-                if task == last_val + 1:
-                    in_range = True
-                    range_start = last_val
-                    range_end = task
-                    ret += '-'
-                else:
-                    ret += ', %d' %(task)
-        last_val = task
-    if in_range:
-        ret += '%d' %(task)
-    next_label_id += 1
-    task_label_id_to_list[next_label_id] = task_list
-    task_label_to_list[ret.replace(', ', ',')] = task_list
-    return ret
-
-
-## \param node - the input node 
-#  \return the task list
-#
-#  \n
-def get_leaf_tasks(node):
-    """Get the list of tasks that ended on this node."""
-    in_set = set(get_node_task_list(node))
-    out_set = set([])
-    for edge in node.out_edges:
-        out_set |= set(get_node_task_list(edge.dst))
-    return list(in_set - out_set)
-
-
-## \param node - the input node 
-#  \return the task count
-#
-#  \n
-def get_leaf_num_tasks(node):
-    """Get the number of tasks that ended on this node."""
-    colon_pos = node.edge_label.find(':')
-    if colon_pos != -1:
-        # this is just a count and representative
-        out_sum = 0
-        for edge in node.out_edges:
-            out_sum += get_num_tasks(edge.label)
-        if out_sum < get_num_tasks(node.edge_label):
-            return get_num_tasks(node.edge_label) - out_sum
-        else:
-            return 0
-    else:
-        # this is a full node list
-        return len(get_leaf_tasks(node))
-    return 0 # should not get here
-
 
 
 ## \param executable - the executable to search for
@@ -405,22 +271,54 @@ def color_to_string(color):
 
 
 ## \param input - the stack frame text
+#  \return True if the label includes source file and line number info
+#
+#  \n
+def label_has_source(input):
+    return input.find('@') != -1
+
+## \param input - the stack frame text
+#  \return True if the label includes source file and line number info and the node is not eq class collapsed
+#
+#  \n
+def label_collapsed(input):
+    return input.find('==\\>') != -1 or input.find('==>') != -1
+
+## \param input - the stack frame text
+#  \return True if the label includes source file and line number info and the node is not eq class collapsed
+#
+#  \n
+def has_source_and_not_collapsed(input):
+    return label_has_source(input) and not label_collapsed(input)
+
+
+## \param input - the stack frame text
 #  \return - a tuple of (function name, line number, variable info)
 #
 #  \n
-def decompose_node(input):
+def decompose_node(input, item = None):
     """Decompose a stack frame's text into individual components."""
     function_name = ''
     sourceLine = ''
     iter_string = ''
-    if input.find('@') != -1:
-        function_name = input[:input.find('@')] 
-        if input.find('$') != -1:
+    if has_source_and_not_collapsed(input):
+        function_name = input[:input.find('@')]
+        if input.find('$') != -1 and input.find('$$') == -1: # and clause for name mangling of C++ on BG/Q example
             sourceLine = input[input.find('@') + 1:input.find('$')]
             iter_string = input[input.find('$') + 1:]
         else:
             sourceLine = input[input.find('@') + 1:]
             iter_string = ''
+    elif label_collapsed(input) and item is not None:
+        if item == -1:
+            return_list = []
+            frames = input.split(' ==> ')
+            for frame in frames:
+                function_name, sourceLine, iter_string = decompose_node(frame)
+                return_list.append((function_name, sourceLine, iter_string))
+            return return_list
+        else:
+            function_name, sourceLine, iter_string = decompose_node(input.split(' ==> ')[item])
     else:
         function_name = input
     return function_name, sourceLine, iter_string
@@ -432,12 +330,26 @@ def decompose_node(input):
 #  \n
 def var_spec_to_string(var_spec):
     """Translates a variable specificaiton list into a string."""
-    if var_spec == []:  
+    if var_spec == []:
         return 'NULL'
     ret = '%d#' %len(var_spec)
     for file, line, depth, var in var_spec:
         ret += '%s:%d.%d$%s,' %(file, line, depth, var)
     ret = ret[:len(ret) - 1]
+    return ret
+
+## \param label - the input label
+#  \return a copy of the label with appropriate escape characters added
+#
+#  \n
+def escaped_label(label):
+    ret = ''
+    prev = ' '
+    for c in label:
+        if prev != '\\' and (c == '<' or c == '>'):
+            ret += '\\'
+        ret += c
+        prev = c
     return ret
 
 #global DEBUG

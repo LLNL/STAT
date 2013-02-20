@@ -5,7 +5,8 @@ AC_DEFUN([X_AC_LAUNCHMON], [
     )],
     [CXXFLAGS="$CXXFLAGS -I${withval}/include"
        LAUNCHMONPREFIX="${withval}"
-       LDFLAGS="$LDFLAGS -L${withval}/lib -Wl,-rpath=${withval}/lib"
+       LDFLAGS="$LDFLAGS -L${withval}/lib"
+       RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"
     ],
     [CXXFLAGS="$CXXFLAGS"
       LAUNCHMONPREFIX=""
@@ -40,4 +41,5 @@ AC_DEFUN([X_AC_LAUNCHMON], [
     AC_MSG_ERROR([the launchmon executable is required.  Specify launchmon prefix with --with-launchmon])
   fi
 AC_SUBST(LAUNCHMONBIN)
+AC_SUBST(LAUNCHMONPREFIX)
 ])

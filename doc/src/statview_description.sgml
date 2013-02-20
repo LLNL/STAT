@@ -1,9 +1,9 @@
 <para>
-STATview <![%userguide[(<xref linkend="statview_screenshot">)]]> is a GUI for viewing STAT outputted DOT files.  STATview provides easy navigation of the call prefix tree and also allows manipulation of the call tree to help focus on areas of interest.  Each node in the STAT call prefix tree represents a function call and the directed edges denote the calling sequence.  Further, the edges are labeled by the set of tasks that have taken that call path.  For simplification, STATview will display the number of tasks in the set and truncate long task lists in the main display with "..." notation.  Similarly, long function names will be truncated with "..." notation.  Nodes are colored based on the set of tasks of the incoming edge, providing a visual distinction when different tasks take different branches.
+stat-view <![%userguide[(<xref linkend="statview_screenshot">)]]> is a GUI for viewing STAT-outputted dot files.  stat-view provides easy navigation of the call prefix tree and also allows manipulation of the call tree to help focus on areas of interest.  Each node in the STAT call prefix tree represents a function call and the directed edges denote the calling sequence.  Further, the edges are labeled by the set of tasks that have taken that call path.  For simplification, stat-view will display the number of tasks in the set and truncate long task lists in the main display with "..." notation.  Similarly, long function node label names will be truncated with "..." notation.  The truncation length can be modified via the File->Preferences menu (this requires clicking the <GUIbutton>Layout</GUIbutton> button to rerender any already loaded graphs).  Nodes are colored based on the set of tasks of the incoming edge, providing a visual distinction when different tasks take different branches.
 </para>
 <![%userguide[
 <figure id="statview_screenshot">
-    <title>A screenshot of the STATview GUI.</title>
+    <title>A screenshot of the stat-view GUI.</title>
     <screenshot><mediaobject><imageobject>
     <imagedata scale="40" fileref="figs/statview_screenshot.png">
     </imageobject></mediaobject></screenshot>

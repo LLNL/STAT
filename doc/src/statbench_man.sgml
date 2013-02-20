@@ -12,12 +12,12 @@
     <date>2010-03-25</date>
 </refentryinfo>
 <refmeta>
-    <refentrytitle><application>STATBench</application></refentrytitle>
+    <refentrytitle><application>stat-bench</application></refentrytitle>
     <manvolnum>1</manvolnum>
 </refmeta>
 <refnamediv>
     <refname>
-        <application>STATBench</application>
+        <application>stat-bench</application>
     </refname>
     <refpurpose>
     invoke the Stack Trace Analysis Tool Benchmark.
@@ -25,13 +25,13 @@
 </refnamediv>
 <refsynopsisdiv>
     <cmdsynopsis>
-    <command>STATBench</command> <arg><replaceable class="option">OPTIONS</replaceable></arg> 
+    <command>stat-bench</command> <arg><replaceable class="option">OPTIONS</replaceable></arg> 
     </cmdsynopsis>
     <para>
     where
     <synopsis>
     <cmdsynopsis><arg><replaceable class="option">OPTIONS</replaceable></arg></cmdsynopsis>
-    represents zero or more STATBench options.
+    represents zero or more stat-bench options.
     </synopsis>
     </para>
 </refsynopsisdiv>
@@ -69,7 +69,7 @@
 <refsect1>
     <title>SEE ALSO</title>
     <para>
-    <command>STAT</command>(1), <command>STATGUI</command>(1), <command>STATview</command>(1)
+    <command>stat-cl</command>(1), <command>stat-gui</command>(1), <command>stat-view</command>(1)
     </para>
 </refsect1>
 </refentry>

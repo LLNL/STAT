@@ -39,7 +39,7 @@ void STAT_timer::setTime()
 void STAT_timer::setTime(double doubleTime)
 {
     doubleTime_ = doubleTime;
-    tv_.tv_sec = -1;  /*only set on demand for efficiency */
+    tv_.tv_sec = -1;  /* only set on demand for efficiency */
 }
 
 double STAT_timer::getDoubleTime()

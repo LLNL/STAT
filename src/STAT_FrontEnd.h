@@ -16,6 +16,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+
 #ifndef __STAT_FRONTEND_H
 #define __STAT_FRONTEND_H
 
@@ -38,12 +39,17 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <sys/resource.h>
 #include "arpa/inet.h"
 
-#include "mrnet/MRNet.h"
-#include "xplat/NetUtils.h"
-#include "graphlib.h"
-#include "STAT_timer.h"
-#include "lmon_api/lmon_fe.h"
 #include "STAT.h"
+#include "STAT_GraphRoutines.h"
+#include "STAT_timer.h"
+#include "graphlib.h"
+#include "lmon_api/lmon_fe.h"
+#ifdef STAT_FGFS
+  #include "Comm/MRNetCommFabric.h"
+  #include "AsyncFastGlobalFileStat.h"
+  #include "MountPointAttr.h"
+  #include <fcntl.h>
+#endif
 
 #ifdef CRAYXT
   #ifndef MRNET31
@@ -58,13 +64,14 @@ extern "C"
 #define STAT_MAX_FANOUT 64
 
 
-//! An enum for STAT launch vs attach
+//! An enum for STAT launch type
 typedef enum {
     STAT_LAUNCH = 0,
-    STAT_ATTACH
+    STAT_ATTACH,
+    STAT_SERIAL_ATTACH
 } StatLaunch_t;
 
-//! An enum for MRNet topology specification type 
+//! An enum for MRNet topology specification type
 typedef enum {
     STAT_TOPOLOGY_DEPTH = 0,
     STAT_TOPOLOGY_FANOUT,
@@ -80,7 +87,7 @@ typedef struct
     std::vector<MRN::NetworkTopology::Node *> leafCps;
 } LeafInfo_t;
 
-//! A struct to help determine ranks lists for each daemon
+//! A simple integer list
 typedef struct
 {
     int count;
@@ -103,27 +110,26 @@ typedef struct _remap_node
     \param[out] bufLen - the resulting buffer length
     \return 0 on success, -1 on error
 
-    Parses "data" containing MRNet connection information to produce a buffer 
+    Parses "data" containing MRNet connection information to produce a buffer
     "buf" suitable for sending to the daemons.
 */
 int statPack(void *data, void *buf, int bufMax, int *bufLen);
 
-//! A callback function to detect daemon exit
+//! A callback function to detect daemon and application exit
 /*!
     \param status - the input status vector
     \return 0 on success, -1 on error
 
-    Determine if STAT is still connected to the resource manager 
+    Determine if STAT is still connected to the resource manager
     and if the application is still running.
 */
 int lmonStatusCb(int *status);
 
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
-//! Increase nofile and nproc limits to maximum 
+//! Increase nofile and nproc limits to maximum
 StatError_t increaseSysLimits();
 #endif
 
-#ifdef MRNET3
 //! Callback for MRNet BE connections
 /*!
     \param event - the event type
@@ -136,37 +142,38 @@ void beConnectCb(MRN::Event *event, void *dummy);
 //! Callback for daemon or CP exit
 /*!
     \param event - the event type
-    \param dummy - a dummy argument
+    \param statObject - the STAT_FrontEnd object
 
     Handle the exiting of a node in the tree, reconfigure the bit vectors
 */
-void nodeRemovedCb(MRN::Event *event, void *dummy);
+void nodeRemovedCb(MRN::Event *event, void *statObject);
 
 //! Callback for topology modification
 /*!
     \param event - the event type
-    \param dummy - a dummy argument
+    \param statObject - the STAT_FrontEnd object
 
     Handle the change of the tree topology, reconfigure the bit vectors
 */
-void topologyChangeCb(MRN::Event *event, void *dummy);
-#endif
+void topologyChangeCb(MRN::Event *event, void *statObject);
+
 
 //! The STAT FrontEnd object is used to Launch STAT daemons and gather and merge stack traces
 class STAT_FrontEnd
 {
     public:
-        //! Default constructor  
+        //! Default constructor
         /*!
-            Sets trace values to defaults and required variables to unset values 
+            Sets trace values to defaults and required variables to unset values
         */
         STAT_FrontEnd();
 
-        //! Default destructor.  
+        //! Default destructor.
         /*!
-            First dumps any performnace data then frees up allocated variables.
+            First dumps any performance data then frees up allocated variables.
         */
         ~STAT_FrontEnd();
+
 
         /***************************/
         /* STAT core functionality */
@@ -175,70 +182,90 @@ class STAT_FrontEnd
         //! Attach to job launcher and launch the tool daemons
         /*!
             \param pid - the job launcher PID
-            \param remoteNode - [optional] the remote host running the job launcher
+            \param remoteNode - [optional] the remote host running the job
+                   launcher
             \return STAT_OK on success
         */
         StatError_t attachAndSpawnDaemons(unsigned int pid, char *remoteNode = NULL);
 
         //! Launch the application and launch the tool daemons
         /*!
-            \param remoteNode - [optional] the remote host to run the job launcher
+            \param remoteNode - [optional] the remote host to run the job
+                   launcher
             \param isStatBench - [optional] true if running as STATBench
             \return STAT_OK on success
         */
         StatError_t launchAndSpawnDaemons(char *remoteNode = NULL, bool isStatBench = false);
 
+        //! Setup the appropriate variables for serial attach
+        /*!
+            \return STAT_OK on success
+        */
+        StatError_t setupForSerialAttach();
+
         //! Launch the MRNet tree
         /*!
             \param topologyType - the requested topology type
             \param topologySpecification - the requested topology specification
-            \param nodeList - [optional] the list of nodes for communication processes
-            \param blocking - [optional] set to true if blocking on all connections set
-            \param isStatBench - [optional] set to true if runninig as STATBench
+            \param nodeList - [optional] the list of nodes for communication
+                   processes
+            \param blocking - [optional] set to true if blocking on all
+                   connections set
+            \param shareAppNodes - [optional] set to true if we can launch
+                   communication processes on the application nodes
             \return STAT_OK on success
-        
-            Creates the topology file, calls the Network constructor, and sends connection
-            info to the daemons.  Waits for all daemons to connect if blocking set to true.
+
+            Creates the topology file, calls the Network constructor, and sends
+            connection info to the daemons.  Waits for all daemons to connect
+            if blocking set to true.
         */
-        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false, bool isStatBench = false);
+        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false);
 
         //! Connect the MRNet tree
         /*!
             \param blocking - [optional] set to true if blocking
-            \param isStatBench - [optional] set to true if runninig as STATBench
             \return STAT_OK on success
-        
-            Receives BE connections.  When all BEs connected, creates the default streams 
-            and load the STAT filter.  Finally, checks all STAT components to make sure 
-            they are the same version.
+
+            Receives BE connections.  When all BEs are connected, creates the
+            default streams and load the STAT filter.  Finally, checks all STAT
+            components to make sure they are the same version.
         */
-        StatError_t connectMrnetTree(bool blocking = true, bool isStatBench = false);
+        StatError_t connectMrnetTree(bool blocking = true);
+
+        //! Configure STAT based on the topology of the connected MRNet tree
+        /*!
+            \return STAT_OK on success
+        */
+        StatError_t setupConnectedMrnetTree();
 
         //! Attach to the application
         /*!
-            \param blocking - [optional] set to true if blocks until all BE acks received
+            \param blocking - [optional] set to true if blocks until all BE
+                   acks received
             \return STAT_OK on success
-        
+
             Broadcast a message to the daemons to attach and await all acks
-        */    
+        */
         StatError_t attachApplication(bool blocking = true);
 
         //! Pause the application
         /*!
-            \param blocking - [optional] set to true if blocks until all BE acks received
+            \param blocking - [optional] set to true if blocks until all BE
+                   acks received
             \return STAT_OK on success
-        
+
             Broadcast a message to the daemons to pause and await all acks
-        */    
+        */
         StatError_t pause(bool blocking = true);
 
         //! Resume the application
         /*!
-            \param blocking - [optional] set to true if blocks until all BE acks received
+            \param blocking - [optional] set to true if blocks until all BE
+                   acks received
             \return STAT_OK on success
-        
+
             Broadcast a message to the daemons to resume and await all acks
-        */    
+        */
         StatError_t resume(bool blocking = true);
 
         //! Check to see if we're running
@@ -250,28 +277,31 @@ class STAT_FrontEnd
         //! Broadcast a message to daemons to gather traces and await all acks
         /*!
             \param sampleType - the level of detail to sample
-            \param withThreads - whether to gather samples from helper threads
-            \param clearOnSample - whether to clear accumulated traces before sampling
             \param nTraces - the number of traces to gather per task
             \param traceFrequency - the amount of time to wait between samples
-            \param nRetries - the number of times to attempt to gather a good trace
+            \param nRetries - the number of times to attempt to gather a 
+                   complete trace
             \param retryFrequency - the amount of time to wait between retries
-            \param blocking - [optional] set to true if blocks until all BE acks received
-            \param variableSpecification - a list of variables to gather along with the traces
+            \param blocking - [optional] set to true if blocks until all BE
+                   acks received
+            \param variableSpecification - [optional] a list of variables to
+                   gather along with the traces
             \return STAT_OK on success
         */
-        StatError_t sampleStackTraces(StatSample_t sampleType, bool withThreads, bool clearOnSample, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
 
-        //! Collect the last stack trace from all daemons
+        //! Collect the most recent stack trace from all daemons
         /*!
-            \param blocking - [optional] whether to block until stack traces are received
+            \param blocking - [optional] whether to block until stack traces
+                   are received
             \return STAT_OK on success
         */
         StatError_t gatherLastTrace(bool blocking = true);
 
         //! Collect the accumulated stack traces from all daemons
         /*!
-            \param blocking - [optional] whether to block until stack traces are received
+            \param blocking - [optional] whether to block until stack traces
+                   are received
             \return STAT_OK on success
         */
         StatError_t gatherTraces(bool blocking = true);
@@ -279,7 +309,7 @@ class STAT_FrontEnd
         //! Return the fileName of the last outputted dot file
         /*!
             \return the path of the last dot file generated
-        */    
+        */
         char *getLastDotFilename();
 
         //! Shutdown STAT
@@ -290,38 +320,43 @@ class STAT_FrontEnd
 
         //! Detach from the application
         /*!
-            \param blocking - [optional] set to true if blocks until all BE acks received
+            \param blocking - [optional] set to true if blocks until all BE
+                   acks received
             \return STAT_OK on success
-        
+
             Broadcast a message to the daemons to detach and await all acks
-        */    
+        */
         StatError_t detachApplication(bool blocking = true);
 
         //! Detach from the application
         /*!
             \param stopList - the list of MPI ranks to leave stoppped
             \param stopListSize - the number of elements in the stopList
-            \param blocking - [optional] set to true if blocks until all BE acks received
+            \param blocking - [optional] set to true if blocks until all BE
+                   acks received
             \return STAT_OK on success
-        
+
             Broadcast a message to the daemons to detach and await all acks
-        */    
+        */
         StatError_t detachApplication(int *stopList, int stopListSize, bool blocking = true);
 
         //! Terminate the application
         /*!
-            \param blocking - [optional] set to true if blocks until all BE acks received
+            \param blocking - [optional] set to true if blocks until all BE
+                   acks received
             \return STAT_OK on success
-        
+
             Broadcast a message to the daemons to terminate and await all acks
-        */    
+        */
         StatError_t terminateApplication(bool blocking = true);
 
         //! Print the STAT error type and error message
         /*!
             \param statError - the STAT error type
-            \param sourceFile - the source file where the error was reported.  Set to NULL to omit printing of timestamp and source:line
-            \param sourceLine - the source line where the error was reported.  Set to -1 to omit printing of timestamp and source:line
+            \param sourceFile - the source file where the error was reported.
+                   Set to NULL to omit printing of timestamp and source:line
+            \param sourceLine - the source line where the error was reported.
+                   Set to -1 to omit printing of timestamp and source:line
             \param fmt - the output format string
             \param ... - any variables to output
         */
@@ -333,35 +368,32 @@ class STAT_FrontEnd
             \param logOutDir - the output directory for the log files
             \return STAT_OK on success
         */
-        StatError_t startLog(StatLog_t logType, char *logOutDir);
+        StatError_t startLog(unsigned int logType, char *logOutDir);
 
         //! Receive an acknowledgement from the daemons
         /*!
-            \param blocking - [optional] whether or not to block on the acknowledgement
+            \param blocking - [optional] whether or not to block on the
+                   acknowledgement
             \return STAT_OK on success
         */
         StatError_t receiveAck(bool blocking = true);
 
-        //! Broadcast a message to to generate traces
+        //! Collect the full incoming-edge label for the specified node
         /*!
-            \param maxDepth - the max depth of the generated traces
-            \param nTasks - the number of tasks to emulate 
-            \param nTraces - the number of traces to generate per emulated task
-            \param functionFanout - the maximum function fanout
-            \param nEqClasses - the number of equivalence classes to generate
-            \return STAT_OK on success
+            \param nodeId - the ID of the node
+            \return the text node label
         */
-        StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
+        char *getNodeInEdge(int nodeId);
 
         //! Creates the ranks list
         /*!
             \return STAT_OK on success
-        
-            Parses the MRNet topology to determine the merging order and generates
-            the correspondingly ordered ranks list.  This requires generating a tree
-            based on the MRNet tree that maintains the lowest ranked MPI process
-            beneath each node in the tree.  Alternatively, we could derrive this list
-            by creating a new MRNet filter function.
+
+            Parses the MRNet topology to determine the merging order and
+            generates the correspondingly ordered ranks list.  This requires
+            generating a tree based on the MRNet tree that maintains the lowest
+            ranked MPI process beneath each node in the tree.  Alternatively,
+            we could derrive this list by creating a new MRNet filter function.
         */
         StatError_t setRanksList();
 
@@ -372,6 +404,19 @@ class STAT_FrontEnd
             Indicate to the STAT FrontEnd that a fatal error has occurred.
         */
         void setHasFatalError(bool hasFatalError);
+
+        //! Broadcast a message to to generate traces
+        /*!
+            \param maxDepth - the max depth of the generated traces
+            \param nTasks - the number of tasks to emulate
+            \param nTraces - the number of traces to generate per emulated task
+            \param functionFanout - the maximum function fanout
+            \param nEqClasses - the number of equivalence classes to generate
+            \param sampleType - the level of detail to sample
+            \return STAT_OK on success
+        */
+        StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, unsigned int sampleType);
+
 
         /**********************************************/
         /* Function to access and set class variables */
@@ -404,10 +449,10 @@ class STAT_FrontEnd
         //! Sets the job ID
         /*!
             \param jobId - the job ID
-        
-            The specified job ID will be appended to the STAT run's output directory.
-            This is helpful for example to associate a STAT run with a particular batch
-            job ID.
+
+            The specified job ID will be appended to the STAT run's output
+            directory. This is helpful for example to associate a STAT run with
+            a particular batch job ID.
         */
         void setJobId(unsigned int jobId);
 
@@ -464,7 +509,8 @@ class STAT_FrontEnd
 
         //! Sets the max number of communication processes to launch per node
         /*!
-            \param procsPerNode - the max number of communication processes per node
+            \param procsPerNode - the max number of communication processes per
+                   node
         */
         void setProcsPerNode(unsigned int procsPerNode);
 
@@ -500,6 +546,13 @@ class STAT_FrontEnd
         */
         StatError_t addLauncherArgv(const char *launcherArg);
 
+        //! Adds a process for serial attach
+        /*!
+            \param pidString - the [exe@][host:]PID of the serial process
+            \return STAT_OK on success
+        */
+        StatError_t addSerialProcess(const char *pidString);
+
         //! Gets the argument list for the job launcher
         /*!
             \return the arguement list
@@ -524,7 +577,22 @@ class STAT_FrontEnd
         */
         StatVerbose_t getVerbose();
 
+        //! Sets the application option
+        /*!
+            \param applicationOption - application option
+        */
+        void setApplicationOption(StatLaunch_t applicationOption);
+
+        //! Gets the application option
+        /*!
+            \return the application option
+        */
+        StatLaunch_t getApplicationOption();
+
         //! Returns the last error message
+        /*!
+            \return the last error message
+        */
         char *getLastErrorMessage();
 
         //! Adds a performance metric
@@ -535,11 +603,17 @@ class STAT_FrontEnd
         */
         StatError_t addPerfData(const char *buf, double time);
 
-        //! Gets the STAT install prefix 
+        //! Sets the file to use when reading node list
         /*!
-            First use the STAT_PREFIX environment variable if it is defined, 
+            \param nodeListFile - the File to read from
+        */
+        void setNodeListFile(char *nodeListFile);
+
+        //! Gets the STAT install prefix
+        /*!
+            First use the STAT_PREFIX environment variable if it is defined,
             otherwise use the compile-time STAT_PREFIX macro.
-        
+
             \return the installation prefix
         */
         const char *getInstallPrefix();
@@ -554,45 +628,45 @@ class STAT_FrontEnd
         //! Perform operations required after attach acknowledgement
         /*!
             \return STAT_OK on success
-        
+
             Update state and timing information
-        */    
+        */
         StatError_t postAttachApplication();
-        
+
         //! Perform operations required after pause acknowledgement
         /*!
             \return STAT_OK on success
-        
+
             Update state and timing information
-        */    
+        */
         StatError_t postPauseApplication();
 
         //! Perform operations required after resume acknowledgement
         /*!
             \return STAT_OK on success
-        
+
             Update state and timing information
-        */    
+        */
         StatError_t postResumeApplication();
 
         //! Perform operations required after sample acknowledgement
         /*!
             \return STAT_OK on success
-        
+
             Update state and timing information
-        */    
+        */
         StatError_t postSampleStackTraces();
 
         //! Perform operations required after detach acknowledgement
         /*!
             \return STAT_OK on success
-        */    
+        */
         StatError_t postDetachApplication();
 
         //! Perform operations required after terminate acknowledgement
         /*!
             \return STAT_OK on success
-        */    
+        */
         StatError_t postTerminateApplication();
 
         //! Shuts down the MRNet tree
@@ -609,43 +683,45 @@ class STAT_FrontEnd
 
         //! The actual gather implementation
         /*!
-            \param type - the gather type tag, either PROT_SEND_LAST_TRACE or PROT_SEND_TRACES
-            \param blocking - [optional] whether to block until stack traces are received
+            \param type - the gather type tag, either PROT_SEND_LAST_TRACE or
+                   PROT_SEND_TRACES
+            \param blocking - [optional] whether to block until stack traces
+                   are received
             \return STAT_OK on success
         */
         StatError_t gatherImpl(StatProt_t type, bool blocking = true);
 
         //! Collect the accumulated stack traces from all daemons
         /*!
-            \param blocking - [optional] whether to block until stack traces are received
+            \param blocking - [optional] whether to block until stack traces
+                   are received
             \return STAT_OK on success
-        
-            First gathers the merged traces from the daemon.  Since the merge is an
-            append operation, the bit vectors are out of order, requiring the bit vectors
-            to be rearranged in MPI rank order.  Finally, the merged traces are
-            outputted to a file.
+
+            First gathers the merged traces from the daemon.  Since the merge
+            is an append operation, the bit vectors are out of order, requiring
+            the bit vectors to be rearranged in MPI rank order.  Finally, the
+            merged traces are outputted to a file.
         */
         StatError_t receiveStackTraces(bool blocking = true);
 
         //! Launch the STAT daemons
         /*!
-            \param applicationOption - STAT_LAUNCH or STAT_ATTACH
-            \param isStatBench - [optional] set to true if running as STATBench
             \return STAT_OK on success
-        
-            Performs LaunchMON setup, launches the daemons, and gathers the proc table.
-            Also performs some initialization such as preparing the output directory, 
-            dumping the process table to a file, and generating the application node 
-            list for MRNet to topology file creation.
+
+            Performs LaunchMON setup, launches the daemons, and gathers the
+            proc table. Also performs some initialization such as preparing
+            the output directory, dumping the process table to a file, and
+            generating the application node list for MRNet to topology file
+            creation.
         */
-        StatError_t launchDaemons(StatLaunch_t applicationOption, bool isStatBench = false);
+        StatError_t launchDaemons();
 
         //! Send MRNet LeafInfo to the master daemon
         /*!
             \return STAT_OK on success
-        
-            Calls LaunchMON's send routine, which uses STAT's registered pack function to
-            create a buffer out of the connection information.
+
+            Calls LaunchMON's send routine, which uses STAT's registered pack
+            function to create a buffer out of the connection information.
         */
         StatError_t sendDaemonInfo();
 
@@ -655,21 +731,16 @@ class STAT_FrontEnd
             \param topologyType - the topology specification type
             \param topologySpecification - the topology specification
             \param nodeList - the list of nodes for CPs
+            \param shareAppNodes - whether to use application nodes for
+                   communication processes
             \return STAT_OK on success
-        
-            Topologies can be based on max fanout, depth, or user defined.  User defined
-            topologies specify the number of communication processes per layer of the
-            tree separated by dashes, for example: 4, 4-16, 5-20-75
+
+            Topologies can be based on max fanout, depth, or user defined. User
+            defined topologies specify the number of communication processes
+            per layer of the tree separated by dashes.
+            For example: 4, 4-16, 5-20-75
         */
         StatError_t createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool shareAppNodes);
-
-        //! Set the list of application nodes from the process table
-        /*!
-            \return STAT_OK on success
-
-            Also prepares the ranks map required to reorder the bit vectors
-        */
-        StatError_t setDaemonNodes();
 
         //! Set the list of daemon nodes from the MRNet topology
         /*!
@@ -677,22 +748,33 @@ class STAT_FrontEnd
 
             Also prepares the ranks map required to reorder the bit vectors
         */
-        StatError_t setAppNodeList();
+        StatError_t setDaemonNodes();
 
-        //! Set the ranks list for each daemon and place into the ranks map 
+        //! Set the list of application nodes from the process table
         /*!
             \return STAT_OK on success
-        
-            This map of lists will be used to translate the bit vectors into MPI rank order 
+
+            Also prepares the ranks map required to reorder the bit vectors
+        */
+        StatError_t setAppNodeList();
+
+        //! Set the ranks list for each daemon and place into the ranks map
+        /*!
+            \return STAT_OK on success
+
+            This map of lists will be used to translate the bit vectors into
+            MPI rank order
         */
         StatError_t createDaemonRankMap();
 
         //! Set the list of communication process nodes from the nodeList specification
         /*!
             \param nodeList - the list of nodes
+            \param checkAccess - whether to test each node's accessibility
+                   before including it in the final list
             \return STAT_OK on success
         */
-        StatError_t setCommNodeList(char *nodeList, bool checkAccess);
+        StatError_t setCommNodeList(const char *nodeList, bool checkAccess);
 
         //! Create the run specific output directory
         /*!
@@ -703,9 +785,9 @@ class STAT_FrontEnd
         //! Check the version number with the BEs
         /*!
             \return STAT_OK on success
-        */    
+        */
         StatError_t checkVersion();
-        
+
         //! Dumps the performance data to a file
         /*!
             \return STAT_OK on success
@@ -715,9 +797,9 @@ class STAT_FrontEnd
         //! Set the list of application nodes from the process table
         /*!
             \return STAT_OK on success
-        
-            This only differs from setAppNodeList in that it assigns one BE per 
-            processor, not per node 
+
+            This only differs from setAppNodeList in that it assigns one BE per
+            core, not per node
         */
         StatError_t STATBench_setAppNodeList();
 
@@ -731,20 +813,18 @@ class STAT_FrontEnd
         //! Recursively build the rank tree
         /*!
             \param node - the corresponding MRNet topology node
-            \param rankToNode - the map of ranks to node
             \return the node in the rank tree corresponding to the MRNet node
-        
+
             Recursively builds the rank tree based on the MRNet topology.
         */
-        //RemapNode_t *buildRemapTree(MRN::NetworkTopology::Node *node, std::map<int, RemapNode_t *> rankToNode);
         RemapNode_t *buildRemapTree(MRN::NetworkTopology::Node *node);
 
         //! Recursively generate the ranks list
         /*!
             \param node - the current node
             \return STAT_OK on success
-        
-            Depth first traversal, traversing the children from lowest rank to 
+
+            Depth first traversal, traversing the children from lowest rank to
             highest rank.
         */
         StatError_t buildRanksList(RemapNode_t *node);
@@ -763,6 +843,34 @@ class STAT_FrontEnd
         */
         bool checkNodeAccess(char *node);
 
+        //! Add daemon logging args to daemon arg list
+        /*!
+            \param[in,out] daemonArgc - the number of daemon args
+            \param[in,out] daemonArgv - the daemon args
+            \return STAT_OK on success
+        */
+        StatError_t addDaemonLogArgs(int &daemonArgc, char ** &daemonArgv);
+
+#ifdef STAT_FGFS
+        //! Send the file request stream to the BEs
+        /*!
+            \return STAT_OK on success
+        */
+        StatError_t sendFileRequestStream();
+
+        //! Intercept messages to receive file requests or return other messages
+        /*!
+            \param[out] streamId - the ID of the stream the message was
+                   received on
+            \param[out] returnTag - the tag of the received message
+            \param[out] packetPtr - the packetPtr of the received message
+            \param[out] retval - the return value from MRNet recv
+            \return STAT_OK on success
+        */
+        StatError_t waitForFileRequests(unsigned int &streamId, int &returnTag, MRN::PacketPtr &packetPtr, int &retval);
+#endif
+
+
         /****************/
         /* Private data */
         /****************/
@@ -774,41 +882,50 @@ class STAT_FrontEnd
         unsigned int procsPerNode_;                         /*!< the number of CPs to launcher per node*/
         unsigned int launcherArgc_;                         /*!< the number of job launch arguments*/
         unsigned int topologySize_;                         /*!< the size of the MRNet topology */
+        unsigned int logging_;                             /*!< the logging level */
         int jobId_;                                         /*!< the batch job ID */
         int lmonSession_;                                   /*!< the LaunchMON session ID */
+        int mrnetOutputLevel_;                              /*!< the MRNet output level */
         char **launcherArgv_;                               /*!< the job launch arguments */
         char *toolDaemonExe_;                               /*!< the path to the STATD daemon executable */
         char *applExe_;                                     /*!< the name of the application executable */
         char *filterPath_;                                  /*!< the path to the STAT_FilterDefinitions.so filter file */
         char *remoteNode_;                                  /*!< the hostname of the remote node running the job launcher */
+        char *nodeListFile_;                                /*!< The file to containing the nodelist */
         char lastDotFileName_[BUFSIZE];                     /*!< the path to the last generated .dot file */
         char outDir_[BUFSIZE];                              /*!< the output directory */
         char logOutDir_[BUFSIZE];                           /*!< the directory for log files */
         char filePrefix_[BUFSIZE];                          /*!< the installation prefix for STAT */
         char lastErrorMessage_[BUFSIZE];                    /*!< the last error message */
         char hostname_[BUFSIZE];                            /*!< the FrontEnd hostname*/
-        FILE *logOutFp_;                                    /*!< the FrontEnd log file handle */
+        bool isStatBench_;                                   /*!< whether we are a STATBench instance */
         bool isLaunched_;                                   /*!< whether the STAT daemons have been launched */
         bool isConnected_;                                  /*!< whether the STAT daemons are connected to the MRNet tree */
         bool isAttached_;                                   /*!< whether the STAT daemons are attached to the application */
         bool isRunning_;                                    /*!< whether the application processes are currently running */
         bool isPendingAck_;                                 /*!< whether there are any pending acknowledgements */
         bool hasFatalError_;                                /*!< whether a fatal error has been detected outside of the STAT object */
+        bool checkNodeAccess_;                              /*!< whether to perform a simple test to see if user has remote access to a node */
         std::list<int> remapRanksList_;                     /*!< the order of bit vectors in the incoming packets */
         std::set<std::string> communicationNodeSet_;        /*!< the list of nodes to use for MRNet CPs */
         std::multiset<std::string> applicationNodeMultiSet_;    /*!< the set of application nodes */
-        std::map<int, IntList_t *> mrnetRankToMPIRanksMap_; /*!< a map of MRNet ranks to ranks list used for bit vector reordering */
+        std::map<int, IntList_t *> mrnetRankToMpiRanksMap_; /*!< a map of MRNet ranks to ranks list used for bit vector reordering */
+        std::set<int> missingRanks_;                        /*!< a set of MPI ranks whose daemon is not connected */
         std::vector<std::pair<std::string, double> > performanceData_;     /*!< the accumulated performance data to be dumped upon completion */
         LeafInfo_t leafInfo_;                               /*!< the MRNet leaf info */
         StatProt_t pendingAckTag_;                          /*!< the expected tag of the pending acknowledgement */
         StatError_t (STAT_FrontEnd::*pendingAckCb_)();      /*!< the function to call after acknowledgement received from daemons */
         StatVerbose_t verbose_;                             /*!< the verbosity level */
-        StatLog_t logging_;                                 /*!< the logging level */
+        StatLaunch_t applicationOption_;                    /*!< the mode in which STAT was given control of the application */
         MPIR_PROCDESC_EXT *proctab_;                        /*!< the process table */
         MRN::Network *network_;                             /*!< the MRNet Network object */
         MRN::Communicator *broadcastCommunicator_;          /*!< the broadcast communicator*/
         MRN::Stream *broadcastStream_;                      /*!< the broadcast stream for sending commands and receiving ack */
         MRN::Stream *mergeStream_;                          /*!< the merge stream that uses the STAT filter */
+#ifdef STAT_FGFS
+        char *fgfsFilterPath_;                              /*!< the path to the FGFS filter shared object */
+        FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_;
+#endif
 };
 
 #endif /* #define __STAT_FRONTEND_H */

@@ -21,86 +21,106 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #define BUFSIZE 1024
 #define STAT_UNKNOWN -1
-#define STAT_MAJOR_VERSION 1
-#define STAT_MINOR_VERSION 2
-#define STAT_REVISION_VERSION 2
+#define STAT_MAJOR_VERSION 2
+#define STAT_MINOR_VERSION 0
+#define STAT_REVISION_VERSION 0
 
-#include "mrnet/MRNet.h"
-#include "mrnet/Types.h"
+#include "STAT_IncMRNet.h"
 
-//! An enum to determine which messages to log
-typedef enum {
-               STAT_LOG_FE = 0,
-               STAT_LOG_BE,
-               STAT_LOG_ALL,
-               STAT_LOG_NONE
-} StatLog_t;
+//! An enum of bit flags to determine which components to log
+enum StatLogOptions_t {
+    STAT_LOG_NONE = 0x00,
+    STAT_LOG_FE = 0x01,
+    STAT_LOG_BE = 0x02,
+    STAT_LOG_CP = 0x04,
+    STAT_LOG_MRN = 0x08,
+    STAT_LOG_SW = 0x10,
+    STAT_LOG_SWERR = 0x20
+} ;
+
+//! An enum of bit flags for sample options
+enum StatSampleOptions_t {
+    STAT_SAMPLE_FUNCTION_ONLY = 0x00,
+    STAT_SAMPLE_LINE = 0x01,
+    STAT_SAMPLE_PC = 0x02,
+    STAT_SAMPLE_COUNT_REP = 0x04,
+    STAT_SAMPLE_THREADS = 0x08,
+    STAT_SAMPLE_CLEAR_ON_SAMPLE = 0x10,
+    STAT_SAMPLE_PYTHON = 0x20
+} ;
 
 //! An enum for MRNet message tags
 typedef enum {
-               PROT_ATTACH_APPLICATION = FirstApplicationTag,
-               PROT_ATTACH_APPLICATION_RESP,
-               PROT_SAMPLE_TRACES,
-               PROT_SAMPLE_TRACES_RESP,
-               PROT_SEND_TRACES,
-               PROT_SEND_TRACES_RESP,
-               PROT_DETACH_APPLICATION,
-               PROT_DETACH_APPLICATION_RESP,
-               PROT_TERMINATE_APPLICATION,
-               PROT_TERMINATE_APPLICATION_RESP,
-               PROT_STATBENCH_CREATE_TRACES,
-               PROT_STATBENCH_CREATE_TRACES_RESP,
-               PROT_CHECK_VERSION,
-               PROT_CHECK_VERSION_RESP,
-               PROT_EXIT,
-               PROT_PAUSE_APPLICATION,
-               PROT_PAUSE_APPLICATION_RESP,
-               PROT_RESUME_APPLICATION,
-               PROT_RESUME_APPLICATION_RESP,
-               PROT_SEND_LAST_TRACE,
-               PROT_SEND_BROADCAST_STREAM,
-               PROT_SEND_LAST_TRACE_RESP
+    PROT_ATTACH_APPLICATION = FirstApplicationTag,
+    PROT_ATTACH_APPLICATION_RESP,
+    PROT_SAMPLE_TRACES,
+    PROT_SAMPLE_TRACES_RESP,
+    PROT_SEND_TRACES,
+    PROT_SEND_TRACES_RESP,
+    PROT_DETACH_APPLICATION,
+    PROT_DETACH_APPLICATION_RESP,
+    PROT_TERMINATE_APPLICATION,
+    PROT_TERMINATE_APPLICATION_RESP,
+    PROT_STATBENCH_CREATE_TRACES,
+    PROT_STATBENCH_CREATE_TRACES_RESP,
+    PROT_CHECK_VERSION,
+    PROT_CHECK_VERSION_RESP,
+    PROT_EXIT,
+    PROT_PAUSE_APPLICATION,
+    PROT_PAUSE_APPLICATION_RESP,
+    PROT_RESUME_APPLICATION,
+    PROT_RESUME_APPLICATION_RESP,
+    PROT_SEND_LAST_TRACE,
+    PROT_SEND_LAST_TRACE_RESP,
+    PROT_SEND_BROADCAST_STREAM,
+    PROT_SEND_BROADCAST_STREAM_RESP,
+    PROT_FILE_REQ,
+    PROT_FILE_REQ_RESP,
+    PROT_LIB_REQ,
+    PROT_LIB_REQ_RESP,
+    PROT_COLLECT_PERF,
+    PROT_COLLECT_PERF_RESP,
+    PROT_LIB_REQ_ERR,
+    PROT_ATTACH_PERF,
+    PROT_ATTACH_PERF_RESP,
+    PROT_SEND_FGFS_STREAM,
+    PROT_FGFS_REQUEST,
+    PROT_SEND_NODE_IN_EDGE,
+    PROT_SEND_NODE_IN_EDGE_RESP
 } StatProt_t;
 
 //! An enum for STAT error codes
 typedef enum {
-               STAT_OK = 0,
-               STAT_SYSTEM_ERROR,
-               STAT_MRNET_ERROR,
-               STAT_FILTERLOAD_ERROR,
-               STAT_GRAPHLIB_ERROR,
-               STAT_ALLOCATE_ERROR,
-               STAT_ATTACH_ERROR,
-               STAT_DETACH_ERROR,
-               STAT_SEND_ERROR,
-               STAT_SAMPLE_ERROR,
-               STAT_TERMINATE_ERROR,
-               STAT_FILE_ERROR,
-               STAT_LMON_ERROR,
-               STAT_ARG_ERROR,
-               STAT_VERSION_ERROR,
-               STAT_NOT_LAUNCHED_ERROR,
-               STAT_NOT_ATTACHED_ERROR,
-               STAT_NOT_CONNECTED_ERROR,
-               STAT_NO_SAMPLES_ERROR,
-               STAT_WARNING,
-               STAT_LOG_MESSAGE,
-               STAT_STDOUT,
-               STAT_VERBOSITY,
-               STAT_STACKWALKER_ERROR,
-               STAT_PAUSE_ERROR,
-               STAT_RESUME_ERROR,
-               STAT_DAEMON_ERROR,
-               STAT_APPLICATION_EXITED,
-               STAT_PENDING_ACK
+    STAT_OK = 0,
+    STAT_SYSTEM_ERROR,
+    STAT_MRNET_ERROR,
+    STAT_FILTERLOAD_ERROR,
+    STAT_GRAPHLIB_ERROR,
+    STAT_ALLOCATE_ERROR,
+    STAT_ATTACH_ERROR,
+    STAT_DETACH_ERROR,
+    STAT_SEND_ERROR,
+    STAT_SAMPLE_ERROR,
+    STAT_TERMINATE_ERROR,
+    STAT_FILE_ERROR,
+    STAT_LMON_ERROR,
+    STAT_ARG_ERROR,
+    STAT_VERSION_ERROR,
+    STAT_NOT_LAUNCHED_ERROR,
+    STAT_NOT_ATTACHED_ERROR,
+    STAT_NOT_CONNECTED_ERROR,
+    STAT_NO_SAMPLES_ERROR,
+    STAT_WARNING,
+    STAT_LOG_MESSAGE,
+    STAT_STDOUT,
+    STAT_VERBOSITY,
+    STAT_STACKWALKER_ERROR,
+    STAT_PAUSE_ERROR,
+    STAT_RESUME_ERROR,
+    STAT_DAEMON_ERROR,
+    STAT_APPLICATION_EXITED,
+    STAT_PENDING_ACK
 } StatError_t;
-
-//! An enum for STAT sampling granularity
-typedef enum {
-    STAT_FUNCTION_NAME_ONLY = 0,
-    STAT_FUNCTION_AND_PC,
-    STAT_FUNCTION_AND_LINE
-} StatSample_t;
 
 //! An enum for STAT verbosity type
 typedef enum {
@@ -204,7 +224,6 @@ typedef enum {
         default: \
             fprintf(outFp, "Unknown Error"); \
             break; \
-    }; 
-//}
+    };
 
 #endif /* __STAT_H */

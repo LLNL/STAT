@@ -18,15 +18,21 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 
 #include "config.h"
-#include "STAT.h"
 #include "STAT_BackEnd.h"
 
 
 //! The STATBench daemon main
+/*!
+    \param argc - the number of arguments
+    \param argv - the arguments
+    \return 0 on success
+*/
 int main(int argc, char **argv)
 {
-    STAT_BackEnd *stat_be;
+    bool isHelperDaemon = true;
+    STAT_BackEnd *statBackEnd;
     StatError_t statError;
+    StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
 
     /* If user querying for version, print it and exit */
     if (argc == 2)
@@ -38,68 +44,80 @@ int main(int argc, char **argv)
         }
     }
 
-    stat_be = new STAT_BackEnd();
-
     /* TODO this needs to be changed! We could be sending the log output dir */
     if (argc == 2)
     {
+        isHelperDaemon = false;
+        launchType = STATD_SERIAL_LAUNCH;
+    }
+
+    statError = statInit(&argc, &argv, launchType);
+    if (statError != STAT_OK)
+    {
+        fprintf(stderr, __FILE__, __LINE__, "Failed to initialize STAT\n");
+        return statError;
+    }
+
+    statBackEnd = new STAT_BackEnd(launchType);
+    statError = statBackEnd->init();
+    if (statError != STAT_OK)
+    {
+        fprintf(stderr, "Failed to initialize STAT_BackEnd object\n");
+        return statError;
+    }
+
+    if (isHelperDaemon == false)
+    {
         /* We're the STATBench BE, not the helper daemon */
-        /* Connect to MRNet */
-        statError = stat_be->statBenchConnect();
+        statError = statBackEnd->statBenchConnect();
         if (statError != STAT_OK)
         {
-            stat_be->printMsg(statError, __FILE__, __LINE__, "Failed to connect BE\n");
-            return -1;
+            statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to connect BE\n");
+            delete statBackEnd;
+            statFinalize(launchType);
+            return statError;
         }
 
-        /* Run the main feedback loop */
-        statError = stat_be->mainLoop();
+        statError = statBackEnd->mainLoop();
         if (statError != STAT_OK)
         {
-            stat_be->printMsg(statError, __FILE__, __LINE__, "Failure in STAT BE main loop\n");
-            return -1;
+            statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failure in STAT BE main loop\n");
+            delete statBackEnd;
+            statFinalize(launchType);
+            return statError;
         }
     }
     else
     {
         /* We're the STATBench helper daemon */
-        /* Initialize STAT */
-        statError = statInit(&argc, &argv);
+        statError = statBackEnd->initLmon();
         if (statError != STAT_OK)
         {
-            fprintf(stderr, __FILE__, __LINE__, "Failed to initialize STAT\n");
-            return -1;
+            statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
+            delete statBackEnd;
+            statFinalize(launchType);
+            return statError;
         }
 
-        /* Initialize Launchmon */
-        statError = stat_be->Init();
+        statError = statBackEnd->statBenchConnectInfoDump();
         if (statError != STAT_OK)
         {
-            stat_be->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
-            return -1;
-        }
-
-        /* Gather MRNet info and dump to file */
-        statError = stat_be->statBenchConnectInfoDump();
-        if (statError != STAT_OK)
-        {
-            stat_be->printMsg(statError, __FILE__, __LINE__, "Failed to dump connection info\n");
-            return -1;
-        }
-
-        /* Finalize STAT */
-        statError = statFinalize();
-        if (statError != STAT_OK)
-        {
-            fprintf(stderr, "Failed to finalize LMON\n");
-            return -1;
+            statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to dump connection info\n");
+            delete statBackEnd;
+            statFinalize(launchType);
+            return statError;
         }
     }
 
-    /* Sleep for a second to give MRNet time to exit cleanly */
-    sleep(5);
+    delete statBackEnd;
 
-    delete stat_be;
+    statError = statFinalize(launchType);
+    if (statError != STAT_OK)
+    {
+        fprintf(stderr, "Failed to finalize LMON\n");
+        return statError;
+    }
+
     return 0;
 }
 

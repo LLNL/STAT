@@ -12,12 +12,12 @@
     <date>2010-03-25</date>
 </refentryinfo>
 <refmeta>
-    <refentrytitle><application>STAT</application></refentrytitle>
+    <refentrytitle><application>stat-cl</application></refentrytitle>
     <manvolnum>1</manvolnum>
 </refmeta>
 <refnamediv>
     <refname>
-        <application>STAT</application>
+        <application>stat-cl</application>
     </refname>
     <refpurpose>
     invoke the Stack Trace Analysis Tool.
@@ -25,16 +25,16 @@
 </refnamediv>
 <refsynopsisdiv>
     <cmdsynopsis>
-    <command>STAT</command> <arg><replaceable class="option">OPTIONS</replaceable></arg> <arg choice="plain"><replaceable class="parameter">PID</replaceable></arg> 
+    <command>stat-cl</command> <arg><replaceable class="option">OPTIONS</replaceable></arg> <arg choice="plain"><replaceable class="parameter">PID</replaceable></arg> 
     </cmdsynopsis>
     <cmdsynopsis>
-    <command>STAT</command> <arg><replaceable class="option">OPTIONS</replaceable></arg><arg choice="plain">-C</arg> <arg choice="plain" rep="repeat"><replaceable class="parameter">COMMAND</replaceable></arg> 
+    <command>stat-cl</command> <arg><replaceable class="option">OPTIONS</replaceable></arg><arg choice="plain">-C</arg> <arg choice="plain" rep="repeat"><replaceable class="parameter">COMMAND</replaceable></arg> 
     </cmdsynopsis>
     <para>
     where
     <synopsis>
     <cmdsynopsis><arg><replaceable class="option">OPTIONS</replaceable></arg></cmdsynopsis>
-    represents zero or more STAT options.
+    represents zero or more stat-cl options.
     <cmdsynopsis><arg choice="plain"><replaceable class="parameter">PID</replaceable></arg></cmdsynopsis> 
     is the PID of the parallel job launcher for the target application to attach to.
     <cmdsynopsis><arg choice="plain" rep="repeat"><replaceable class="parameter">COMMAND</replaceable></arg></cmdsynopsis> 
@@ -73,7 +73,7 @@
 <refsect1>
     <title>SEE ALSO</title>
     <para>
-    <command>STATGUI</command>(1), <command>STATview</command>(1), <command>STATBench</command>(1)
+    <command>stat-gui</command>(1), <command>stat-view</command>(1), <command>stat-bench</command>(1)
     </para>
 </refsect1>
 </refentry>
