@@ -360,7 +360,11 @@ class StatMerger(object):
                     value = "raw"
                 if name == "fileprefix" :
                     value = tmp_file_prefix
-                command.append('--%s=%s' %(name, str(value)))
+                if value != None:
+                    if self.args.arg_map[name].required_arg == True:
+                        command.append('--%s=%s' %(name, str(value)))
+                    else:
+                        command.append('--%s' %(name))
             command.append('-c')
             command += trace_files_subset
             sub_processes[i] = [tmp_file_prefix, subprocess.Popen(command)]
