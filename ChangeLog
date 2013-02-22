@@ -1,3 +1,6 @@
+2013-02-21 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/stat_merge_base.py : fixed subprocess handling of arguments with no required sub arg
+
 2013-02-16 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C : moved statRelativeRankToAbsoluteRank out of GROUP_OPS #ifdef
 
