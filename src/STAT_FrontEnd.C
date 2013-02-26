@@ -2007,9 +2007,10 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         /* Add application nodes to list if requested */
         if (shareAppNodes == true)
         {
-#ifdef BGL
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Sharing of application nodes not supported on BlueGene systems\n");
-#else
+//TODO: This works (when enabled) on BG/Q
+//#ifdef BGL
+//            printMsg(STAT_WARNING, __FILE__, __LINE__, "Sharing of application nodes not supported on BlueGene systems\n");
+//#else
             appNodes = "";
             for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++)
                 appNodes += *applicationNodeMultiSetIter + ",";
@@ -2020,7 +2021,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 printMsg(statError, __FILE__, __LINE__, "Failed to set the global node list\n");
                 return statError;
             }
-#endif
+//#endif
         }
         if (communicationNodeSet_.size() == 0)
         {
