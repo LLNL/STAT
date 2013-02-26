@@ -1,6 +1,9 @@
 #!/bin/sh
 # @configure_input@
 export prefix=@prefix@
+export exec_prefix=@exec_prefix@
+export PATH=$PATH:@DOTBINDIR@
+export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
@@ -17,7 +20,4 @@ if test -n "$LMON_PREFIX" ; then
     export STAT_LMON_PREFIX=$LMON_PREFIX
 fi
 
-export exec_prefix=@exec_prefix@
-export PATH=$PATH:@DOTBINDIR@
-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 exec @STATPYTHON@ @pythondir@/STATview.py $@

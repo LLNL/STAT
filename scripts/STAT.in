@@ -16,8 +16,12 @@ if test -n "$LMON_PREFIX" ; then
     export STAT_LMON_PREFIX=$LMON_PREFIX
 fi
 
-export STAT_LMON_REMOTE_LOGIN=@rshcmd@
-export STAT_XPLAT_RSH=@rshcmd@
+if test -z $STAT_LMON_REMOTE_LOGIN; then
+    export STAT_LMON_REMOTE_LOGIN=@rshcmd@
+fi
+if test -z $STAT_XPLAT_RSH; then
+    export STAT_XPLAT_RSH=@rshcmd@
+fi
 if test -z $STAT_FGFS_FILTER_PATH; then
     export STAT_FGFS_FILTER_PATH=@FGFSFILTERPATH@
 fi
@@ -39,4 +43,5 @@ fi
 if test -z $LMON_FE_ENGINE_TIMEOUT; then
     export LMON_FE_ENGINE_TIMEOUT=600
 fi
+
 exec $prefix/bin/STATbin -A -r 5 $@

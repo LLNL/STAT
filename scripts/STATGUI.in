@@ -1,6 +1,10 @@
 #!/bin/sh
 # @configure_input@
 export prefix=@prefix@
+export exec_prefix=@exec_prefix@
+
+export PATH=$PATH:@DOTBINDIR@
+export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
@@ -17,11 +21,12 @@ if test -n "$LMON_PREFIX" ; then
     export STAT_LMON_PREFIX=$LMON_PREFIX
 fi
 
-export exec_prefix=@exec_prefix@
-export PATH=$PATH:@DOTBINDIR@
-export STAT_LMON_REMOTE_LOGIN=@rshcmd@
-export STAT_XPLAT_RSH=@rshcmd@
-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
+if test -z $STAT_LMON_REMOTE_LOGIN; then
+    export STAT_LMON_REMOTE_LOGIN=@rshcmd@
+fi
+if test -z $STAT_XPLAT_RSH; then
+    export STAT_XPLAT_RSH=@rshcmd@
+fi
 if test -z $STAT_FGFS_FILTER_PATH; then
     export STAT_FGFS_FILTER_PATH=@FGFSFILTERPATH@
 fi
@@ -43,4 +48,5 @@ fi
 if test -z $LMON_FE_ENGINE_TIMEOUT; then
     export LMON_FE_ENGINE_TIMEOUT=600
 fi
+
 exec @STATPYTHON@ @pythondir@/STATGUI.py $@
