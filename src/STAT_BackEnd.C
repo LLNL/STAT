@@ -2065,12 +2065,12 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
             exitedProcesses_[ss.str()].insert((*i)->getPid());
         }
 
-        //Erase the terminated procs from the procSet_ and walkerSet_
+        /* Erase the terminated procs from the procSet_ and walkerSet_ */
         ProcessSet::ptr termSet = procSet_->getTerminatedSubset();
         for (WalkerSet::iterator i = walkerSet_->begin(); i != walkerSet_->end(); )
         {
-            ProcDebug *pd = dynamic_cast<ProcDebug *>((*i)->getProcessState());
-            if (termSet->find(pd->getProc()) != termSet->end())
+            ProcDebug *pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
+            if (termSet->find(pDebug->getProc()) != termSet->end())
             {
                 walkerSet_->erase(i++);
                 continue;
@@ -2103,7 +2103,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         return statError;
     }
 
-    //Add error and exited processes to tree
+    /* Add error and exited processes to tree */
     for (map<string, set<int> >::iterator i = exitedProcesses_.begin(); i != exitedProcesses_.end(); i++)
     {
         string msg = i->first;
