@@ -1,3 +1,9 @@
+2013-02-26 Matthew P. LeGendre <lee218@llnl.gov>
+	* src/STAT_BackEnd.[h,C] : added timeout support for certain operations
+
+2013-02-25 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/*.in : respect user-specified STAT_XPLAT_RSH and STAT_LMON_RSH specification
+
 2013-02-21 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/stat_merge_base.py : fixed subprocess handling of arguments with no required sub arg
 
