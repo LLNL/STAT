@@ -25,6 +25,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <sstream>
 #include <map>
 #include <sys/time.h>
 #include <sys/stat.h>
