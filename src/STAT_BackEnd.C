@@ -1135,22 +1135,26 @@ StatError_t STAT_BackEnd::attach()
         if (doGroupOps_)
         {
             pcProc = aInfo[i].proc;
-            if (!pcProc) {
-               stringstream ss;
-               ss << "[PC Attach Error - 0x" << std::hex << aInfo[i].error_ret << std::dec << "]";
-               exited_processes[ss.str()].insert(aInfo[i].pid);
+            if (!pcProc)
+            {
+                stringstream ss;
+                ss << "[PC Attach Error - 0x" << std::hex << aInfo[i].error_ret << std::dec << "]";
+                exitedProcesses_[ss.str()].insert(aInfo[i].pid);
             }
-            else {
-               proc = Walker::newWalker(pcProc);
-               if (!proc) {
-                  stringstream ss;
-                  ss << "[SW Attach Error - 0x" << std::hex << Stackwalker::getLastError() << std::dec << "]";
-                  exited_processes[ss.str()].insert(aInfo[i].pid);
-               }
-               else {
-                  pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
-                  walkerSet_->insert(proc);
-               }
+            else
+            {
+                proc = Walker::newWalker(pcProc);
+                if (!proc)
+                {
+                    stringstream ss;
+                    ss << "[SW Attach Error - 0x" << std::hex << Stackwalker::getLastError() << std::dec << "]";
+                    exitedProcesses_[ss.str()].insert(aInfo[i].pid);
+                }
+                else
+                {
+                    pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
+                    walkerSet_->insert(proc);
+                }
             }
         }
         else
@@ -2043,32 +2047,37 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
 
     gBePtr = this;
     
-    if (procSet_->anyTerminated()) {
-       ProcessSet::ptr exited_subset = procSet_->getExitedSubset();
-       ProcessSet::ptr crashed_subset = procSet_->getCrashedSubset();
-       
-       for (ProcessSet::iterator i = exited_subset->begin(); i != exited_subset->end(); i++) {
-          stringstream ss;
-          ss << "[Task Exited with ]" << (*i)->getExitCode() << "]";
-          exited_processes[ss.str()].insert((*i)->getPid());
-       }
-       for (ProcessSet::iterator i = crashed_subset->begin(); i != exited_subset->end(); i++) {
-          stringstream ss;
-          ss << "[Task Crashed with Signal ]" << (*i)->getCrashSignal() << "]";
-          exited_processes[ss.str()].insert((*i)->getPid());
-       }
+    if (procSet_->anyTerminated())
+    {
+        ProcessSet::ptr exitedSubset = procSet_->getExitedSubset();
+        ProcessSet::ptr crashedSubset = procSet_->getCrashedSubset();
 
-       //Erase the terminated procs from the procSet_ and walkerSet_
-       ProcessSet::ptr term_set = procSet_->getTerminatedSubset();
-       for (WalkerSet::iterator i = walkerSet_->begin(); i != walkerSet_->end(); ) {
-          ProcDebug *pd = dynamic_cast<ProcDebug *>((*i)->getProcessState());
-          if (term_set->find(pd->getProc()) != term_set->end()) {
-             walkerSet_->erase(i++);
-             continue;
-          }
-          i++;
-       }
-       procSet_ = procSet_->set_difference(term_set);
+        for (ProcessSet::iterator i = exitedSubset->begin(); i != exitedSubset->end(); i++)
+        {
+            stringstream ss;
+            ss << "[Task Exited with ]" << (*i)->getExitCode() << "]";
+            exitedProcesses_[ss.str()].insert((*i)->getPid());
+        }
+        for (ProcessSet::iterator i = crashedSubset->begin(); i != crashedSubset->end(); i++)
+        {
+            stringstream ss;
+            ss << "[Task Crashed with Signal ]" << (*i)->getCrashSignal() << "]";
+            exitedProcesses_[ss.str()].insert((*i)->getPid());
+        }
+
+        //Erase the terminated procs from the procSet_ and walkerSet_
+        ProcessSet::ptr termSet = procSet_->getTerminatedSubset();
+        for (WalkerSet::iterator i = walkerSet_->begin(); i != walkerSet_->end(); )
+        {
+            ProcDebug *pd = dynamic_cast<ProcDebug *>((*i)->getProcessState());
+            if (termSet->find(pd->getProc()) != termSet->end())
+            {
+                walkerSet_->erase(i++);
+                continue;
+            }
+            i++;
+        }
+        procSet_ = procSet_->set_difference(termSet);
     }
     
 #if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
@@ -2095,25 +2104,27 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
     }
 
     //Add error and exited processes to tree
-    for (map<string, set<int> >::iterator i = exited_processes.begin(); i != exited_processes.end(); i++) {
-       string msg = i->first;
-       set<int> &pids = i->second;
+    for (map<string, set<int> >::iterator i = exitedProcesses_.begin(); i != exitedProcesses_.end(); i++)
+    {
+        string msg = i->first;
+        set<int> &pids = i->second;
        
-       int newChildId = statStringHash(msg.c_str());
-       nodes2d_[newChildId] = msg;
+        int newChildId = statStringHash(msg.c_str());
+        nodes2d_[newChildId] = msg;
        
-       StatBitVectorEdge_t *edge = initializeBitVectorEdge(proctabSize_);
-       if (edge == NULL)
-       {
-          printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
-          return STAT_ALLOCATE_ERROR;
-       }
-       for (set<int>::iterator i = pids.begin(); i != pids.end(); i++) {
-          int rank = *i;
-          edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
-       }
+        StatBitVectorEdge_t *edge = initializeBitVectorEdge(proctabSize_);
+        if (edge == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+            return STAT_ALLOCATE_ERROR;
+        }
+        for (set<int>::iterator i = pids.begin(); i != pids.end(); i++)
+        {
+            int rank = *i;
+            edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
+        }
 
-       update2dEdge(0, newChildId, edge);
+        update2dEdge(0, newChildId, edge);
     }
 
     return STAT_OK;

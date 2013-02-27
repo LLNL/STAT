@@ -552,7 +552,7 @@ class STAT_BackEnd
 #ifdef GROUP_OPS
         Dyninst::ProcControlAPI::ProcessSet::ptr procSet_;  /*< the set of process objects */
         Dyninst::Stackwalker::WalkerSet *walkerSet_;        /*< the set of walker objects */
-        std::map<std::string, std::set<int> > exited_processes;
+        std::map<std::string, std::set<int> > exitedProcesses_;
 #endif
 
 #ifdef STAT_FGFS
