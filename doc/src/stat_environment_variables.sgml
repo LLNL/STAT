@@ -178,5 +178,13 @@ Several environment variables influence STAT and its dependent packages.  Note t
         </para>
     </listitem>
 </varlistentry>
+<varlistentry>
+    <term>STAT_USAGE_LOG=<replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Record usage of STAT in the file located in <replaceable class="parameter">path</replaceable>.  <replaceable class="parameter">path</replaceable> must be writeable by user.
+        </para>
+    </listitem>
+</varlistentry>
 </variablelist>
 

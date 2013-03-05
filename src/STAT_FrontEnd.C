@@ -1,11 +1,11 @@
 /*
-Copyright (c) 2007-2008, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-400455.
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
+LLNL-CODE-624152.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAt.html. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -2007,10 +2007,6 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         /* Add application nodes to list if requested */
         if (shareAppNodes == true)
         {
-//TODO: This works (when enabled) on BG/Q
-//#ifdef BGL
-//            printMsg(STAT_WARNING, __FILE__, __LINE__, "Sharing of application nodes not supported on BlueGene systems\n");
-//#else
             appNodes = "";
             for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++)
                 appNodes += *applicationNodeMultiSetIter + ",";
@@ -2021,7 +2017,6 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 printMsg(statError, __FILE__, __LINE__, "Failed to set the global node list\n");
                 return statError;
             }
-//#endif
         }
         if (communicationNodeSet_.size() == 0)
         {
@@ -3172,15 +3167,13 @@ StatError_t STAT_FrontEnd::dumpPerf()
     char perfFileName[BUFSIZE];
     FILE *perfFile;
     bool isUsageLogging = false;
-#ifdef STAT_USAGELOG
-    char usageLogFile[BUFSIZE];
+    char usageLogFile[BUFSIZE], *envValue;
     double launchTime = -1.0, attachTime = -1.0, sampleTime = -1.0, mergeTime = -1.0, orderTime = -1.0, exportTime = -1.0;
     struct timeval timeStamp;
     time_t currentTime;
     char timeBuf[BUFSIZE], *userName;
     uid_t uid;
     struct passwd *pwd;
-#endif
 
     size = performanceData_.size();
     if (size <= 0)
@@ -3240,44 +3233,55 @@ StatError_t STAT_FrontEnd::dumpPerf()
 
 #ifdef STAT_USAGELOG
     snprintf(usageLogFile , BUFSIZE, STAT_USAGELOG);
-    for (i = 0; i < size; i++)
-    {
-        if (performanceData_[i].first.find("Total MRNet Launch Time") != string::npos)
-            launchTime = performanceData_[i].second;
-        else if (performanceData_[i].first.find("Attach Time") != string::npos)
-            attachTime = performanceData_[i].second;
-        else if (performanceData_[i].first.find("Sample") != string::npos && sampleTime == -1.0)
-            sampleTime = performanceData_[i].second;
-        else if (performanceData_[i].first.find("Merge") != string::npos && mergeTime == -1.0)
-            mergeTime = performanceData_[i].second;
-        else if (performanceData_[i].first.find("Ordering") != string::npos && orderTime == -1.0)
-            orderTime = performanceData_[i].second;
-        else if (performanceData_[i].first.find("Export") != string::npos && exportTime == -1.0)
-            exportTime = performanceData_[i].second;
-    }
-    perfFile = fopen(usageLogFile, "a");
-    if (perfFile == NULL)
-    {
-        printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open usage log file %s\n", strerror(errno), usageLogFile);
-        return STAT_FILE_ERROR;
-    }
-    gettimeofday(&timeStamp, NULL);
-    currentTime = timeStamp.tv_sec;
-    strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtime(&currentTime));
-    uid = getuid();
-    pwd = getpwuid(uid);
-    if (pwd == NULL)
-        userName = "NULL";
-    userName = pwd->pw_name;
-    if (userName == NULL)
-    {
-        userName = getenv("USER");
-        if (userName == NULL)
-            userName = "NULL";
-    }
-    fprintf(perfFile, "%s %s %s %d.%d.%d %d %d %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf\n", timeBuf, hostname_, userName, STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION, nApplNodes_, nApplProcs_, launchTime, attachTime, sampleTime, mergeTime, orderTime, exportTime);
-    fclose(perfFile);
+    isUsageLogging = true;
 #endif
+    envValue = getenv("STAT_USAGE_LOG");
+    if (envValue != NULL)
+    {
+        snprintf(usageLogFile , BUFSIZE, envValue);
+        isUsageLogging = true;
+    }
+    if (isUsageLogging == true)
+    {
+        for (i = 0; i < size; i++)
+        {
+            if (performanceData_[i].first.find("Total MRNet Launch Time") != string::npos)
+                launchTime = performanceData_[i].second;
+            else if (performanceData_[i].first.find("Attach Time") != string::npos)
+                attachTime = performanceData_[i].second;
+            else if (performanceData_[i].first.find("Sample") != string::npos && sampleTime == -1.0)
+                sampleTime = performanceData_[i].second;
+            else if (performanceData_[i].first.find("Merge") != string::npos && mergeTime == -1.0)
+                mergeTime = performanceData_[i].second;
+            else if (performanceData_[i].first.find("Ordering") != string::npos && orderTime == -1.0)
+                orderTime = performanceData_[i].second;
+            else if (performanceData_[i].first.find("Export") != string::npos && exportTime == -1.0)
+                exportTime = performanceData_[i].second;
+        }
+        perfFile = fopen(usageLogFile, "a");
+        if (perfFile == NULL)
+        {
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open usage log file %s\n", strerror(errno), usageLogFile);
+            performanceData_.clear();
+            return STAT_OK;
+        }
+        gettimeofday(&timeStamp, NULL);
+        currentTime = timeStamp.tv_sec;
+        strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtime(&currentTime));
+        uid = getuid();
+        pwd = getpwuid(uid);
+        if (pwd == NULL)
+            userName = "NULL";
+        userName = pwd->pw_name;
+        if (userName == NULL)
+        {
+            userName = getenv("USER");
+            if (userName == NULL)
+                userName = "NULL";
+        }
+        fprintf(perfFile, "%s %s %s %d.%d.%d %d %d %.3lf %.3lf %.3lf %.3lf %.3lf %.3lf\n", timeBuf, hostname_, userName, STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION, nApplNodes_, nApplProcs_, launchTime, attachTime, sampleTime, mergeTime, orderTime, exportTime);
+        fclose(perfFile);
+    }
 
     performanceData_.clear();
 

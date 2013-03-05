@@ -1,3 +1,11 @@
+2013-03-05 Gregory L. Lee <lee218@llnl.gov>
+	* : updated license information
+
+2013-03-02 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : log usage with specification of STAT_USAGE_LOG env var
+	* scripts/stat-[gui|cl].in : test for existence of usage log
+	* src/STAT_FrontEnd.C : allow launch of CPs on app (I/O) nodes on BlueGene
+
 2013-02-27 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STAT.in : don't set -A by default
 

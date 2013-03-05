@@ -43,5 +43,10 @@ fi
 if test -z $LMON_FE_ENGINE_TIMEOUT; then
     export LMON_FE_ENGINE_TIMEOUT=600
 fi
+if test -n $STAT_USAGE_LOG; then
+    if [[ ! -f $STAT_USAGE_LOG ]]; then
+        unset STAT_USAGE_LOG
+    fi
+fi
 
 exec $prefix/bin/STATbin -r 5 $@

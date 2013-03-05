@@ -8,7 +8,7 @@ export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
-    export PYTHONPATH=$STAT_PREFIX/lib/python2.6/site-packages/STAT:$STAT_PREFIX/lib64/python2.6/site-packages/STAT:@PYTHONPATH@
+    export PYTHONPATH=$STAT_PREFIX/lib/python2.6/site-packages:$STAT_PREFIX/lib64/python2.6/site-packages:@PYTHONPATH@
 fi
 if test -n "$FGFS_PREFIX" ; then
     export STAT_FGFS_FILTER_PATH=$FGFS_PREFIX/lib/libfgfs_filter.so
@@ -47,6 +47,11 @@ if test -z $STAT_CONNECT_TIMEOUT; then
 fi
 if test -z $LMON_FE_ENGINE_TIMEOUT; then
     export LMON_FE_ENGINE_TIMEOUT=600
+fi
+if test -n $STAT_USAGE_LOG; then
+    if [[ ! -f $STAT_USAGE_LOG ]]; then
+        unset STAT_USAGE_LOG
+    fi
 fi
 
 exec @STATPYTHON@ @pythondir@/STATGUI.py $@
