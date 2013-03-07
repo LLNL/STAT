@@ -1,3 +1,23 @@
+2013-03-05 Gregory L. Lee <lee218@llnl.gov>
+	* : updated license information
+
+2013-03-02 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : log usage with specification of STAT_USAGE_LOG env var
+	* scripts/stat-[gui|cl].in : test for existence of usage log
+	* src/STAT_FrontEnd.C : allow launch of CPs on app (I/O) nodes on BlueGene
+
+2013-02-27 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STAT.in : don't set -A by default
+
+2013-02-26 Matthew P. LeGendre <lee218@llnl.gov>
+	* src/STAT_BackEnd.[h,C] : added timeout support for certain operations
+
+2013-02-25 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/*.in : respect user-specified STAT_XPLAT_RSH and STAT_LMON_RSH specification
+
+2013-02-21 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/stat_merge_base.py : fixed subprocess handling of arguments with no required sub arg
+
 2013-02-16 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C : moved statRelativeRankToAbsoluteRank out of GROUP_OPS #ifdef
 

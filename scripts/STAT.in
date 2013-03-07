@@ -5,38 +5,54 @@ export prefix=@prefix@
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
 fi
-if test -n "$FGFS_PREFIX" ; then
-    export STAT_FGFS_FILTER_PATH=$FGFS_PREFIX/lib/libfgfs_filter.so
-fi
-if test -n "$MRNET_PREFIX" ; then
-    export STAT_MRNET_COMM_PATH=$MRNET_PREFIX/bin/mrnet_commnode
-fi
-if test -n "$LMON_PREFIX" ; then
-    export STAT_LMON_LAUNCHMON_ENGINE_PATH=$LMON_PREFIX/bin/launchmon
-    export STAT_LMON_PREFIX=$LMON_PREFIX
-fi
 
-export STAT_LMON_REMOTE_LOGIN=@rshcmd@
-export STAT_XPLAT_RSH=@rshcmd@
-if test -z $STAT_FGFS_FILTER_PATH; then
-    export STAT_FGFS_FILTER_PATH=@FGFSFILTERPATH@
+if test -z "$STAT_LMON_REMOTE_LOGIN" ; then
+    export STAT_LMON_REMOTE_LOGIN=@rshcmd@
 fi
-if test -z $STAT_MRNET_COMM_PATH; then
-    export STAT_MRNET_COMM_PATH=@MRNETCOMMNODEBIN@
+if test -z "$STAT_XPLAT_RSH" ; then
+    export STAT_XPLAT_RSH=@rshcmd@
 fi
-if test -z $STAT_LMON_PREFIX; then
-    export STAT_LMON_PREFIX=@LAUNCHMONPREFIX@
+if test -z "$STAT_FGFS_FILTER_PATH" ; then
+    if test -n "$FGFS_PREFIX" ; then
+        export STAT_FGFS_FILTER_PATH=$FGFS_PREFIX/lib/libfgfs_filter.so
+    else
+        export STAT_FGFS_FILTER_PATH=@FGFSFILTERPATH@
+    fi
 fi
-if test -z $STAT_LMON_LAUNCHMON_ENGINE_PATH; then
-    export STAT_LMON_LAUNCHMON_ENGINE_PATH=@LAUNCHMONBIN@
+if test -z "$STAT_MRNET_COMM_PATH" ; then
+    if test -n "$MRNET_PREFIX" ; then
+        export STAT_MRNET_COMM_PATH=$MRNET_PREFIX/bin/mrnet_commnode
+    else
+        export STAT_MRNET_COMM_PATH=@MRNETCOMMNODEBIN@
+    fi
 fi
-if test -z $STAT_MRNET_DEBUG_LOG_DIRECTORY; then
+if test -z "$STAT_LMON_PREFIX" ; then
+    if test -n "$LMON_PREFIX" ; then
+        export STAT_LMON_PREFIX=$LMON_PREFIX
+    else
+        export STAT_LMON_PREFIX=@LAUNCHMONPREFIX@
+    fi
+fi
+if test -z "$STAT_LMON_LAUNCHMON_ENGINE_PATH" ; then
+    if test -n "$LMON_PREFIX" ; then
+        export STAT_LMON_LAUNCHMON_ENGINE_PATH=$LMON_PREFIX/bin/launchmon
+    else
+        export STAT_LMON_LAUNCHMON_ENGINE_PATH=@LAUNCHMONBIN@
+    fi
+fi
+if test -z "$STAT_MRNET_DEBUG_LOG_DIRECTORY" ; then
     export STAT_MRNET_DEBUG_LOG_DIRECTORY=/dev/null
 fi
-if test -z $STAT_CONNECT_TIMEOUT; then
+if test -z "$STAT_CONNECT_TIMEOUT" ; then
     export STAT_CONNECT_TIMEOUT=600
 fi
-if test -z $LMON_FE_ENGINE_TIMEOUT; then
+if test -z "$LMON_FE_ENGINE_TIMEOUT" ; then
     export LMON_FE_ENGINE_TIMEOUT=600
 fi
-exec $prefix/bin/STATbin -A -r 5 $@
+if test -n "$STAT_USAGE_LOG" ; then
+    if [[ ! -f $STAT_USAGE_LOG ]]; then
+        unset STAT_USAGE_LOG
+    fi
+fi
+
+exec $prefix/bin/STATbin -r 5 $@
