@@ -10,10 +10,10 @@ STAT's source code also includes STATBench, a tool to emulate STAT.  STATBench e
 
 2. BUILDING STAT
 STAT has several dependent libraries that must be installed:
-	-MRNet
-	-LaunchMON
-	-GraphLib
-	-Stackwalker
+    -MRNet
+    -LaunchMON
+    -GraphLib
+    -Stackwalker
     -libdwarf
 
 In addition, the STAT GUI requires Python with PyGTK, both of which are commonly preinstalled with many Linux operating systems. 
@@ -22,11 +22,11 @@ Please refer to INSTALL for instructions on building STAT
 
 3. SUPPORTED PLATFORMS
 STAT is able to run on any machine where all of the dependent libraries run.  This currently includes:
-	-IBM BlueGene/L
+    -IBM BlueGene/L
     -IBM BlueGene/P
     -IBM BlueGene/Q
-	-x86-based architectures with SLURM
-	-x86-based architectures with OpenMPI
+    -x86-based architectures with SLURM
+    -x86-based architectures with OpenMPI
     -Cray XT
     -Cray XE
     -Cray XK
