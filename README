@@ -1,5 +1,5 @@
 STAT: the Stack Trace Analyasis Tool
-http://paradyn.org/STAT
+http://paradyn.org/STAT/STAT.html
 
 Please see LICENSE for usage terms.
 
@@ -12,19 +12,24 @@ STAT's source code also includes STATBench, a tool to emulate STAT.  STATBench e
 STAT has several dependent libraries that must be installed:
 	-MRNet
 	-LaunchMON
-	-graphlib
-	-StackWalker/DynInsta
+	-GraphLib
+	-Stackwalker
     -libdwarf
+
+In addition, the STAT GUI requires Python with PyGTK, both of which are commonly preinstalled with many Linux operating systems. 
 
 Please refer to INSTALL for instructions on building STAT
 
-STAT outputs prefix trees in DOT format.  STAT includes a DOT file visualizer "STATview.py" written in python with pygtk and requires `dot` (dot is open source software available within graphviz).  STATGUI.py is built on top of STATview.py and allows for control of STAT itself.
-
 3. SUPPORTED PLATFORMS
 STAT is able to run on any machine where all of the dependent libraries run.  This currently includes:
-	-BlueGene/L
+	-IBM BlueGene/L
+    -IBM BlueGene/P
+    -IBM BlueGene/Q
 	-x86-based architectures with SLURM
-    -CRAY XT
+	-x86-based architectures with OpenMPI
+    -Cray XT
+    -Cray XE
+    -Cray XK
 
 4. CONTACT
 Please direct any questions to Gregory Lee <lee218@llnl.gov>
