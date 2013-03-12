@@ -122,12 +122,13 @@ _STATmerge_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(CXXFLAGS) $(_STATmerge_la_LDFLAGS) $(LDFLAGS) -o $@
 libstatbe_la_LIBADD =
 am__libstatbe_la_SOURCES_DIST = STAT_BackEnd.C STAT_BackEnd.h STAT.h \
-	STAT_timer.h STAT_timer.C STAT_GraphRoutines.h \
-	STAT_GraphRoutines.C
+	STAT_timer.h STAT_timer.C STAT_CircularLogs.C \
+	STAT_GraphRoutines.h STAT_GraphRoutines.C
 @ENABLE_GRAPHLIB20_FALSE@am_libstatbe_la_OBJECTS = STAT_BackEnd.lo \
-@ENABLE_GRAPHLIB20_FALSE@	STAT_timer.lo
+@ENABLE_GRAPHLIB20_FALSE@	STAT_timer.lo STAT_CircularLogs.lo
 @ENABLE_GRAPHLIB20_TRUE@am_libstatbe_la_OBJECTS = STAT_BackEnd.lo \
-@ENABLE_GRAPHLIB20_TRUE@	STAT_timer.lo STAT_GraphRoutines.lo
+@ENABLE_GRAPHLIB20_TRUE@	STAT_timer.lo STAT_GraphRoutines.lo \
+@ENABLE_GRAPHLIB20_TRUE@	STAT_CircularLogs.lo
 libstatbe_la_OBJECTS = $(am_libstatbe_la_OBJECTS)
 libstatfe_la_LIBADD =
 am__libstatfe_la_SOURCES_DIST = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h \
@@ -355,7 +356,7 @@ AM_LDFLAGS =
 
 # this lists the binaries to produce, the (non-PHONY, binary) targets in
 # the previous manual Makefile
-include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h
+include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h
 @ENABLE_STATBENCH_TRUE@STATBenchbin_SOURCES = STATBench.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@STATBenchD_SOURCES = STATBenchD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@STATBenchbin_LDFLAGS = -Wl,-E
@@ -371,8 +372,8 @@ STATD_LDFLAGS = -Wl,-E
 STATD_LDADD = libstatbe.la @BELIBS@ 
 @ENABLE_GRAPHLIB20_FALSE@libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C
 @ENABLE_GRAPHLIB20_TRUE@libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_GraphRoutines.h STAT_GraphRoutines.C
-@ENABLE_GRAPHLIB20_FALSE@libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C
-@ENABLE_GRAPHLIB20_TRUE@libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_GraphRoutines.h STAT_GraphRoutines.C
+@ENABLE_GRAPHLIB20_FALSE@libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
+@ENABLE_GRAPHLIB20_TRUE@libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_GraphRoutines.h STAT_GraphRoutines.C STAT_CircularLogs.C
 pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
 @ENABLE_GRAPHLIB20_FALSE@STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C
 @ENABLE_GRAPHLIB20_TRUE@STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C STAT_GraphRoutines.h STAT_GraphRoutines.C
@@ -595,6 +596,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STATBenchD.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STATD.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_BackEnd.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_CircularLogs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FrontEnd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_GraphRoutines.Plo@am__quote@

@@ -73,14 +73,15 @@ StatError_t statFinalize(StatDaemonLaunch_t launchType)
     return STAT_OK;
 }
 
-STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) : launchType_(launchType)
+STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) : 
+   launchType_(launchType),
+   swLogBuffer_(STAT_SW_DEBUG_BUFFER_LENGTH)
 {
     gStatOutFp = NULL;
     proctabSize_ = 0;
     processMapNonNull_ = 0;
     logType_ = 0;
     parentHostName_ = NULL;
-    swDebugString_ = NULL;
     swDebugFile_ = NULL;
 #ifdef BGL
     errOutFp_ = stdout;
@@ -120,12 +121,6 @@ STAT_BackEnd::~STAT_BackEnd()
     {
         free(parentHostName_);
         parentHostName_ = NULL;
-    }
-
-    if (swDebugString_ != NULL)
-    {
-        free(swDebugString_);
-        swDebugString_ = NULL;
     }
 
     if (extractVariables_ != NULL)
@@ -2313,22 +2308,13 @@ StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mr
             swDebugFile_ = gStatOutFp;
         else
         {
-            if (swDebugString_ != NULL)
-            {
-                free(swDebugString_);
-                swDebugString_ = NULL;
-            }
-            swDebugString_ = (char *)malloc(STAT_SW_DEBUG_BUFFER_LENGTH);
-            if (swDebugString_ == NULL)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc returned NULL for swDebugString_\n", strerror(errno));
-                return STAT_ALLOCATE_ERROR;
-            }
-            swDebugFile_ = fmemopen(swDebugString_, STAT_SW_DEBUG_BUFFER_LENGTH - 1, "w");
+            swLogBuffer_.reset();
+            swDebugFile_ = swLogBuffer_.handle();
+ 
             if (swDebugFile_ == NULL)
             {
-                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "%s: fmemopen failed\n", strerror(errno));
-                return STAT_STACKWALKER_ERROR;
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate circular buffer for SW logging\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
             }
         }
         Dyninst::Stackwalker::setDebug(true);
@@ -2411,9 +2397,8 @@ void STAT_BackEnd::swDebugBufferToFile()
 
     if (logType_ & STAT_LOG_SWERR)
     {
-        if (gStatOutFp != NULL && swDebugFile_ != NULL)
+        if (swDebugFile_ != NULL)
         {
-            fclose(swDebugFile_);
             if (gStatOutFp == NULL)
             {
                 snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir_, localHostName_);
@@ -2428,22 +2413,14 @@ void STAT_BackEnd::swDebugBufferToFile()
                     mrn_printf_init(gStatOutFp);
 #endif
             }
-            fwrite(swDebugString_, 1, strlen(swDebugString_), gStatOutFp);
-            
-            swDebugFile_ = fmemopen(swDebugString_, STAT_SW_DEBUG_BUFFER_LENGTH - 1, "w");
-            if (swDebugFile_ == NULL)
-            {
-                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "%s: fmemopen failed\n", strerror(errno));
-                return;
-            }
-            Dyninst::Stackwalker::setDebugChannel(swDebugFile_);
-#ifdef SW_VERSION_8_0_0
-            Dyninst::ProcControlAPI::setDebugChannel(swDebugFile_);
-#endif
+            fflush(gStatOutFp);
+            int statOutFD = fileno(gStatOutFp);
+            fflush(swDebugFile_);
+            swLogBuffer_.flushBufferTo(statOutFD);
+            swLogBuffer_.reset();
         }
     }
 }
-
 
 vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 {
