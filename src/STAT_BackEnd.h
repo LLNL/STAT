@@ -22,6 +22,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define STAT_MAX_BUF_LEN 256
 #define STAT_SW_DEBUG_BUFFER_LENGTH 33554432
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
@@ -40,6 +41,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "STAT.h"
 #include "STAT_timer.h"
+#include "STAT_CircularLogs.h"
 #include "STAT_GraphRoutines.h"
 #include "graphlib.h"
 #include "lmon_api/lmon_be.h"
@@ -513,7 +515,7 @@ class STAT_BackEnd
         char logOutDir_[BUFSIZE];       /*!< the directory for log files */
         char localHostName_[BUFSIZE];   /*!< the local hostname */
         char localIp_[BUFSIZE];         /*!< the local IP address */
-        char *swDebugString_;           /*!< the memory buffer for stackwalker 
+        CircularBuffer swLogBuffer_;    /*!< the memory buffer for stackwalker 
                                              debug logging */
         FILE *swDebugFile_;             /*!< the stackwalker log file handle */
         FILE *errOutFp_;                /*!< the error output file handle */
