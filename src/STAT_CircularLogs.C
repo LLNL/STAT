@@ -28,123 +28,130 @@
 #include <cstdio>
 
 CircularBuffer::CircularBuffer(size_t size) :
-    buffer(NULL),
-    fhandle(NULL),
-    bufferSize(size)
+    buffer_(NULL),
+    fHandle_(NULL),
+    bufferSize_(size)
 {
     cookie_io_functions_t funcs;
     funcs.read = NULL;
-    funcs.write = WriteWrapper;
+    funcs.write = writeWrapper;
     funcs.seek = NULL;
-    funcs.close = CloseWrapper;
+    funcs.close = closeWrapper;
    
-    fhandle = fopencookie(this, "w", funcs);
-    if (!fhandle)
+    fHandle_ = fopencookie(this, "w", funcs);
+    if (!fHandle_)
         return;
 }
 
 CircularBuffer::~CircularBuffer()
 {
-    if (fhandle)
-        fclose(fhandle);
-    if (buffer)
-        delete buffer;
-    fhandle = NULL;
-    buffer = NULL;
+    if (fHandle_)
+        fclose(fHandle_);
+    if (buffer_)
+        delete buffer_;
+    fHandle_ = NULL;
+    buffer_ = NULL;
 }
 
 void CircularBuffer::init()
 {
-    if (!buffer) {
-        buffer = new buffer_t(bufferSize);
-        if (!buffer) return;
+    if (!buffer_)
+    {
+        buffer_ = new Buffer_t(bufferSize_);
+        if (!buffer_) return;
     }
    
-    if (!fhandle) {
+    if (!fHandle_)
+    {
         cookie_io_functions_t funcs;
         funcs.read = NULL;
-        funcs.write = WriteWrapper;
+        funcs.write = writeWrapper;
         funcs.seek = NULL;
-        funcs.close = CloseWrapper;
+        funcs.close = closeWrapper;
       
-        fhandle = fopencookie(this, "w", funcs);
+        fHandle_ = fopencookie(this, "w", funcs);
     }
 }
-ssize_t CircularBuffer::WriteWrapper(void *cookie, const char *buf, size_t size) {
+ssize_t CircularBuffer::writeWrapper(void *cookie, const char *buf, size_t size){
     CircularBuffer *me = static_cast<CircularBuffer *>(cookie);
-    return me->CWrite(buf, size);
+    return me->cWrite(buf, size);
 }
 
-int CircularBuffer::CloseWrapper(void *cookie)
+int CircularBuffer::closeWrapper(void *cookie)
 {
     CircularBuffer *me = static_cast<CircularBuffer *>(cookie);
-    return me->CClose();
+    return me->cClose();
 }
 
-ssize_t CircularBuffer::CWrite(const char *buf, size_t size) {
-    for (unsigned i=0; i<size; i++) {
-        buffer->push_back(buf[i]);
+ssize_t CircularBuffer::cWrite(const char *buf, size_t size) {
+    for (unsigned i = 0; i < size; i++) {
+        buffer_->push_back(buf[i]);
     }
     return size;
 }
 
-int CircularBuffer::CClose() {
+int CircularBuffer::cClose() {
     reset();
-    fhandle = NULL;
+    fHandle_ = NULL;
     return 0;
 }
 
 FILE *CircularBuffer::handle() {
     init();
-    return fhandle;
+    return fHandle_;
 }
 
-bool CircularBuffer::getBuffer(char* &buffer1, size_t &buffer1_size, char* &buffer2, size_t &buffer2_size)
+bool CircularBuffer::getBuffer(char* &buffer1, size_t &buffer1Size, char* &buffer2, size_t &buffer2Size)
 {
-   if (!buffer)
+   if (!buffer_)
       return false;
 
-   buffer1 = buffer->array_one().first;
-   buffer1_size = buffer->array_one().second;
-   buffer2 = buffer->array_two().first;
-   buffer2_size = buffer->array_two().second;
+   buffer1 = buffer_->array_one().first;
+   buffer1Size = buffer_->array_one().second;
+   buffer2 = buffer_->array_two().first;
+   buffer2Size = buffer_->array_two().second;
 
    return true;
 }
 
-int CircularBuffer::flushBufferTo(int fd) {
+int CircularBuffer::flushBufferTo(int fd)
+{
+   int numWritten = 0, result;
    char *buffer1, *buffer2;
-   size_t buffer1_size, buffer2_size;
-   getBuffer(buffer1, buffer1_size, buffer2, buffer2_size);
-   
-   int numWritten = 0;
-   if (buffer1) {
-      int result = write(fd, buffer1, buffer1_size);
-      if (result == -1)
-         return -1;
-      numWritten += result;
+   size_t buffer1Size, buffer2Size;
+
+   getBuffer(buffer1, buffer1Size, buffer2, buffer2Size);
+   if (buffer1)
+   {
+       result = write(fd, buffer1, buffer1Size);
+       if (result == -1)
+           return -1;
+       numWritten += result;
    }
    
-   if (buffer2) {
-      int result = write(fd, buffer2, buffer2_size);
-      if (result == -1)
-         return -1;
-      numWritten += result;
+   if (buffer2)
+   {
+       result = write(fd, buffer2, buffer2Size);
+       if (result == -1)
+           return -1;
+       numWritten += result;
    }
    
    return numWritten;
 }
 
-const char *CircularBuffer::str() {
-   if (!buffer) 
-      return "";
+const char *CircularBuffer::str()
+{
+    if (!buffer_) 
+        return "";
 
-   buffer->push_back(0);
-   return buffer->linearize();
+    buffer_->push_back(0);
+    return buffer_->linearize();
 }
 
-void CircularBuffer::reset() {
-   if (!buffer)
-      return;
-   buffer->resize(0);
+void CircularBuffer::reset()
+{
+    if (!buffer_)
+        return;
+    buffer_->resize(0);
 }

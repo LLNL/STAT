@@ -9,34 +9,33 @@ public:
     CircularBuffer(size_t size);
     ~CircularBuffer();
 
-    //Return a write FILE handle for adding to the buffer
+    /* Return a write FILE handle for adding to the buffer */
     FILE *handle();
 
-    //Return the buffer in two parts.
-    bool getBuffer(char* &buffer1, size_t &buffer1_size, char* &buffer2, size_t &buffer2_size);
+    /* Return the buffer in two parts. */
+    bool getBuffer(char* &buffer1, size_t &buffer1Size, char* &buffer2, size_t &buffer2Size);
 
-    //Write the buffer to the given file descriptor
+    /* Write the buffer to the given file descriptor */
     int flushBufferTo(int fd);
 
-    //Convert the buffer to a string and return it.  Adds a null character to end of buffer
+    /* Convert the buffer to a string and return it.  Adds a null character to end of buffer */
     const char *str();
 
-    //Clear the buffer
+    /* Clear the buffer */
     void reset();
 
   private:
-    typedef boost::circular_buffer<char> buffer_t;
+    typedef boost::circular_buffer<char> Buffer_t;
 
-    static ssize_t WriteWrapper(void *cookie, const char *buf, size_t size);
-    static int CloseWrapper(void *cookie);
-    ssize_t CWrite(const char *buf, size_t size);
-    int CClose();
-
+    static ssize_t writeWrapper(void *cookie, const char *buf, size_t size);
+    static int closeWrapper(void *cookie);
+    ssize_t cWrite(const char *buf, size_t size);
+    int cClose();
     void init();
    
-    buffer_t *buffer;
-    FILE *fhandle;
-    size_t bufferSize;
+    Buffer_t *buffer_;
+    FILE *fHandle_;
+    size_t bufferSize_;
 };
 
 #endif
