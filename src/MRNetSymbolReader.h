@@ -27,6 +27,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "AsyncFastGlobalFileStat.h"
 #include "MRNetSymbolReader.h"
 #include "walker.h"
+#include "Symtab.h"
 
 using namespace Dyninst;
 using namespace MRN;
@@ -45,13 +46,6 @@ do { \
 extern FILE *gStatOutFp;
 
 class Elf_X;
-
-#if defined(SW_VERSION_8_0_1)
-#define SW_USE_SEGMENTS
-typedef void* SymRegion;
-#else
-typedef void* SymSegment;
-#endif
 
 class MRNetSymbolReader :public Dyninst::SymReader
 {
@@ -73,10 +67,14 @@ class MRNetSymbolReader :public Dyninst::SymReader
    virtual Symbol_t getContainingSymbol(Dyninst::Offset offset);
    virtual std::string getInterpreterName();
    virtual unsigned getAddressWidth();
-   virtual unsigned numRegions();
-   virtual bool getRegion(unsigned num, SymRegion &reg);
+#ifdef SW_VERSION_8_1_0
    virtual unsigned numSegments();
    virtual bool getSegment(unsigned num, SymSegment &reg);
+   virtual Dyninst::Offset getSymbolTOC(const Symbol_t &sym);
+#else
+   virtual unsigned numRegions();
+   virtual bool getRegion(unsigned num, SymRegion &reg);
+#endif
    virtual Dyninst::Offset getSymbolOffset(const Symbol_t &sym);
    virtual std::string getSymbolName(const Symbol_t &sym);
    virtual std::string getDemangledName(const Symbol_t &sym);
@@ -150,7 +148,12 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                 "no existing reader for %s\n", pathStr));
 
         AsyncGlobalFileStatus myStat(pathStr);
+/* TODO: this is a workaround for BlueGene where FGFS is reporting incorrectly */
+#ifdef BGL
+        if (true)
+#else
         if (IS_YES(myStat.isUnique()))
+#endif
         {
             localLib = false;
 
@@ -342,45 +345,33 @@ inline unsigned MRNetSymbolReader::getAddressWidth()
     return symReaderHandle_->getAddressWidth();
 }
 
-inline unsigned MRNetSymbolReader::numRegions()
-{
-#if !defined(SW_USE_SEGMENTS)
-    return symReaderHandle_->numRegions();
-#else
-    assert(0);
-    return 0;
-#endif
-}
-
-inline bool MRNetSymbolReader::getRegion(unsigned num, SymRegion &reg)
-{
-#if !defined(SW_USE_SEGMENTS)
-    return symReaderHandle_->getRegion( num,reg);
-#else
-    assert(0);
-    return false;
-#endif
-}
-
+#ifdef SW_VERSION_8_1_0
 inline bool MRNetSymbolReader::getSegment(unsigned num, SymSegment &reg)
 {
-#if defined(SW_USE_SEGMENTS)
-    return symReaderHandle_->getSegment( num,reg);
-#else
-    assert(0);
-    return false;
-#endif
+    return symReaderHandle_->getSegment(num, reg);
 }
 
 inline unsigned int MRNetSymbolReader::numSegments()
 {
-#if defined(SW_USE_SEGMENTS)
-   return symReaderHandle_->numSegments();
-#else
-   assert(0);
-   return 0;
-#endif
+    return symReaderHandle_->numSegments();
 }
+
+inline Dyninst::Offset MRNetSymbolReader::getSymbolTOC(const Symbol_t &sym)
+{
+    return symReaderHandle_->getSymbolTOC(sym);
+}
+
+#else
+inline unsigned MRNetSymbolReader::numRegions()
+{
+    return symReaderHandle_->numRegions();
+}
+
+inline bool MRNetSymbolReader::getRegion(unsigned num, SymRegion &reg)
+{
+    return symReaderHandle_->getRegion(num, reg);
+}
+#endif /* SW_VERSION_8_1_0 */
 
 inline Dyninst::Offset MRNetSymbolReader::getSymbolOffset(const Symbol_t &sym)
 {

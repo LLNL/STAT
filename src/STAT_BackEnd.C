@@ -73,9 +73,9 @@ StatError_t statFinalize(StatDaemonLaunch_t launchType)
     return STAT_OK;
 }
 
-STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) : 
-   launchType_(launchType),
-   swLogBuffer_(STAT_SW_DEBUG_BUFFER_LENGTH)
+STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
+    launchType_(launchType),
+    swLogBuffer_(STAT_SW_DEBUG_BUFFER_LENGTH)
 {
     gStatOutFp = NULL;
     proctabSize_ = 0;
@@ -459,6 +459,60 @@ StatError_t STAT_BackEnd::initLmon()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launchmon successfully initialized\n");
 
     return STAT_OK;
+}
+
+
+static void onCrashWrap(int sig, siginfo_t *info, void *context)
+{
+    gBePtr->onCrash(sig, info, context);
+}
+
+
+void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
+{
+    int addrListSize;
+    unsigned int j;
+    static const unsigned int maxStackSize = 256;
+    char **namedSw, **i;
+    void *stackSize[maxStackSize];
+
+    registerSignalHandlers(false);
+    addrListSize = backtrace(stackSize, maxStackSize);
+    namedSw = backtrace_symbols(stackSize, addrListSize);
+
+    if (namedSw)
+    {
+        fprintf(swDebugFile_, "Stacktrace upon signal %d:\n", sig);
+        for (i = namedSw, j = 0; j < addrListSize; i++, j++)
+        {
+            if (namedSw[j])
+              	fprintf(swDebugFile_, "%p - %s\n", stackSize[j], namedSw[j]);
+        }
+    }
+    fflush(swDebugFile_);
+    swDebugBufferToFile();
+    abort();
+}
+
+
+void STAT_BackEnd::registerSignalHandlers(bool enable)
+{
+    struct sigaction action;
+    bzero(&action, sizeof(struct sigaction));
+    if (!enable)
+        action.sa_handler = SIG_DFL;
+    else
+    {
+        action.sa_sigaction = onCrashWrap;
+        action.sa_flags = SA_SIGINFO;
+    }
+
+    sigaction(SIGSEGV, &action, NULL);
+    sigaction(SIGBUS, &action, NULL);
+    sigaction(SIGABRT, &action, NULL);
+    sigaction(SIGILL, &action, NULL);
+    sigaction(SIGQUIT, &action, NULL);
+    sigaction(SIGTERM, &action, NULL);
 }
 
 
@@ -1102,7 +1156,7 @@ StatError_t STAT_BackEnd::attach()
 
 #if defined(GROUP_OPS)
     ThreadTracking::setDefaultTrackThreads(false);
-  #ifdef SW_VERSION_8_0_1
+  #ifdef SW_VERSION_8_1_0
     LWPTracking::setDefaultTrackLWPs(false);
   #endif
     if (doGroupOps_)
@@ -1110,7 +1164,8 @@ StatError_t STAT_BackEnd::attach()
         aInfo.reserve(proctabSize_);
         for (i = 0; i < proctabSize_; i++)
         {
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+//TODO:       
+//            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
             pAttach.pid = proctab_[i].pd.pid;
             pAttach.executable = proctab_[i].pd.executable_name;
             pAttach.error_ret = ProcControlAPI::err_none;
@@ -1124,7 +1179,8 @@ StatError_t STAT_BackEnd::attach()
     /* Attach to the processes in the process table */
     for (i = 0; i < proctabSize_; i++)
     {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+//TODO
+//        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
 
 #if defined(GROUP_OPS)
         if (doGroupOps_)
@@ -2035,7 +2091,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
     set<int> ranks;
     StatError_t statError;
 
-#ifdef SW_VERSION_8_0_1
+#ifdef SW_VERSION_8_1_0
     if (procSet_->getLWPTracking() && sampleType_ & STAT_SAMPLE_THREADS)
         procSet_->getLWPTracking()->refreshLWPs();
 #endif
@@ -2050,13 +2106,13 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         for (ProcessSet::iterator i = exitedSubset->begin(); i != exitedSubset->end(); i++)
         {
             stringstream ss;
-            ss << "[Task Exited with ]" << (*i)->getExitCode() << "]";
+            ss << "[Task Exited with " << (*i)->getExitCode() << "]";
             exitedProcesses_[ss.str()].insert((*i)->getPid());
         }
         for (ProcessSet::iterator i = crashedSubset->begin(); i != crashedSubset->end(); i++)
         {
             stringstream ss;
-            ss << "[Task Crashed with Signal ]" << (*i)->getCrashSignal() << "]";
+            ss << "[Task Crashed with Signal " << (*i)->getCrashSignal() << "]";
             exitedProcesses_[ss.str()].insert((*i)->getPid());
         }
 
@@ -2080,7 +2136,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
 #else
     CallTree tree(frame_lib_offset_cmp);
 #endif
-#ifdef SW_VERSION_8_0_1
+#ifdef SW_VERSION_8_1_0
     boolRet = walkerSet_->walkStacks(tree, !(sampleType_ & STAT_SAMPLE_THREADS));
 #else
     boolRet = walkerSet_->walkStacks(tree);
@@ -2310,7 +2366,6 @@ StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mr
         {
             swLogBuffer_.reset();
             swDebugFile_ = swLogBuffer_.handle();
- 
             if (swDebugFile_ == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate circular buffer for SW logging\n", strerror(errno));
@@ -2323,6 +2378,7 @@ StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mr
         Dyninst::ProcControlAPI::setDebug(true);
         Dyninst::ProcControlAPI::setDebugChannel(swDebugFile_);
 #endif
+	registerSignalHandlers(true);
     }
 
     return STAT_OK;
@@ -2421,6 +2477,7 @@ void STAT_BackEnd::swDebugBufferToFile()
         }
     }
 }
+
 
 vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 {

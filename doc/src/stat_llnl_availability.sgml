@@ -1,5 +1,5 @@
 <para>
-The STAT GUI is available on all Peloton and TLCC systems (i.e., Opteron x86_64 machines) and BlueGene systems in <command>/usr/local/bin/stat-gui</command>. Man pages are also available (<command>man stat-gui</command>).
+The STAT GUI is available on all TLCC systems (i.e., x86_64 machines) and BlueGene systems in <command>/usr/local/bin/stat-gui</command>. Man pages are also available (<command>man stat-gui</command>).
 </para>
 
 

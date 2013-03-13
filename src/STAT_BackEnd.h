@@ -22,7 +22,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define STAT_MAX_BUF_LEN 256
 #define STAT_SW_DEBUG_BUFFER_LENGTH 33554432
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
@@ -38,6 +37,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <set>
 #include <sys/select.h>
 #include <errno.h>
+#include <execinfo.h>
 
 #include "STAT.h"
 #include "STAT_timer.h"
@@ -250,6 +250,20 @@ class STAT_BackEnd
 
         //! Dump the Stackwalker debug buffer to the log file
         void swDebugBufferToFile();
+
+        //! Register signal handlers
+        /*!
+            \param enable - whether to enable signal handling
+        */
+	    void registerSignalHandlers(bool enable);
+        
+        //! Action to perform when signal caught
+        /*!
+            \param signal - the signal number
+            \param sigInfo - the sigInfo struct
+            \param context - the context
+        */
+    	void onCrash(int signal, siginfo_t *sigInfo, void *context);
 
         //! Get the process table
         /*!
@@ -515,7 +529,7 @@ class STAT_BackEnd
         char logOutDir_[BUFSIZE];       /*!< the directory for log files */
         char localHostName_[BUFSIZE];   /*!< the local hostname */
         char localIp_[BUFSIZE];         /*!< the local IP address */
-        CircularBuffer swLogBuffer_;    /*!< the memory buffer for stackwalker 
+        CircularBuffer swLogBuffer_;    /*!< the memory buffer for stackwalker
                                              debug logging */
         FILE *swDebugFile_;             /*!< the stackwalker log file handle */
         FILE *errOutFp_;                /*!< the error output file handle */
