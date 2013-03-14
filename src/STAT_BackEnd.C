@@ -1177,6 +1177,10 @@ StatError_t STAT_BackEnd::attach()
 #endif
 
     /* Attach to the processes in the process table */
+#if defined(GROUP_OPS)
+    map<int, string> mpiRankToErrMsg;
+#endif
+
     for (i = 0; i < proctabSize_; i++)
     {
 //TODO
@@ -1190,7 +1194,7 @@ StatError_t STAT_BackEnd::attach()
             {
                 stringstream ss;
                 ss << "[PC Attach Error - 0x" << std::hex << aInfo[i].error_ret << std::dec << "]";
-                exitedProcesses_[ss.str()].insert(aInfo[i].pid);
+                mpiRankToErrMsg.insert(make_pair(proctab_[i].mpirank, ss.str()));
             }
             else
             {
@@ -1199,7 +1203,7 @@ StatError_t STAT_BackEnd::attach()
                 {
                     stringstream ss;
                     ss << "[SW Attach Error - 0x" << std::hex << Stackwalker::getLastError() << std::dec << "]";
-                    exitedProcesses_[ss.str()].insert(aInfo[i].pid);
+                    mpiRankToErrMsg.insert(make_pair(proctab_[i].mpirank, ss.str()));
                 }
                 else
                 {
@@ -1225,7 +1229,21 @@ StatError_t STAT_BackEnd::attach()
             processMapNonNull_++;
     }
     for (i = 0, processMapIter = processMap_.begin(); processMapIter != processMap_.end(); i++, processMapIter++)
+    {
         procsToRanks_.insert(make_pair(processMapIter->second, i));
+
+#if defined(GROUP_OPS)
+        int mpirank = processMapIter->first;
+        map<int, string>::iterator j = mpiRankToErrMsg.find(mpirank);
+        if (j != mpiRankToErrMsg.end())
+        {
+            string errMsg = j->second;
+            exitedProcesses_[errMsg].insert(i);
+        }
+#endif
+    }
+
+    
     isRunning_ = false;
 
     return STAT_OK;
@@ -2107,13 +2125,19 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         {
             stringstream ss;
             ss << "[Task Exited with " << (*i)->getExitCode() << "]";
-            exitedProcesses_[ss.str()].insert((*i)->getPid());
+            Walker *walker = static_cast<Walker *>((*i)->getData());
+            map<Walker *, int>::iterator j = procsToRanks_.find(walker);
+            if (j != procsToRanks_.end())
+                exitedProcesses_[ss.str()].insert(j->second);
         }
         for (ProcessSet::iterator i = crashedSubset->begin(); i != crashedSubset->end(); i++)
         {
             stringstream ss;
             ss << "[Task Crashed with Signal " << (*i)->getCrashSignal() << "]";
-            exitedProcesses_[ss.str()].insert((*i)->getPid());
+            Walker *walker = static_cast<Walker *>((*i)->getData());
+            map<Walker *, int>::iterator j = procsToRanks_.find(walker);
+            if (j != procsToRanks_.end())
+                exitedProcesses_[ss.str()].insert(j->second);
         }
 
         /* Erase the terminated procs from the procSet_ and walkerSet_ */
