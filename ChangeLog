@@ -1,3 +1,6 @@
+2013-03-14 Matthew P. LeGendre <legendre1@llnl.gov>
+	* src/STAT_BackEnd.[h,C] : fixed edge labeling of error nodes
+
 2013-03-13 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.[h,C], src/STAT_CircularLogs.[h,C] : code clean up
 	* src/STAT_BackEnd.[h,C], src/MRNetSymbolReader.h : use SW_VERSION_8_1_0 instead of 8_0_1
