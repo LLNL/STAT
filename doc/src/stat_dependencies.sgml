@@ -20,7 +20,7 @@ STAT has several dependencies
     <entry>Graph creation, merging, and export</entry>
 </row>
 <row rowsep="1">
-    <entry namest="c1" nameend="c2"><ulink url="https://outreach.scidac.gov/projects/stat/"></ulink></entry>
+    <entry namest="c1" nameend="c2"><ulink url="https://github.com/lee218llnl/STAT/"></ulink></entry>
 </row>
 <row>
     <entry>Launchmon</entry>

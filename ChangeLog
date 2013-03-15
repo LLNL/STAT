@@ -1,3 +1,10 @@
+2013-03-15 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : add runjob to default list of job launchers
+	* doc/src/stat_preference_files.sgml : update share app nodes note about BG systems
+
+2013-03-14 Gregory L. Lee <lee218@llnl.gov>
+	* : updated source links from outreach center to github
+
 2013-03-14 Matthew P. LeGendre <legendre1@llnl.gov>
 	* src/STAT_BackEnd.[h,C] : fixed edge labeling of error nodes
 

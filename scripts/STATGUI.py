@@ -109,7 +109,7 @@ class STATGUI(STATDotWindow):
                     'Share App Nodes'                  : True,
                     'Tool Daemon Path'                 : self.STAT.getToolDaemonExe(),
                     'Filter Path'                      : self.STAT.getFilterPath(),
-                    'Job Launcher'                     : 'mpirun|srun|orterun|aprun',
+                    'Job Launcher'                     : 'mpirun|srun|orterun|aprun|runjob',
                     'Log Dir'                          : os.environ['HOME'],
                     'Log Frontend'                     : False,
                     'Log Backend'                      : False,
@@ -291,7 +291,7 @@ host[1-10,12,15-20];otherhost[30]
             about_dialog.set_logo(pixbuf)
         except gobject.GError, error:
             pass
-        about_dialog.set_website('https://outreach.scidac.gov/projects/stat/')
+        about_dialog.set_website('https://github.com/lee218llnl/STAT')
         about_dialog.show_all()
         about_dialog.run()
         about_dialog.destroy()

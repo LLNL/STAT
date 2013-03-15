@@ -63,7 +63,7 @@ Here is a list of options:
     <term>Share App Nodes = <replaceable class="parameter">true|false</replaceable></term>
     <listitem>
         <para>
-        Controls whether to allow communication processes to be co-located on nodes running application processes.  Not supported on BlueGene systems.
+        Controls whether to allow communication processes to be co-located on nodes running application processes.  On BlueGene systems this requires user access to the I/O nodes.
         </para>
     </listitem>
 </varlistentry>

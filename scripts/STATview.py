@@ -3099,7 +3099,7 @@ entered as a regular expression"""
             about_dialog.set_logo(pixbuf)
         except gobject.GError, error:
             pass
-        about_dialog.set_website('https://outreach.scidac.gov/projects/stat/')
+        about_dialog.set_website('https://github.com/lee218llnl/STAT')
         about_dialog.show_all()
         about_dialog.run()
         about_dialog.destroy()
