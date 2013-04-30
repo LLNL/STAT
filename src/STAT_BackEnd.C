@@ -346,6 +346,7 @@ StatError_t STAT_BackEnd::init()
         fprintf(errOutFp_, "Error: gethostname returned %d\n", intRet);
         return STAT_SYSTEM_ERROR;
     }
+
     intRet = getaddrinfo(localHostName_, NULL, NULL, &addinf);
     if (intRet != 0)
         fprintf(errOutFp_, "Warning: getaddrinfo returned %d\n", intRet);
@@ -674,6 +675,7 @@ StatError_t STAT_BackEnd::connect(int argc, char **argv)
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to find MRNet parent info\n");
             return STAT_MRNET_ERROR;
         }
+
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found MRNet connection info, parent hostname = %s, parent port = %d, my MRNet rank = %d\n", parentHostName_, parentPort_, myRank_);
 
         /* Connect to the MRNet Network */
@@ -2451,7 +2453,10 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
             va_start(args, fmt);
             vsnprintf(msg, BUFSIZE, fmt, args);
             va_end(args);
-            mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+            if (sourceLine != -1 && sourceFile != NULL)
+                mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+            else
+                fprintf(gStatOutFp, "%s", msg);
         }
         else
         {

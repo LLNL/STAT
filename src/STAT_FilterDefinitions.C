@@ -151,7 +151,10 @@ void cpPrintMsg(StatError_t statError, const char *sourceFile, int sourceLine, c
             va_start(arg, fmt);
             vsnprintf(msg, BUFSIZE, fmt, arg);
             va_end(arg);
-            mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+            if (sourceLine != -1 && sourceFile != NULL)
+                mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+            else
+                fprintf(gStatOutFp, "%s", msg);
         }
         else
         {

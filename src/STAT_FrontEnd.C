@@ -1008,13 +1008,15 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking)
     /* Make sure all expected BEs registered within timeout limit */
     if (sConnectAttempt >= sConnectTimeout * 100 || gNumCallbacks < nApplNodes_)
     {
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.\n", sConnectAttempt/100, sConnectTimeout, gNumCallbacks, nApplNodes_);
+        printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.\n", sConnectAttempt/100, sConnectTimeout, gNumCallbacks, nApplNodes_);
         if (gNumCallbacks == 0)
             return STAT_DAEMON_ERROR;
         printMsg(STAT_WARNING, __FILE__, __LINE__, "Continuing with available subset.\n");
     }
 
     gEndTime.setTime();
+    sConnectTimeout = -1;
+    sConnectAttempt = 0;
     addPerfData("\tConnect to Daemons Time", (gEndTime - gStartTime).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tDaemons connected\n");
 
@@ -1626,6 +1628,7 @@ StatError_t STAT_FrontEnd::setDaemonNodes()
     set<MRN::NetworkTopology::Node *> nodes;
     set<MRN::NetworkTopology::Node *>::iterator nodeIter;
     string prettyHost;
+    int intRet;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating daemon node list: ");
     leafInfo_.networkTopology->get_BackEndNodes(nodes);
@@ -1637,9 +1640,11 @@ StatError_t STAT_FrontEnd::setDaemonNodes()
     leafInfo_.daemons.clear();
     for (nodeIter = nodes.begin(); nodeIter != nodes.end(); nodeIter++)
     {
-        XPlat::NetUtils::GetHostName((*nodeIter)->get_HostName(), prettyHost);
+        intRet = XPlat::NetUtils::GetHostName((*nodeIter)->get_HostName(), prettyHost);
+        if (intRet != 0)
+            prettyHost = (*nodeIter)->get_HostName();
         leafInfo_.daemons.insert(prettyHost);
-        printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%s, ", prettyHost.c_str());
+        printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%s=%s, ", (*nodeIter)->get_HostName().c_str(), prettyHost.c_str());
     }
     printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemon node list created\n");
@@ -1720,7 +1725,7 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
     /* Next sort each daemon's rank list and store it in the IntList_t ranks map */
     for (tempMapIter = tempMap.begin(), i = 0; tempMapIter != tempMap.end(); tempMapIter++, i++)
     {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemon %s, ranks:", tempMapIter->first.c_str());
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemon %s, %d ranks:", tempMapIter->first.c_str(), (tempMapIter->second).size());
         sort((tempMapIter->second).begin(), (tempMapIter->second).end());
         daemonRanks = (IntList_t *)malloc(sizeof(IntList_t));
         if (daemonRanks == NULL)
@@ -1743,7 +1748,13 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
         if (hostToMrnetRankMap.size() == 0) /* MRNet BEs not connected */
             mrnetRankToMpiRanksMap_[topologySize_ + i] = daemonRanks;
         else /* MRNet BEs connected */
-            mrnetRankToMpiRanksMap_[hostToMrnetRankMap[tempMapIter->first]] = daemonRanks;
+        {
+            if (hostToMrnetRankMap.find(tempMapIter->first) != hostToMrnetRankMap.end())
+                mrnetRankToMpiRanksMap_[hostToMrnetRankMap[tempMapIter->first]] = daemonRanks;
+            else
+                for (j = 0; j < daemonRanks->count; j++)
+                    missingRanks_.insert(daemonRanks->list[j]);
+        }
         printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");
     }
 
@@ -2827,6 +2838,10 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     else
     {
         /* Translate the graphs into rank ordered bit vector */
+        /* First we need to set the bit vector length to the proctab size, just in case there are missing ranks */
+        extern int gStatGraphRoutinesTotalWidth;
+        gStatGraphRoutinesTotalWidth = statBitVectorLength(proctabSize_);
+
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating sorted graph\n");
         gStartTime.setTime();
         offset = 0;
@@ -2872,7 +2887,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 
     if (missingRanks_.size() > 0)
     {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Adding missing ranks\n");
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Adding %d missing ranks\n", missingRanks_.size());
         gStartTime.setTime();
 
         withMissingStackTraces = createRootedGraph(sampleType);
@@ -3461,7 +3476,10 @@ void STAT_FrontEnd::printMsg(StatError_t statError, const char *sourceFile, int 
             va_start(arg, fmt);
             vsnprintf(msg, BUFSIZE, fmt, arg);
             va_end(arg);
-            mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+            if (sourceLine != -1 && sourceFile != NULL)
+                mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+            else
+                fprintf(gStatOutFp, "%s", msg);
         }
         else
         {
@@ -3938,12 +3956,15 @@ StatError_t increaseSysLimits()
 
 StatError_t STAT_FrontEnd::setRanksList()
 {
-    int i, j, rank;
+    int i, j, rank, intRet;
     map<int, RemapNode_t*> childOrder;
     map<int, RemapNode_t*>::iterator childOrderIter;
     list<int>::iterator remapRanksListIter;
     multiset<string>::iterator applicationNodeMultiSetIter;
     RemapNode_t *root, *currentNode;
+    set<string> daemonIpAddrs, daemonSet;
+    set<string>::iterator daemonIter;
+    XPlat::NetUtils::NetworkAddress networkAddress;
     StatError_t statError;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating the merge order ranks list\n");
@@ -3985,11 +4006,26 @@ StatError_t STAT_FrontEnd::setRanksList()
 
     /* Fill in the missing ranks */
     if (nApplNodes_ != leafInfo_.daemons.size())
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detected %d of %d nodes reporting, generating missing ranks list\n", leafInfo_.daemons.size(), nApplNodes_);
+
+        /* Also create a list of daemon IP addresses to compare */
+        for (daemonIter = leafInfo_.daemons.begin(); daemonIter != leafInfo_.daemons.end(); daemonIter++)
+        {
+            intRet = XPlat::NetUtils::GetNetworkAddress(*daemonIter, networkAddress);
+            if (intRet == 0)
+                daemonIpAddrs.insert(networkAddress.GetString());
+        }
+
         for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++)
-            if (leafInfo_.daemons.find(*applicationNodeMultiSetIter) == leafInfo_.daemons.end())
-                for (i = 0; i < proctabSize_; i++)
-                    if (strcmp(proctab_[i].pd.host_name, (*applicationNodeMultiSetIter).c_str()) == 0)
-                        missingRanks_.insert(proctab_[i].mpirank);
+            if (leafInfo_.daemons.find(*applicationNodeMultiSetIter) == leafInfo_.daemons.end() && daemonIpAddrs.find(*applicationNodeMultiSetIter) == daemonIpAddrs.end())
+                daemonSet.insert(*applicationNodeMultiSetIter);
+        for (i = 0; i < proctabSize_; i++)
+            if (daemonSet.find(proctab_[i].pd.host_name) != daemonSet.end())
+                missingRanks_.insert(proctab_[i].mpirank);
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Missing ranks list generated with %d tasks\n", missingRanks_.size());
+    }
+    
     return STAT_OK;
 }
 

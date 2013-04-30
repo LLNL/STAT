@@ -882,7 +882,7 @@ class STAT_FrontEnd
         unsigned int procsPerNode_;                         /*!< the number of CPs to launcher per node*/
         unsigned int launcherArgc_;                         /*!< the number of job launch arguments*/
         unsigned int topologySize_;                         /*!< the size of the MRNet topology */
-        unsigned int logging_;                             /*!< the logging level */
+        unsigned int logging_;                              /*!< the logging level */
         int jobId_;                                         /*!< the batch job ID */
         int lmonSession_;                                   /*!< the LaunchMON session ID */
         int mrnetOutputLevel_;                              /*!< the MRNet output level */
@@ -898,7 +898,7 @@ class STAT_FrontEnd
         char filePrefix_[BUFSIZE];                          /*!< the installation prefix for STAT */
         char lastErrorMessage_[BUFSIZE];                    /*!< the last error message */
         char hostname_[BUFSIZE];                            /*!< the FrontEnd hostname*/
-        bool isStatBench_;                                   /*!< whether we are a STATBench instance */
+        bool isStatBench_;                                  /*!< whether we are a STATBench instance */
         bool isLaunched_;                                   /*!< whether the STAT daemons have been launched */
         bool isConnected_;                                  /*!< whether the STAT daemons are connected to the MRNet tree */
         bool isAttached_;                                   /*!< whether the STAT daemons are attached to the application */
