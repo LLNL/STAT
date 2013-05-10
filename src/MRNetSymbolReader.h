@@ -148,12 +148,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                 "no existing reader for %s\n", pathStr));
 
         AsyncGlobalFileStatus myStat(pathStr);
-/* TODO: this is a workaround for BlueGene where FGFS is reporting incorrectly */
-#ifdef BGL
-        if (true)
-#else
         if (IS_YES(myStat.isUnique()))
-#endif
         {
             localLib = false;
 

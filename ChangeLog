@@ -1,3 +1,7 @@
+2013-05-10 Gregory L. Lee <lee218@llnl.gov>
+	* added DysectAPI
+	src/MRNetSymbolReader.h : removed BGQ FGFS workaround
+
 2013-04-30 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : fixed handling of missing ranks list for STATBench
 
