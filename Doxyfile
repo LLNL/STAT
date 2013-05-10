@@ -459,7 +459,7 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories 
 # with spaces.
 
-INPUT                  = src/STAT_FrontEnd.h src/STAT_FrontEnd.C src/STAT.h src/STAT_BackEnd.h src/STAT_BackEnd.C src/STAT_FilterDefinitions.C src/STAT.C src/STATD.C src/STATBench.C src/STATBenchD.C src/STAT_merge.C src/STAT_GraphRoutines.h src/STAT_GraphRoutines.C scripts/STAThelper.py scripts/STATmerge.py scripts/STATview.py scripts/STATGUI.py doc/src/mainpage
+INPUT                  = src/STAT_FrontEnd.h src/STAT_FrontEnd.C src/STAT.h src/STAT_BackEnd.h src/STAT_BackEnd.C src/STAT_FilterDefinitions.C src/STAT.C src/STATD.C src/STATBench.C src/STATBenchD.C src/STAT_merge.C src/STAT_GraphRoutines.h src/STAT_GraphRoutines.C scripts/STAThelper.py scripts/STATmerge.py scripts/STATview.py scripts/STATGUI.py doc/src/mainpage doc/src/mainpage src/DysectAPI/ tools/DysectAPI/src tools/DysectAPI/include tools/DysectAPI/include/DysectAPI
 
 # If the value of the INPUT tag contains directories, you can use the 
 # FILE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp 

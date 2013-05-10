@@ -765,6 +765,23 @@ StatError_t STAT_BackEnd::mainLoop()
 
     do
     {
+#ifdef DYSECTAPI
+        if (dysectBE)
+        {
+//         // Give run out timers a chance to run
+//          dysectBE->disableTimers();
+
+            dysectBE->handleQueuedOperations();
+            dysectBE->handleTimerEvents();
+        }
+
+        ProcControlAPI::Process::handleEvents(false);
+
+//        if(dysectBE) {
+//          dysectBE->enableTimers();
+//        }
+#endif
+
         /* Set the stackwalker notification file descriptor */
         if (processMap_.size() > 0 and processMapNonNull_ > 0)
             swNotificationFd = ProcDebug::getNotificationFD();
@@ -1089,11 +1106,80 @@ StatError_t STAT_BackEnd::mainLoop()
                 break;
 #endif /* FGFS */
 
+#ifdef DYSECTAPI
+            case PROT_LOAD_SESSION_LIB:
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to load session library\n");
+
+                char* libraryPath;
+                if (packet->unpack("%s", &libraryPath) == -1)
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_LOAD_SESSION_LIB) failed\n");
+
+                    if (sendAck(stream, PROT_LOAD_SESSION_LIB_RESP, intRet) != STAT_OK)
+                    {
+                        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_LOAD_SESSION_LIB_RESP) failed\n");
+                        return STAT_MRNET_ERROR;
+                    }
+
+                    return STAT_MRNET_ERROR;
+                }
+
+                // Load library
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Library to load: %s\n", libraryPath);
+
+                dysectBE = new DysectAPI::BE(libraryPath, this);
+
+                DysectAPI::ProcessMgr::init(procSet_);
+
+                if(dysectBE->isLoaded())
+                {
+                    intRet = 0;
+                }
+
+                if (sendAck(stream, PROT_LOAD_SESSION_LIB_RESP, intRet) != STAT_OK) {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_LOAD_SESSION_LIB_RESP) failed\n");
+                    return STAT_MRNET_ERROR;
+                }
+
+                break;
+#endif
+
             case PROT_EXIT:
-                /* Exit */
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Shutting down\n");
+
+#ifdef DYSECTAPI
+                if(dysectBE)
+                {
+                    dysectBE->disableTimers();
+                }
+#endif
                 break;
 
             default:
+#ifdef DYSECTAPI
+                // DysectAPI tags encode additional details
+                if(DysectAPI::isDysectTag(tag))
+                {
+                    if(dysectBE)
+                    {
+                        //// If tag is Dysect related - relay packet to DysecAPI session
+                        if(dysectBE->relayPacket(&packet, tag, stream) == DysectAPI::OK)
+                        {
+                            // Packet dealt with by DysectAPI
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Dysect library not loaded yet\n");
+                    }
+                } 
+                else 
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Not Dysect packet\n");
+                }
+#endif
+              
                 /* Unknown tag */
                 printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Unknown Tag %d, first = %d, last = %d\n", tag, PROT_ATTACH_APPLICATION, PROT_SEND_NODE_IN_EDGE_RESP);
                 break;
@@ -1211,6 +1297,9 @@ StatError_t STAT_BackEnd::attach()
                 {
                     pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
                     walkerSet_->insert(proc);
+#ifdef DYSECTAPI
+                    mpiRankToProcessMap.insert(pair<int, Process::ptr>(proctab_[i].mpirank, pcProc));
+#endif
                 }
             }
         }
@@ -1260,7 +1349,20 @@ StatError_t STAT_BackEnd::pause()
 
 #if defined(GROUP_OPS)
     if (doGroupOps_)
+  #ifdef DYSECTAPI
+    {
+        if(DysectAPI::ProcessMgr::isActive())
+        {
+            ProcessSet::ptr allProcs = DysectAPI::ProcessMgr::getAllProcs();
+            if(allProcs && !allProcs->empty())
+                allProcs->stopProcs();
+        }
+        else
+            procSet_->stopProcs();
+    }
+  #else
         procSet_->stopProcs();
+  #endif
     else
 #endif
     {
@@ -1280,7 +1382,20 @@ StatError_t STAT_BackEnd::resume()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
 #if defined(GROUP_OPS)
     if (doGroupOps_)
+  #ifdef DYSECTAPI
+    {
+        if(DysectAPI::ProcessMgr::isActive())
+        {
+            ProcessSet::ptr allProcs = DysectAPI::ProcessMgr::getAllProcs();
+            allProcs->continueProcs();
+
+        }
+        else
+            procSet_->continueProcs();
+    }
+  #else
         procSet_->continueProcs();
+  #endif
     else
 #endif
     {
@@ -2162,6 +2277,43 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
 #else
     CallTree tree(frame_lib_offset_cmp);
 #endif
+
+#ifdef DYSECTAPI
+   ProcessSet::ptr allProcs;
+   WalkerSet* lwalkerset = WalkerSet::newWalkerSet();
+  
+   bool result = false;
+
+   if(DysectAPI::ProcessMgr::isActive()) {
+
+     // Build new walkerset
+     allProcs = DysectAPI::ProcessMgr::getAllProcs();
+     allProcs = DysectAPI::ProcessMgr::filterExited(allProcs);
+
+     if(allProcs && !allProcs->empty()) {
+       ProcessSet::iterator processIter = allProcs->begin();
+       for(;processIter != allProcs->end(); processIter++) {
+         Process::ptr process = *processIter;
+         if(!process)
+          continue;
+         
+
+         Walker* proc = (Walker*)process->getData();
+         
+         if(proc)
+          lwalkerset->insert(proc);
+       }
+     }
+
+     if(lwalkerset) {
+       result = lwalkerset->walkStacks(tree);
+     }
+
+   } else {
+    result = walkerSet_->walkStacks(tree);
+   }
+#endif
+
 #ifdef SW_VERSION_8_1_0
     boolRet = walkerSet_->walkStacks(tree, !(sampleType_ & STAT_SAMPLE_THREADS));
 #else
@@ -2171,6 +2323,17 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
     {
 #warning TODO: Start handling partial call stacks in group walks
     }
+
+#ifdef DYSECTAPI
+//GLL comment: this should no longer apply (was graphlib 2.0)
+//   size_t setsize = 0;
+//   
+//   if(DysectAPI::ProcessMgr::isActive()) {
+//     setsize = allProcs->size();
+//   } else {
+//     setsize = procSet_->size();
+//   }
+#endif
 
     isPyTrace_ = false;
     statError = addFrameToGraph(&tree, 0, tree.getHead(), dummyString, NULL, ranks, dummyAbort, dummyBranches);
@@ -2239,7 +2402,20 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
 
 #if defined(GROUP_OPS)
     if (doGroupOps_)
+  #ifdef DYSECTAPI
+    {
+        if(DysectAPI::ProcessMgr::isActive())
+        {
+            DysectAPI::ProcessMgr::detachAll();
+        }
+        else 
+        {
+            procSet_->detach();
+        }
+    }
+  #else
         procSet_->detach();
+  #endif
     else
 #endif
     {

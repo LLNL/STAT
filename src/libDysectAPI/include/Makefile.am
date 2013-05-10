@@ -1,0 +1,1 @@
+nobase_include_HEADERS = DysectAPI.h DysectAPI/Action.h DysectAPI/Domain.h DysectAPI/Event.h DysectAPI/Probe.h DysectAPI/Condition.h DysectAPI/Parser.h DysectAPI/Backend.h DysectAPI/Frontend.h DysectAPI/ProbeTree.h DysectAPI/Err.h DysectAPI/Group.h DysectAPI/Expr.h DysectAPI/Symbol.h DysectAPI/SafeTimer.h

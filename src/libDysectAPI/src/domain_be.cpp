@@ -1,0 +1,15 @@
+#include <DysectAPI.h>
+
+using namespace std;
+using namespace DysectAPI;
+using namespace Dyninst;
+using namespace ProcControlAPI;
+using namespace Stackwalker;
+using namespace MRN;
+
+
+bool World::getAttached(Dyninst::ProcControlAPI::ProcessSet::ptr& lprocset) {
+  lprocset = ProcessMgr::getAllProcs();
+
+  return true;
+}

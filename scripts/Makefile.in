@@ -44,11 +44,13 @@ DIST_COMMON = $(am__python_PYTHON_DIST) $(dist_bin_SCRIPTS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in $(srcdir)/STAT.in \
 	$(srcdir)/STATBench.in $(srcdir)/STATGUI.in \
 	$(srcdir)/STATview.in $(srcdir)/core_stack_merge.in \
-	$(srcdir)/stat-bench.in $(srcdir)/stat-cl.in \
-	$(srcdir)/stat-gui.in $(srcdir)/stat-view.in
+	$(srcdir)/dysectc.in $(srcdir)/stat-bench.in \
+	$(srcdir)/stat-cl.in $(srcdir)/stat-gui.in \
+	$(srcdir)/stat-view.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
+	$(top_srcdir)/config/x_ac_dysectapi.m4 \
 	$(top_srcdir)/config/x_ac_enable_debug.m4 \
 	$(top_srcdir)/config/x_ac_fgfs.m4 \
 	$(top_srcdir)/config/x_ac_graphlib.m4 \
@@ -64,8 +66,8 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
-CONFIG_CLEAN_FILES = STAT STATGUI core_stack_merge STATview STATBench \
-	stat-cl stat-gui stat-view stat-bench
+CONFIG_CLEAN_FILES = STAT dysectc STATGUI core_stack_merge STATview \
+	STATBench stat-cl stat-gui stat-view stat-bench
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -141,6 +143,9 @@ LAUNCHMONBIN = @LAUNCHMONBIN@
 LAUNCHMONPREFIX = @LAUNCHMONPREFIX@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LEX = @LEX@
+LEXLIB = @LEXLIB@
+LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LIBTOOL = @LIBTOOL@
@@ -181,6 +186,8 @@ STATPYTHON = @STATPYTHON@
 STRIP = @STRIP@
 SWIG = @SWIG@
 VERSION = @VERSION@
+YACC = @YACC@
+YFLAGS = @YFLAGS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -240,8 +247,11 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 dist_bin_SCRIPTS = run_one_sec
-bin_SCRIPTS = STAT stat-cl $(am__append_1) $(am__append_4) \
-	$(am__append_5)
+@ENABLE_DYSECTAPI_FALSE@bin_SCRIPTS = STAT stat-cl $(am__append_1) \
+@ENABLE_DYSECTAPI_FALSE@	$(am__append_4) $(am__append_5)
+@ENABLE_DYSECTAPI_TRUE@bin_SCRIPTS = STAT stat-cl dysectc \
+@ENABLE_DYSECTAPI_TRUE@	$(am__append_1) $(am__append_4) \
+@ENABLE_DYSECTAPI_TRUE@	$(am__append_5)
 python_PYTHON = stat_merge_base.py STATmerge.py $(am__append_2) \
 	$(am__append_3)
 all: all-am
@@ -256,9 +266,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign scripts/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu scripts/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign scripts/Makefile
+	  $(AUTOMAKE) --gnu scripts/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -278,6 +288,8 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 STAT: $(top_builddir)/config.status $(srcdir)/STAT.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+dysectc: $(top_builddir)/config.status $(srcdir)/dysectc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 STATGUI: $(top_builddir)/config.status $(srcdir)/STATGUI.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
