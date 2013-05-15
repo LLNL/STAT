@@ -455,9 +455,11 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             break;
         case 'P':
             statArgs->sampleType |= STAT_SAMPLE_PC;
+            statArgs->comprehensive = false;
             break;
         case 'i':
             statArgs->sampleType |= STAT_SAMPLE_LINE;
+            statArgs->comprehensive = false;
             break;
         case 'c':
             statArgs->comprehensive = true;
@@ -508,6 +510,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             break;
         case 't':
             statArgs->nTraces = atoi(optarg);
+            statArgs->comprehensive = false;
             break;
         case 'T':
             statArgs->traceFrequency = atoi(optarg);

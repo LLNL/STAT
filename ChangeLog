@@ -1,3 +1,7 @@
+2013-05-15 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/stat-cl.in : enable -c by default
+	* src/STAT.C : -P -i -t will disable -c
+
 2013-05-14 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : write to perf file after every merge
 
