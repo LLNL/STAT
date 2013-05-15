@@ -1,6 +1,9 @@
+2013-05-14 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : write to perf file after every merge
+
 2013-05-10 Gregory L. Lee <lee218@llnl.gov>
-	* added DysectAPI
-	src/MRNetSymbolReader.h : removed BGQ FGFS workaround
+	* : integrated DysectAPI from Niklas Nielsen
+	* src/MRNetSymbolReader.h : removed BGQ FGFS workaround
 
 2013-04-30 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : fixed handling of missing ranks list for STATBench

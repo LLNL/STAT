@@ -2763,6 +2763,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     StatCountRepEdge_t *countRepEdge = NULL;
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(void *)gErrorLabel, -1};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
+    StatError_t statError;
 
     do
     {
@@ -2990,6 +2991,10 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     gEndTime.setTime();
     addPerfData("Export Graph Files Time", (gEndTime - gStartTime).getDoubleTime());
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Traces merged!\n");
+
+    statError = dumpPerf();
+    if (statError != STAT_OK)
+        printMsg(statError, __FILE__, __LINE__, "Failed to dump performance results\n");
 
     if (stackTraces != NULL)
     {
@@ -3256,7 +3261,7 @@ StatError_t STAT_FrontEnd::dumpPerf()
         snprintf(usageLogFile , BUFSIZE, envValue);
         isUsageLogging = true;
     }
-    if (isUsageLogging == true)
+    if (isUsageLogging == true && sCount == 1)
     {
         for (i = 0; i < size; i++)
         {
