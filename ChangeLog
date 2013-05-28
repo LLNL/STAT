@@ -1,3 +1,6 @@
+2013-05-28 Matthew LeGendre <legendre1@llnl.gov>
+	* src/STAT_BackEnd.C: Added BGQ Timeouts during hang while stackwalking
+
 2013-05-10 Gregory L. Lee <lee218@llnl.gov>
 	* added DysectAPI
 	src/MRNetSymbolReader.h : removed BGQ FGFS workaround
