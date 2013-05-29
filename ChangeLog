@@ -1,3 +1,6 @@
+2013-05-28 Matthew LeGendre <legendre1@llnl.gov>
+	* src/STAT_BackEnd.C: Added BGQ Timeouts during hang while stackwalking
+
 2013-05-15 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/stat-cl.in : enable -c by default
 	* src/STAT.C : -P -i -t will disable -c

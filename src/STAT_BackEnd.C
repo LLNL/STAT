@@ -2106,7 +2106,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
 {
     int dummyBranches = 0;
     unsigned int i;
-    bool boolRet, dummyAbort = false;
+    bool swSuccess, dummyAbort = false;
     string dummyString;
     set<int> ranks;
     StatError_t statError;
@@ -2163,13 +2163,41 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
     CallTree tree(frame_lib_offset_cmp);
 #endif
 #ifdef SW_VERSION_8_1_0
-    boolRet = walkerSet_->walkStacks(tree, !(sampleType_ & STAT_SAMPLE_THREADS));
+    swSuccess = walkerSet_->walkStacks(tree, !(sampleType_ & STAT_SAMPLE_THREADS));
 #else
-    boolRet = walkerSet_->walkStacks(tree);
+    swSuccess = walkerSet_->walkStacks(tree);
 #endif
-    if (boolRet == false)
+    if (!swSuccess)
     {
-#warning TODO: Start handling partial call stacks in group walks
+        ProcessSet::ptr errset = procSet_->getErrorSubset();
+        if (!errset->empty())
+        {
+            /* Add any process that hit an error during SWing to the exited list */
+            for (ProcessSet::iterator i = errset->begin(); i != errset->end(); i++)
+            {
+                Process::ptr err_proc = *i;
+                stringstream ss;
+                ss << "[Stackwalk Error - 0x" << std::hex << err_proc->getLastError() << "]";
+                string err_string = ss.str();
+
+                Walker *walker = static_cast<Walker *>(err_proc->getData());
+                map<Walker *, int>::iterator j = procsToRanks_.find(walker);
+                if (j != procsToRanks_.end())
+                    exitedProcesses_[err_string].insert(j->second);
+            }
+            /* Remove any error'd process from the walkerSet */
+            for (WalkerSet::iterator i = walkerSet_->begin(); i != walkerSet_->end(); )
+            {
+                ProcDebug *pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
+                if (errset->find(pDebug->getProc()) != errset->end())
+                {
+                    walkerSet_->erase(i++);
+                    continue;
+                }
+                i++;
+            }
+            procSet_ = procSet_->set_difference(errset);            
+        }
     }
 
     isPyTrace_ = false;
