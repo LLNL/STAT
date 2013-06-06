@@ -527,6 +527,8 @@ class STAT_BackEnd
         unsigned int logType_;          /*!< the logging level */
         char *parentHostName_;          /*!< the hostname of the MRNet parent */
         char logOutDir_[BUFSIZE];       /*!< the directory for log files */
+        char outDir_[BUFSIZE];          /*!< the output directory */
+        char filePrefix_[BUFSIZE];      /*!< the output file prefix for STAT */
         char localHostName_[BUFSIZE];   /*!< the local hostname */
         char localIp_[BUFSIZE];         /*!< the local IP address */
         CircularBuffer swLogBuffer_;    /*!< the memory buffer for stackwalker

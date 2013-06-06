@@ -895,7 +895,7 @@ class STAT_FrontEnd
         char lastDotFileName_[BUFSIZE];                     /*!< the path to the last generated .dot file */
         char outDir_[BUFSIZE];                              /*!< the output directory */
         char logOutDir_[BUFSIZE];                           /*!< the directory for log files */
-        char filePrefix_[BUFSIZE];                          /*!< the installation prefix for STAT */
+        char filePrefix_[BUFSIZE];                          /*!< the output file prefix for STAT */
         char lastErrorMessage_[BUFSIZE];                    /*!< the last error message */
         char hostname_[BUFSIZE];                            /*!< the FrontEnd hostname*/
         bool isStatBench_;                                  /*!< whether we are a STATBench instance */

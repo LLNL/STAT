@@ -103,9 +103,13 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
     sampleType_ = 0;
     nVariables_ = 0;
     extractVariables_ = NULL;
+    snprintf(outDir_, BUFSIZE, "NULL");
+    snprintf(filePrefix_, BUFSIZE, "NULL");
 #ifdef STAT_FGFS
     fgfsCommFabric_ = NULL;
 #endif
+    gBePtr = this;
+	registerSignalHandlers(true);
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -168,6 +172,9 @@ STAT_BackEnd::~STAT_BackEnd()
         delete network_;
         network_ = NULL;
     }
+    
+	registerSignalHandlers(false);
+    gBePtr = NULL;
 }
 
 void STAT_BackEnd::clear2dNodesAndEdges()
@@ -297,7 +304,6 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
         {
             if (sampleType_ & STAT_SAMPLE_COUNT_REP)
             {
-                gBePtr = this;
                 countRepEdge = getBitVectorCountRep(edgesIter->second.second, statRelativeRankToAbsoluteRank);
                 if (countRepEdge == NULL)
                 {
@@ -476,22 +482,62 @@ void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
     static const unsigned int maxStackSize = 256;
     char **namedSw, **i;
     void *stackSize[maxStackSize];
-
+    StatError_t statError;
+    graphlib_error_t graphlibError;
+    graphlib_graph_p prefixTree2d = NULL, prefixTree3d = NULL;
     registerSignalHandlers(false);
-    addrListSize = backtrace(stackSize, maxStackSize);
-    namedSw = backtrace_symbols(stackSize, addrListSize);
 
-    if (namedSw)
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STATD intercepted signal\n");
+    if (swDebugFile_)
     {
-        fprintf(swDebugFile_, "Stacktrace upon signal %d:\n", sig);
-        for (i = namedSw, j = 0; j < addrListSize; i++, j++)
+        addrListSize = backtrace(stackSize, maxStackSize);
+        namedSw = backtrace_symbols(stackSize, addrListSize);
+        if (namedSw)
         {
-            if (namedSw[j])
-              	fprintf(swDebugFile_, "%p - %s\n", stackSize[j], namedSw[j]);
+            fprintf(swDebugFile_, "Stacktrace upon signal %d:\n", sig);
+            for (i = namedSw, j = 0; j < addrListSize; i++, j++)
+            {
+                if (namedSw[j])
+                  	fprintf(swDebugFile_, "%p - %s\n", stackSize[j], namedSw[j]);
+            }
+            fflush(swDebugFile_);
+        }
+        swDebugBufferToFile();
+    }
+
+    if (strcmp(outDir_, "NULL") != 0 && strcmp(filePrefix_, "NULL") != 0)
+    {
+        statError = generateGraphs(&prefixTree2d, &prefixTree3d);
+        if (statError == STAT_OK)
+        {
+            extern int gStatGraphRoutinesTotalWidth;
+            char outFile[BUFSIZE];
+
+            gStatGraphRoutinesTotalWidth = statBitVectorLength(proctabSize_);
+
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Exporting 2D graph to dot\n");
+            graphlibError = graphlib_colorGraphByLeadingEdgeLabel(prefixTree2d);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error coloring graph by leading edge label\n");
+                abort();
+            }
+            graphlibError = graphlib_scaleNodeWidth(prefixTree2d, 80, 160);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error scaling node width\n");
+                abort();
+            }
+            snprintf(outFile, BUFSIZE, "%s/%s.BE_%s_%d.dot", outDir_, filePrefix_, localHostName_, myRank_);
+            graphlibError = graphlib_exportGraph(outFile, GRF_DOT, prefixTree2d);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error exporting graph to dot format\n");
+                abort();
+            }
         }
     }
-    fflush(swDebugFile_);
-    swDebugBufferToFile();
+
     abort();
 }
 
@@ -499,11 +545,16 @@ void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
 void STAT_BackEnd::registerSignalHandlers(bool enable)
 {
     struct sigaction action;
+        
     bzero(&action, sizeof(struct sigaction));
     if (!enable)
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "de-registering signal handlers\n");
         action.sa_handler = SIG_DFL;
+    }
     else
     {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "registering signal handlers\n");
         action.sa_sigaction = onCrashWrap;
         action.sa_flags = SA_SIGINFO;
     }
@@ -850,6 +901,13 @@ StatError_t STAT_BackEnd::mainLoop()
         switch(tag)
         {
             case PROT_ATTACH_APPLICATION:
+                char *in1, *in2;
+                if (packet->unpack("%s %s", &in1, &in2) != -1)
+                {
+                    snprintf(outDir_, BUFSIZE, in1);
+                    snprintf(filePrefix_, BUFSIZE, in2);
+                }
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attach request received for %s %s\n", outDir_, filePrefix_);
                 statError = attach();
                 if (statError == STAT_OK)
                     intRet = 0;
@@ -2116,8 +2174,6 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         procSet_->getLWPTracking()->refreshLWPs();
 #endif
 
-    gBePtr = this;
-    
     if (procSet_->anyTerminated())
     {
         ProcessSet::ptr exitedSubset = procSet_->getExitedSubset();

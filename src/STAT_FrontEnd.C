@@ -2397,9 +2397,9 @@ StatError_t STAT_FrontEnd::attachApplication(bool blocking)
     }
 
     gStartTime.setTime();
-    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Attaching to application...\n");
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Attaching to application %s %s...\n", outDir_, filePrefix_);
 
-    if (broadcastStream_->send(PROT_ATTACH_APPLICATION, "") == -1)
+    if (broadcastStream_->send(PROT_ATTACH_APPLICATION, "%s %s", outDir_, filePrefix_) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send attach request\n");
         return STAT_MRNET_ERROR;
