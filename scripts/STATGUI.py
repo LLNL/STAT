@@ -133,7 +133,8 @@ class STATGUI(STATDotWindow):
                     'Edge Type'                        : 'full list',
                     'DDT Path'                         : STAThelper._which('ddt'),
                     'DDT LaunchMON Prefix'             : '/usr/local',
-                    'TotalView Path'                   : STAThelper._which('totalview') }
+                    'TotalView Path'                   : STAThelper._which('totalview'),
+                    'Additional Debugger Args'         : '' }
         if not hasattr(self, "options"):
             self.options = {}
         for option in options:
@@ -1516,6 +1517,7 @@ host[1-10,12,15-20];otherhost[30]
         self.pack_string_option(vbox, 'DDT Path', dialog)
         self.pack_string_option(vbox, 'DDT LaunchMON Prefix', dialog)
         self.pack_string_option(vbox, 'TotalView Path', dialog)
+        self.pack_string_option(vbox, 'Additional Debugger Args', dialog)
         frame.add(vbox)
         dialog.vbox.pack_start(frame, True, True, 0)
         hbox = gtk.HButtonBox()
@@ -1666,7 +1668,11 @@ host[1-10,12,15-20];otherhost[30]
                 show_error_dialog('Failed to locate executable totalview\ndefault: %s\n' %filepath, self)
                 return
             arg_list.append(filepath)
-            if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH:
+            cli_attach = False
+            if self.STAT != None:
+                if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH:
+                    cli_attach = True
+            if cli_attach == True:
                 arg_list.append('-e')
                 for counter, rank in enumerate(subset_list):
                     if counter == 0:
@@ -1722,7 +1728,9 @@ host[1-10,12,15-20];otherhost[30]
                 arg_list.append(rank_list_arg)
                 arg_list.append(self.executable_path)
 
-        sys.stdout.write('fork exec %s %s\n' %(debugger, arg_list))
+        for arg in self.options['Additional Debugger Args'].split():
+            arg_list.insert(-1, arg)
+
         # First Detach STAT!!!
         if self.STAT != None:
             stop_list = intArray(len(subset_list))
@@ -1731,6 +1739,8 @@ host[1-10,12,15-20];otherhost[30]
                 i += 1
                 stop_list[i] = rank
             self.on_detach(None, stop_list, len(subset_list))
+        
+        sys.stdout.write('fork exec %s %s\n' %(debugger, arg_list))
         if os.fork() == 0:
             self.exec_and_exit(arg_list)
 

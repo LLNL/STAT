@@ -1,3 +1,7 @@
+2013-06-07 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : fixed bug in TV attach when STAT not attached
+	* scripts/STATGUI.py : user can add command-line args to TV/DDT
+
 2013-06-05 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C : Dump local stack traces on signal
 	* src/STAT_FrontEnd.C : Send output directory and file prefix to BE on attach
