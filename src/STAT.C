@@ -219,7 +219,7 @@ int main(int argc, char **argv)
         }
 
         // Load backends with dynamic library and execute instrumentation setup
-        printf("Requesting session setup in backends...");
+        printf("Requesting session setup in backends...\n");
         if(dysectFrontEnd->requestBackendSetup((const char*)DysectAPISessionPath) != DysectAPI::OK)
         {
             printf("failed!\n");
@@ -233,7 +233,17 @@ int main(int argc, char **argv)
         {
             printf("OK\n");
         }
+        printf("Session setup complete\n");
 
+        statError = statFrontEnd->resume();
+        if (statError != STAT_OK)
+        {
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
+            statFrontEnd->shutDown();
+            delete statFrontEnd;
+            free(statArgs);
+            return -1;
+        }
         // Handle incoming events
         while (dysectFrontEnd->handleEvents() == DysectAPI::SessionCont);
 

@@ -300,12 +300,12 @@ bool CodeLocation::findFileLine(Dyninst::SymtabAPI::Symtab* symtab, std::string 
   vector<pair<Offset, Offset> >::iterator rangeIter;
 
   if(!symtab->getAddressRanges(ranges, name, line)) {
-    Err::warn(true, "getAddressRanges(.., %s, %d) failed", name.c_str(), line);
+    Err::warn(true, "getAddressRanges(.., %s, %s, %d) failed", libName.c_str(), name.c_str(), line);
     return false;
   }
 
   if(ranges.empty()) {
-    Err::warn(true, "getAddressRanges(.., %s, %d) empty!", name.c_str(), line);
+    Err::warn(true, "getAddressRanges(.., %s, %s, %d) empty!", libName.c_str(), name.c_str(), line);
     return false;
   }
 

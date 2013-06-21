@@ -1,3 +1,7 @@
+2013-06-21 Gregory L. Lee <lee218@llnl.gov>
+	* : fixes to build system
+	* src/STAT.C : need to issue a resume after Dysect setup complete
+
 2013-04-30 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : fixed handling of missing ranks list for STATBench
 

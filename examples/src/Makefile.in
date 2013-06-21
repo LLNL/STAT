@@ -638,15 +638,15 @@ hw: hw.F Makefile
 mpi_ringtopo: mpi_ringtopo.c Makefile
 	$(MPICC) -g -o $@ $<
 rank_test: rank_test.c Makefile
-	$(MPICXX) -gdwarf-2 -o $@ $<
+	$(MPICXX) -g -gdwarf-2 -o $@ $<
 mpi_ringtopo_defunct: mpi_ringtopo_defunct.c Makefile
-	$(MPICC) -gdwarf-2  -o $@ $<
+	$(MPICC) -g -gdwarf-2  -o $@ $<
 to_test: to_test.c Makefile
-	$(MPICC) -gdwarf-2 -o $@ $<
+	$(MPICC) -g -gdwarf-2 -o $@ $<
 template_test: template_test.cpp Makefile
-	$(MPICXX) -gdwarf-2 -o $@ $<
+	$(MPICXX) -g -gdwarf-2 -o $@ $<
 mpi_ringtopo2: mpi_ringtopo2.cpp Makefile
-	$(MPICXX) -gdwarf-2 -O0 -o $@ $<
+	$(MPICXX) -g -gdwarf-2 -O0 -o $@ $<
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

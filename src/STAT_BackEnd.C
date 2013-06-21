@@ -849,7 +849,9 @@ StatError_t STAT_BackEnd::mainLoop()
         } /* if (swNotificationFd != -1) */
 
         /* Receive the packet from the STAT FE */
-        recvShouldBlock = (swNotificationFd == -1);
+        // blocking here breaks Dysect (hangs)
+        //recvShouldBlock = (swNotificationFd == -1);
+        recvShouldBlock=false;
         intRet = network_->recv(&tag, packet, &stream, recvShouldBlock);
         if (intRet == 0)
             continue;
