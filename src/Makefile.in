@@ -35,14 +35,11 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-@ENABLE_STATBENCH_FALSE@bin_PROGRAMS = STATbin$(EXEEXT) STATD$(EXEEXT)
-@ENABLE_STATBENCH_TRUE@bin_PROGRAMS = STATbin$(EXEEXT) STATD$(EXEEXT) \
-@ENABLE_STATBENCH_TRUE@	STATBenchbin$(EXEEXT) \
-@ENABLE_STATBENCH_TRUE@	STATBenchD$(EXEEXT)
+bin_PROGRAMS = STATbin$(EXEEXT) STATD$(EXEEXT) $(am__EXEEXT_1)
 @ENABLE_GUI_TRUE@am__append_1 = _STAT.la 
 subdir = src
-DIST_COMMON = $(am__include_HEADERS_DIST) \
-	$(am__nobase_include_HEADERS_DIST) $(am__python_PYTHON_DIST) \
+DIST_COMMON = $(am__nobase_include_HEADERS_DIST) \
+	$(am__python_PYTHON_DIST) $(include_HEADERS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in expr-parser.cc \
 	expr-scanner.cc
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -103,47 +100,26 @@ am__STAT_FilterDefinitions_la_SOURCES_DIST = STAT_FilterDefinitions.C \
 	DysectAPI/Aggregates/DescVar.C \
 	DysectAPI/Aggregates/DescVarCP.C DysectAPI/Aggregates/CmpAgg.C \
 	DysectAPI/Aggregates/CmpAggFE.C
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_FALSE@am_STAT_FilterDefinitions_la_OBJECTS = STAT_FilterDefinitions.lo
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@am_STAT_FilterDefinitions_la_OBJECTS = STAT_FilterDefinitions.lo \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@	STAT_GraphRoutines.lo
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@am_STAT_FilterDefinitions_la_OBJECTS = STAT_FilterDefinitions.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	DysectAPIFilter.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	Aggregate.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	Data.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	StrAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	Location.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	LocationFE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	DescVar.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	DescVarCP.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	CmpAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	CmpAggFE.lo
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@am_STAT_FilterDefinitions_la_OBJECTS = STAT_FilterDefinitions.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	STAT_GraphRoutines.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	DysectAPIFilter.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	Aggregate.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	Data.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	StrAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	Location.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	LocationFE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	DescVar.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	DescVarCP.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	CmpAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	CmpAggFE.lo
+@ENABLE_GRAPHLIB20_TRUE@am__objects_1 = STAT_GraphRoutines.lo
+@ENABLE_DYSECTAPI_TRUE@am__objects_2 = DysectAPIFilter.lo Aggregate.lo \
+@ENABLE_DYSECTAPI_TRUE@	Data.lo StrAgg.lo Location.lo \
+@ENABLE_DYSECTAPI_TRUE@	LocationFE.lo DescVar.lo DescVarCP.lo \
+@ENABLE_DYSECTAPI_TRUE@	CmpAgg.lo CmpAggFE.lo
+am_STAT_FilterDefinitions_la_OBJECTS = STAT_FilterDefinitions.lo \
+	$(am__objects_1) $(am__objects_2)
 STAT_FilterDefinitions_la_OBJECTS =  \
 	$(am_STAT_FilterDefinitions_la_OBJECTS)
 STAT_FilterDefinitions_la_LINK = $(LIBTOOL) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(AM_CXXFLAGS) $(CXXFLAGS) \
 	$(STAT_FilterDefinitions_la_LDFLAGS) $(LDFLAGS) -o $@
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GUI_TRUE@_STAT_la_DEPENDENCIES =  \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GUI_TRUE@	libstatfe.la
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GUI_TRUE@_STAT_la_DEPENDENCIES =  \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GUI_TRUE@	libstatfe.la \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GUI_TRUE@	libDysectAPIFE.la
+@ENABLE_DYSECTAPI_TRUE@am__DEPENDENCIES_1 = libDysectAPIFE.la
+@ENABLE_GUI_TRUE@_STAT_la_DEPENDENCIES = libstatfe.la \
+@ENABLE_GUI_TRUE@	$(am__DEPENDENCIES_1)
 am___STAT_la_SOURCES_DIST = STAT_wrap.C STAT.i
-am__objects_1 =
+am__objects_3 =
 @ENABLE_GUI_TRUE@am__STAT_la_OBJECTS = _STAT_la-STAT_wrap.lo \
-@ENABLE_GUI_TRUE@	$(am__objects_1)
+@ENABLE_GUI_TRUE@	$(am__objects_3)
 _STAT_la_OBJECTS = $(am__STAT_la_OBJECTS)
 _STAT_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
@@ -171,7 +147,7 @@ am__libDysectAPIBE_la_SOURCES_DIST = libDysectAPI/src/action.cpp \
 	libDysectAPI/src/safe_timer.cpp libDysectAPI/src/action_be.cpp \
 	libDysectAPI/src/event_be.cpp libDysectAPI/src/domain_be.cpp \
 	libDysectAPI/src/condition_be.cpp libDysectAPI/src/time_fe.cpp
-@ENABLE_DYSECTAPI_TRUE@am__objects_2 = libDysectAPIBE_la-action.lo \
+@ENABLE_DYSECTAPI_TRUE@am__objects_4 = libDysectAPIBE_la-action.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-condition.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-domain.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-event.lo \
@@ -185,7 +161,7 @@ am__libDysectAPIBE_la_SOURCES_DIST = libDysectAPI/src/action.cpp \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-expr-scanner.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-expr-parser.lo
 @ENABLE_DYSECTAPI_TRUE@am_libDysectAPIBE_la_OBJECTS =  \
-@ENABLE_DYSECTAPI_TRUE@	$(am__objects_2) \
+@ENABLE_DYSECTAPI_TRUE@	$(am__objects_4) \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-location_be.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-backend.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-group_be.lo \
@@ -217,7 +193,7 @@ am__libDysectAPIFE_la_SOURCES_DIST = libDysectAPI/src/action.cpp \
 	libDysectAPI/src/expr_fe.cpp libDysectAPI/src/action_fe.cpp \
 	libDysectAPI/src/event_fe.cpp libDysectAPI/src/domain_fe.cpp \
 	libDysectAPI/src/time_fe.cpp
-@ENABLE_DYSECTAPI_TRUE@am__objects_3 = libDysectAPIFE_la-action.lo \
+@ENABLE_DYSECTAPI_TRUE@am__objects_5 = libDysectAPIFE_la-action.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-condition.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-domain.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-event.lo \
@@ -231,7 +207,7 @@ am__libDysectAPIFE_la_SOURCES_DIST = libDysectAPI/src/action.cpp \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-expr-scanner.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-expr-parser.lo
 @ENABLE_DYSECTAPI_TRUE@am_libDysectAPIFE_la_OBJECTS =  \
-@ENABLE_DYSECTAPI_TRUE@	$(am__objects_3) \
+@ENABLE_DYSECTAPI_TRUE@	$(am__objects_5) \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-location_fe.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-frontend.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-group_fe.lo \
@@ -249,58 +225,38 @@ libDysectAPIFE_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 libstatbe_la_LIBADD =
 am__libstatbe_la_SOURCES_DIST = STAT_BackEnd.C STAT_BackEnd.h STAT.h \
 	STAT_timer.h STAT_timer.C STAT_CircularLogs.C \
-	STAT_GraphRoutines.h STAT_GraphRoutines.C MRNetSymbolReader.C \
-	DysectAPI/DysectAPIBE.C DysectAPI/DysectAPIProcessMgr.C \
-	DysectAPI/DysectAPIBE.h DysectAPI/DysectAPI.h \
-	DysectAPI/DysectAPI.C DysectAPI/Aggregates/Aggregate.C \
-	DysectAPI/Aggregates/Data.C DysectAPI/Aggregates/AggregateBE.C \
+	STAT_GraphRoutines.h STAT_GraphRoutines.C \
+	DysectAPI/DysectAPIBE.C DysectAPI/DysectAPIBE.h \
+	DysectAPI/DysectAPI.h DysectAPI/DysectAPI.C \
+	DysectAPI/DysectAPIProcessMgr.C \
+	DysectAPI/Aggregates/Aggregate.C DysectAPI/Aggregates/Data.C \
+	DysectAPI/Aggregates/AggregateBE.C \
+	DysectAPI/Aggregates/Location.C \
+	DysectAPI/Aggregates/LocationBE.C \
 	DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/DescVar.C \
 	DysectAPI/Aggregates/DescVarBE.C DysectAPI/Aggregates/CmpAgg.C \
-	DysectAPI/Aggregates/CmpAggBE.C \
-	DysectAPI/Aggregates/Location.C \
-	DysectAPI/Aggregates/LocationBE.C
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_FALSE@am_libstatbe_la_OBJECTS = libstatbe_la-STAT_BackEnd.lo \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-STAT_timer.lo \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-STAT_CircularLogs.lo
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@am_libstatbe_la_OBJECTS = libstatbe_la-STAT_BackEnd.lo \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-STAT_timer.lo \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-STAT_GraphRoutines.lo \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-STAT_CircularLogs.lo \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-MRNetSymbolReader.lo
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@am_libstatbe_la_OBJECTS = libstatbe_la-STAT_BackEnd.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-STAT_timer.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-DysectAPIBE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-DysectAPIProcessMgr.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-DysectAPI.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-Aggregate.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-Data.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-AggregateBE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-StrAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-DescVar.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-DescVarBE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-CmpAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatbe_la-CmpAggBE.lo
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@am_libstatbe_la_OBJECTS = libstatbe_la-STAT_BackEnd.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-STAT_timer.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-STAT_GraphRoutines.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-STAT_CircularLogs.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-MRNetSymbolReader.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-DysectAPIBE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-DysectAPI.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-DysectAPIProcessMgr.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-Aggregate.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-Data.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-AggregateBE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-Location.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-LocationBE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-StrAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-DescVar.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-DescVarBE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-CmpAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-CmpAggBE.lo
+	DysectAPI/Aggregates/CmpAggBE.C MRNetSymbolReader.C
+am__objects_6 = libstatbe_la-STAT_BackEnd.lo \
+	libstatbe_la-STAT_timer.lo libstatbe_la-STAT_CircularLogs.lo
+@ENABLE_GRAPHLIB20_TRUE@am__objects_7 =  \
+@ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-STAT_GraphRoutines.lo
+@ENABLE_DYSECTAPI_TRUE@am__objects_8 = libstatbe_la-DysectAPIBE.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-DysectAPI.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-DysectAPIProcessMgr.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-Aggregate.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-Data.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-AggregateBE.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-Location.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-LocationBE.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-StrAgg.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-DescVar.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-DescVarBE.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-CmpAgg.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-CmpAggBE.lo
+@ENABLE_FGFS_TRUE@am__objects_9 = libstatbe_la-MRNetSymbolReader.lo
+am_libstatbe_la_OBJECTS = $(am__objects_6) $(am__objects_7) \
+	$(am__objects_8) $(am__objects_9)
 libstatbe_la_OBJECTS = $(am_libstatbe_la_OBJECTS)
-@ENABLE_DYSECTAPI_FALSE@am_libstatbe_la_rpath = -rpath $(libdir)
-@ENABLE_DYSECTAPI_TRUE@am_libstatbe_la_rpath = -rpath $(libdir)
 libstatfe_la_LIBADD =
 am__libstatfe_la_SOURCES_DIST = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h \
 	STAT_timer.h STAT_timer.C STAT_GraphRoutines.h \
@@ -313,52 +269,34 @@ am__libstatfe_la_SOURCES_DIST = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h \
 	DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/DescVar.C \
 	DysectAPI/Aggregates/DescVarFE.C DysectAPI/Aggregates/CmpAgg.C \
 	DysectAPI/Aggregates/CmpAggFE.C
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_FALSE@am_libstatfe_la_OBJECTS = libstatfe_la-STAT_FrontEnd.lo \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-STAT_timer.lo
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@am_libstatfe_la_OBJECTS = libstatfe_la-STAT_FrontEnd.lo \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-STAT_timer.lo \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-STAT_GraphRoutines.lo
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@am_libstatfe_la_OBJECTS = libstatfe_la-STAT_FrontEnd.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-STAT_timer.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-DysectAPIFE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-DysectAPI.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-Data.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-Aggregate.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-Location.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-LocationFE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-StrAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-DescVar.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-DescVarFE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-CmpAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@	libstatfe_la-CmpAggFE.lo
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@am_libstatfe_la_OBJECTS = libstatfe_la-STAT_FrontEnd.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-STAT_timer.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-STAT_GraphRoutines.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-DysectAPIFE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-DysectAPI.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-Data.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-Aggregate.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-Location.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-LocationFE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-StrAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-DescVar.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-DescVarFE.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-CmpAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-CmpAggFE.lo
+am__objects_10 = libstatfe_la-STAT_FrontEnd.lo \
+	libstatfe_la-STAT_timer.lo
+@ENABLE_GRAPHLIB20_TRUE@am__objects_11 =  \
+@ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-STAT_GraphRoutines.lo
+@ENABLE_DYSECTAPI_TRUE@am__objects_12 = libstatfe_la-DysectAPIFE.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-DysectAPI.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-Data.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-Aggregate.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-Location.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-LocationFE.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-StrAgg.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-DescVar.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-DescVarFE.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-CmpAgg.lo \
+@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-CmpAggFE.lo
+am_libstatfe_la_OBJECTS = $(am__objects_10) $(am__objects_11) \
+	$(am__objects_12)
 libstatfe_la_OBJECTS = $(am_libstatfe_la_OBJECTS)
-@ENABLE_DYSECTAPI_FALSE@am_libstatfe_la_rpath = -rpath $(libdir)
-@ENABLE_DYSECTAPI_TRUE@am_libstatfe_la_rpath = -rpath $(libdir)
+@ENABLE_STATBENCH_TRUE@am__EXEEXT_1 = STATBenchbin$(EXEEXT) \
+@ENABLE_STATBENCH_TRUE@	STATBenchD$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS)
 am__STATBenchD_SOURCES_DIST = STATBenchD.C STAT.h STAT_BackEnd.h \
 	STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@am_STATBenchD_OBJECTS =  \
 @ENABLE_STATBENCH_TRUE@	STATBenchD-STATBenchD.$(OBJEXT)
 STATBenchD_OBJECTS = $(am_STATBenchD_OBJECTS)
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_STATBENCH_TRUE@STATBenchD_DEPENDENCIES =  \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_STATBENCH_TRUE@	libstatbe.la
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@STATBenchD_DEPENDENCIES =  \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@	libstatbe.la \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@	libDysectAPIBE.la
+@ENABLE_STATBENCH_TRUE@STATBenchD_DEPENDENCIES = libstatbe.la \
+@ENABLE_STATBENCH_TRUE@	$(stat_be_ldadd_dysectapi)
 STATBenchD_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(STATBenchD_LDFLAGS) $(LDFLAGS) -o $@
@@ -367,27 +305,20 @@ am__STATBenchbin_SOURCES_DIST = STATBench.C STAT.h STAT_FrontEnd.h \
 @ENABLE_STATBENCH_TRUE@am_STATBenchbin_OBJECTS =  \
 @ENABLE_STATBENCH_TRUE@	STATBenchbin-STATBench.$(OBJEXT)
 STATBenchbin_OBJECTS = $(am_STATBenchbin_OBJECTS)
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_STATBENCH_TRUE@STATBenchbin_DEPENDENCIES =  \
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_STATBENCH_TRUE@	libstatfe.la
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@STATBenchbin_DEPENDENCIES =  \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@	libstatfe.la \
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@	libDysectAPIFE.la
+@ENABLE_STATBENCH_TRUE@STATBenchbin_DEPENDENCIES = libstatfe.la \
+@ENABLE_STATBENCH_TRUE@	$(am__DEPENDENCIES_1)
 STATBenchbin_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(STATBenchbin_LDFLAGS) $(LDFLAGS) -o $@
 am_STATD_OBJECTS = STATD-STATD.$(OBJEXT)
 STATD_OBJECTS = $(am_STATD_OBJECTS)
-@ENABLE_DYSECTAPI_FALSE@STATD_DEPENDENCIES = libstatbe.la
-@ENABLE_DYSECTAPI_TRUE@STATD_DEPENDENCIES = libstatbe.la \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE.la
+STATD_DEPENDENCIES = libstatbe.la $(stat_be_ldadd_dysectapi)
 STATD_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
 	$(STATD_LDFLAGS) $(LDFLAGS) -o $@
 am_STATbin_OBJECTS = STATbin-STAT.$(OBJEXT)
 STATbin_OBJECTS = $(am_STATbin_OBJECTS)
-@ENABLE_DYSECTAPI_FALSE@STATbin_DEPENDENCIES = libstatfe.la
-@ENABLE_DYSECTAPI_TRUE@STATbin_DEPENDENCIES = libstatfe.la \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE.la
+STATbin_DEPENDENCIES = libstatfe.la $(am__DEPENDENCIES_1)
 STATbin_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
 	$(STATbin_LDFLAGS) $(LDFLAGS) -o $@
@@ -443,9 +374,6 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	ps-recursive uninstall-recursive
 am__python_PYTHON_DIST = STAT.py
 py_compile = $(top_srcdir)/config/py-compile
-am__include_HEADERS_DIST = STAT.h STAT_FrontEnd.h STAT_BackEnd.h \
-	STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h \
-	MRNetSymbolReader.h STAT_CircularLogs.h STAT_shared.h
 am__nobase_include_HEADERS_DIST = DysectAPI/DysectAPIProcessMgr.h \
 	DysectAPI/Aggregates/Aggregate.h \
 	DysectAPI/Aggregates/AggregateFunction.h \
@@ -639,42 +567,40 @@ top_srcdir = @top_srcdir@
 # what flags you want to pass to the C compiler & linker
 AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\" 
 AM_LDFLAGS = 
-@ENABLE_DYSECTAPI_FALSE@include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h STAT_shared.h
 
 # this lists the binaries to produce, the (non-PHONY, binary) targets in
 # the previous manual Makefile
-@ENABLE_DYSECTAPI_TRUE@include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h STAT_shared.h
+include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h STAT_shared.h
 @ENABLE_DYSECTAPI_TRUE@nobase_include_HEADERS = DysectAPI/DysectAPIProcessMgr.h DysectAPI/Aggregates/Aggregate.h DysectAPI/Aggregates/AggregateFunction.h DysectAPI/Aggregates/Data.h DysectAPI/Aggregates/Packet.h DysectAPI/Aggregates/Location.h DysectAPI/Aggregates/StrAgg.h DysectAPI/Aggregates/DescVar.h DysectAPI/Aggregates/CmpAgg.h
+@ENABLE_DYSECTAPI_TRUE@stat_fe_ldadd_dysectapi = libDysectAPIFE.la @BELIBS@
+@ENABLE_DYSECTAPI_TRUE@stat_be_ldadd_dysectapi = libDysectAPIBE.la
+@ENABLE_DYSECTAPI_TRUE@stat_lib_ltlibraries_dysectapi = libDysectAPIFE.la libDysectAPIBE.la
+@ENABLE_DYSECTAPI_TRUE@stat_be_la_sources_dysectapi = DysectAPI/DysectAPIBE.C DysectAPI/DysectAPIBE.h DysectAPI/DysectAPI.h DysectAPI/DysectAPI.C DysectAPI/DysectAPIProcessMgr.C DysectAPI/Aggregates/Aggregate.C DysectAPI/Aggregates/Data.C DysectAPI/Aggregates/AggregateBE.C DysectAPI/Aggregates/Location.C DysectAPI/Aggregates/LocationBE.C DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/DescVar.C DysectAPI/Aggregates/DescVarBE.C DysectAPI/Aggregates/CmpAgg.C DysectAPI/Aggregates/CmpAggBE.C
+@ENABLE_DYSECTAPI_TRUE@stat_fe_la_sources_dysectapi = DysectAPI/DysectAPIFE.C DysectAPI/DysectAPIFE.h DysectAPI/DysectAPI.h DysectAPI/DysectAPI.C DysectAPI/Aggregates/Data.C DysectAPI/Aggregates/Aggregate.C DysectAPI/Aggregates/Location.C DysectAPI/Aggregates/LocationFE.C DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/DescVar.C DysectAPI/Aggregates/DescVarFE.C DysectAPI/Aggregates/CmpAgg.C DysectAPI/Aggregates/CmpAggFE.C
+@ENABLE_DYSECTAPI_TRUE@stat_fd_la_sources_dysectapi = DysectAPI/DysectAPIFilter.C DysectAPI/Aggregates/Aggregate.C DysectAPI/Aggregates/Data.C DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/Location.C DysectAPI/Aggregates/LocationFE.C DysectAPI/Aggregates/DescVar.C DysectAPI/Aggregates/DescVarCP.C DysectAPI/Aggregates/CmpAgg.C DysectAPI/Aggregates/CmpAggFE.C
+@ENABLE_DYSECTAPI_TRUE@stat_la_cppflags_dysectapi = -IlibDysectAPI/include -D__DYSECT_IS_FRONTEND
+@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@STATBenchD_CPPFLAGS = -IlibDysectAPI/include
+@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@STATBenchbin_CPPFLAGS = -IlibDysectAPI/include
+@ENABLE_STATBENCH_TRUE@stat_bin_programs_statbench = STATBenchbin STATBenchD
 @ENABLE_STATBENCH_TRUE@STATBenchbin_SOURCES = STATBench.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@STATBenchD_SOURCES = STATBenchD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@STATBenchbin_LDFLAGS = -Wl,-E
 @ENABLE_STATBENCH_TRUE@STATBenchD_LDFLAGS = -Wl,-E
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_STATBENCH_TRUE@STATBenchbin_LDADD = libstatfe.la @FELIBS@ 
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@STATBenchbin_LDADD = libstatfe.la libDysectAPIFE.la @FELIBS@ @BELIBS@
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_STATBENCH_TRUE@STATBenchD_LDADD = libstatbe.la @BELIBS@ 
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@STATBenchD_LDADD = libstatbe.la libDysectAPIBE.la @BELIBS@ 
-@ENABLE_DYSECTAPI_FALSE@lib_LTLIBRARIES = libstatfe.la libstatbe.la 
-@ENABLE_DYSECTAPI_TRUE@lib_LTLIBRARIES = libstatfe.la libstatbe.la libDysectAPIFE.la libDysectAPIBE.la
+@ENABLE_STATBENCH_TRUE@STATBenchbin_LDADD = libstatfe.la $(stat_fe_ldadd_dysectapi) @FELIBS@
+@ENABLE_STATBENCH_TRUE@STATBenchD_LDADD = libstatbe.la $(stat_be_ldadd_dysectapi) @BELIBS@
+@ENABLE_GRAPHLIB20_TRUE@stat_graphlib_sources = STAT_GraphRoutines.h STAT_GraphRoutines.C
+@ENABLE_FGFS_TRUE@stat_be_la_sources_fgfs = MRNetSymbolReader.C
+lib_LTLIBRARIES = libstatfe.la libstatbe.la $(stat_lib_ltlibraries_dysectapi)
 STATbin_SOURCES = STAT.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 STATD_SOURCES = STATD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
 STATbin_LDFLAGS = -Wl,-E
-@ENABLE_DYSECTAPI_FALSE@STATbin_LDADD = libstatfe.la @FELIBS@ 
-@ENABLE_DYSECTAPI_TRUE@STATbin_LDADD = libstatfe.la libDysectAPIFE.la @FELIBS@ @BELIBS@
+STATbin_LDADD = libstatfe.la $(stat_fe_ldadd_dysectapi) @FELIBS@
 STATD_LDFLAGS = -Wl,-E
-@ENABLE_DYSECTAPI_FALSE@STATD_LDADD = libstatbe.la @BELIBS@ 
-@ENABLE_DYSECTAPI_TRUE@STATD_LDADD = libstatbe.la libDysectAPIBE.la @BELIBS@ 
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_FALSE@libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_GraphRoutines.h STAT_GraphRoutines.C
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C DysectAPI/DysectAPIFE.C DysectAPI/DysectAPIFE.h DysectAPI/DysectAPI.h DysectAPI/DysectAPI.C DysectAPI/Aggregates/Data.C DysectAPI/Aggregates/Aggregate.C DysectAPI/Aggregates/Location.C DysectAPI/Aggregates/LocationFE.C DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/DescVar.C DysectAPI/Aggregates/DescVarFE.C DysectAPI/Aggregates/CmpAgg.C DysectAPI/Aggregates/CmpAggFE.C
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@libstatfe_la_SOURCES = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_GraphRoutines.h STAT_GraphRoutines.C DysectAPI/DysectAPIFE.C DysectAPI/DysectAPIFE.h DysectAPI/DysectAPI.h DysectAPI/DysectAPI.C DysectAPI/Aggregates/Data.C DysectAPI/Aggregates/Aggregate.C DysectAPI/Aggregates/Location.C DysectAPI/Aggregates/LocationFE.C DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/DescVar.C DysectAPI/Aggregates/DescVarFE.C DysectAPI/Aggregates/CmpAgg.C DysectAPI/Aggregates/CmpAggFE.C
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_FALSE@libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_GraphRoutines.h STAT_GraphRoutines.C STAT_CircularLogs.C MRNetSymbolReader.C
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C DysectAPI/DysectAPIBE.C DysectAPI/DysectAPIProcessMgr.C DysectAPI/DysectAPIBE.h DysectAPI/DysectAPI.h DysectAPI/DysectAPI.C DysectAPI/Aggregates/Aggregate.C DysectAPI/Aggregates/Data.C DysectAPI/Aggregates/AggregateBE.C DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/DescVar.C DysectAPI/Aggregates/DescVarBE.C DysectAPI/Aggregates/CmpAgg.C DysectAPI/Aggregates/CmpAggBE.C
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@libstatbe_la_SOURCES = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_GraphRoutines.h STAT_GraphRoutines.C STAT_CircularLogs.C MRNetSymbolReader.C DysectAPI/DysectAPIBE.C DysectAPI/DysectAPIBE.h DysectAPI/DysectAPI.h DysectAPI/DysectAPI.C DysectAPI/DysectAPIProcessMgr.C DysectAPI/Aggregates/Aggregate.C DysectAPI/Aggregates/Data.C DysectAPI/Aggregates/AggregateBE.C DysectAPI/Aggregates/Location.C DysectAPI/Aggregates/LocationBE.C DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/DescVar.C DysectAPI/Aggregates/DescVarBE.C DysectAPI/Aggregates/CmpAgg.C DysectAPI/Aggregates/CmpAggBE.C
-
-###### DysectAPI ######
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@STATBenchD_CPPFLAGS = -IlibDysectAPI/include
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@STATBenchbin_CPPFLAGS = -IlibDysectAPI/include
+STATD_LDADD = libstatbe.la $(stat_be_ldadd_dysectapi) @BELIBS@
+stat_be_la_sources_base = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
+stat_fe_la_sources_base = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C
+libstatbe_la_SOURCES = $(stat_be_la_sources_base) $(stat_graphlib_sources) $(stat_be_la_sources_dysectapi) $(stat_be_la_sources_fgfs)
+libstatfe_la_SOURCES = $(stat_fe_la_sources_base) $(stat_graphlib_sources) $(stat_fe_la_sources_dysectapi)
 @ENABLE_DYSECTAPI_TRUE@libstatbe_la_CPPFLAGS = -IlibDysectAPI/include
 @ENABLE_DYSECTAPI_TRUE@libstatfe_la_CPPFLAGS = -IlibDysectAPI/include
 @ENABLE_DYSECTAPI_TRUE@STATD_CPPFLAGS = -IlibDysectAPI/include
@@ -700,12 +626,8 @@ STATD_LDFLAGS = -Wl,-E
 @ENABLE_DYSECTAPI_TRUE@libDysectAPIBE_la_SOURCES = $(dysect_sources) libDysectAPI/src/location_be.cpp libDysectAPI/src/backend.cpp libDysectAPI/src/group_be.cpp libDysectAPI/src/probe_be.cpp libDysectAPI/src/expr_be.cpp libDysectAPI/src/symbol.cpp libDysectAPI/src/safe_timer.cpp libDysectAPI/src/action_be.cpp libDysectAPI/src/event_be.cpp libDysectAPI/src/domain_be.cpp libDysectAPI/src/condition_be.cpp libDysectAPI/src/time_fe.cpp
 @ENABLE_DYSECTAPI_TRUE@libDysectAPIBE_la_CPPFLAGS = -g -O2 -fPIC $(dysect_includes) -D__DYSECT_IS_BACKEND 
 @ENABLE_DYSECTAPI_TRUE@libDysectAPIBE_la_LDFLAGS = --export-dynamic -lrt
-#######################
 pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_FALSE@STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GRAPHLIB20_TRUE@STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C STAT_GraphRoutines.h STAT_GraphRoutines.C
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_FALSE@STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C DysectAPI/DysectAPIFilter.C DysectAPI/Aggregates/Aggregate.C DysectAPI/Aggregates/Data.C DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/Location.C DysectAPI/Aggregates/LocationFE.C DysectAPI/Aggregates/DescVar.C DysectAPI/Aggregates/DescVarCP.C DysectAPI/Aggregates/CmpAgg.C DysectAPI/Aggregates/CmpAggFE.C
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GRAPHLIB20_TRUE@STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C STAT_GraphRoutines.h STAT_GraphRoutines.C DysectAPI/DysectAPIFilter.C DysectAPI/Aggregates/Aggregate.C DysectAPI/Aggregates/Data.C DysectAPI/Aggregates/StrAgg.C DysectAPI/Aggregates/Location.C DysectAPI/Aggregates/LocationFE.C DysectAPI/Aggregates/DescVar.C DysectAPI/Aggregates/DescVarCP.C DysectAPI/Aggregates/CmpAgg.C DysectAPI/Aggregates/CmpAggFE.C
+STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C $(stat_graphlib_sources) $(stat_fd_la_sources_dysectapi)
 STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version
 STAT_FilterDefinitions_la_LIBADD = @MWLIBS@
 pyexec_LTLIBRARIES = _STATmerge.la $(am__append_1)
@@ -717,11 +639,9 @@ _STATmerge_la_LIBADD = -llnlgraph
 @ENABLE_GUI_TRUE@SWIG_SOURCES = STAT.i
 @ENABLE_GUI_TRUE@python_PYTHON = STAT.py
 @ENABLE_GUI_TRUE@_STAT_la_SOURCES = STAT_wrap.C $(SWIG_SOURCES)
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GUI_TRUE@_STAT_la_CPPFLAGS = -I./
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GUI_TRUE@_STAT_la_CPPFLAGS = -I./ -IlibDysectAPI/include -D__DYSECT_IS_FRONTEND
+@ENABLE_GUI_TRUE@_STAT_la_CPPFLAGS = -I./ $(stat_la_cppflags_dysectapi)
 @ENABLE_GUI_TRUE@_STAT_la_LDFLAGS = -module -avoid-version
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GUI_TRUE@_STAT_la_LIBADD = libstatfe.la @FELIBS@
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GUI_TRUE@_STAT_la_LIBADD = libstatfe.la libDysectAPIFE.la @FELIBS@ @BELIBS@
+@ENABLE_GUI_TRUE@_STAT_la_LIBADD = libstatfe.la $(stat_fe_ldadd_dysectapi) @FELIBS@
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-recursive
 
@@ -861,9 +781,9 @@ libDysectAPIBE.la: $(libDysectAPIBE_la_OBJECTS) $(libDysectAPIBE_la_DEPENDENCIES
 libDysectAPIFE.la: $(libDysectAPIFE_la_OBJECTS) $(libDysectAPIFE_la_DEPENDENCIES) 
 	$(libDysectAPIFE_la_LINK) $(am_libDysectAPIFE_la_rpath) $(libDysectAPIFE_la_OBJECTS) $(libDysectAPIFE_la_LIBADD) $(LIBS)
 libstatbe.la: $(libstatbe_la_OBJECTS) $(libstatbe_la_DEPENDENCIES) 
-	$(CXXLINK) $(am_libstatbe_la_rpath) $(libstatbe_la_OBJECTS) $(libstatbe_la_LIBADD) $(LIBS)
+	$(CXXLINK) -rpath $(libdir) $(libstatbe_la_OBJECTS) $(libstatbe_la_LIBADD) $(LIBS)
 libstatfe.la: $(libstatfe_la_OBJECTS) $(libstatfe_la_DEPENDENCIES) 
-	$(CXXLINK) $(am_libstatfe_la_rpath) $(libstatfe_la_OBJECTS) $(libstatfe_la_LIBADD) $(LIBS)
+	$(CXXLINK) -rpath $(libdir) $(libstatfe_la_OBJECTS) $(libstatfe_la_LIBADD) $(LIBS)
 install-binPROGRAMS: $(bin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
@@ -1494,13 +1414,6 @@ libstatbe_la-STAT_GraphRoutines.lo: STAT_GraphRoutines.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-STAT_GraphRoutines.lo `test -f 'STAT_GraphRoutines.C' || echo '$(srcdir)/'`STAT_GraphRoutines.C
 
-libstatbe_la-MRNetSymbolReader.lo: MRNetSymbolReader.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-MRNetSymbolReader.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-MRNetSymbolReader.Tpo -c -o libstatbe_la-MRNetSymbolReader.lo `test -f 'MRNetSymbolReader.C' || echo '$(srcdir)/'`MRNetSymbolReader.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-MRNetSymbolReader.Tpo $(DEPDIR)/libstatbe_la-MRNetSymbolReader.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='MRNetSymbolReader.C' object='libstatbe_la-MRNetSymbolReader.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-MRNetSymbolReader.lo `test -f 'MRNetSymbolReader.C' || echo '$(srcdir)/'`MRNetSymbolReader.C
-
 libstatbe_la-DysectAPIBE.lo: DysectAPI/DysectAPIBE.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-DysectAPIBE.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-DysectAPIBE.Tpo -c -o libstatbe_la-DysectAPIBE.lo `test -f 'DysectAPI/DysectAPIBE.C' || echo '$(srcdir)/'`DysectAPI/DysectAPIBE.C
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-DysectAPIBE.Tpo $(DEPDIR)/libstatbe_la-DysectAPIBE.Plo
@@ -1508,19 +1421,19 @@ libstatbe_la-DysectAPIBE.lo: DysectAPI/DysectAPIBE.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-DysectAPIBE.lo `test -f 'DysectAPI/DysectAPIBE.C' || echo '$(srcdir)/'`DysectAPI/DysectAPIBE.C
 
-libstatbe_la-DysectAPIProcessMgr.lo: DysectAPI/DysectAPIProcessMgr.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-DysectAPIProcessMgr.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-DysectAPIProcessMgr.Tpo -c -o libstatbe_la-DysectAPIProcessMgr.lo `test -f 'DysectAPI/DysectAPIProcessMgr.C' || echo '$(srcdir)/'`DysectAPI/DysectAPIProcessMgr.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-DysectAPIProcessMgr.Tpo $(DEPDIR)/libstatbe_la-DysectAPIProcessMgr.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='DysectAPI/DysectAPIProcessMgr.C' object='libstatbe_la-DysectAPIProcessMgr.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-DysectAPIProcessMgr.lo `test -f 'DysectAPI/DysectAPIProcessMgr.C' || echo '$(srcdir)/'`DysectAPI/DysectAPIProcessMgr.C
-
 libstatbe_la-DysectAPI.lo: DysectAPI/DysectAPI.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-DysectAPI.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-DysectAPI.Tpo -c -o libstatbe_la-DysectAPI.lo `test -f 'DysectAPI/DysectAPI.C' || echo '$(srcdir)/'`DysectAPI/DysectAPI.C
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-DysectAPI.Tpo $(DEPDIR)/libstatbe_la-DysectAPI.Plo
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='DysectAPI/DysectAPI.C' object='libstatbe_la-DysectAPI.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-DysectAPI.lo `test -f 'DysectAPI/DysectAPI.C' || echo '$(srcdir)/'`DysectAPI/DysectAPI.C
+
+libstatbe_la-DysectAPIProcessMgr.lo: DysectAPI/DysectAPIProcessMgr.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-DysectAPIProcessMgr.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-DysectAPIProcessMgr.Tpo -c -o libstatbe_la-DysectAPIProcessMgr.lo `test -f 'DysectAPI/DysectAPIProcessMgr.C' || echo '$(srcdir)/'`DysectAPI/DysectAPIProcessMgr.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-DysectAPIProcessMgr.Tpo $(DEPDIR)/libstatbe_la-DysectAPIProcessMgr.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='DysectAPI/DysectAPIProcessMgr.C' object='libstatbe_la-DysectAPIProcessMgr.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-DysectAPIProcessMgr.lo `test -f 'DysectAPI/DysectAPIProcessMgr.C' || echo '$(srcdir)/'`DysectAPI/DysectAPIProcessMgr.C
 
 libstatbe_la-Aggregate.lo: DysectAPI/Aggregates/Aggregate.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-Aggregate.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-Aggregate.Tpo -c -o libstatbe_la-Aggregate.lo `test -f 'DysectAPI/Aggregates/Aggregate.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/Aggregate.C
@@ -1542,6 +1455,20 @@ libstatbe_la-AggregateBE.lo: DysectAPI/Aggregates/AggregateBE.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='DysectAPI/Aggregates/AggregateBE.C' object='libstatbe_la-AggregateBE.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-AggregateBE.lo `test -f 'DysectAPI/Aggregates/AggregateBE.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/AggregateBE.C
+
+libstatbe_la-Location.lo: DysectAPI/Aggregates/Location.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-Location.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-Location.Tpo -c -o libstatbe_la-Location.lo `test -f 'DysectAPI/Aggregates/Location.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/Location.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-Location.Tpo $(DEPDIR)/libstatbe_la-Location.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='DysectAPI/Aggregates/Location.C' object='libstatbe_la-Location.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-Location.lo `test -f 'DysectAPI/Aggregates/Location.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/Location.C
+
+libstatbe_la-LocationBE.lo: DysectAPI/Aggregates/LocationBE.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-LocationBE.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-LocationBE.Tpo -c -o libstatbe_la-LocationBE.lo `test -f 'DysectAPI/Aggregates/LocationBE.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/LocationBE.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-LocationBE.Tpo $(DEPDIR)/libstatbe_la-LocationBE.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='DysectAPI/Aggregates/LocationBE.C' object='libstatbe_la-LocationBE.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-LocationBE.lo `test -f 'DysectAPI/Aggregates/LocationBE.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/LocationBE.C
 
 libstatbe_la-StrAgg.lo: DysectAPI/Aggregates/StrAgg.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-StrAgg.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-StrAgg.Tpo -c -o libstatbe_la-StrAgg.lo `test -f 'DysectAPI/Aggregates/StrAgg.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/StrAgg.C
@@ -1578,19 +1505,12 @@ libstatbe_la-CmpAggBE.lo: DysectAPI/Aggregates/CmpAggBE.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-CmpAggBE.lo `test -f 'DysectAPI/Aggregates/CmpAggBE.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/CmpAggBE.C
 
-libstatbe_la-Location.lo: DysectAPI/Aggregates/Location.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-Location.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-Location.Tpo -c -o libstatbe_la-Location.lo `test -f 'DysectAPI/Aggregates/Location.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/Location.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-Location.Tpo $(DEPDIR)/libstatbe_la-Location.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='DysectAPI/Aggregates/Location.C' object='libstatbe_la-Location.lo' libtool=yes @AMDEPBACKSLASH@
+libstatbe_la-MRNetSymbolReader.lo: MRNetSymbolReader.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-MRNetSymbolReader.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-MRNetSymbolReader.Tpo -c -o libstatbe_la-MRNetSymbolReader.lo `test -f 'MRNetSymbolReader.C' || echo '$(srcdir)/'`MRNetSymbolReader.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-MRNetSymbolReader.Tpo $(DEPDIR)/libstatbe_la-MRNetSymbolReader.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='MRNetSymbolReader.C' object='libstatbe_la-MRNetSymbolReader.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-Location.lo `test -f 'DysectAPI/Aggregates/Location.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/Location.C
-
-libstatbe_la-LocationBE.lo: DysectAPI/Aggregates/LocationBE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-LocationBE.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-LocationBE.Tpo -c -o libstatbe_la-LocationBE.lo `test -f 'DysectAPI/Aggregates/LocationBE.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/LocationBE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-LocationBE.Tpo $(DEPDIR)/libstatbe_la-LocationBE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='DysectAPI/Aggregates/LocationBE.C' object='libstatbe_la-LocationBE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-LocationBE.lo `test -f 'DysectAPI/Aggregates/LocationBE.C' || echo '$(srcdir)/'`DysectAPI/Aggregates/LocationBE.C
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-MRNetSymbolReader.lo `test -f 'MRNetSymbolReader.C' || echo '$(srcdir)/'`MRNetSymbolReader.C
 
 libstatfe_la-STAT_FrontEnd.lo: STAT_FrontEnd.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-STAT_FrontEnd.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-STAT_FrontEnd.Tpo -c -o libstatfe_la-STAT_FrontEnd.lo `test -f 'STAT_FrontEnd.C' || echo '$(srcdir)/'`STAT_FrontEnd.C

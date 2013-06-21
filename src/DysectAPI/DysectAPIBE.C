@@ -10,6 +10,7 @@ using namespace ProcControlAPI;
 
 //Dyninst::ProcControlAPI::ProcessSet::ptr BE::procset;
 STAT_BackEnd *BE::statBE;
+extern FILE *gStatOutFp;
 
 BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
   assert(be != 0);
