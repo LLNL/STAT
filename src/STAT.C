@@ -647,6 +647,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         case 'X':
             DysectAPIEnabled = true;
             DysectAPISessionPath = strdup(optarg);
+            setenv("STAT_GROUP_OPS", "1", 1);
             break;
         case 'b':
             DysectTimeout = atoi(optarg);

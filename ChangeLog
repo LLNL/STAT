@@ -1,3 +1,9 @@
+2013-06-27 Gregory L. Lee <lee218@llnl.gov>
+	* : Dysect hold target processes on STAT action
+
+2013-06-24 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.C : set STAT_GROUP_OPS=1 when using Dysect API
+
 2013-06-21 Gregory L. Lee <lee218@llnl.gov>
 	* : fixes to build system
 	* src/STAT.C : need to issue a resume after Dysect setup complete

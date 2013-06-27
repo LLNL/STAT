@@ -453,6 +453,7 @@ bool Probe::processRequests() {
     return true;
   }
 
+  bool holdProcs = false;
   
   pthread_mutex_lock(&requestQueueMutex); 
   vector<ProbeRequest*> queue = requestQueue;
@@ -496,9 +497,23 @@ bool Probe::processRequests() {
       Err::warn(false, "Probe not found for disable request!");
       break;
     }
-  
+
+    //GLL comment: for certain actions, we may not want to resume processes
+    if (!holdProcs) {
+      vector<Act*>::iterator actIter = probe->actions.begin();
+      for(;actIter != probe->actions.end(); actIter++) {
+        Act* act = *actIter;
+        if(act) {
+          if(act->type == Act::statType) {
+            Err::verbose(true, "STAT action detected, holding procs!");
+            holdProcs = true;
+          }
+        }
+      }
+    }
+   
     ProcessSet::ptr waitingProcs = probe->getWaitingProcs();
-    Err::verbose(true, "Adding waiting processes to continue set...");
+    Err::verbose(true, "Adding %d waiting processes to %d continue set...", waitingProcs->size(), continueSet->size());
     if(waitingProcs && waitingProcs->size() > 0) {
       continueSet = continueSet->set_union(waitingProcs);
     }
@@ -517,6 +532,7 @@ bool Probe::processRequests() {
     //
     operationSet = ProcessMgr::filterDetached(operationSet);
     stopSet = ProcessMgr::filterDetached(stopSet);
+    Err::verbose(true, "%d procs in op set, %d procs in stop set", operationSet->size(), stopSet->size());
 
     //
     // Stop processes
@@ -555,8 +571,9 @@ bool Probe::processRequests() {
 
   continueSet = ProcessMgr::filterDetached(continueSet);
 
-  if(continueSet && continueSet->size() > 0) {
+  if(continueSet && continueSet->size() > 0 && !holdProcs) {
     Err::verbose(true, "Continuing %d processes", continueSet->size());
+    Err::warn(true, "Continuing %d processes", continueSet->size());
     if(continueSet->size() == 1) {
       ProcessSet::iterator procIter = continueSet->begin();
       Process::ptr process = *procIter;
@@ -565,6 +582,8 @@ bool Probe::processRequests() {
     
     continueSet->continueProcs();
   }
+  else
+    Err::verbose(true, "STAT action detected, not resuming procs!");
 
   Err::verbose(true, "Done handling requests");
 

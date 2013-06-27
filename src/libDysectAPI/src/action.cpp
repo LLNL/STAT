@@ -47,6 +47,7 @@ StackTrace::StackTrace() {
 
 bool StackTrace::prepare() {
   traces = new StackTraces();
+  return true;
 }
 
 Trace::Trace(string str) : str(str) {

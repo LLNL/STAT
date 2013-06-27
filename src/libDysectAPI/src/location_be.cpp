@@ -231,7 +231,7 @@ bool Location::resolveExpression() {
     }
 
     if(!DysectAPI::CodeLocation::findSymbol(proc, symbol, codeLocations)) {
-      return Err::warn(false, "No symbols found for symbol");
+      return Err::warn(false, "No symbols found for symbol %s", symbol.c_str());
     }
 
   } else if(numTokens == 2) { // file '#' line 

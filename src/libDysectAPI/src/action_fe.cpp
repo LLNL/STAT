@@ -24,10 +24,12 @@ bool Stat::finishFE(int count) {
 
   STAT_FrontEnd* statFE = Frontend::getStatFE();
 
-  if(lscope == AllProcs) {
+  if(lscope == SatisfyingProcs) {
+//GLL comment: we want to allow STAT action, even if triggered by subset
+//  if(lscope == AllProcs) {
     StatError_t statError, retval;
-    //STAT_SAMPLE_FUNCTION_ONLY = 0x00,
-    statError = statFE->sampleStackTraces(STAT_SAMPLE_FUNCTION_ONLY, 1, 100, 0, 100);
+    statError = statFE->pause();
+    statError = statFE->sampleStackTraces(STAT_SAMPLE_FUNCTION_ONLY | STAT_SAMPLE_LINE, 1, 100, 0, 100);
     if (statError != STAT_OK)
     {
       if (statError == STAT_APPLICATION_EXITED)
@@ -39,11 +41,14 @@ bool Stat::finishFE(int count) {
 
 
     statError = statFE->gatherLastTrace();
+            
+    statError = statFE->resume();
 
-  } else if(lscope == SatisfyingProcs) {
-    return Err::warn(false, "STAT not supported on set");
-  } else {
-    return Err::warn(false, "STAT not supported on set");
+//GLL comment: we want to allow STAT action, even if triggered by subset
+//  } else if(lscope == SatisfyingProcs) {
+//    return Err::warn(false, "STAT not supported on set");
+//  } else {
+//    return Err::warn(false, "STAT not supported on set");
   }  
 
   return true;

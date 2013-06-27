@@ -95,6 +95,6 @@ int main(int argc, char **argv) {
   result = WeightList<int, double, long>::sum(list);
 
   cout << "Computed weighted sum: " << result << endl;
-
+ 
   return EXIT_SUCCESS;
 }

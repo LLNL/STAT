@@ -10,6 +10,7 @@ DysectStatus DysectAPI::onProcStart() {
   Probe* p2    = new Probe(Code::location("mpi_ringtopo2.cpp#73"),
                            Domain::world(2000, true),
                            Act::trace("@desc(rank)"));
+                           //Act::trace("@desc(st->c)"));
 
   ProbeTree::addRoot(p1);
   ProbeTree::addRoot(p2);

@@ -33,7 +33,7 @@ int main (int argc, char *argv[])
 
     MPI_Init(&argc,&argv);
 
-    int timeout = 20;
+    int timeout = 6;
     sleep(timeout);
 
     if (argc > 1)
@@ -49,7 +49,7 @@ int main (int argc, char *argv[])
     if (rank == (numtasks - 1))  
         next = 0;
 
-    //if(rank == 4) raise(SIGSEGV);
+    //if(rank == 0 || rank == 6) raise(SIGSEGV);
 
     do_Receive(prev, tag, &buf[0], &reqs[0]);
 

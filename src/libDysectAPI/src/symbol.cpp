@@ -88,7 +88,7 @@ bool DysectAPI::CodeLocation::findSymbol(Dyninst::Stackwalker::Walker* proc, str
     
 
   if(symbols.empty()) {
-    return Err::warn(false, "No symbols found");
+    return Err::warn(false, "No symbols found for %s", name.c_str());
   }
 
   return true;
@@ -234,7 +234,7 @@ bool CodeLocation::findFileLine(Dyninst::Stackwalker::Walker* proc, std::string 
     
 
   if(locations.empty()) {
-    return Err::warn(false, "No symbols found for file & line");
+    return Err::warn(false, "No symbols found for file %s & line %d", name.c_str(), line);
   }
 
   return true;
@@ -300,12 +300,12 @@ bool CodeLocation::findFileLine(Dyninst::SymtabAPI::Symtab* symtab, std::string 
   vector<pair<Offset, Offset> >::iterator rangeIter;
 
   if(!symtab->getAddressRanges(ranges, name, line)) {
-    Err::warn(true, "getAddressRanges(.., %s, %s, %d) failed", libName.c_str(), name.c_str(), line);
+    //Err::warn(true, "getAddressRanges(.., %s, %s, %d) failed", libName.c_str(), name.c_str(), line);
     return false;
   }
 
   if(ranges.empty()) {
-    Err::warn(true, "getAddressRanges(.., %s, %s, %d) empty!", libName.c_str(), name.c_str(), line);
+    //Err::warn(true, "getAddressRanges(.., %s, %s, %d) empty!", libName.c_str(), name.c_str(), line);
     return false;
   }
 
