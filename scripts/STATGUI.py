@@ -110,6 +110,8 @@ class STATGUI(STATDotWindow):
                     'Tool Daemon Path'                 : self.STAT.getToolDaemonExe(),
                     'Filter Path'                      : self.STAT.getFilterPath(),
                     'Job Launcher'                     : 'mpirun|srun|orterun|aprun|runjob',
+                    'Filter Ranks'                     : '',
+                    'Filter Hosts'                     : '',
                     'Log Dir'                          : os.environ['HOME'],
                     'Log Frontend'                     : False,
                     'Log Backend'                      : False,
@@ -320,6 +322,9 @@ host[1-10,12,15-20];otherhost[30]
         if self.properties_window != None:
             self.properties_window.present()
             return True
+        self.options['Filter Ranks'] = ''
+        self.options['Filter Hosts'] = ''
+        self.ptab_sw = None
 
         # gather application properties
         num_nodes = self.STAT.getNumApplNodes()
@@ -390,31 +395,43 @@ host[1-10,12,15-20];otherhost[30]
             text_view.set_cursor_visible(False)
             frame.add(text_view)
             vbox.pack_start(frame, False, False, 0)
+        
+        proctab_frame = gtk.Frame('Process Table (rank host:PID exe_index)')
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label('Filter Ranks'), False, False, 5)
+        self.rank_filter_entry = self.pack_entry_and_button(self.options['Filter Ranks'], self.on_update_filter_ranks, proctab_frame, self.properties_window, "Filter Ranks", hbox, True, True, 0)
+        vbox.pack_start(hbox, False, False, 0)
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label('Filter Hosts'), False, False, 5)
+        self.host_filter_entry = self.pack_entry_and_button(self.options['Filter Hosts'], self.on_update_filter_hosts, proctab_frame, self.properties_window, "Filter Hosts", hbox, True, True, 0)
+        vbox.pack_start(hbox, False, False, 0)
+        self.on_update_proctab(None, proctab_frame, self.properties_window)
+        vbox.pack_start(proctab_frame, True, True, 0)
 
-        frame = gtk.Frame('Process Table (rank host:PID exe_index)')
-        text_view = gtk.TextView()
-        text_view.set_size_request(400, 200)
-        text_buffer = gtk.TextBuffer()
-        text_buffer.set_text(process_table)
-        text_view.set_buffer(text_buffer)
-        text_view.set_wrap_mode(False)
-        text_view.set_editable(False)
-        text_view.set_cursor_visible(False)
-        sw = gtk.ScrolledWindow()
-        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        sw.add(text_view)
-        frame.add(sw)
-        vbox.pack_start(frame, True, True, 0)
-        global blahblah
-        blahblah = text_buffer
+        #frame = gtk.Frame('Process Table (rank host:PID exe_index)')
+        #text_view = gtk.TextView()
+        #text_view.set_size_request(400, 200)
+        #text_buffer = gtk.TextBuffer()
+        #text_buffer.set_text(process_table)
+        #text_view.set_buffer(text_buffer)
+        #text_view.set_wrap_mode(False)
+        #text_view.set_editable(False)
+        #text_view.set_cursor_visible(False)
+        #sw = gtk.ScrolledWindow()
+        #sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        #sw.add(text_view)
+        #frame.add(sw)
+        #vbox.pack_start(frame, True, True, 0)
+        #global blahblah
+        #blahblah = text_buffer
 
         self.properties_window.add(vbox)
         self.properties_window.show_all()
 
     def on_properties_destroy(self, action):
         """Clean up the properties window."""
-        global blahblah
-        blahblah.set_text('')
+        #global blahblah
+        #blahblah.set_text('')
         self.properties_window = None
 
     def pid_toggle_cb(self, action, pid, command):
@@ -432,6 +449,71 @@ host[1-10,12,15-20];otherhost[30]
         text += ' %s@%s:%s ' %(self.options['Serial Exe'], self.options['Remote Host'], self.options['Serial PID'])
         text = serial_process_list_entry.set_text(text)
         attach_dialog.show_all()
+
+    def on_update_filter_hosts(self, w, proctab_frame, parent, entry):
+        self.options['Filter Hosts'] = entry.get_text()
+        entry.set_text(self.options['Filter Hosts'])
+        self.on_update_proctab(w, proctab_frame, parent)
+
+    def on_update_filter_ranks(self, w, proctab_frame, parent, entry):
+        self.options['Filter Ranks'] = entry.get_text()
+        entry.set_text(self.options['Filter Ranks'])
+        self.on_update_proctab(w, proctab_frame, parent)
+
+    def on_update_proctab(self, widget, proctab_frame, proctab_window):
+        try:
+            if self.ptab_sw != None:
+                proctab_frame.remove(self.ptab_sw)
+        except:
+            pass
+        rank_filter = get_task_list(self.options['Filter Ranks'])
+        host_filter = []
+        temp_host_list = self.options['Filter Hosts'].replace(' ', '').split(';')
+        for host in temp_host_list:
+            if host.find('[') != -1:
+                prefix = host[0:host.find('[')]
+                host_range = host[host.find('['):host.find(']') + 1]
+                node_list = get_task_list(host_range)
+                for node in node_list:
+                    node_name = '%s%d' %(prefix, node)
+                    host_filter.append(node_name)
+            elif host != '':
+                host_filter.append(host)
+        pid_filter = []
+        exe_Filter = []
+        self.ptab_sw = gtk.ScrolledWindow()
+        self.ptab_sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
+        self.ptab_sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
+        (PTAB_INDEX_RANK, PTAB_INDEX_HOST, PTAB_INDEX_PID, PTAB_INDEX_EXE) = range(4)
+        list_store = gtk.ListStore(gobject.TYPE_UINT, gobject.TYPE_STRING, gobject.TYPE_UINT, gobject.TYPE_UINT)
+        for rank, host, pid, exe_index in self.proctab.process_list:
+            if rank_filter != [] and rank not in rank_filter:
+                continue
+            if host_filter != [] and host not in host_filter:
+                continue
+            iter = list_store.append()
+            item = (rank, host, pid, exe_index)
+            list_store.set(iter, PTAB_INDEX_RANK, item[PTAB_INDEX_RANK], PTAB_INDEX_HOST, item[PTAB_INDEX_HOST], PTAB_INDEX_PID, item[PTAB_INDEX_PID], PTAB_INDEX_EXE, item[PTAB_INDEX_EXE])
+        treeview = gtk.TreeView(list_store)
+        treeview.set_rules_hint(True)
+        treeview.set_search_column(PTAB_INDEX_RANK)
+        treeview.set_size_request(400, 400)
+        self.ptab_sw.add(treeview)
+        proctab_frame.add(self.ptab_sw)
+
+        column = gtk.TreeViewColumn('Rank', gtk.CellRendererText(), text=PTAB_INDEX_RANK)
+        column.set_sort_column_id(PTAB_INDEX_RANK)
+        treeview.append_column(column)
+        column = gtk.TreeViewColumn('Host', gtk.CellRendererText(), text=PTAB_INDEX_HOST)
+        column.set_sort_column_id(PTAB_INDEX_HOST)
+        treeview.append_column(column)
+        column = gtk.TreeViewColumn('PID', gtk.CellRendererText(), text=PTAB_INDEX_PID)
+        column.set_sort_column_id(PTAB_INDEX_PID)
+        treeview.append_column(column)
+        column = gtk.TreeViewColumn('EXE', gtk.CellRendererText(), text=PTAB_INDEX_EXE)
+        column.set_sort_column_id(PTAB_INDEX_EXE)
+        treeview.append_column(column)
+        self.properties_window.show_all()
 
     def on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
         """Generate a wait dialog and search for user processes."""
@@ -1567,7 +1649,6 @@ host[1-10,12,15-20];otherhost[30]
         if self.proctab_file_path == '':
             show_error_dialog('Failed to find process table .ptab file.', self)
             return False
-        print 'ptab file', self.proctab_file_path
 
         try:
             with open(self.proctab_file_path, 'r') as f:

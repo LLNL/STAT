@@ -1,3 +1,7 @@
+2013-07-17 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : new filter/searchable ptab dialog
+	* scripts/STATview.py : new cut/hide programming models interface
+
 2013-06-07 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : fixed bug in TV attach when STAT not attached
 	* scripts/STATGUI.py : user can add command-line args to TV/DDT

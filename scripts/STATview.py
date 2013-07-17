@@ -35,6 +35,8 @@ import shelve
 from collections import defaultdict
 #import inspect
 
+(MODEL_INDEX_HIDE, MODEL_INDEX_NAME, MODEL_INDEX_CASESENSITIVE, MODEL_INDEX_REGEX, MODEL_INDEX_EDITABLE, MODEL_INDEX_NOTEDITABLE, MODEL_INDEX_CALLBACK, MODEL_INDEX_ICON, MODEL_INDEX_BUTTONNAME) = range(9)
+
 # Make sure $DISPLAY is set (not good for Windows!)
 if os.name != 'nt':
     if not "DISPLAY" in os.environ:
@@ -263,6 +265,142 @@ def create_temp(dot_filename, truncate, max_node_name):
     return temp_dot_filename
 
 
+class CellRendererButtonPixbuf(gtk.CellRendererPixbuf):
+    __gproperties__ = {"callable":(gobject.TYPE_PYOBJECT, "callable property", "callable property", gobject.PARAM_READWRITE)}
+    _button_width = 20
+    _button_height = 30
+
+    def __init__(self):
+        self.__gobject_init__()
+        gtk.CellRendererPixbuf.__init__(self)
+        self.set_property("xalign", 0.5)
+        self.set_property("mode", gtk.CELL_RENDERER_MODE_ACTIVATABLE)
+        self.callable = None
+        self.table = None
+
+    def do_set_property(self, pspec, value):
+        if pspec.name == "callable":
+            if callable(value):
+                self.callable = value
+            else:
+                raise TypeError("callable property must be callable!")
+        else:
+            raise AttributeError("Unknown property %s" %pspec.name)
+
+    def do_get_property(self, pspec):
+        if pspec.name == "callable":
+            return self.callable
+        else:
+            raise AttributeError("Unknown property %s" %pspec.name)
+
+    def do_get_size(self, wid, cell_area):
+        xpad = self.get_property("xpad")
+        ypad = self.get_property("ypad")
+        if not cell_area:
+            x, y = 0, 0
+            w = 2 * xpad + self._button_width
+            h = 2 * ypad + self._button_height
+        else:
+            w = 2 * xpad + cell_area.width
+            h = 2 * ypad + cell_area.height
+            xalign = self.get_property("xalign")
+            yalign = self.get_property("yalign")
+            x = max(0, xalign * (cell_area.width - w))
+            y = max(0, yalign * (cell_area.height - h))
+        return (x, y, w, h)
+
+    def do_render(self, window, wid, bg_area, cell_area, expose_area, flags):
+        if not window:
+            return
+        xpad = self.get_property("xpad")
+        ypad = self.get_property("ypad")
+        x, y, w, h = self.get_size(wid, cell_area)
+        if flags & gtk.CELL_RENDERER_PRELIT:
+            state = gtk.STATE_PRELIGHT
+            shadow = gtk.SHADOW_ETCHED_OUT
+        else:
+            state = gtk.STATE_NORMAL
+            shadow = gtk.SHADOW_OUT
+        wid.get_style().paint_box(window, state, shadow, cell_area, wid, "button", cell_area.x + x + xpad, cell_area.y + y + ypad, w - 6, h - 6)
+        flags = flags & ~gtk.STATE_SELECTED
+        gtk.CellRendererPixbuf.do_render(self, window, wid, bg_area, (cell_area[0], cell_area[1] + ypad, cell_area[2],cell_area[3]), expose_area, flags)
+
+    def do_activate(self, event, wid, path, bg_area, cell_area, flags):
+        cb = self.get_property("callable")
+        if cb != None:
+            cb(path)
+        return True
+
+class CellRendererButtonText(gtk.CellRendererText):
+    __gproperties__ = {"callable":(gobject.TYPE_PYOBJECT, "callable property", "callable property",gobject.PARAM_READWRITE)}
+    _button_width = 40
+    _button_height = 30
+
+    def __init__(self):
+        self.__gobject_init__()
+        gtk.CellRendererText.__init__(self)
+        self.set_property("xalign", 0.5)
+        self.set_property("mode", gtk.CELL_RENDERER_MODE_ACTIVATABLE)
+        self.callable = None
+        self.table = None
+
+    def do_set_property(self, pspec, value):
+        if pspec.name == "callable":
+            if callable(value):
+                self.callable = value
+            else:
+                raise TypeError("callable property must be callable!")
+        else:
+            raise AttributeError("Unknown property %s" %pspec.name)
+
+    def do_get_property(self, pspec):
+        if pspec.name == "callable":
+            return self.callable
+        else:
+            raise AttributeError("Unknown property %s" %pspec.name)
+
+    def do_get_size(self, wid, cell_area):
+        xpad = self.get_property("xpad")
+        ypad = self.get_property("ypad")
+        if not cell_area:
+            x, y = 0, 0
+            w = 2 * xpad + self._button_width
+            h = 2 * ypad + self._button_height
+        else:
+            w = 2 * xpad + cell_area.width
+            h = 2 * ypad + cell_area.height
+            xalign = self.get_property("xalign")
+            yalign = self.get_property("yalign")
+            x = max(0, xalign * (cell_area.width - w))
+            y = max(0, yalign * (cell_area.height - h))
+        return (x, y, w, h)
+
+    def do_render(self, window, wid, bg_area, cell_area, expose_area, flags):
+        if not window:
+            return
+        xpad = self.get_property("xpad")
+        ypad = self.get_property("ypad")
+        x, y, w, h = self.get_size(wid, cell_area)
+# if flags & gtk.CELL_RENDERER_SELECTED :
+# state = gtk.STATE_ACTIVE
+# shadow = gtk.SHADOW_OUT
+        if flags & gtk.CELL_RENDERER_PRELIT:
+            state = gtk.STATE_PRELIGHT
+            shadow = gtk.SHADOW_ETCHED_OUT
+        else:
+            state = gtk.STATE_NORMAL
+            shadow = gtk.SHADOW_OUT
+        wid.get_style().paint_box(window, state, shadow, cell_area, wid, "button", cell_area.x + x + xpad, cell_area.y + y + ypad, w - 6, h - 6)
+        flags = flags & ~gtk.STATE_SELECTED
+        gtk.CellRendererText.do_render(self, window, wid, bg_area, (cell_area[0], cell_area[1] + ypad, cell_area[2],cell_area[3]), expose_area, flags)
+
+    def do_activate(self, event, wid, path, bg_area, cell_area, flags):
+        cb = self.get_property("callable")
+        if cb != None:
+            cb(path)
+        return True
+
+
 ## STAT GUI's wait dialog.
 class STAT_wait_dialog(object):
     """STAT GUI's wait dialog.
@@ -424,6 +562,54 @@ def show_error_dialog(text, parent = None, exception = None):
     error_dialog.vbox.pack_start(button)
     error_dialog.show_all()
     error_dialog.run()
+
+
+def load_model_cuts(filename):
+    models = {}
+    models_case_sensitive = {}
+    model_name = None
+    try:
+        with open(filename, 'r') as model_file:
+            for line in model_file:
+                line = line.strip('\n')
+                if line == '':
+                    continue
+                if line[0] == '#':
+                    continue
+                if line.find("model =") == 0 or line.find ("model=") == 0:
+                    model_name = line[line.find('"') + 1:line.rfind('"')]
+                    line = line[line.rfind('"') + 1:].split()
+                    case_sensitive = line[0].lower()
+                    models[model_name] = ''
+                    models_case_sensitive[model_name] = False
+                    if case_sensitive == "true":
+                        models_case_sensitive[model_name] = True
+                    continue
+                if model_name != None:
+                    models[model_name] += line + ';'
+    except IOError as e:
+        #sys.stderr.write('%s\nfailed to open models file %s\n' %(repr(e), filename))
+        pass
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        sys.stderr.write('%s\nfailed to process models file %s\n' %(repr(e), filename))
+    model_list = []
+    for model in models:
+        # toggled, name, case sensitive, regexs, editable, not editable
+        model_list.append([False, model, models_case_sensitive[model], models[model], False, True])
+    return model_list
+
+
+def re_search(function_name, (search_text, match_case)):
+    """Function to test whether a search string matches a re"""
+    if match_case == False:
+        search_text = string.lower(search_text)
+        function_name = string.lower(function_name)
+    if re.search(search_text, function_name) != None:
+        return True
+    return False
+
 
 ## Overloaded DragAction for use with scroll bars.
 class STATPanAction(xdot.DragAction):
@@ -1728,17 +1914,8 @@ class STATGraph(xdot.Graph):
         """Hide the MPI implementation frames."""
         return self.hide_generic(is_MPI)
 
-    def re_search(self, function_name, (search_text, match_case)):
-        """Function to test whether a search string matches a re"""
-        if match_case == False:
-            search_text = string.lower(search_text)
-            function_name = string.lower(function_name)
-        if re.search(search_text, function_name) != None:
-            return True
-        return False
-
     def hide_re(self, search_text, match_case):
-        return self.hide_generic(self.re_search, search_text, match_case)
+        return self.hide_generic(re_search, search_text, match_case)
 
     def hide_generic(self, func, *args):
         """Hide frames that match the specified function."""
@@ -2670,8 +2847,9 @@ class STATDotWindow(xdot.DotWindow):
     ui += '        <toolitem action="Redo"/>\n'
     ui += '        <toolitem action="OriginalGraph"/>\n'
     ui += '        <toolitem action="ResetLayout"/>\n'
-    ui += '        <toolitem action="HideMPI"/>\n'
-    ui += '        <toolitem action="HideText"/>\n'
+#    ui += '        <toolitem action="HideMPI"/>\n'
+    ui += '        <toolitem action="HideModel"/>\n'
+#    ui += '        <toolitem action="HideText"/>\n'
     ui += '        <toolitem action="Join"/>\n'
     ui += '        <toolitem action="TraverseGraph"/>\n'
     ui += '        <toolitem action="ShortestPath"/>\n'
@@ -2713,7 +2891,8 @@ class STATDotWindow(xdot.DotWindow):
         actions.append(('Redo', gtk.STOCK_REDO, '_Redo', '<control>R', 'Redo operation', lambda a: self.on_toolbar_action(a, None, self.get_current_graph().redo, (self.get_current_widget(), ))))
         actions.append(('OriginalGraph', gtk.STOCK_HOME, 'Reset', None, 'Revert to original graph', lambda a: self.on_toolbar_action(a, 'Original Graph', self.get_current_graph().on_original_graph, (self.get_current_widget(), ))))
         actions.append(('ResetLayout', gtk.STOCK_REFRESH, 'Layout', None, 'Reset the layout of the current graph and open in a new tab', lambda a: self.on_reset_layout()))
-        actions.append(('HideMPI', gtk.STOCK_CUT, 'MPI', None, 'Hide the MPI implementation', lambda a: self.on_toolbar_action(a, 'Hide MPI', self.get_current_graph().hide_mpi, ())))
+        actions.append(('HideModel', gtk.STOCK_CUT, 'Cut', None, 'Hide the details of various programming models', self.on_hide_model))
+#        actions.append(('HideMPI', gtk.STOCK_CUT, 'MPI', None, 'Hide the MPI implementation', lambda a: self.on_toolbar_action(a, 'Hide MPI', self.get_current_graph().hide_mpi, ())))
         actions.append(('Join', gtk.STOCK_GOTO_TOP, 'Join', None, 'Join consecutive nodes of the same equivalence class into a single node and render in a new tab', self.on_join_eq_classes))
         actions.append(('TraverseGraph', gtk.STOCK_GO_DOWN, 'Eq C', None, 'Traverse the graphs equivalence classes', self.on_traverse_graph))
         if have_tomod:
@@ -2722,7 +2901,7 @@ class STATDotWindow(xdot.DotWindow):
         actions.append(('ShortestPath', gtk.STOCK_GOTO_TOP, 'Path', None, 'Traverse the [next] shortest path', self.on_shortest_path))
         actions.append(('LongestPath', gtk.STOCK_GOTO_BOTTOM, 'Path', None, 'Traverse the [next] longest path', self.on_longest_path))
         actions.append(('Search', gtk.STOCK_FIND, 'Search', None, 'Search for callpaths by text, tasks, or hosts', self.on_search))
-        actions.append(('HideText', gtk.STOCK_CUT, 'Text', None, 'Cut the call graph based on a regular expression', self.on_hide_text))
+#        actions.append(('HideText', gtk.STOCK_CUT, 'Text', None, 'Cut the call graph based on a regular expression', self.on_hide_text))
         actions.append(('LeastTasks', gtk.STOCK_GOTO_FIRST, 'Tasks', None, 'Traverse the path with the [next] least tasks visited', self.on_least_tasks))
         actions.append(('MostTasks', gtk.STOCK_GOTO_LAST, 'Tasks', None, 'Traverse the path with the [next] most tasks visited', self.on_most_tasks))
         actions.append(('IdentifyEqClasses', gtk.STOCK_SELECT_COLOR, 'Eq C', None, 'Identify the equivalence classes of the current graph', self.on_identify_num_eq_classes))
@@ -3484,7 +3663,27 @@ entered as a regular expression"""
                 highlight_list.append(node)
         self.tabs[self.notebook.get_current_page()].widget.set_highlight(highlight_list)
 
-    def on_search_enter_cb(self, widget, arg):
+#    def on_model_enter_cb(self, widget):
+#        """Callback to handle activation of hide model entry."""
+#        self.get_current_graph().set_undo_list()
+#        programming_models_text = ''
+#        for programming_model in self.programming_models:
+#            if programming_model[MODEL_INDEX_HIDE] == True:
+#                programming_models_text += ' ' + programming_model[MODEL_INDEX_NAME]
+#        self.get_current_graph().action_history.append('Hide Models:%s' %programming_models_text)
+#        self.update_history()
+#        for programming_model in self.programming_models:
+#            if programming_model[MODEL_INDEX_HIDE] == True:
+#                for regex in programming_model[MODEL_INDEX_REGEX].split(';'):
+#                    if regex == '':
+#                        continue
+#                    self.tabs[self.notebook.get_current_page()].widget.graph.hide_re(regex, programming_model[MODEL_INDEX_CASESENSITIVE])
+#        self.get_current_graph().adjust_dims()
+#        self.get_current_widget().zoom_to_fit()
+#        self.model_dialog.destroy()
+#        return True
+
+    def on_search_enter_cb(self, widget):
         """Callback to handle activation of focus task text entry."""
         entry, combo_box, match_case_check_box = arg
         text = entry.get_text()
@@ -3501,6 +3700,182 @@ entered as a regular expression"""
     def on_search_type_toggled(self, combo_box, label):
         type, search_cb, search_help = self.search_types[combo_box.get_active()]
         label.set_text(search_help)
+
+    def on_hide_model(self, action):
+        """Callback to handle pressing of cut model button."""
+        if self.get_current_graph().cur_filename == '':
+            return False
+        if not hasattr(self, 'programming_models'):
+            self.programming_models = []
+            site_models_path = os.path.dirname(os.path.realpath(__file__)) + '/../../../etc/STAT/STATview_models.conf'
+            self.programming_models += load_model_cuts(site_models_path)
+            user_models_path = '%s/.STATview_models.conf' %(os.environ.get('HOME'))
+            self.programming_models += load_model_cuts(user_models_path)
+        self.model_dialog = gtk.Dialog('Hide Programming Model Frames', self)
+        self.model_dialog.set_default_size(400, 400)
+        frame = gtk.Frame("Programming Models")
+        vbox = gtk.VBox()
+
+        sw = gtk.ScrolledWindow()
+        sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        list_store = gtk.ListStore(gobject.TYPE_BOOLEAN, gobject.TYPE_STRING, gobject.TYPE_BOOLEAN, gobject.TYPE_STRING, gobject.TYPE_BOOLEAN, gobject.TYPE_BOOLEAN, gobject.TYPE_PYOBJECT, gobject.TYPE_STRING, gobject.TYPE_STRING, gobject.TYPE_STRING)
+        for programming_model in self.programming_models:
+            iter = list_store.append()
+            list_store.set(iter, MODEL_INDEX_NAME, programming_model[MODEL_INDEX_NAME], MODEL_INDEX_CASESENSITIVE, programming_model[MODEL_INDEX_CASESENSITIVE], MODEL_INDEX_REGEX, programming_model[MODEL_INDEX_REGEX], MODEL_INDEX_EDITABLE, programming_model[MODEL_INDEX_EDITABLE], MODEL_INDEX_NOTEDITABLE, programming_model[MODEL_INDEX_NOTEDITABLE], MODEL_INDEX_CALLBACK, self.hide_model_callback, MODEL_INDEX_ICON, gtk.STOCK_CUT)
+        treeview = gtk.TreeView(list_store)
+        treeview.set_rules_hint(False)
+        treeview.set_enable_search(False)
+        treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
+
+        # column for the hide button
+        renderer = CellRendererButtonPixbuf()
+        renderer.set_property('cell-background', 'grey')
+        column = gtk.TreeViewColumn(" Click\nto hide")
+        column.set_fixed_width(20)
+        column.pack_start(renderer)
+        column.set_attributes(renderer, stock_id=MODEL_INDEX_ICON, callable=MODEL_INDEX_CALLBACK, cell_background_set = MODEL_INDEX_NOTEDITABLE)
+        treeview.append_column(column)
+
+        # name column
+        renderer = gtk.CellRendererText()
+        renderer.connect("edited", self.on_cell_edited, list_store)
+        renderer.set_data("column", MODEL_INDEX_NAME)
+        renderer.set_property('cell-background', 'grey')
+        column = gtk.TreeViewColumn("Programming\n     Model", renderer, text=MODEL_INDEX_NAME, editable=MODEL_INDEX_EDITABLE, cell_background_set = MODEL_INDEX_NOTEDITABLE)
+        treeview.append_column(column)
+
+        # column for case sensitive toggles
+        renderer = gtk.CellRendererToggle()
+        renderer.connect('toggled', self.case_sensitive_toggled, list_store)
+        renderer.set_property('cell-background', 'grey')
+        column = gtk.TreeViewColumn('   Case\nSensitive', renderer, active=MODEL_INDEX_CASESENSITIVE, cell_background_set = MODEL_INDEX_NOTEDITABLE)
+        column.set_sizing(gtk.TREE_VIEW_COLUMN_FIXED)
+        column.set_fixed_width(70)
+        treeview.append_column(column)        
+
+        # regex column
+        renderer = gtk.CellRendererText()
+        renderer.connect("edited", self.on_cell_edited, list_store)
+        renderer.set_data("column", MODEL_INDEX_REGEX)
+        renderer.set_property('cell-background', 'grey')
+        column = gtk.TreeViewColumn("Regex", renderer, text=MODEL_INDEX_REGEX, editable=MODEL_INDEX_EDITABLE, cell_background_set = MODEL_INDEX_NOTEDITABLE)
+        treeview.append_column(column)           
+
+        #renderer = CellRendererButtonText()
+        #column = gtk.TreeViewColumn("Button")
+        #column.pack_start(renderer)
+        #column.set_attributes(renderer, text=MODEL_INDEX_NAME, callable=MODEL_INDEX_CALLBACK)
+        #treeview.append_column(column)
+
+        sw.add(treeview)
+        vbox.pack_start(sw, True, True, 0)
+        hbox = gtk.HBox(True, 4)
+        button = gtk.Button("_Add Model")
+        button.connect("clicked", self.on_add_item_clicked, list_store)
+        hbox.pack_start(button)
+        button = gtk.Button("_Remove Model")
+        button.connect("clicked", self.on_remove_item_clicked, treeview)
+        hbox.pack_start(button)
+        vbox.pack_start(hbox, False, False, 0)
+        frame.add(vbox)
+        self.model_dialog.vbox.pack_start(frame, True, True, 0)
+
+        separator = gtk.HSeparator()
+        self.model_dialog.vbox.pack_start(separator, False, False, 10)
+        hbox = gtk.HBox(True, 4)
+        button = gtk.Button("_Done")
+        button.connect("clicked", lambda w: self.model_dialog.destroy())
+        hbox.pack_start(button)
+
+#        button = gtk.Button(stock=gtk.STOCK_CANCEL)
+#        button.connect("clicked", lambda w: self.model_dialog.destroy())
+#        hbox.pack_start(button)
+#        button = gtk.Button(stock=gtk.STOCK_OK)
+#        button.connect("clicked", lambda w: self.model_dialog.destroy())
+#        hbox.pack_start(button)
+
+#        button = gtk.Button("_Hide Selected")
+#        button.connect("clicked", self.on_model_enter_cb)
+#        hbox.pack_start(button)
+        self.model_dialog.vbox.pack_start(hbox, False, False, 0)
+
+        self.model_dialog.show_all()
+        return True
+
+    def hide_model_callback2(self, cell, path, list_store):
+        """Callback to handle activation of hide model button."""
+        path = int(path)
+        self.get_current_graph().set_undo_list()
+        self.get_current_graph().action_history.append('Hide Model: %s' %self.programming_models[path][MODEL_INDEX_NAME])
+        self.update_history()
+        for regex in self.programming_models[path][MODEL_INDEX_REGEX].split(';'):
+            if regex == '':
+                continue
+            self.tabs[self.notebook.get_current_page()].widget.graph.hide_re(regex, self.programming_models[path][MODEL_INDEX_CASESENSITIVE])
+        self.get_current_graph().adjust_dims()
+        self.get_current_widget().zoom_to_fit()
+        return True
+
+    def hide_model_callback(self, path):
+        """Callback to handle activation of hide model button."""
+        path = int(path)
+        self.get_current_graph().set_undo_list()
+        self.get_current_graph().action_history.append('Hide Model: %s' %self.programming_models[path][MODEL_INDEX_NAME])
+        self.update_history()
+        for regex in self.programming_models[path][MODEL_INDEX_REGEX].split(';'):
+            if regex == '':
+                continue
+            self.tabs[self.notebook.get_current_page()].widget.graph.hide_re(regex, self.programming_models[path][MODEL_INDEX_CASESENSITIVE])
+        self.get_current_graph().adjust_dims()
+        self.get_current_widget().zoom_to_fit()
+        return True
+
+#    def hide_toggled(self, cell, path, list_store):
+#        iter = list_store.get_iter((int(path),))
+#        toggled = list_store.get_value(iter, MODEL_INDEX_HIDE)
+#        toggled = not toggled
+#        self.programming_models[int(path)][MODEL_INDEX_HIDE] = toggled
+#        list_store.set(iter, MODEL_INDEX_HIDE, toggled)
+
+    def case_sensitive_toggled(self, cell, path, list_store):
+        iter = list_store.get_iter((int(path),))
+        if iter:
+            path = list_store.get_path(iter)[0]
+            if self.programming_models[path][MODEL_INDEX_EDITABLE] == False:
+                return True
+        toggled = list_store.get_value(iter, MODEL_INDEX_CASESENSITIVE)
+        toggled = not toggled
+        self.programming_models[int(path)][MODEL_INDEX_CASESENSITIVE] = toggled
+        list_store.set(iter, MODEL_INDEX_CASESENSITIVE, toggled)
+
+    def on_add_item_clicked(self, button, list_store):
+        new_item = [False, "Name", True, "Regex", True, False]
+        self.programming_models.append(new_item)
+        iter = list_store.append()
+        #list_store.set (iter, MODEL_INDEX_HIDE, new_item[MODEL_INDEX_HIDE], MODEL_INDEX_NAME, new_item[MODEL_INDEX_NAME], MODEL_INDEX_CASESENSITIVE, new_item[MODEL_INDEX_CASESENSITIVE], MODEL_INDEX_REGEX, new_item[MODEL_INDEX_REGEX], MODEL_INDEX_EDITABLE, new_item[MODEL_INDEX_EDITABLE], MODEL_INDEX_NOTEDITABLE, new_item[MODEL_INDEX_NOTEDITABLE], MODEL_INDEX_CALLBACK, self.hide_model_callback, MODEL_INDEX_ICON, gtk.STOCK_CUT, MODEL_INDEX_BUTTONNAME, "Cut")
+        list_store.set (iter, MODEL_INDEX_NAME, new_item[MODEL_INDEX_NAME], MODEL_INDEX_CASESENSITIVE, new_item[MODEL_INDEX_CASESENSITIVE], MODEL_INDEX_REGEX, new_item[MODEL_INDEX_REGEX], MODEL_INDEX_EDITABLE, new_item[MODEL_INDEX_EDITABLE], MODEL_INDEX_NOTEDITABLE, new_item[MODEL_INDEX_NOTEDITABLE], MODEL_INDEX_CALLBACK, self.hide_model_callback, MODEL_INDEX_ICON, gtk.STOCK_CUT)
+
+    def on_remove_item_clicked(self, button, treeview):
+        selection = treeview.get_selection()
+        list_store, iter = selection.get_selected()
+        if iter:
+            path = list_store.get_path(iter)[0]
+            if self.programming_models[path][MODEL_INDEX_EDITABLE] == True:
+                list_store.remove(iter)
+                del self.programming_models[ path ]
+
+
+    def on_cell_edited(self, cell, path_string, new_text, list_store):
+        iter = list_store.get_iter_from_string(path_string)
+        path = list_store.get_path(iter)[0]
+        column = cell.get_data("column")
+        if column == MODEL_INDEX_NAME:
+            self.programming_models[path][MODEL_INDEX_NAME] = new_text
+            list_store.set(iter, column, self.programming_models[path][MODEL_INDEX_NAME])
+        elif column == MODEL_INDEX_REGEX:
+            self.programming_models[path][MODEL_INDEX_REGEX] = new_text
+            list_store.set(iter, column, self.programming_models[path][MODEL_INDEX_REGEX])
 
     def on_search(self, action):
         """Callback to handle pressing of focus task button."""

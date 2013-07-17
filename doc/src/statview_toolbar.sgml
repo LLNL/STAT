@@ -78,6 +78,14 @@ The toolbar operations are defined as follows:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term><GUIbutton>Cut</GUIbutton></term>
+    <listitem>
+        <para>
+        This feature allows you to collapse the prefix tree below the implementation frames for various programming models. For instance, a user may wish to hide all calls that happen within the MPI library.  The programming models may be entered in a configuration file or added by the user. STATview looks for configuration files in [stat_install_prefix]/etc/STAT/STATview_models.conf and in $HOME/.STATview_models.conf. Programming models are specified as regular expressions, using Python's <command>re</command> module syntax, and the <command>re.search</command> function is used in favor of <command>re.match</command>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>Join</GUIbutton></term>
     <listitem>
         <para>
