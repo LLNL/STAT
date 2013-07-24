@@ -381,9 +381,6 @@ class CellRendererButtonText(gtk.CellRendererText):
         xpad = self.get_property("xpad")
         ypad = self.get_property("ypad")
         x, y, w, h = self.get_size(wid, cell_area)
-# if flags & gtk.CELL_RENDERER_SELECTED :
-# state = gtk.STATE_ACTIVE
-# shadow = gtk.SHADOW_OUT
         if flags & gtk.CELL_RENDERER_PRELIT:
             state = gtk.STATE_PRELIGHT
             shadow = gtk.SHADOW_ETCHED_OUT
@@ -1891,6 +1888,7 @@ class STATGraph(xdot.Graph):
 
     def on_original_graph(self, widget):
         """Restore the call prefix tree to its original state."""
+        widget.user_zoom = False
         modified = False
         for node in self.nodes:
             #node.set_text(node.label) # TODO, this was needed to restore TO'ed labels
@@ -2577,6 +2575,7 @@ class STATDotWidget(xdot.DotWidget):
         xdot.DotWidget.__init__(self)
         self.graph = STATGraph()
         self.drag_action = STATNullAction(self)
+        self.user_zoom = False
 
     def set_dotcode(self, dotcode, filename='<stdin>', truncate = "front", max_node_name = 64):
         """Set the dotcode for the widget.
@@ -2689,6 +2688,11 @@ class STATDotWidget(xdot.DotWidget):
             self.set_size_request(max(width, 1), max(height, 1))
         xdot.DotWidget.queue_draw(self)
 
+    def is_click(self, event, click_fuzz=4, click_timeout=1.0):
+        if event.x != self.pressx or event.y != self.pressy:
+            self.user_zoom = True
+        return xdot.DotWidget.is_click(self, event, click_fuzz, click_timeout)
+
     def get_drag_action(self, event):
         """Overloaded get_drag_action for scroll window."""
         if use_scroll_bars:
@@ -2706,6 +2710,7 @@ class STATDotWidget(xdot.DotWidget):
 
     def zoom_to_fit(self):
         """Overloaded zoom_to_fit for scroll window."""
+        self.user_zoom = False
         if use_scroll_bars:
             #rect = self.dotsw.get_allocation()
             rect = self.viewport.get_allocation()
@@ -2726,6 +2731,36 @@ class STATDotWidget(xdot.DotWidget):
             self.zoom_to_fit_on_resize = True
         else:
             return xdot.DotWidget.zoom_to_fit(self)
+
+    def on_zoom_fit(self, action):
+        self.user_zoom = False
+        self.graph.adjust_dims()
+        self.zoom_to_fit()
+
+    def on_area_scroll_event(self, area, event):
+        self.user_zoom = True
+        return xdot.DotWidget.on_area_scroll_event(self, area, event)
+
+    def on_key_press_event(self, widget, event):
+        if event.keyval in (gtk.keysyms.Page_Up, gtk.keysyms.plus, gtk.keysyms.equal, gtk.keysyms.KP_Add, gtk.keysyms.Page_Down, gtk.keysyms.minus, gtk.keysyms.KP_Subtract, gtk.keysyms.Left, gtk.keysyms.Right, gtk.keysyms.Up, gtk.keysyms.Down):
+            self.user_zoom = True
+        if event.keyval == gtk.keysyms.r:
+            global window
+            window.on_toolbar_action(None, 'Reset', self.graph.on_original_graph, (widget,))
+            return
+        ret = xdot.DotWidget.on_key_press_event(self, widget, event)
+        if event.keyval == gtk.keysyms.r:
+            self.user_zoom = False
+            self.zoom_to_fit()
+        return ret
+    
+    def on_zoom_in(self, action):
+        self.user_zoom = True
+        return xdot.DotWidget.on_zoom_in(self, action)
+
+    def on_zoom_out(self, action):
+        self.user_zoom = True
+        return xdot.DotWidget.on_zoom_out(self, action)
 
     def zoom_image(self, zoom_ratio, center=False, pos=None):
         """Overloaded zoom_image for scroll window."""
@@ -2970,6 +3005,7 @@ entered as a regular expression"""
             self.options = {}
         self.options["truncate"] = "front"
         self.options["max node name"] = 64
+        self.options["maintain user zoom"] = True
         self.combo_boxes = {}
         self.spinners = {}
         self.entries = {}
@@ -3094,10 +3130,12 @@ entered as a regular expression"""
 
     def on_prefs(self, action):
         dialog = gtk.Dialog('Preferences', self)
-        options = ["truncate", "max node name"]
+        options = ["truncate", "max node name", "maintain user zoom"]
         for option in options:
             if type(self.options[option]) == int:
                 self.pack_spinbutton(dialog.vbox, option)
+            elif type(self.options[option]) == bool:
+                self.pack_check_button(dialog.vbox, option)
             elif type(self.options[option]) == str:
                 if option in self.types:
                     self.pack_combo_box(dialog.vbox, option)
@@ -3663,27 +3701,7 @@ entered as a regular expression"""
                 highlight_list.append(node)
         self.tabs[self.notebook.get_current_page()].widget.set_highlight(highlight_list)
 
-#    def on_model_enter_cb(self, widget):
-#        """Callback to handle activation of hide model entry."""
-#        self.get_current_graph().set_undo_list()
-#        programming_models_text = ''
-#        for programming_model in self.programming_models:
-#            if programming_model[MODEL_INDEX_HIDE] == True:
-#                programming_models_text += ' ' + programming_model[MODEL_INDEX_NAME]
-#        self.get_current_graph().action_history.append('Hide Models:%s' %programming_models_text)
-#        self.update_history()
-#        for programming_model in self.programming_models:
-#            if programming_model[MODEL_INDEX_HIDE] == True:
-#                for regex in programming_model[MODEL_INDEX_REGEX].split(';'):
-#                    if regex == '':
-#                        continue
-#                    self.tabs[self.notebook.get_current_page()].widget.graph.hide_re(regex, programming_model[MODEL_INDEX_CASESENSITIVE])
-#        self.get_current_graph().adjust_dims()
-#        self.get_current_widget().zoom_to_fit()
-#        self.model_dialog.destroy()
-#        return True
-
-    def on_search_enter_cb(self, widget):
+    def on_search_enter_cb(self, widget, arg):
         """Callback to handle activation of focus task text entry."""
         entry, combo_box, match_case_check_box = arg
         text = entry.get_text()
@@ -3752,7 +3770,7 @@ entered as a regular expression"""
         column = gtk.TreeViewColumn('   Case\nSensitive', renderer, active=MODEL_INDEX_CASESENSITIVE, cell_background_set = MODEL_INDEX_NOTEDITABLE)
         column.set_sizing(gtk.TREE_VIEW_COLUMN_FIXED)
         column.set_fixed_width(70)
-        treeview.append_column(column)        
+        treeview.append_column(column)
 
         # regex column
         renderer = gtk.CellRendererText()
@@ -3760,13 +3778,7 @@ entered as a regular expression"""
         renderer.set_data("column", MODEL_INDEX_REGEX)
         renderer.set_property('cell-background', 'grey')
         column = gtk.TreeViewColumn("Regex", renderer, text=MODEL_INDEX_REGEX, editable=MODEL_INDEX_EDITABLE, cell_background_set = MODEL_INDEX_NOTEDITABLE)
-        treeview.append_column(column)           
-
-        #renderer = CellRendererButtonText()
-        #column = gtk.TreeViewColumn("Button")
-        #column.pack_start(renderer)
-        #column.set_attributes(renderer, text=MODEL_INDEX_NAME, callable=MODEL_INDEX_CALLBACK)
-        #treeview.append_column(column)
+        treeview.append_column(column)
 
         sw.add(treeview)
         vbox.pack_start(sw, True, True, 0)
@@ -3787,34 +3799,9 @@ entered as a regular expression"""
         button = gtk.Button("_Done")
         button.connect("clicked", lambda w: self.model_dialog.destroy())
         hbox.pack_start(button)
-
-#        button = gtk.Button(stock=gtk.STOCK_CANCEL)
-#        button.connect("clicked", lambda w: self.model_dialog.destroy())
-#        hbox.pack_start(button)
-#        button = gtk.Button(stock=gtk.STOCK_OK)
-#        button.connect("clicked", lambda w: self.model_dialog.destroy())
-#        hbox.pack_start(button)
-
-#        button = gtk.Button("_Hide Selected")
-#        button.connect("clicked", self.on_model_enter_cb)
-#        hbox.pack_start(button)
         self.model_dialog.vbox.pack_start(hbox, False, False, 0)
 
         self.model_dialog.show_all()
-        return True
-
-    def hide_model_callback2(self, cell, path, list_store):
-        """Callback to handle activation of hide model button."""
-        path = int(path)
-        self.get_current_graph().set_undo_list()
-        self.get_current_graph().action_history.append('Hide Model: %s' %self.programming_models[path][MODEL_INDEX_NAME])
-        self.update_history()
-        for regex in self.programming_models[path][MODEL_INDEX_REGEX].split(';'):
-            if regex == '':
-                continue
-            self.tabs[self.notebook.get_current_page()].widget.graph.hide_re(regex, self.programming_models[path][MODEL_INDEX_CASESENSITIVE])
-        self.get_current_graph().adjust_dims()
-        self.get_current_widget().zoom_to_fit()
         return True
 
     def hide_model_callback(self, path):
@@ -3831,13 +3818,6 @@ entered as a regular expression"""
         self.get_current_widget().zoom_to_fit()
         return True
 
-#    def hide_toggled(self, cell, path, list_store):
-#        iter = list_store.get_iter((int(path),))
-#        toggled = list_store.get_value(iter, MODEL_INDEX_HIDE)
-#        toggled = not toggled
-#        self.programming_models[int(path)][MODEL_INDEX_HIDE] = toggled
-#        list_store.set(iter, MODEL_INDEX_HIDE, toggled)
-
     def case_sensitive_toggled(self, cell, path, list_store):
         iter = list_store.get_iter((int(path),))
         if iter:
@@ -3853,7 +3833,6 @@ entered as a regular expression"""
         new_item = [False, "Name", True, "Regex", True, False]
         self.programming_models.append(new_item)
         iter = list_store.append()
-        #list_store.set (iter, MODEL_INDEX_HIDE, new_item[MODEL_INDEX_HIDE], MODEL_INDEX_NAME, new_item[MODEL_INDEX_NAME], MODEL_INDEX_CASESENSITIVE, new_item[MODEL_INDEX_CASESENSITIVE], MODEL_INDEX_REGEX, new_item[MODEL_INDEX_REGEX], MODEL_INDEX_EDITABLE, new_item[MODEL_INDEX_EDITABLE], MODEL_INDEX_NOTEDITABLE, new_item[MODEL_INDEX_NOTEDITABLE], MODEL_INDEX_CALLBACK, self.hide_model_callback, MODEL_INDEX_ICON, gtk.STOCK_CUT, MODEL_INDEX_BUTTONNAME, "Cut")
         list_store.set (iter, MODEL_INDEX_NAME, new_item[MODEL_INDEX_NAME], MODEL_INDEX_CASESENSITIVE, new_item[MODEL_INDEX_CASESENSITIVE], MODEL_INDEX_REGEX, new_item[MODEL_INDEX_REGEX], MODEL_INDEX_EDITABLE, new_item[MODEL_INDEX_EDITABLE], MODEL_INDEX_NOTEDITABLE, new_item[MODEL_INDEX_NOTEDITABLE], MODEL_INDEX_CALLBACK, self.hide_model_callback, MODEL_INDEX_ICON, gtk.STOCK_CUT)
 
     def on_remove_item_clicked(self, button, treeview):
@@ -4384,8 +4363,12 @@ enterered as a regular expression.
             else:
                 self.get_current_graph().undo(False)
         if data not in ['Temporally Order Children', 'View Source', 'Join Equivalence Class'] and ret == True:
-            self.get_current_graph().adjust_dims()
-            self.get_current_widget().zoom_to_fit()
+            global window
+            if self.get_current_widget().user_zoom == True and window.options["maintain user zoom"] == True:
+                self.get_current_widget().queue_draw()
+            else:
+                self.get_current_graph().adjust_dims()
+                self.get_current_widget().zoom_to_fit()
         if data == 'Join Equivalence Class' and ret == True:
             old_graph = self.get_current_graph()
             self.on_reset_layout()
@@ -4402,6 +4385,7 @@ def STATview_main(argv):
     if xdot.__version__ != '0.4':
         sys.stderr.write('STATview requires xdot version 0.4')
         sys.exit(1)
+    global window
     window = STATDotWindow()
     if len(argv) >= 2:
         i = -1

@@ -1,3 +1,6 @@
+2013-07-24 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added maintain user zoom option for node manipulation operations
+
 2013-07-17 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : new filter/searchable ptab dialog
 	* scripts/STATview.py : new cut/hide programming models interface
