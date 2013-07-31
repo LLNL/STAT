@@ -177,6 +177,39 @@ if have_pygments:
                 outfile.write(value)
 
 
+## The ProcTab class stores the process table
+class ProcTab(object):
+    def __init__(self):
+        self.launcher_host = None
+        self.launcher_pid = None
+        self.executable_path = None
+        self.executable_paths = []
+        self.process_list = []
+
+
+def get_ProcTab(proctab_file_path):
+    with open(proctab_file_path, 'r') as f:
+        launcher = f.next().strip('\n').split(':')
+        proctab = ProcTab()
+        proctab.launcher_host = launcher[0]
+        proctab.launcher_pid = int(launcher[1])
+        for line in f:
+            line = line.strip('\n').split()
+            rank = int(line[0])
+            host_pid = line[1].split(':')
+            host = host_pid[0]
+            pid = int(host_pid[1])
+            exe = line[2]
+            if exe in proctab.executable_paths:
+                index = proctab.executable_paths.index(exe)
+            else:
+                index = len(proctab.executable_paths)
+                proctab.executable_paths.append(exe)
+            if proctab.executable_path is None:
+                proctab.executable_path = exe
+            proctab.process_list.append((rank, host, pid, index))
+    return proctab
+
 ## \param function_name - the edge label string
 #  \return true if the input function is an MPI function
 #

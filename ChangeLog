@@ -1,3 +1,13 @@
+2013-07-31 Gregory L. Lee <lee218@llnl.gov>
+	* scr/STAT.i : added higher-level Python wrapping
+	* examples/scripts/script_test.py : added basic test suite
+	* src/STAT_FrontEnd.C : re-enabled MRNet failure recovery with FGFS
+
+2013-07-30 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : disabled serial attach for BlueGene
+	* src/STAT_FrontEnd.C : first-level of check node access look for localhost
+	* src/STATD.C : add serial processes after log enabled
+
 2013-07-24 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATview.py : added maintain user zoom option for node manipulation operations
 

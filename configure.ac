@@ -113,6 +113,7 @@ AC_CONFIG_FILES([Makefile
                  scripts/STATview
                  scripts/STATBench
                  scripts/stat-cl
+                 scripts/stat-script
                  scripts/stat-gui
                  scripts/stat-view
                  scripts/stat-bench

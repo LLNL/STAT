@@ -225,7 +225,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 examplesdir = $(pkgdatadir)/examples/bin
-dist_examples_SCRIPTS = python_test.py
+dist_examples_SCRIPTS = python_test.py script_test.py
 all: all-am
 
 .SUFFIXES:
@@ -238,9 +238,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign examples/scripts/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu examples/scripts/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign examples/scripts/Makefile
+	  $(AUTOMAKE) --gnu examples/scripts/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \

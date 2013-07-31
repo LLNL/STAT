@@ -23,7 +23,7 @@ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendr
 __version__ = "2.0.0"
 
 import STAThelper
-from STAThelper import var_spec_to_string, get_task_list
+from STAThelper import var_spec_to_string, get_task_list, ProcTab, get_ProcTab
 import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
 import sys, DLFCN
@@ -39,15 +39,6 @@ import gtk
 import gobject
 import re
 from collections import defaultdict
-
-## The ProcTab class stores the process table
-class ProcTab(object):
-    def __init__(self):
-        self.launcher_host = None
-        self.launcher_pid = None
-        self.executable_path = None
-        self.executable_paths = []
-        self.process_list = []
 
 ## The STATGUI window adds STAT operations to the STATview window.
 class STATGUI(STATDotWindow):
@@ -395,7 +386,7 @@ host[1-10,12,15-20];otherhost[30]
             text_view.set_cursor_visible(False)
             frame.add(text_view)
             vbox.pack_start(frame, False, False, 0)
-        
+
         proctab_frame = gtk.Frame('Process Table (rank host:PID exe_index)')
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label('Filter Ranks'), False, False, 5)
@@ -1633,13 +1624,11 @@ host[1-10,12,15-20];otherhost[30]
             return True
 
         self.proctab_file_path = ''
-        try:
-            out_dir = self.STAT.getOutDir()
-            file_prefix = self.STAT.getFilePrefix()
-            self.proctab_file_path = out_dir + '/' + file_prefix + '.ptab'
-        except:
-            pass
+        out_dir = self.STAT.getOutDir()
+        file_prefix = self.STAT.getFilePrefix()
+        self.proctab_file_path = out_dir + '/' + file_prefix + '.ptab'
         if not os.path.exists(self.proctab_file_path):
+            failed_ptab_path = self.proctab_file_path
             directory = os.path.dirname(os.path.abspath(self.get_current_graph().cur_filename))
             self.proctab_file_path = ''
             for file in os.listdir(directory):
@@ -1647,30 +1636,11 @@ host[1-10,12,15-20];otherhost[30]
                     self.proctab_file_path = directory + '/' + file
                     break
         if self.proctab_file_path == '':
-            show_error_dialog('Failed to find process table .ptab file.', self)
+            show_error_dialog('Failed to find process table file %s or .ptab file in %s.' %(failed_ptab_path, directory), self)
             return False
 
         try:
-            with open(self.proctab_file_path, 'r') as f:
-                launcher = f.next().strip('\n').split(':')
-                self.proctab = ProcTab()
-                self.proctab.launcher_host = launcher[0]
-                self.proctab.launcher_pid = int(launcher[1])
-                for line in f:
-                    line = line.strip('\n').split()
-                    rank = int(line[0])
-                    host_pid = line[1].split(':')
-                    host = host_pid[0]
-                    pid = int(host_pid[1])
-                    exe = line[2]
-                    if exe in self.proctab.executable_paths:
-                        index = self.proctab.executable_paths.index(exe)
-                    else:
-                        index = len(self.proctab.executable_paths)
-                        self.proctab.executable_paths.append(exe)
-                    if self.proctab.executable_path is None:
-                        self.proctab.executable_path = exe
-                    self.proctab.process_list.append((rank, host, pid, index))
+            self.proctab = get_ProcTab(self.proctab_file_path)
         except IOError as e:
             show_error_dialog('%s\nfailed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' %(repr(e), self.proctab_file_path), self)
             return False
@@ -1820,7 +1790,7 @@ host[1-10,12,15-20];otherhost[30]
                 i += 1
                 stop_list[i] = rank
             self.on_detach(None, stop_list, len(subset_list))
-        
+
         sys.stdout.write('fork exec %s %s\n' %(debugger, arg_list))
         if os.fork() == 0:
             self.exec_and_exit(arg_list)

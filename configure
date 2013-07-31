@@ -19760,7 +19760,7 @@ done
 
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile scripts/STAT scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile scripts/STAT scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-script scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -20814,6 +20814,7 @@ do
     "scripts/STATview") CONFIG_FILES="$CONFIG_FILES scripts/STATview" ;;
     "scripts/STATBench") CONFIG_FILES="$CONFIG_FILES scripts/STATBench" ;;
     "scripts/stat-cl") CONFIG_FILES="$CONFIG_FILES scripts/stat-cl" ;;
+    "scripts/stat-script") CONFIG_FILES="$CONFIG_FILES scripts/stat-script" ;;
     "scripts/stat-gui") CONFIG_FILES="$CONFIG_FILES scripts/stat-gui" ;;
     "scripts/stat-view") CONFIG_FILES="$CONFIG_FILES scripts/stat-view" ;;
     "scripts/stat-bench") CONFIG_FILES="$CONFIG_FILES scripts/stat-bench" ;;
