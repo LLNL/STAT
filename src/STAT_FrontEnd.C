@@ -193,8 +193,8 @@ STAT_FrontEnd::STAT_FrontEnd()
     }
     else
     {
-        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: STAT_FGFS_FILTER_PATH environment variable not set\n");
-        exit(STAT_ALLOCATE_ERROR);
+        printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "STAT_FGFS_FILTER_PATH environment variable not set\n");
+        exit(STAT_ARG_ERROR);
     }
 #endif
 
@@ -440,6 +440,10 @@ StatError_t STAT_FrontEnd::launchAndSpawnDaemons(char *remoteNode, bool isStatBe
 
 StatError_t STAT_FrontEnd::setupForSerialAttach()
 {
+#ifdef BGL
+    printMsg(STAT_WARNING, __FILE__, __LINE__, "Serial attach not supported on Bluegene systems\n");
+    return STAT_WARNING;
+#endif
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Setting up environment for seral attach...\n");
     gsLmonState = gsLmonState | 0x00000002;
     nApplProcs_ = proctabSize_;
@@ -860,10 +864,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         return STAT_MRNET_ERROR;
     }
 
-#ifdef STAT_FGFS
-    network_->set_FailureRecovery(false);
-#endif
-
     gEndTime.setTime();
     addPerfData("\tMRNet Constructor Time", (gEndTime - gStartTime).getDoubleTime());
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tMRNet initialized\n");
@@ -877,7 +877,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         return STAT_MRNET_ERROR;
     }
 
-#ifndef STAT_FGFS
     boolRet = network_->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_REMOVE_NODE, nodeRemovedCb, (void *)this);
     if (boolRet == false)
     {
@@ -891,7 +890,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to register MRNet topology change callback\n");
         return STAT_MRNET_ERROR;
     }
-#endif
 
     leafInfo_.networkTopology = network_->get_NetworkTopology();
     if (leafInfo_.networkTopology == NULL)
@@ -2630,7 +2628,7 @@ StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned i
 
     gStartTime.setTime();
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Sampling traces...\n");
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d traces with %d frequency, %d retries with %d frequency\n", nTraces, traceFrequency, nRetries, retryFrequency);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d traces with %d frequency, %d retries with %d frequency, type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, sampleType);
 
     if (broadcastStream_->send(PROT_SAMPLE_TRACES, "%ud %ud %ud %ud %ud %s", nTraces, traceFrequency, nRetries, retryFrequency, sampleType, variableSpecification) == -1)
     {
@@ -4030,7 +4028,7 @@ StatError_t STAT_FrontEnd::setRanksList()
                 missingRanks_.insert(proctab_[i].mpirank);
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Missing ranks list generated with %d tasks\n", missingRanks_.size());
     }
-    
+
     return STAT_OK;
 }
 
@@ -4275,7 +4273,7 @@ bool STAT_FrontEnd::checkNodeAccess(char *node)
     /* TODO: this is generally not good... a quick check for clusters where each node has the same hostname prefix */
     /* A first level filter, compare the first 3 letters */
     gethostname(checkHost, BUFSIZE);
-    if (strncmp(node, checkHost, 3) != 0)
+    if (strncmp(node, checkHost, 3) != 0 && strcmp(node, "localhost") != 0)
         return false;
 
     envValue = getenv("XPLAT_RSH");
@@ -4314,11 +4312,11 @@ bool STAT_FrontEnd::checkNodeAccess(char *node)
 #endif
 }
 
-        
+
 StatError_t STAT_FrontEnd::addDaemonLogArgs(int &daemonArgc, char ** &daemonArgv)
 {
     int current;
-    
+
     if (daemonArgc == 0)
         daemonArgc = 1;
     current = daemonArgc - 1;
@@ -4446,7 +4444,7 @@ StatError_t STAT_FrontEnd::addDaemonLogArgs(int &daemonArgc, char ** &daemonArgv
                 return STAT_ALLOCATE_ERROR;
             }
             current++;
-    
+
             daemonArgv[current] = (char *)malloc(8 * sizeof(char));
             snprintf(daemonArgv[current], 8, "%d", mrnetOutputLevel_);
             current++;

@@ -485,9 +485,10 @@ void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
     StatError_t statError;
     graphlib_error_t graphlibError;
     graphlib_graph_p prefixTree2d = NULL, prefixTree3d = NULL;
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STATD intercepted signal %d\n", sig);
     registerSignalHandlers(false);
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STATD intercepted signal\n");
     if (swDebugFile_)
     {
         addrListSize = backtrace(stackSize, maxStackSize);
@@ -577,6 +578,8 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
     string remotePid = pidString, remoteHost;
 
     rank++;
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Adding serial process %s with rank %d\n", pidString, rank);
+
     delimPos = remotePid.find_first_of("@");
     if (delimPos != string::npos)
     {
@@ -613,7 +616,7 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
     else
         pid = atoi(remotePid.c_str());
 
-    if (strcmp(remoteHost.c_str(), "localhost") == 0 || strcmp(remoteHost.c_str(), localHostName_) == 0)
+    if (strcmp(remoteHost.c_str(), "localhost") == 0 || strcmp(remoteHost.c_str(), localHostName_) == 0 || strcmp(remoteHost.c_str(), localIp_) == 0)
     {
         proctabSize_++;
         proctab_ = (MPIR_PROCDESC_EXT *)realloc(proctab_, proctabSize_ * sizeof(MPIR_PROCDESC_EXT));
@@ -889,7 +892,7 @@ StatError_t STAT_BackEnd::mainLoop()
             continue;
         else if (intRet != 1)
         {
-            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::recv() failure\n");
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::recv() failure %d\n", intRet);
             return STAT_MRNET_ERROR;
         }
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Packet received with tag %d (first = %d)\n", tag, FirstApplicationTag);
@@ -1243,7 +1246,7 @@ StatError_t STAT_BackEnd::attach()
 
     for (i = 0; i < proctabSize_; i++)
     {
-//TODO
+//TODO:
 //        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
 
 #if defined(GROUP_OPS)
@@ -1599,7 +1602,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     map<int, Walker *>::iterator processMapIter;
     map<int, StatBitVectorEdge_t *>::iterator nodeInEdgeMapIter;
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with variables %s\n", nTraces, traceFrequency, nRetries, retryFrequency, variableSpecification);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with variables %s and type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, variableSpecification, sampleType_);
 
     wasRunning = isRunning_;
     if (sampleType_ & STAT_SAMPLE_CLEAR_ON_SAMPLE)
@@ -1822,9 +1825,12 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                     printMsg(STAT_WARNING, __FILE__, __LINE__, "Get threads failed... using null thread id instead to just check main thread\n");
                     threads.push_back(NULL_THR_ID);
                 }
+                else
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from %d threads\n", threads.size());
             }
         }
     }
+
 
     /* Loop over the threads and get the traces */
     for (j = 0; j < threads.size(); j++)

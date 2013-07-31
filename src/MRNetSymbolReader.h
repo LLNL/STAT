@@ -224,6 +224,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                 fclose(fp);
                 return NULL;
             }
+            fileContentsLength = size;
             fseek(fp, 0, SEEK_SET);
             fileContents = (char *)malloc(size * sizeof(char));
             if (fileContents == NULL)
@@ -236,30 +237,18 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
             }
             fread(fileContents, size, 1, fp);
             fclose(fp);
-
-            msr = openSymReader((char *)fileContents, size, pathName);
-            if (msr == NULL)
-            {
-                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        gStatOutFp, "openSymReader returned NULL for %s %d\n",
-                        pathName.c_str(), size));
-                free(fileContents);
-                return NULL;
-            }
         }
-        else
+
+        mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                gStatOutFp, "reading contents of %s\n", pathStr));
+        msr = openSymReader((char *)fileContents, fileContentsLength,
+                            pathName);
+        if (msr == NULL)
         {
             mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                    gStatOutFp, "reading contents of %s\n", pathStr));
-            msr = openSymReader((char *)fileContents, fileContentsLength,
-                                pathName);
-            if (msr == NULL)
-            {
-                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        gStatOutFp, "openSymReader returned NULL for %s %d\n",
-                        pathName.c_str(), fileContentsLength));
-                return NULL;
-            }
+                    gStatOutFp, "openSymReader returned NULL for %s %d\n",
+                    pathName.c_str(), fileContentsLength));
+            return NULL;
         }
         openReaders_[pathName] = msr;
         msr->refCount_ = 1;

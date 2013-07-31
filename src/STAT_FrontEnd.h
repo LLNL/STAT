@@ -279,7 +279,7 @@ class STAT_FrontEnd
             \param sampleType - the level of detail to sample
             \param nTraces - the number of traces to gather per task
             \param traceFrequency - the amount of time to wait between samples
-            \param nRetries - the number of times to attempt to gather a 
+            \param nRetries - the number of times to attempt to gather a
                    complete trace
             \param retryFrequency - the amount of time to wait between retries
             \param blocking - [optional] set to true if blocks until all BE
