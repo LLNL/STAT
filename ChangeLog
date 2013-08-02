@@ -1,3 +1,6 @@
+2013-08-01 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : maintain user zoom for undo/redo
+
 2013-07-31 Gregory L. Lee <lee218@llnl.gov>
 	* scr/STAT.i : added higher-level Python wrapping
 	* examples/scripts/script_test.py : added basic test suite

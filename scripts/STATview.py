@@ -3618,8 +3618,12 @@ entered as a regular expression"""
             if name != None:
                 self.get_current_graph().action_history.append(name)
             self.update_history()
-            self.get_current_graph().adjust_dims()
-            self.get_current_widget().zoom_to_fit()
+            global window
+            if self.get_current_widget().user_zoom == True and window.options["maintain user zoom"] == True and (function == self.get_current_graph().undo or function == self.get_current_graph().redo):
+                self.get_current_widget().queue_draw()
+            else:
+                self.get_current_graph().adjust_dims()
+                self.get_current_widget().zoom_to_fit()
         else:
             self.get_current_graph().undo(False)
         return True
