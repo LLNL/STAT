@@ -1207,15 +1207,18 @@ StatError_t STAT_BackEnd::mainLoop()
 StatError_t STAT_BackEnd::attach()
 {
     int i;
-    Walker *proc;
+    Walker *proc = NULL;
     map<int, Walker *>::iterator processMapIter;
 #if defined(GROUP_OPS)
     vector<ProcessSet::AttachInfo> aInfo;
     ProcessSet::AttachInfo pAttach;
     Process::ptr pcProc;
+
+    BGQData::setStartupTimeout(600);
 #endif
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
+
 
 #if defined(GROUP_OPS)
     ThreadTracking::setDefaultTrackThreads(false);
