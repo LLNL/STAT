@@ -23,7 +23,7 @@ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendr
 __version__ = "2.0.0"
 
 import STAThelper
-from STAThelper import var_spec_to_string, get_task_list, ProcTab, get_ProcTab
+from STAThelper import var_spec_to_string, get_task_list, ProcTab, get_ProcTab, decompose_node
 import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
 import sys, DLFCN

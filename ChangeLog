@@ -1,3 +1,6 @@
+2013-09-05 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : need to pick up decompose_node for TO
+
 2013-08-29 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_BackEnd.C : set BG/Q timeout value to 10 minutes
 	* src/STAT_BackEnd.C : fixed valgrind-reported uninit memory condition
