@@ -23,8 +23,12 @@ DysectAPI::Act* Act::stackTrace() {
   return new StackTrace();
 }
 
-DysectAPI::Act* Act::detach(AggScope scope) {
-  return new Detach(scope);
+DysectAPI::Act* Act::detachAll(AggScope scope) {
+  return new DetachAll(scope);
+}
+
+DysectAPI::Act* Act::detach() {
+  return new Detach();
 }
 
 DysectAPI::Act::Act() : category(unknownCategory),
@@ -39,6 +43,9 @@ Stat::Stat(AggScope scope, int traces, int frequency, bool threads) : traces(tra
   lscope = scope;
 }
 
+bool Stat::prepare() {
+  return true;
+}
 
 StackTrace::StackTrace() {
   type = stackTraceType;
@@ -187,9 +194,13 @@ bool Trace::findAggregates() {
 }
 
 
-Detach::Detach(AggScope scope) {
-  type = detachType;
+DetachAll::DetachAll(AggScope scope) {
+  type = detachAllType;
   lscope = scope;
+}
+
+Detach::Detach() {
+  type = detachType;
 }
 
 vector<Act*> DysectAPI::Acts(Act* act1, Act* act2, Act* act3, Act* act4, Act* act5, Act* act6, Act* act7, Act* act8) {

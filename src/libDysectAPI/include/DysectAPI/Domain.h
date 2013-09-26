@@ -70,6 +70,7 @@ namespace DysectAPI {
     tag_t continueTag;
     tag_t statusTag;
     tag_t probeEnabledTag;
+    tag_t probeNotifyTag;
 
     DysectErrorCode createStreamGeneric();
 
@@ -107,7 +108,8 @@ namespace DysectAPI {
       errorTagId        = 5,
       continueTagId     = 6,
       statusTagId       = 7,
-      probeEnabledTagId = 8
+      probeEnabledTagId = 8,
+      probeNotifyTagId  = 9
     };
 
     static bool isInitTag(tag_t tag)          { return isTag(tag, initTagId); }
@@ -118,6 +120,7 @@ namespace DysectAPI {
     static bool isContinueTag(tag_t tag)      { return isTag(tag, continueTagId); }
     static bool isStatusTag(tag_t tag)        { return isTag(tag, statusTagId); }
     static bool isProbeEnabledTag(tag_t tag)  { return isTag(tag, probeEnabledTagId); }
+    static bool isProbeNotifyTag(tag_t tag)   { return isTag(tag, probeNotifyTagId); }
 
     tag_t getInitTag()          { return initTag; }
     tag_t getInitAckTag()       { return initAckTag; }
@@ -127,6 +130,7 @@ namespace DysectAPI {
     tag_t getContinueTag()      { return continueTag; }
     tag_t getStatusTag()        { return statusTag; }
     tag_t getProbeEnabledTag()  { return probeEnabledTag; }
+    tag_t getProbeNotifyTag()   { return probeNotifyTag; }
 
     tag_t getId();
 

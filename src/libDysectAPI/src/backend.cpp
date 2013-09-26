@@ -14,9 +14,11 @@ using namespace Stackwalker;
 
 enum            Backend::BackendState Backend::state = start; 
 bool            Backend::streamBindAckSent = false;
+int             Backend::pendingExternalAction = 0;
 Stream*         Backend::controlStream = 0;
 set<tag_t>      Backend::missingBindings;
 WalkerSet*      Backend::walkerSet;
+vector<Probe *> Backend::probesPendingAction;
 ProcessSet::ptr Backend::enqueuedDetach;
 
 DysectAPI::DysectErrorCode Backend::bindStream(int tag, Stream* stream) {
@@ -94,6 +96,12 @@ DysectAPI::DysectErrorCode Backend::enableProbeRoots() {
   return OK;
 }
 
+Process::cb_ret_t Backend::handleEventPub(Dyninst::ProcControlAPI::Process::const_ptr curProcess,
+                                 Dyninst::ProcControlAPI::Thread::const_ptr curThread,
+                                 DysectAPI::Event* dysectEvent) {
+  return handleEvent(curProcess, curThread, dysectEvent);
+}
+
 Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_ptr curProcess,
                                  Dyninst::ProcControlAPI::Thread::const_ptr curThread,
                                  DysectAPI::Event* dysectEvent) {
@@ -148,7 +156,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
 
             } else if(dom->getWaitTime() != Wait::NoWait) {
               if(!DysectAPI::SafeTimer::syncTimerRunning(probe)) {
-                Err::verbose(true, "Start timer and enqueue: %x", dom->getId());
+                Err::verbose(true, "Start timer (%ld) and enqueue: %x", dom->getWaitTime(), dom->getId());
                 DysectAPI::SafeTimer::startSyncTimer(probe);
               } else {
                 Err::verbose(true, "Timer already running - just enqueue");
@@ -171,7 +179,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
             }
             
             if(probe->waitForOthers()) {
-              Err::verbose(true, "Wait for group members");
+              Err::verbose(true, "Wait (%ld) for group members", dom->getWaitTime());
               probe->addWaitingProc(curProcess);
 
               if((dom->getWaitTime() == Wait::inf) && (probe->staticGroupWaiting())) {
@@ -179,9 +187,11 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                 
                 if(probe->doNotify()) {
                   probe->sendEnqueuedNotifications();
+                  probesPendingAction.push_back(probe);
                 }
   
-                probe->sendEnqueuedActions();
+                if (Backend::getPendingExternalAction == 0)
+                    probe->sendEnqueuedActions();
               }
             
               retState = Process::cbThreadStop;
@@ -263,6 +273,7 @@ DysectAPI::DysectErrorCode Backend::pauseApplication() {
     return OK;
 
   if(allProcs->stopProcs()) {
+    Err::info(true, "stop all processes");
     return OK;
   } else {
     return Err::warn(Error, "Procset could not stop processes");
@@ -286,12 +297,22 @@ DysectAPI::DysectErrorCode Backend::resumeApplication() {
     return OK;
 
   if(allProcs->continueProcs()) {
+    Err::info(true, "continue all processes");
     return OK;
   } else {
     return Err::warn(Error, "Procset could not continue processes");
   }
 }
 
+
+int Backend::getPendingExternalAction() {
+  return pendingExternalAction;
+}
+
+void  Backend::setPendingExternalAction(int pending) {
+  Err::info(true, "set pendingExternalAction %d %d", pendingExternalAction, pending);
+  pendingExternalAction = pending;
+}
 
 DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stream* stream) {
   
@@ -498,11 +519,9 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
   set<DysectAPI::Event*> subscribedEvents;
 
   if(Async::getSignalSubscribers(subscribedEvents, signum)) {
-    
     set<DysectAPI::Event*>::iterator eventIter = subscribedEvents.begin();
     for(;eventIter != subscribedEvents.end(); eventIter++) {
-      Err::verbose(true, "Handling signal..");
-
+      Err::verbose(true, "Handling signal %d.", signum);
       DysectAPI::Event* dysectEvent = *eventIter;
       handleEvent(curProcess, curThread, dysectEvent);
     }
@@ -520,7 +539,7 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
       case SIGTRAP:
       case SIGSEGV:
       case SIGFPE:
-        Err::info(true, "Non recoverable signal %d - stopping process", signum);
+        Err::info(true, "Non recoverable signal %d - stopping process and enquing detach", signum);
         retState = Process::cbProcStop;
 
         // Enqueue termination
@@ -559,7 +578,7 @@ Process::cb_ret_t Backend::handleProcessExit(ProcControlAPI::Event::const_ptr ev
   Process::const_ptr curProcess = ev->getProcess();
   Thread::const_ptr curThread = ev->getThread();
 
-  Err::verbose(true, "Process %d stopped", curProcess->getPid());
+  Err::verbose(true, "Process %d exited", curProcess->getPid());
   set<Event*>& events = Async::getExitSubscribers();
 
   Err::verbose(true, "%d events subscribed", events.size());
@@ -588,7 +607,7 @@ Process::cb_ret_t Backend::handleGenericEvent(ProcControlAPI::Event::const_ptr e
 
 DysectAPI::DysectErrorCode Backend::handleTimerEvents() {
   if(SafeTimer::anySyncReady()) {
-    Err::verbose(true, "Handle timer events");
+    Err::verbose(true, "Handle timer notifications");
     vector<Probe*> readyProbes = SafeTimer::getAndClearSyncReady();
     vector<Probe*>::iterator probeIter = readyProbes.begin();
 
@@ -599,16 +618,34 @@ DysectAPI::DysectErrorCode Backend::handleTimerEvents() {
       Err::verbose(true, "Sending enqueued notifications for timed probe: %x", dom->getId());
 
       probe->sendEnqueuedNotifications();
-      probe->sendEnqueuedActions();
+      probesPendingAction.push_back(probe);
     }
   }
 
   return OK;
 }
 
+
+DysectAPI::DysectErrorCode Backend::handleTimerActions() {
+  if (probesPendingAction.size() > 0) {
+    Err::verbose(true, "Handle timer actions");
+    vector<Probe*>::iterator probeIter = probesPendingAction.begin();
+    for(;probeIter != probesPendingAction.end(); probeIter++) {
+      Probe* probe = *probeIter;
+      Domain* dom = probe->getDomain();
+
+      Err::verbose(true, "Sending enqueued actions for timed probe: %x", dom->getId());
+      probe->sendEnqueuedActions();
+    }
+  }
+  probesPendingAction.clear();
+  return OK;
+}
+
 DysectAPI::DysectErrorCode Backend::handleQueuedOperations() {
 
   detachEnqueued();
+  handleTimeEvent();
   Probe::processRequests();
 
   if(enqueuedDetach) {
@@ -635,14 +672,38 @@ DysectAPI::DysectErrorCode Backend::detachEnqueued() {
   
   if(!enqueuedDetach->empty()) {
     enqueuedDetach = ProcessMgr::filterExited(enqueuedDetach);
-    if(enqueuedDetach && !enqueuedDetach->empty())
+    if(enqueuedDetach && !enqueuedDetach->empty()) {
+      Err::log(true, "Detaching from %d processes", enqueuedDetach->size());
       ProcessMgr::detach(enqueuedDetach);
+    }
   }
 
   return OK;
 }
 
 Process::cb_ret_t Backend::handleProcessEvent(ProcControlAPI::Event::const_ptr ev) {
+  return Process::cbDefault;
+}
+
+Process::cb_ret_t Backend::handleTimeEvent() {
+  // Get all subscribed events
+  set<Event*>& events = Time::getTimeSubscribers();
+
+  set<Event*>::iterator eventIter = events.begin();
+  for(;eventIter != events.end(); eventIter++) {
+    Event* event = *eventIter;
+    ProcessSet::ptr procset = ((Time *)event)->getProcset();
+    ProcessSet::iterator procIter = procset->begin();
+    for(;procIter != procset->end(); procIter++) {
+      Process::ptr procPtr = *procIter;
+      if(event && event->isEnabled(procPtr)) {
+       Thread::ptr threadPtr = procPtr->threads().getInitialThread();
+       Walker *proc = (Walker *)procPtr->getData();
+       Backend::handleEventPub(procPtr, threadPtr, event);
+      }
+    }
+  }
+
   return Process::cbDefault;
 }
 

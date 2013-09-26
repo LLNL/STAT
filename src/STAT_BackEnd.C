@@ -735,6 +735,11 @@ StatError_t STAT_BackEnd::connect(int argc, char **argv)
     return STAT_OK;
 }
 
+DysectAPI::BE *STAT_BackEnd::getDysectBe()
+{
+    return dysectBE_;
+}
+
 StatError_t STAT_BackEnd::mainLoop()
 {
     int tag = 0, ackTag, intRet, nEqClasses, swNotificationFd, mrnNotificationFd, maxFd, nodeId, bitVectorLength, stopArrayLen, majorVersion, minorVersion, revisionVersion;
@@ -766,20 +771,15 @@ StatError_t STAT_BackEnd::mainLoop()
     do
     {
 #ifdef DYSECTAPI
-        if (dysectBE)
+        if (dysectBE_)
         {
-//         // Give run out timers a chance to run
-//          dysectBE->disableTimers();
-
-            dysectBE->handleQueuedOperations();
-            dysectBE->handleTimerEvents();
+            DysectAPI::DysectErrorCode dysectRet = dysectBE_->handleAll();
+            if (dysectRet != DysectAPI::OK)
+            {
+                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "failure on call to dysectBE_ hanldeAll\n");
+                return STAT_STACKWALKER_ERROR;
+            }
         }
-
-        ProcControlAPI::Process::handleEvents(false);
-
-//        if(dysectBE) {
-//          dysectBE->enableTimers();
-//        }
 #endif
 
         /* Set the stackwalker notification file descriptor */
@@ -932,6 +932,10 @@ StatError_t STAT_BackEnd::mainLoop()
                     return STAT_GRAPHLIB_ERROR;
                 }
                 ackTag = PROT_SEND_LAST_TRACE_RESP;
+
+#ifdef DYSECTAPI
+                dysectBE_->setReturnControlToDysect(true);
+#endif
                 break;
 
             case PROT_SEND_TRACES:
@@ -949,6 +953,10 @@ StatError_t STAT_BackEnd::mainLoop()
                     return STAT_GRAPHLIB_ERROR;
                 }
                 ackTag = PROT_SEND_TRACES_RESP;
+
+#ifdef DYSECTAPI
+                dysectBE_->setReturnControlToDysect(true);
+#endif
                 break;
 
             case PROT_SEND_NODE_IN_EDGE:
@@ -1129,11 +1137,11 @@ StatError_t STAT_BackEnd::mainLoop()
                 // Load library
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Library to load: %s\n", libraryPath);
 
-                dysectBE = new DysectAPI::BE(libraryPath, this);
+                dysectBE_ = new DysectAPI::BE(libraryPath, this);
 
                 DysectAPI::ProcessMgr::init(procSet_);
 
-                if(dysectBE->isLoaded())
+                if(dysectBE_->isLoaded())
                 {
                     intRet = 0;
                 }
@@ -1150,9 +1158,9 @@ StatError_t STAT_BackEnd::mainLoop()
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Shutting down\n");
 
 #ifdef DYSECTAPI
-                if(dysectBE)
+                if(dysectBE_)
                 {
-                    dysectBE->disableTimers();
+                    dysectBE_->disableTimers();
                 }
 #endif
                 break;
@@ -1162,10 +1170,10 @@ StatError_t STAT_BackEnd::mainLoop()
                 // DysectAPI tags encode additional details
                 if(DysectAPI::isDysectTag(tag))
                 {
-                    if(dysectBE)
+                    if(dysectBE_)
                     {
                         //// If tag is Dysect related - relay packet to DysecAPI session
-                        if(dysectBE->relayPacket(&packet, tag, stream) == DysectAPI::OK)
+                        if(dysectBE_->relayPacket(&packet, tag, stream) == DysectAPI::OK)
                         {
                             // Packet dealt with by DysectAPI
                         }
@@ -1189,7 +1197,7 @@ StatError_t STAT_BackEnd::mainLoop()
 
         if (ackTag == PROT_SEND_NODE_IN_EDGE_RESP || ackTag == PROT_SEND_LAST_TRACE_RESP || ackTag == PROT_SEND_TRACES_RESP)
         {
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE\n");
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE with tag %d\n", ackTag);
             bitVectorLength = statBitVectorLength(proctabSize_);
 #ifdef MRNET40
             if (stream->send(ackTag, "%Ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
@@ -1300,7 +1308,7 @@ StatError_t STAT_BackEnd::attach()
                     pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
                     walkerSet_->insert(proc);
 #ifdef DYSECTAPI
-                    mpiRankToProcessMap.insert(pair<int, Process::ptr>(proctab_[i].mpirank, pcProc));
+                    mpiRankToProcessMap_.insert(pair<int, Process::ptr>(proctab_[i].mpirank, pcProc));
 #endif
                 }
             }
@@ -1355,6 +1363,7 @@ StatError_t STAT_BackEnd::pause()
     {
         if(DysectAPI::ProcessMgr::isActive())
         {
+            DysectAPI::ProcessMgr::setWasRunning();
             ProcessSet::ptr allProcs = DysectAPI::ProcessMgr::getAllProcs();
             if(allProcs && !allProcs->empty())
                 allProcs->stopProcs();
@@ -1388,8 +1397,9 @@ StatError_t STAT_BackEnd::resume()
     {
         if(DysectAPI::ProcessMgr::isActive())
         {
-            ProcessSet::ptr allProcs = DysectAPI::ProcessMgr::getAllProcs();
-            allProcs->continueProcs();
+            ProcessSet::ptr stopped = DysectAPI::ProcessMgr::getWasRunning();
+            if(stopped && !stopped->empty())
+                stopped->continueProcs();
 
         }
         else
@@ -2235,11 +2245,33 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
 
     gBePtr = this;
     
-    if (procSet_->anyTerminated())
+    if (procSet_->anyDetached())
+    {
+        ProcessSet::ptr detachedSubset = procSet_->getDetachedSubset();
+        for (ProcessSet::iterator i = detachedSubset->begin(); i != detachedSubset->end(); i++)
+        {
+            stringstream ss;
+            ss << "[Task Detached]";
+            Walker *walker = static_cast<Walker *>((*i)->getData());
+            map<Walker *, int>::iterator j = procsToRanks_.find(walker);
+            if (j != procsToRanks_.end())
+                exitedProcesses_[ss.str()].insert(j->second);
+        }
+        for (WalkerSet::iterator i = walkerSet_->begin(); i != walkerSet_->end(); )
+        {
+            ProcDebug *pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
+            if (detachedSubset->find(pDebug->getProc()) != detachedSubset->end())
+            {
+                walkerSet_->erase(i++);
+                continue;
+            }
+            i++;
+        }
+        procSet_ = procSet_->set_difference(detachedSubset);
+    }
+    if (procSet_->anyExited())
     {
         ProcessSet::ptr exitedSubset = procSet_->getExitedSubset();
-        ProcessSet::ptr crashedSubset = procSet_->getCrashedSubset();
-
         for (ProcessSet::iterator i = exitedSubset->begin(); i != exitedSubset->end(); i++)
         {
             stringstream ss;
@@ -2249,6 +2281,21 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
             if (j != procsToRanks_.end())
                 exitedProcesses_[ss.str()].insert(j->second);
         }
+        for (WalkerSet::iterator i = walkerSet_->begin(); i != walkerSet_->end(); )
+        {
+            ProcDebug *pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
+            if (exitedSubset->find(pDebug->getProc()) != exitedSubset->end())
+            {
+                walkerSet_->erase(i++);
+                continue;
+            }
+            i++;
+        }
+        procSet_ = procSet_->set_difference(exitedSubset);
+    }
+    if (procSet_->anyCrashed())
+    {
+        ProcessSet::ptr crashedSubset = procSet_->getCrashedSubset();
         for (ProcessSet::iterator i = crashedSubset->begin(); i != crashedSubset->end(); i++)
         {
             stringstream ss;
@@ -2258,62 +2305,49 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
             if (j != procsToRanks_.end())
                 exitedProcesses_[ss.str()].insert(j->second);
         }
-
-        /* Erase the terminated procs from the procSet_ and walkerSet_ */
-        ProcessSet::ptr termSet = procSet_->getTerminatedSubset();
         for (WalkerSet::iterator i = walkerSet_->begin(); i != walkerSet_->end(); )
         {
             ProcDebug *pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
-            if (termSet->find(pDebug->getProc()) != termSet->end())
+            if (crashedSubset->find(pDebug->getProc()) != crashedSubset->end())
             {
                 walkerSet_->erase(i++);
                 continue;
             }
             i++;
         }
-        procSet_ = procSet_->set_difference(termSet);
+        procSet_ = procSet_->set_difference(crashedSubset);
+    }
+    if (procSet_->anyTerminated() || procSet_->anyExited() || procSet_->anyCrashed() || procSet_->anyDetached())
+    {
+        ProcessSet::ptr terminatedSubset = procSet_->getTerminatedSubset();
+        for (ProcessSet::iterator i = terminatedSubset->begin(); i != terminatedSubset->end(); i++)
+        {
+            stringstream ss;
+            ss << "[Task Terminated]";
+            Walker *walker = static_cast<Walker *>((*i)->getData());
+            map<Walker *, int>::iterator j = procsToRanks_.find(walker);
+            if (j != procsToRanks_.end())
+                exitedProcesses_[ss.str()].insert(j->second);
+        }
+
+        /* Erase the terminated procs from the procSet_ and walkerSet_ */
+        for (WalkerSet::iterator i = walkerSet_->begin(); i != walkerSet_->end(); )
+        {
+            ProcDebug *pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
+            if (terminatedSubset->find(pDebug->getProc()) != terminatedSubset->end())
+            {
+                walkerSet_->erase(i++);
+                continue;
+            }
+            i++;
+        }
+        procSet_ = procSet_->set_difference(terminatedSubset);
     }
     
 #if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
     CallTree tree(statFrameCmp);
 #else
     CallTree tree(frame_lib_offset_cmp);
-#endif
-
-#ifdef DYSECTAPI
-   ProcessSet::ptr allProcs;
-   WalkerSet* lwalkerset = WalkerSet::newWalkerSet();
-  
-   bool result = false;
-
-   if(DysectAPI::ProcessMgr::isActive()) {
-
-     // Build new walkerset
-     allProcs = DysectAPI::ProcessMgr::getAllProcs();
-     allProcs = DysectAPI::ProcessMgr::filterExited(allProcs);
-
-     if(allProcs && !allProcs->empty()) {
-       ProcessSet::iterator processIter = allProcs->begin();
-       for(;processIter != allProcs->end(); processIter++) {
-         Process::ptr process = *processIter;
-         if(!process)
-          continue;
-         
-
-         Walker* proc = (Walker*)process->getData();
-         
-         if(proc)
-          lwalkerset->insert(proc);
-       }
-     }
-
-     if(lwalkerset) {
-       result = lwalkerset->walkStacks(tree);
-     }
-
-   } else {
-    result = walkerSet_->walkStacks(tree);
-   }
 #endif
 
 #ifdef SW_VERSION_8_1_0
@@ -2323,19 +2357,9 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
 #endif
     if (boolRet == false)
     {
+        printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "walkStacks returned false with message: %s\n", Stackwalker::getLastErrorMsg());
 #warning TODO: Start handling partial call stacks in group walks
     }
-
-#ifdef DYSECTAPI
-//GLL comment: this should no longer apply (was graphlib 2.0)
-//   size_t setsize = 0;
-//   
-//   if(DysectAPI::ProcessMgr::isActive()) {
-//     setsize = allProcs->size();
-//   } else {
-//     setsize = procSet_->size();
-//   }
-#endif
 
     isPyTrace_ = false;
     statError = addFrameToGraph(&tree, 0, tree.getHead(), dummyString, NULL, ranks, dummyAbort, dummyBranches);
@@ -2407,13 +2431,9 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
   #ifdef DYSECTAPI
     {
         if(DysectAPI::ProcessMgr::isActive())
-        {
             DysectAPI::ProcessMgr::detachAll();
-        }
         else 
-        {
-            procSet_->detach();
-        }
+            procSet_->temporaryDetach();
     }
   #else
         procSet_->detach();
@@ -2635,6 +2655,7 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
                 mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
             else
                 fprintf(gStatOutFp, "%s", msg);
+            fflush(gStatOutFp);
         }
         else
         {

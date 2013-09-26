@@ -27,6 +27,8 @@ namespace DysectAPI {
 
     bool loaded;
 
+    bool returnControlToDysect;
+
   public:
     BE(const char *libPath, STAT_BackEnd *be);
     ~BE();
@@ -36,10 +38,16 @@ namespace DysectAPI {
     DysectErrorCode relayPacket(MRN::PacketPtr* packet, int tag, MRN::Stream* stream); 
 
     DysectErrorCode handleTimerEvents();
+    DysectErrorCode handleTimerActions();
     DysectErrorCode handleQueuedOperations();
+    DysectErrorCode handleAll();
 
     void enableTimers();
     void disableTimers();
+    bool getPendingExternalAction();
+    void setPendingExternalAction(bool pending);
+    bool getReturnControlToDysect();
+    void setReturnControlToDysect(bool control);
 
     static void gracefulShutdown(int signal);
   };

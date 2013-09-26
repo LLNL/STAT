@@ -1,3 +1,20 @@
+2013-09-25 Gregory L. Lee <lee218@llnl.gov>
+	* : Dysect probe notifications sent to FE
+	* : Dysect STAT action triggered by FE during collect phase
+	* : Dysect STAT action can be invoked by subset
+	* : Dysect detach action detaches from single process
+	* : Dysect added detachAll action to detach from all processes
+	* : Dysect use temoraryDetach so STAT traces indicate detached
+	* : Dysect added handleAll to manage queued operations, events, BPs, etc.
+	* : Dysect added notion of passing control back to tool before operations
+	* : Dysect implemented Time probe, but only with 0 timeout
+	* : Dysect pause processes before gathering traces for Trace and StackTrace actions
+	* : Dysect BE keep track of # of pending actions
+	* : Dysect removed process hold (2003-06-27 modification)
+	* src/libDysectAPI/src/frontend.cpp : check for app/daemon exit
+	* src/libDysectAPI/src/action_fe.cpp : increment aggIter in Trace action to fix Trace w/ multiple aggregates (was repeating first aggregate string)
+	* src/STAT_BackEnd.C : track detached, exited, and terminated tasks under group_ops
+
 2013-06-27 Gregory L. Lee <lee218@llnl.gov>
 	* : Dysect hold target processes on STAT action
 

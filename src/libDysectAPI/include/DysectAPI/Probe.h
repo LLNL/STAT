@@ -9,6 +9,7 @@ namespace DysectAPI {
   class Domain;
   class Act;
   class ProbeRequest;
+  class Backend;
 
   typedef enum treeCallBehavior {
     single,
@@ -46,6 +47,7 @@ namespace DysectAPI {
 
     int awaitingNotifications;
     int awaitingActions;
+    int processCount;
 
     bool procSetInitialized;
     Dyninst::ProcControlAPI::ProcessSet::ptr waitingProcs;
@@ -95,6 +97,7 @@ namespace DysectAPI {
     bool staticGroupWaiting();
 
     int getId();
+    int getProcessCount();
 
     DysectErrorCode prepareStream(treeCallBehavior callBehavior = single); //!< Used by backend to bind stream to probe
     
@@ -131,6 +134,7 @@ namespace DysectAPI {
     DysectErrorCode sendEnqueuedActions();
 
     DysectErrorCode handleActions(int count, char* payload, int len); //!< Used by front-end to carry out post-processing
+    DysectErrorCode handleNotifications(int count, char* payload, int len); //!< Used by front-end to initiate global actions
 
     Probe*  getParent();
     Domain* getDomain();

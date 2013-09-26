@@ -261,6 +261,10 @@ lifeSpan Probe::getLifeSpan() {
   return life;
 }
 
+int Probe::getProcessCount() {
+  return processCount;
+
+}
 int Probe::getId() {
   if(!dom) {
     return 0;

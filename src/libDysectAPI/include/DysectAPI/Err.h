@@ -13,9 +13,11 @@ namespace DysectAPI {
 
     static FILE* errStream;
     static FILE* outStream;
-    static bool useMRNet_;
+    static bool useStatOutFp_;
 
-    static void write(const std::string fmt, va_list ap, enum msgType type);        
+    static void write(const std::string fmt, va_list ap, enum msgType type);
+    //TODO: it may be beneficial to have source + line info for log, warn, and fatal messages
+//    static void write(const char *filename, int line, const std::string fmt, va_list ap, enum msgType type);
 
   public:
     static void init(FILE* estream, FILE* ostream, bool useMRNet = false);

@@ -6,6 +6,8 @@
 using namespace std;
 using namespace DysectAPI;
 
+extern FILE *gStatOutFp;
+
 // XXX: Refactoring work: move logic to API
 
 FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
@@ -53,6 +55,11 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
   statFE = fe;
   network = fe->network_;
   filterPath = fe->filterPath_;
+
+  bool useStatOutFpPrintf = false;
+  if (fe->logging_ & STAT_LOG_FE)
+    useStatOutFpPrintf = true;
+  Err::init(stderr, gStatOutFp, useStatOutFpPrintf);
 
   int upstreamFilterId = network->load_FilterFunc(filterPath, "dysectAPIUpStream");
   if (upstreamFilterId == -1)

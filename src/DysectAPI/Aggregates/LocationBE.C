@@ -9,6 +9,8 @@ using namespace ProcControlAPI;
 bool FuncLocation::collect(void* process, void *thread) {
   Process::const_ptr process_ptr = *(Process::const_ptr*)process;
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
+  bool wasRunning = false, boolRet;
+  ProcDebug *pDebug;
 
   if(!process_ptr) {
     return Err::verbose(false, "Process object not available");
@@ -20,9 +22,32 @@ bool FuncLocation::collect(void* process, void *thread) {
     return Err::verbose(false, "Could not get walker from process");
   }
 
+  if (process_ptr->allThreadsRunning()) {
+    wasRunning = true;
+    pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
+    if (pDebug == NULL)
+      return Err::warn(false, "Failed to dynamic_cast ProcDebug pointer");
+    if (pDebug->isTerminated())
+      return Err::warn(false, "Process is terminated");
+    boolRet = pDebug->pause();
+    if (boolRet == false)
+      return Err::warn(false, "Failed to pause process");
+  }
+
   vector<Stackwalker::Frame> stackWalk;
   if(!proc->walkStack(stackWalk)) {
-    return Err::warn(false, "Could not walk stack");
+    if (wasRunning == true) {
+      boolRet = pDebug->resume();
+      if (boolRet == false)
+        Err::warn(false, "Failed to resume process");
+    }
+    return Err::warn(false, "Func Location could not walk stack: %s", Stackwalker::getLastErrorMsg());
+  }
+
+  if (wasRunning == true) {
+    boolRet = pDebug->resume();
+    if (boolRet == false)
+      return Err::warn(false, "Failed to resume process");
   }
 
   Stackwalker::Frame& curFrame = stackWalk[0];
@@ -54,6 +79,8 @@ bool FuncLocation::collect(void* process, void *thread) {
 bool FileLocation::collect(void* process, void *thread) {
   Process::const_ptr process_ptr = *(Process::const_ptr*)process;
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
+  bool wasRunning = false, boolRet;
+  ProcDebug *pDebug;
 
   if(!process_ptr) {
     return Err::verbose(false, "Process object not available");
@@ -69,9 +96,26 @@ bool FileLocation::collect(void* process, void *thread) {
     return Err::verbose(false, "Could not get walker from process");
   }
 
+  if (process_ptr->allThreadsRunning()) {
+    wasRunning = true;
+    pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
+    if (pDebug == NULL)
+      return Err::warn(false, "Failed to dynamic_cast ProcDebug pointer");
+    if (pDebug->isTerminated())
+      return Err::warn(false, "Process is terminated");
+    boolRet = pDebug->pause();
+    if (boolRet == false)
+      return Err::warn(false, "Failed to pause process");
+  }
+
   vector<Stackwalker::Frame> stackWalk;
   if(!proc->walkStack(stackWalk)) {
-    return Err::warn(false, "Could not walk stack");
+    if (wasRunning == true) {
+      boolRet = pDebug->resume();
+      if (boolRet == false)
+        Err::warn(false, "Failed to resume process");
+    }
+    return Err::warn(false, "File Location could not walk stack: %s", Stackwalker::getLastErrorMsg());
   }
 
   Stackwalker::Frame& curFrame = stackWalk[0];
@@ -86,7 +130,18 @@ bool FileLocation::collect(void* process, void *thread) {
   MachRegisterVal pcVal;
 
   if(!thread_ptr->getRegister(pcReg, pcVal)) {
-    return Err::verbose(false, "Could not read value of program counter");
+    if (wasRunning == true) {
+      boolRet = pDebug->resume();
+      if (boolRet == false)
+        Err::warn(false, "Failed to resume process");
+    }
+    return Err::verbose(false, "Could not read value of program counter: %s", Stackwalker::getLastErrorMsg());
+  }
+
+  if (wasRunning == true) {
+    boolRet = pDebug->resume();
+    if (boolRet == false)
+      return Err::warn(false, "Failed to pause process");
   }
 
   Err::info(true, "Read PC as: 0x%08lx", (unsigned long)pcVal);

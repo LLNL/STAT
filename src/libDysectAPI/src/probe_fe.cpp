@@ -15,13 +15,13 @@ DysectAPI::DysectErrorCode Probe::createStream(treeCallBehavior callBehavior) {
 
   if(callBehavior == recursive) {
     for(int i = 0; i < linked.size(); i++) {
-      if(linked[i]->createStream(callBehavior) != OK) 
+      if(linked[i]->createStream(callBehavior) != OK)
         return StreamError;
     }
   }
 
   return OK;
-} 
+}
 
 DysectAPI::DysectErrorCode Probe::broadcastStreamInit(treeCallBehavior callBehavior) {
   if(!dom) {
@@ -35,7 +35,7 @@ DysectAPI::DysectErrorCode Probe::broadcastStreamInit(treeCallBehavior callBehav
   if(callBehavior == recursive) {
     for(int i = 0; i < linked.size(); i++) {
       if(linked[i]->broadcastStreamInit(callBehavior) != OK) {
-        
+
         return Err::warn(StreamError, "failed to broadcast inits");
       }
     }
@@ -48,8 +48,8 @@ DysectErrorCode Probe::notifyTriggered() {
   return Error;
 }
 
-DysectErrorCode Probe::evaluateConditions(ConditionResult& result, 
-                                    Process::const_ptr process, 
+DysectErrorCode Probe::evaluateConditions(ConditionResult& result,
+                                    Process::const_ptr process,
                                     Thread::const_ptr thread) {
   return Error;
 }
@@ -69,8 +69,9 @@ DysectErrorCode Probe::handleActions(int count, char *payload, int len) {
 
   aggregates.clear();
 
-  if((payload != 0) && (len > 1)) {
+  Err::log(true, "Handling %d actions from payload len %d, with count %d", actions.size(), len, count);
 
+  if((payload != 0) && (len > 1)) {
     AggregateFunction::getAggregates(aggregates, (struct packet*)payload);
   }
 
@@ -79,6 +80,33 @@ DysectErrorCode Probe::handleActions(int count, char *payload, int len) {
     Act* act = *actIter;
     if(act) {
       act->finishFE(count);
+    }
+  }
+
+  return OK;
+}
+
+DysectErrorCode Probe::handleNotifications(int count, char *payload, int len) {
+  if(actions.empty()) {
+    return OK;
+  }
+
+  aggregates.clear();
+
+  Err::log(true, "Handling %d actions from payload len %d, with count %d", actions.size(), len, count);
+
+  if((payload != 0) && (len > 1)) {
+
+    AggregateFunction::getAggregates(aggregates, (struct packet*)payload);
+  }
+
+  vector<Act*>::iterator actIter = actions.begin();
+  for(;actIter != actions.end(); actIter++) {
+    Act* act = *actIter;
+    Dyninst::ProcControlAPI::Process::const_ptr process;
+    Dyninst::ProcControlAPI::Thread::const_ptr thread;
+    if(act) {
+      act->collect(process, thread);
     }
   }
 

@@ -218,6 +218,7 @@ bool StrAgg::clear() {
   count_ = 0;
   strsLen = 0;
   count_ = 0;
+  countMap.clear();
 }
 
 bool StrAgg::getStr(string& str) {

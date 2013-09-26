@@ -4,6 +4,7 @@
 namespace DysectAPI {
   class Act;
   class Probe;
+  class Backend;
 
   enum AggScope {
     SatisfyingProcs = 1,
@@ -30,14 +31,16 @@ namespace DysectAPI {
       unknownAggType = 0,
       traceType = 1,
       statType = 2,
-      detachType = 3,
-      stackTraceType = 4
+      detachAllType = 3,
+      stackTraceType = 4,
+      detachType = 5
     } aggType;
 
     aggType type;
     aggCategory category;
     int id;
     int count;
+    bool actionPending;
 
     bool getFromByteArray(std::vector<Act*>& aggregates);
 
@@ -48,7 +51,8 @@ namespace DysectAPI {
   public:
     static Act* trace(std::string str);
     static Act* stat(AggScope scope = SatisfyingProcs, int traces = 5, int frequency = 300, bool threads = false);
-    static Act* detach(AggScope scope = AllProcs);
+    static Act* detachAll(AggScope scope = AllProcs);
+    static Act* detach();
     static Act* stackTrace();
 
     int getId() { return id; }
@@ -87,14 +91,14 @@ namespace DysectAPI {
     std::string str;
     std::vector<AggregateFunction*> aggregates;
     std::vector<std::pair<bool, std::string> > strParts;
-  
+
     bool findAggregates();
 
   public:
     Trace(std::string str);
 
     bool prepare();
-  
+
     bool collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                   Dyninst::ProcControlAPI::Thread::const_ptr thread);
 
@@ -110,7 +114,20 @@ namespace DysectAPI {
     StackTrace();
 
     bool prepare();
-  
+
+    bool collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                 Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+  class DetachAll : public Act {
+  public:
+    DetachAll(AggScope scope);
+
+    bool prepare();
+
     bool collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
 
@@ -120,7 +137,7 @@ namespace DysectAPI {
 
   class Detach : public Act {
   public:
-    Detach(AggScope scope);
+    Detach();
 
     bool prepare();
 
@@ -129,6 +146,9 @@ namespace DysectAPI {
 
     bool finishBE(struct packet*& p, int& len);
     bool finishFE(int count);
+  private:
+    Dyninst::ProcControlAPI::ProcessSet::ptr detachProcs;
+
   };
 }
 

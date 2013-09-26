@@ -304,6 +304,10 @@ class STAT_BackEnd
         */
         StatError_t statBenchConnect();
 
+#ifdef DYSECTAPI
+        DysectAPI::BE *getDysectBe();
+#endif
+
     private:
         //! Attach to all application processes
         /*!
@@ -579,7 +583,7 @@ class STAT_BackEnd
         Dyninst::Stackwalker::WalkerSet *walkerSet_;        /*< the set of walker objects */
         std::map<std::string, std::set<int> > exitedProcesses_;
   #ifdef DYSECTAPI
-        std::map<int, Dyninst::ProcControlAPI::Process::ptr> mpiRankToProcessMap;
+        std::map<int, Dyninst::ProcControlAPI::Process::ptr> mpiRankToProcessMap_;
   #endif
 #endif
 
@@ -588,7 +592,7 @@ class STAT_BackEnd
 #endif
         
 #ifdef DYSECTAPI
-        DysectAPI::BE* dysectBE;
+        DysectAPI::BE* dysectBE_;
 #endif
 
 };

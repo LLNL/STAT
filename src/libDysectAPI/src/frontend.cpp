@@ -14,6 +14,8 @@ bool Frontend::breakOnEnter = true;
 bool Frontend::breakOnTimeout = true;
 
 class STAT_FrontEnd* Frontend::statFE = 0;
+extern bool checkAppExit();
+extern bool checkDaemonExit();
 
 DysectAPI::DysectErrorCode Frontend::listen() {
   int ret;
@@ -41,7 +43,7 @@ DysectAPI::DysectErrorCode Frontend::listen() {
     timeout.tv_usec = 0;
 
     ret = select(Domain::getMaxFd() + 1, &fdRead, NULL, NULL, &timeout);
-    
+
     if(ret < 0) {
       //return Err::warn(DysectAPI::Error, "select() failed to listen on file descriptor set.");
       return DysectAPI::OK;
@@ -51,9 +53,18 @@ DysectAPI::DysectErrorCode Frontend::listen() {
       Err::info(true, "Stopping session - enter key was hit");
       break;
     }
+    if (checkAppExit()) {
+      Err::info(true, "Stopping session - application has exited");
+      break;
+    }
+    if (checkDaemonExit()) {
+      Err::info(true, "Stopping session - daemons have exited");
+      break;
+    }
 
     // Look for owners
     vector<Domain*> doms = Domain::getFdsFromSet(fdRead);
+    Err::log(true, "Listening over %d domains", doms.size());
 
     if(doms.size() == 0) {
       if(Frontend::breakOnTimeout && (--Frontend::numEvents < 0)) {
@@ -68,7 +79,7 @@ DysectAPI::DysectErrorCode Frontend::listen() {
 
     for(int i = 0; i < doms.size(); i++) {
       Domain* dom = doms[i];
-      
+
       PacketPtr packet;
       int tag;
 
@@ -93,7 +104,7 @@ DysectAPI::DysectErrorCode Frontend::listen() {
           return Err::warn(Error, "Unpack error");
         }
 
-        if(Domain::isProbeEnabledTag(tag)) {
+        if(Domain::isProbeEnabledTag(tag) || Domain::isProbeNotifyTag(tag)) {
           Domain* dom = 0;
 
           if(!Domain::getDomainFromTag(dom, tag)) {
@@ -107,7 +118,10 @@ DysectAPI::DysectErrorCode Frontend::listen() {
           if(!probe) {
             Err::warn(false, "Probe object not found for %x", dom->getId());
           } else {
-            probe->handleActions(count, payload, len);
+            if(Domain::isProbeEnabledTag(tag))
+              probe->handleActions(count, payload, len);
+            else if(Domain::isProbeNotifyTag(tag))
+              probe->handleNotifications(count, payload, len);
           }
 
           // Empty bodied probe
@@ -116,7 +130,7 @@ DysectAPI::DysectErrorCode Frontend::listen() {
             dom->sendContinue();
           }
         }
-        
+
       } while(1);
 
       dom->getStream()->clear_DataNotificationFd();
@@ -128,7 +142,7 @@ DysectAPI::DysectErrorCode Frontend::listen() {
 DysectAPI::DysectErrorCode Frontend::broadcastStreamInits() {
   vector<Probe*>& roots = ProbeTree::getRoots();
   long numRoots = roots.size();
-  
+
   for(int i = 0; i < numRoots; i++) {
     Probe* probe = roots[i];
     probe->broadcastStreamInit(recursive);
@@ -144,13 +158,13 @@ DysectAPI::DysectErrorCode Frontend::createStreams(struct DysectFEContext_t* con
   }
 
   statFE = context->statFE;
-  
+
   vector<Probe*>& roots = ProbeTree::getRoots();
   long numRoots = roots.size();
 
   // Populate domain with MRNet network and debug process tables
   Domain::setFEContext(context);
-  
+
   // Prepare streams
   for(int i = 0; i < numRoots; i++) {
     Probe* probe = roots[i];
@@ -167,7 +181,7 @@ DysectAPI::DysectErrorCode Frontend::createStreams(struct DysectFEContext_t* con
     return Error;
   }
 
-  
+
   for(int i = 0; i < numRoots; i++) {
     Probe* probe = roots[i];
 

@@ -28,6 +28,8 @@ namespace DysectAPI {
   class ProcessMgr {
     static Dyninst::ProcControlAPI::ProcessSet::ptr allProcs;
     static Dyninst::ProcControlAPI::ProcessSet::ptr detached;
+    static Dyninst::ProcControlAPI::ProcessSet::ptr wasRunning;
+    static Dyninst::ProcControlAPI::ProcessSet::ptr wasStopped;
 
     static bool active;
 
@@ -39,6 +41,10 @@ namespace DysectAPI {
 
     static Dyninst::ProcControlAPI::ProcessSet::ptr filterDetached(Dyninst::ProcControlAPI::ProcessSet::ptr inSet);
     static Dyninst::ProcControlAPI::ProcessSet::ptr filterExited(Dyninst::ProcControlAPI::ProcessSet::ptr inSet);
+    static void setWasRunning();
+    static Dyninst::ProcControlAPI::ProcessSet::ptr getWasRunning();
+    static void setWasStopped();
+    static Dyninst::ProcControlAPI::ProcessSet::ptr getWasStopped();
 
     static Dyninst::ProcControlAPI::ProcessSet::ptr getAllProcs();
 

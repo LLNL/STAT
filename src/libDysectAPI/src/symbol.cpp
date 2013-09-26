@@ -254,7 +254,7 @@ DysectAPI::DysectErrorCode SymbolTable::getLibraryByAddr(Dyninst::Stackwalker::L
   }
 
   if(!libState->getLibraryAtAddr(addr, lib)) {
-    return Err::warn(Error, "Failed to get library at address 0x%lx\n", addr);
+    return Err::warn(Error, "Failed to get library at address 0x%lx", addr);
   }
   
   return OK;

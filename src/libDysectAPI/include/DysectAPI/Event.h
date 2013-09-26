@@ -9,7 +9,7 @@ namespace DysectAPI {
   class Frame;
   class CodeLocation;
   
-	class Event {
+    class Event {
     friend class Probe;
   
   protected:
@@ -48,7 +48,7 @@ namespace DysectAPI {
     
     bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process);
 
-	};
+    };
 
   class CombinedEvent : public Event {
   public:
@@ -104,31 +104,33 @@ namespace DysectAPI {
     bool isProcessWide() { return false; }
   };
 
-	class Function : public Location {
+    class Function : public Location {
   public:
-	};
+    };
 
-	class Code {
-	public:
-		static Location* location(std::string locationExpr);
-		static Location* address(Dyninst::Address address);
-		static Function* function(std::string functionExpr);
-	};
+    class Code {
+    public:
+        static Location* location(std::string locationExpr);
+        static Location* address(Dyninst::Address address);
+        static Function* function(std::string functionExpr);
+    };
 
   typedef enum TimeType {
     WithinType
   } TimeType;
 
-	class Time : public Event {
+    class Time : public Event {
     TimeType type;
     int timeout;
 
     Dyninst::ProcControlAPI::ProcessSet::ptr procset;
 
-	public:
+    public:
     Time(TimeType type, int timeout);
 
-		static Event* within(int timeout);
+    static Event* within(int timeout);
+
+    static std::set<Event*> timeSubscribers;
 
     bool enable();
     bool enable(Dyninst::ProcControlAPI::ProcessSet::ptr lprocset);
@@ -138,7 +140,9 @@ namespace DysectAPI {
     bool isProcessWide() { return true; }
 
     bool isEnabled(Dyninst::ProcControlAPI::Process::const_ptr process);
-	};
+    static std::set<Event*>& getTimeSubscribers();
+    Dyninst::ProcControlAPI::ProcessSet::ptr getProcset();
+    };
 
   typedef enum AsyncType {
     CrashType,
@@ -146,7 +150,7 @@ namespace DysectAPI {
     ExitType
   } AsyncType;
 
-	class Async : public Event {
+    class Async : public Event {
     static std::set<Event*> crashSubscribers;
     static std::set<Event*> exitSubscribers;
     static std::map<int, std::set<Event*> > signalSubscribers;
@@ -156,9 +160,9 @@ namespace DysectAPI {
 
     int signum;
 
-	public:
-		static Event* signal(int signal);
-		static Event* leaveFrame(Frame* frame = 0);
+    public:
+        static Event* signal(int signal);
+        static Event* leaveFrame(Frame* frame = 0);
     static Event* crash();
     static Event* exit();
 
@@ -178,7 +182,7 @@ namespace DysectAPI {
     bool prepare();
 
     bool isProcessWide() { return true; }
-	};
+    };
 
   class Frame {
   };

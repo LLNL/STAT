@@ -164,6 +164,9 @@ void nodeRemovedCb(MRN::Event *event, void *statObject);
 void topologyChangeCb(MRN::Event *event, void *statObject);
 
 
+bool checkAppExit();
+bool checkDaemonExit();
+
 //! The STAT FrontEnd object is used to Launch STAT daemons and gather and merge stack traces
 class STAT_FrontEnd
 {

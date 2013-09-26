@@ -16,7 +16,7 @@ void do_SendOrStall(int to, int tag, int rank, int* buf, MPI_Request* req, int n
 void do_Receive(int from, int tag, int* buf, MPI_Request* req);
 
 char hostname[256];
-int sleeptime = -1;
+int sleeptime = 0;
 
 struct test_t {
   int a;
@@ -49,7 +49,7 @@ int main (int argc, char *argv[])
     if (rank == (numtasks - 1))  
         next = 0;
 
-    //if(rank == 0 || rank == 6) raise(SIGSEGV);
+    if(sleeptime < 0 && rank == 6) raise(SIGSEGV); 
 
     do_Receive(prev, tag, &buf[0], &reqs[0]);
 
@@ -57,7 +57,7 @@ int main (int argc, char *argv[])
     MPI_Waitall(2, reqs, stats);
 
     MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Finalize();
+    MPI_Finalize(); sleep(5); if (rank == 0) printf("mpi_ringtopo Done\n");
     return 0;
 }
 
@@ -72,7 +72,7 @@ void do_SendOrStall(int to, int tag, int rank, int* buf, MPI_Request* req, int n
 
     if (rank == 1)
     {
-        if (sleeptime == -1)
+        if (sleeptime == 0)
         {
             printf("%s, MPI task %d of %d stalling\n", hostname, rank, n);
             fflush(stdout);

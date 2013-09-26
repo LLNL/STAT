@@ -2377,6 +2377,15 @@ StatError_t STAT_FrontEnd::checkVersion()
     return STAT_OK;
 }
 
+bool checkAppExit()
+{
+    return WIFKILLED(gsLmonState);
+}
+
+bool checkDaemonExit()
+{
+    return !WIFBESPAWNED(gsLmonState);
+}
 
 StatError_t STAT_FrontEnd::attachApplication(bool blocking)
 {
@@ -3363,7 +3372,7 @@ StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bo
     if (isAttached_ == false)
     {
         printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT not attached to the application... ignoring request to detach\n");
-        return STAT_NOT_ATTACHED_ERROR;
+        return STAT_OK;
     }
     if (isConnected_ == false)
     {

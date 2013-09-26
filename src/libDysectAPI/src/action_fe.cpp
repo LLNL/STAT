@@ -9,48 +9,35 @@ using namespace Dyninst;
 using namespace ProcControlAPI;
 using namespace MRN;
 
-bool Stat::prepare() {
-  return true;
-}
-
 bool Stat::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  StatError_t statError;
+  STAT_FrontEnd* statFE;;
+
+  Err::verbose(true, "Stat::collect");
+  statFE = Frontend::getStatFE();
+
+  statError = statFE->sampleStackTraces(STAT_SAMPLE_FUNCTION_ONLY | STAT_SAMPLE_LINE, 1, 100, 0, 100);
+  if (statError != STAT_OK)
+  {
+    if (statError == STAT_APPLICATION_EXITED)
+      return false;
+
+    statFE->printMsg(statError, __FILE__, __LINE__, "Failed to sample stack traces\n");
+    return false;
+  }
+
+  statError = statFE->gatherLastTrace();
+  if (statError != STAT_OK) {
+    statFE->printMsg(statError, __FILE__, __LINE__, "Failed to sample stack traces\n");
+    return false;
+  }
 
   return true;
 }
 
 bool Stat::finishFE(int count) {
-  Err::verbose(true, "Gather send request for stack traces");
-
-  STAT_FrontEnd* statFE = Frontend::getStatFE();
-
-  if(lscope == SatisfyingProcs) {
-//GLL comment: we want to allow STAT action, even if triggered by subset
-//  if(lscope == AllProcs) {
-    StatError_t statError, retval;
-    statError = statFE->pause();
-    statError = statFE->sampleStackTraces(STAT_SAMPLE_FUNCTION_ONLY | STAT_SAMPLE_LINE, 1, 100, 0, 100);
-    if (statError != STAT_OK)
-    {
-      if (statError == STAT_APPLICATION_EXITED)
-        return false;
-
-      statFE->printMsg(statError, __FILE__, __LINE__, "Failed to sample stack traces\n");
-      return false;
-    }
-
-
-    statError = statFE->gatherLastTrace();
-            
-    statError = statFE->resume();
-
-//GLL comment: we want to allow STAT action, even if triggered by subset
-//  } else if(lscope == SatisfyingProcs) {
-//    return Err::warn(false, "STAT not supported on set");
-//  } else {
-//    return Err::warn(false, "STAT not supported on set");
-  }  
-
+  Err::verbose(true, "Stat::finishFE %d %d", count, lscope);
   return true;
 }
 
@@ -63,11 +50,13 @@ bool Stat::finishBE(struct packet*& p, int& len) {
 bool StackTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
 
+  Err::verbose(true, "StackTrace::collect");
   return true;
 }
 
 bool StackTrace::finishFE(int count) {
   Probe* probe = owner;
+  Err::verbose(true, "StackTrace::finishFE %d %d", count, lscope);
   if(!owner) {
     return Err::verbose(false, "No owner probe for action!");
   }
@@ -75,12 +64,11 @@ bool StackTrace::finishFE(int count) {
   if(!traces)
     return false;
 
-  string aggStr;
   int id = traces->getId();
 
   AggregateFunction* aggFunc = probe->getAggregate(id);
   if(!aggFunc)
-    return Err::warn(false, "Could not get aggregrate from id %d", id);
+    return false;
 
   if(aggFunc->getType() != tracesAgg) {
     return Err::warn(false, "Aggregate mismatch for stack trace");
@@ -97,10 +85,10 @@ bool StackTrace::finishFE(int count) {
   
   map<string, int>::iterator mapIter = countMap.begin();
   for(; mapIter != countMap.end(); mapIter++) {
-    int count = mapIter->second;
+    int countMapCount = mapIter->second;
     string str = mapIter->first;
 
-    Err::info(true, " |-> [%d] %s", count, str.c_str());
+    Err::info(true, " |-> [%d] %s", countMapCount, str.c_str());
   }
   
   return true;
@@ -113,6 +101,7 @@ bool StackTrace::finishBE(struct packet*& p, int& len) {
 
 bool Trace::collect(Process::const_ptr process,
                     Thread::const_ptr thread) {
+  Err::verbose(true, "Trace::collect");
   return true;
 }
 
@@ -122,6 +111,7 @@ bool Trace::finishBE(struct packet*& p, int& len) {
 }
 
 bool Trace::finishFE(int count) {
+  Err::verbose(true, "Trace::finishFE %d %d", count, lscope);
   if(!aggregates.empty()) {
     // Resolve needed aggregates
     vector<AggregateFunction*> resolvedAggregates;
@@ -177,6 +167,7 @@ bool Trace::finishFE(int count) {
         aggFunc->getStr(aggStr);
 
         traceMessage.append(aggStr);
+        aggIter++;
       }
     }
 
@@ -185,6 +176,38 @@ bool Trace::finishFE(int count) {
   } else {
     Err::info(true, "[%d] Trace: %s", count, str.c_str());
   }
+  return true;
+}
+
+bool DetachAll::prepare() {
+  return true;
+}
+
+bool DetachAll::collect(Process::const_ptr process,
+                     Thread::const_ptr thread) {
+  Err::verbose(true, "DetachAll::collect");
+  return true;
+}
+
+bool DetachAll::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+bool DetachAll::finishFE(int count) {
+  Err::verbose(true, "DetachAll::finishFE %d", count);
+ 
+  if(lscope == AllProcs) {
+  
+    Err::info(true, "DetachAll action: Ending Dysect session");
+    Frontend::stop();
+
+  } else if(lscope == SatisfyingProcs) {
+    return Err::warn(false, "DetachAll not supported on set");
+  } else {
+    return Err::warn(false, "DetachAll not supported on set");
+  }  
+
   return true;
 }
 
@@ -198,22 +221,10 @@ bool Detach::collect(Process::const_ptr process,
 }
 
 bool Detach::finishBE(struct packet*& p, int& len) {
-  assert(!"Finish Backend-end should not be run on front-end!");
   return false;
 }
 
 bool Detach::finishFE(int count) {
- 
-  if(lscope == AllProcs) {
-  
-    Err::info(true, "Detach action: detaching from all processes");
-    Frontend::stop();
-
-  } else if(lscope == SatisfyingProcs) {
-    return Err::warn(false, "Detach not supported on set");
-  } else {
-    return Err::warn(false, "Detach not supported on set");
-  }  
-
+  Err::verbose(true, "Detach::finishFE %d", count);
   return true;
 }

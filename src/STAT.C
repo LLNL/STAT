@@ -367,13 +367,7 @@ int main(int argc, char **argv)
     /* Detach from the application */
     statError = statFrontEnd->detachApplication();
     if (statError != STAT_OK)
-    {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to detach from application\n");
-        statFrontEnd->shutDown();
-        delete statFrontEnd;
-        free(statArgs);
-        return -1;
-    }
 
     statFrontEnd->shutDown();
     printf("\nResults written to %s\n\n", statFrontEnd->getOutDir());

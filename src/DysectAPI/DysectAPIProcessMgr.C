@@ -7,6 +7,8 @@ using namespace ProcControlAPI;
 
 ProcessSet::ptr ProcessMgr::allProcs = ProcessSet::newProcessSet();
 ProcessSet::ptr ProcessMgr::detached = ProcessSet::newProcessSet();
+ProcessSet::ptr ProcessMgr::wasRunning = ProcessSet::newProcessSet();
+ProcessSet::ptr ProcessMgr::wasStopped = ProcessSet::newProcessSet();
 bool ProcessMgr::active = false;
 
 bool ProcessMgr::init(ProcessSet::ptr allProcs) {
@@ -32,10 +34,13 @@ bool ProcessMgr::detach(Process::const_ptr process) {
 
 bool ProcessMgr::detach(ProcessSet::ptr detachedSet) {
   if(!detachedSet) {
-    return false;
+    return Err::warn(false, "detach from empty detachSet");
   }
 
-  detachedSet->detach();
+  bool ret = detachedSet->temporaryDetach();
+  if (ret == false) {
+    return Err::warn(false, "detach from detachSet failed: %s", ProcControlAPI::getLastErrorMsg());
+  }
 
   allProcs = allProcs->set_difference(detachedSet);
   detached = detached->set_union(detachedSet);
@@ -74,7 +79,7 @@ bool ProcessMgr::detachAll() {
 
   if(allProcs && allProcs->size() > 0) {
     Err::verbose(true, "Detaching from %d processes...", allProcs->size());
-    allProcs->detach();
+    allProcs->temporaryDetach();
   }
 
   Err::verbose(true, "Done");
@@ -123,4 +128,20 @@ ProcessSet::ptr ProcessMgr::filterDetached(ProcessSet::ptr inSet) {
   }
 
   return inSet->set_difference(detached);
+}
+
+void ProcessMgr::setWasRunning() {
+  wasRunning = allProcs->getAnyThreadRunningSubset();
+}
+
+ProcessSet::ptr ProcessMgr::getWasRunning() {
+  return wasRunning;
+}
+
+void ProcessMgr::setWasStopped() {
+  wasStopped = allProcs->getAnyThreadStoppedSubset();
+}
+
+ProcessSet::ptr ProcessMgr::getWasStopped() {
+  return wasStopped;
 }

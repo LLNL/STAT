@@ -84,7 +84,7 @@ libDysectAPIFE_la_SOURCES=$(dysect_sources) libDysectAPI/src/location_fe.cpp lib
 libDysectAPIFE_la_CPPFLAGS=-g -O2 -fPIC $(dysect_includes) -D__DYSECT_IS_FRONTEND
 libDysectAPIFE_la_LDFLAGS=--export-dynamic 
 
-libDysectAPIBE_la_SOURCES=$(dysect_sources) libDysectAPI/src/location_be.cpp libDysectAPI/src/backend.cpp libDysectAPI/src/group_be.cpp libDysectAPI/src/probe_be.cpp libDysectAPI/src/expr_be.cpp libDysectAPI/src/symbol.cpp libDysectAPI/src/safe_timer.cpp libDysectAPI/src/action_be.cpp libDysectAPI/src/event_be.cpp libDysectAPI/src/domain_be.cpp libDysectAPI/src/condition_be.cpp libDysectAPI/src/time_fe.cpp
+libDysectAPIBE_la_SOURCES=$(dysect_sources) libDysectAPI/src/location_be.cpp libDysectAPI/src/backend.cpp libDysectAPI/src/group_be.cpp libDysectAPI/src/probe_be.cpp libDysectAPI/src/expr_be.cpp libDysectAPI/src/symbol.cpp libDysectAPI/src/safe_timer.cpp libDysectAPI/src/action_be.cpp libDysectAPI/src/event_be.cpp libDysectAPI/src/domain_be.cpp libDysectAPI/src/condition_be.cpp libDysectAPI/src/time_be.cpp
 libDysectAPIBE_la_CPPFLAGS=-g -O2 -fPIC $(dysect_includes) -D__DYSECT_IS_BACKEND 
 libDysectAPIBE_la_LDFLAGS=--export-dynamic -lrt
 endif

@@ -1,5 +1,8 @@
 #ifndef __BACKEND_H
+
 #define __BACKEND_H
+
+#include "STAT_BackEnd.h"
 
 namespace DysectAPI {
 	class Backend {
@@ -12,6 +15,8 @@ namespace DysectAPI {
     } state;
 
     static bool streamBindAckSent;
+    static int pendingExternalAction;
+    static std::vector<DysectAPI::Probe *> probesPendingAction;
 
     static MRN::Stream* controlStream;
     static std::set<tag_t> missingBindings; //!< Set of tags needed to be bound by incoming front-end packets
@@ -31,6 +36,8 @@ namespace DysectAPI {
   public:
     static DysectErrorCode pauseApplication();
     static DysectErrorCode resumeApplication();
+    static int getPendingExternalAction();
+    static void setPendingExternalAction(int pending);
 
     static DysectErrorCode relayPacket(MRN::PacketPtr* packet, int tag, MRN::Stream* stream); //!< Incoming packages with DysectAPI signature in tag
 
@@ -48,10 +55,17 @@ namespace DysectAPI {
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleGenericEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
 
     static DysectErrorCode handleTimerEvents();
+    static DysectErrorCode handleTimerActions();
     static DysectErrorCode handleQueuedOperations();
 
     static DysectErrorCode enqueueDetach(Dyninst::ProcControlAPI::Process::const_ptr process);
     static DysectErrorCode detachEnqueued();
+
+    static Dyninst::ProcControlAPI::Process::cb_ret_t  handleTimeEvent();
+
+    static Dyninst::ProcControlAPI::Process::cb_ret_t handleEventPub(Dyninst::ProcControlAPI::Process::const_ptr process,
+                                 Dyninst::ProcControlAPI::Thread::const_ptr thread,
+                                 Event* dysectEvent);
 
     /**
      Event handler for:

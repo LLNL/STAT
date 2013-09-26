@@ -58,6 +58,7 @@ Domain::Domain(long waitTime, bool lblocking, DomainType domainType) :
   continueTag     = id | continueTagId;
   statusTag       = id | statusTagId;
   probeEnabledTag = id | probeEnabledTagId;
+  probeNotifyTag  = id | probeNotifyTagId;
 
   if(waitTime == Wait::inf) {
     blocking = true;
@@ -82,7 +83,7 @@ DysectAPI::DysectErrorCode Domain::createStreamGeneric() {
     Err::verbose(true, "Using timeout for filter: %d ms", waitTime);
     upSync = SFILTER_TIMEOUT;
   } else {
-    return Err::warn(Error, "Invalid wait time '%d' specified\n", waitTime);
+    return Err::warn(Error, "Invalid wait time '%d' specified", waitTime);
   }
 
   stream = network->new_Stream(comm, Domain::upstreamFilterId, upSync);
@@ -162,7 +163,7 @@ bool Domain::getDomainFromTag(Domain*& dom, tag_t tag) {
 }
 
 Domain* Domain::world(long waitTime, bool lblocking) {
-  World* world = new World(waitTime);
+  World* world = new World(waitTime, lblocking);
 
   return world;
 }

@@ -146,7 +146,7 @@ am__libDysectAPIBE_la_SOURCES_DIST = libDysectAPI/src/action.cpp \
 	libDysectAPI/src/expr_be.cpp libDysectAPI/src/symbol.cpp \
 	libDysectAPI/src/safe_timer.cpp libDysectAPI/src/action_be.cpp \
 	libDysectAPI/src/event_be.cpp libDysectAPI/src/domain_be.cpp \
-	libDysectAPI/src/condition_be.cpp libDysectAPI/src/time_fe.cpp
+	libDysectAPI/src/condition_be.cpp libDysectAPI/src/time_be.cpp
 @ENABLE_DYSECTAPI_TRUE@am__objects_4 = libDysectAPIBE_la-action.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-condition.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-domain.lo \
@@ -173,7 +173,7 @@ am__libDysectAPIBE_la_SOURCES_DIST = libDysectAPI/src/action.cpp \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-event_be.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-domain_be.lo \
 @ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-condition_be.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-time_fe.lo
+@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-time_be.lo
 libDysectAPIBE_la_OBJECTS = $(am_libDysectAPIBE_la_OBJECTS)
 libDysectAPIBE_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
@@ -623,7 +623,7 @@ libstatfe_la_SOURCES = $(stat_fe_la_sources_base) $(stat_graphlib_sources) $(sta
 @ENABLE_DYSECTAPI_TRUE@libDysectAPIFE_la_SOURCES = $(dysect_sources) libDysectAPI/src/location_fe.cpp libDysectAPI/src/frontend.cpp libDysectAPI/src/group_fe.cpp libDysectAPI/src/probe_fe.cpp libDysectAPI/src/expr_fe.cpp libDysectAPI/src/action_fe.cpp libDysectAPI/src/event_fe.cpp libDysectAPI/src/domain_fe.cpp libDysectAPI/src/time_fe.cpp 
 @ENABLE_DYSECTAPI_TRUE@libDysectAPIFE_la_CPPFLAGS = -g -O2 -fPIC $(dysect_includes) -D__DYSECT_IS_FRONTEND
 @ENABLE_DYSECTAPI_TRUE@libDysectAPIFE_la_LDFLAGS = --export-dynamic 
-@ENABLE_DYSECTAPI_TRUE@libDysectAPIBE_la_SOURCES = $(dysect_sources) libDysectAPI/src/location_be.cpp libDysectAPI/src/backend.cpp libDysectAPI/src/group_be.cpp libDysectAPI/src/probe_be.cpp libDysectAPI/src/expr_be.cpp libDysectAPI/src/symbol.cpp libDysectAPI/src/safe_timer.cpp libDysectAPI/src/action_be.cpp libDysectAPI/src/event_be.cpp libDysectAPI/src/domain_be.cpp libDysectAPI/src/condition_be.cpp libDysectAPI/src/time_fe.cpp
+@ENABLE_DYSECTAPI_TRUE@libDysectAPIBE_la_SOURCES = $(dysect_sources) libDysectAPI/src/location_be.cpp libDysectAPI/src/backend.cpp libDysectAPI/src/group_be.cpp libDysectAPI/src/probe_be.cpp libDysectAPI/src/expr_be.cpp libDysectAPI/src/symbol.cpp libDysectAPI/src/safe_timer.cpp libDysectAPI/src/action_be.cpp libDysectAPI/src/event_be.cpp libDysectAPI/src/domain_be.cpp libDysectAPI/src/condition_be.cpp libDysectAPI/src/time_be.cpp
 @ENABLE_DYSECTAPI_TRUE@libDysectAPIBE_la_CPPFLAGS = -g -O2 -fPIC $(dysect_includes) -D__DYSECT_IS_BACKEND 
 @ENABLE_DYSECTAPI_TRUE@libDysectAPIBE_la_LDFLAGS = --export-dynamic -lrt
 pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
@@ -889,7 +889,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-probe_tree.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-safe_timer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-symbol.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-time_fe.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-time_be.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-action.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-action_fe.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-condition.Plo@am__quote@
@@ -1225,12 +1225,12 @@ libDysectAPIBE_la-condition_be.lo: libDysectAPI/src/condition_be.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-condition_be.lo `test -f 'libDysectAPI/src/condition_be.cpp' || echo '$(srcdir)/'`libDysectAPI/src/condition_be.cpp
 
-libDysectAPIBE_la-time_fe.lo: libDysectAPI/src/time_fe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-time_fe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-time_fe.Tpo -c -o libDysectAPIBE_la-time_fe.lo `test -f 'libDysectAPI/src/time_fe.cpp' || echo '$(srcdir)/'`libDysectAPI/src/time_fe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-time_fe.Tpo $(DEPDIR)/libDysectAPIBE_la-time_fe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libDysectAPI/src/time_fe.cpp' object='libDysectAPIBE_la-time_fe.lo' libtool=yes @AMDEPBACKSLASH@
+libDysectAPIBE_la-time_be.lo: libDysectAPI/src/time_be.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-time_be.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-time_be.Tpo -c -o libDysectAPIBE_la-time_be.lo `test -f 'libDysectAPI/src/time_be.cpp' || echo '$(srcdir)/'`libDysectAPI/src/time_be.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-time_be.Tpo $(DEPDIR)/libDysectAPIBE_la-time_be.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libDysectAPI/src/time_be.cpp' object='libDysectAPIBE_la-time_be.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-time_fe.lo `test -f 'libDysectAPI/src/time_fe.cpp' || echo '$(srcdir)/'`libDysectAPI/src/time_fe.cpp
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-time_be.lo `test -f 'libDysectAPI/src/time_be.cpp' || echo '$(srcdir)/'`libDysectAPI/src/time_be.cpp
 
 libDysectAPIFE_la-action.lo: libDysectAPI/src/action.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-action.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-action.Tpo -c -o libDysectAPIFE_la-action.lo `test -f 'libDysectAPI/src/action.cpp' || echo '$(srcdir)/'`libDysectAPI/src/action.cpp

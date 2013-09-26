@@ -16,6 +16,8 @@ BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
   assert(be != 0);
   assert(libPath != 0);
 
+  returnControlToDysect = true;
+
   sessionLib = new SessionLibrary(libPath);
 
   if(!sessionLib->isLoaded()) {
@@ -35,14 +37,15 @@ BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
   beContext.processTableSize = be->proctabSize_;
   beContext.walkerSet = be->walkerSet_;
   beContext.hostname = (char*)&(be->localHostName_);
-  beContext.mpiRankToProcessMap = &(be->mpiRankToProcessMap);
+  beContext.mpiRankToProcessMap = &(be->mpiRankToProcessMap_);
+  beContext.statBE = be;
 
   statBE = be;
 
-  bool useMrnetPrintf = false;
-  if (be->logType_ & STAT_LOG_MRN)
-    useMrnetPrintf = true;
-  Err::init(be->errOutFp_, gStatOutFp, useMrnetPrintf);
+  bool useStatOutFpPrintf = false;
+  if (be->logType_ & STAT_LOG_BE)
+    useStatOutFpPrintf = true;
+  Err::init(be->errOutFp_, gStatOutFp, useStatOutFpPrintf);
 
   // Setup session
   lib_proc_start();
@@ -98,17 +101,54 @@ bool BE::isLoaded() {
 }
 
 DysectErrorCode BE::relayPacket(MRN::PacketPtr* packet, int tag, MRN::Stream* stream) {
-  
   return Backend::relayPacket(packet, tag, stream); 
-
 }
 
 DysectErrorCode BE::handleTimerEvents() {
   return Backend::handleTimerEvents();
 }
 
+DysectErrorCode BE::handleTimerActions() {
+  return Backend::handleTimerActions();
+}
+
 DysectErrorCode BE::handleQueuedOperations() {
   return Backend::handleQueuedOperations();
+}
+
+DysectErrorCode BE::handleAll() {
+  int count1, count2;
+  if (returnControlToDysect == true)
+  {
+      handleTimerActions();
+      handleQueuedOperations();
+  }
+  count1 = getPendingExternalAction();
+  handleTimerEvents();
+  count2 = getPendingExternalAction();
+  if (count2 > count1 && count2 != 0) {
+    Err::verbose(true, "STAT action detected %d %d, deferring control...", count1, count2);
+    returnControlToDysect = false;
+  }
+
+  count1 = getPendingExternalAction();
+  if (ProcControlAPI::Process::handleEvents(false)) {
+    count2 = getPendingExternalAction();
+    Err::verbose(true, "Event handled... %d %d", count1, count2);
+    if (count2 > count1 && count2 != 0) {
+      Err::verbose(true, "STAT2 action detected %d %d, deferring control...", count1, count2);
+      returnControlToDysect = false;
+    }
+  }
+  return OK;
+}
+
+bool BE::getReturnControlToDysect() {
+  return returnControlToDysect;
+}
+
+void BE::setReturnControlToDysect(bool control) {
+  returnControlToDysect = control;
 }
 
 void BE::gracefulShutdown(int signal) {
@@ -117,7 +157,7 @@ void BE::gracefulShutdown(int signal) {
   if(!called) {
     called = true;
 
-    Err::verbose(false, "Backend caugth signal %d - shutting down", signal);
+    Err::verbose(false, "Backend caught signal %d - shutting down", signal);
   
     ProcessMgr::detachAll(); 
 
@@ -142,4 +182,12 @@ void BE::enableTimers() {
 
 void BE::disableTimers() {
   //Timer::blockTimers();
+}
+
+bool BE::getPendingExternalAction() {
+  return Backend::getPendingExternalAction();
+}
+
+void BE::setPendingExternalAction(bool pending) {
+  Backend::setPendingExternalAction(pending);
 }
