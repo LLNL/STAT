@@ -21,9 +21,6 @@ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendr
 __version__ = "2.0.0"
 
 import os.path
-import string
-import time
-import sys
 
 ## A variable to determine whther we have the pygments module for syntax hilighting
 have_pygments = True
@@ -140,11 +137,6 @@ if have_pygments:
 
         def format(self, tokensource, outfile):
             """Define the output format, generate the pygments_list."""
-            lastval = ''
-            lasttype = None
-            last_style_end_newline = False
-            last_value_end_newline = True
-
             # parse step to generate structure
             current_line = []
             for ttype, value in tokensource:

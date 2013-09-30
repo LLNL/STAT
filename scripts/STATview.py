@@ -24,7 +24,6 @@ __version__ = "2.0.0"
 
 import os.path
 import string
-import time
 import sys
 import os
 import math
@@ -68,7 +67,8 @@ except Exception as e:
     sys.stderr.write('There was a problem loading the STAThelper module.\n')
     sys.exit(1)
 if have_pygments:
-    from pygments import highlight
+    import pygments
+    #from pygments import highlight
     from pygments.lexers import CLexer
     from pygments.lexers import CppLexer
     from pygments.lexers import FortranLexer
@@ -97,6 +97,9 @@ except:
 
 ## A variable to enable or disable scroll bars (not 100% functional)
 use_scroll_bars = False
+
+## A global variable to track the main window object
+window = None
 
 ## The global map of source line info to lexicographical string
 lex_map = {}
@@ -130,16 +133,11 @@ def list_to_string(task_list):
     ret = ''
     in_range = False
     first_iteration = True
-    range_start = -1
-    range_end = -1
     last_val = -1
     for task in task_list:
         if in_range:
-            if task == last_val + 1:
-                range_end = task
-            else:
-                ret += '%d, %d' %(last_val, task)
-                in_range = False
+            ret += '%d, %d' %(last_val, task)
+            in_range = False
         else:
             if first_iteration:
                 ret += '%d' %(task)
@@ -147,8 +145,6 @@ def list_to_string(task_list):
             else:
                 if task == last_val + 1:
                     in_range = True
-                    range_start = last_val
-                    range_end = task
                     ret += '-'
                 else:
                     ret += ', %d' %(task)
@@ -186,9 +182,7 @@ def create_temp(dot_filename, truncate, max_node_name):
             for line in dot_file:
                 if line.find('fillcolor') > -1:
                     # this is a node
-                    label_start = line.find('label')
                     temp_dot_file.write(line[:line.find('label') + 7])
-                    fill_start = line.find('fillcolor')
                     label = line[line.find('label') + 7:line.find('fillcolor') - 3]
                     label = escaped_label(label)
                     if has_source_and_not_collapsed(label):
@@ -545,12 +539,7 @@ def show_error_dialog(text, parent = None, exception = None):
         traceback.print_exc()
 
     # create error dialog with error message
-    try:
-        if parent is None:
-            parent = window
-        error_dialog = gtk.Dialog('Error', parent)
-    except:
-        error_dialog = gtk.Dialog('Error', None)
+    error_dialog = gtk.Dialog('Error', parent)
     label = gtk.Label(text)
     label.set_line_wrap(True)
     error_dialog.vbox.pack_start(label)
@@ -1345,16 +1334,15 @@ class STATGraph(xdot.Graph):
                 STAThelper.pygments_lines = []
             with open(source_full_path, 'r') as file:
                 if have_pygments:
-                    c_file_patterns = ['.c', '.h']
                     cpp_file_patterns = ['.C', '.cpp', '.c++', '.cc', '.cxx', '.hpp', '.h++', '.hh', '.hxx']
                     fortran_file_patterns = ['.f', '.F', '.f90', '.F90']
                     source_extension = os.path.splitext(os.path.basename(source_full_path))[1]
                     if source_extension in cpp_file_patterns:
-                        highlight(file.read(), CppLexer(), STATviewFormatter())
+                        pygments.highlight(file.read(), CppLexer(), STATviewFormatter())
                     elif source_extension in fortran_file_patterns:
-                        highlight(file.read(), FortranLexer(), STATviewFormatter())
+                        pygments.highlight(file.read(), FortranLexer(), STATviewFormatter())
                     else: # default to C
-                        highlight(file.read(), CLexer(), STATviewFormatter())
+                        pygments.highlight(file.read(), CLexer(), STATviewFormatter())
                     lines = STAThelper.pygments_lines
                     source_view.get_buffer().create_tag('bold_tag', weight = pango.WEIGHT_BOLD)
                     source_view.get_buffer().create_tag('italics_tag', style = pango.STYLE_ITALIC)
@@ -1362,9 +1350,9 @@ class STATGraph(xdot.Graph):
                 else:
                     lines = file.readlines()
         except IOError as e:
-            show_error_dialog('%s\nFailed to open file "%s"\n' %(repr(e), source_file), exception = e)
+            show_error_dialog('%s\nFailed to open file "%s"\n' %(repr(e), source_full_path), exception = e)
         except Exception as e:
-            show_error_dialog('%s\nFailed to process source file "%s"\n' %(repr(e), source_file), exception = e)
+            show_error_dialog('%s\nFailed to process source file "%s"\n' %(repr(e), source_full_path), exception = e)
         width = len(str(len(lines)))
         cur_line_iter = source_view.get_buffer().get_iter_at_offset(0)
         cur_line_mark = source_view.get_buffer().create_mark('cur_line', cur_line_iter, True)
@@ -1413,9 +1401,6 @@ class STATGraph(xdot.Graph):
                         source_view.get_buffer().create_tag(fore_color_tag, foreground_gdk = foreground)
                     except:
                         pass
-                    bold_arg = None
-                    italics_arg = None
-                    underline_arg = None
                     args = [iter, source_string, fore_color_tag, "monospace"]
                     if bold:
                         args.append('bold_tag')
@@ -1508,8 +1493,6 @@ class STATGraph(xdot.Graph):
             if lex_map_index in lex_map.keys():
                 lex_string = lex_map[lex_map_index]
                 if lex_string.find('$') != -1 and iter_string != '':
-                    var_name = lex_string[lex_string.find('$') + 1:lex_string.find('(')]
-                    input_var_name = iter_string[:iter_string.find('=')]
                     input_val = iter_string[iter_string.find('=') + 1:]
                     lex_string = lex_string[:lex_string.find('$')] + input_val + lex_string[lex_string.find(')') +1:]
                 node.lex_string = lex_string
@@ -1540,8 +1523,6 @@ class STATGraph(xdot.Graph):
                 return True
             lex_string = tomod.get_lex_string(to_input)
             if lex_string.find('$') != -1 and iter_string != '':
-                var_name = lex_string[lex_string.find('$') + 1:lex_string.find('(')]
-                input_var_name = iter_string[:iter_string.find('=')]
                 input_val = iter_string[iter_string.find('=') + 1:]
                 lex_string = lex_string[:lex_string.find('$')] + input_val + lex_string[lex_string.find(')') +1:]
             node.lex_string = lex_string
@@ -1882,7 +1863,7 @@ class STATGraph(xdot.Graph):
             ret = self.save_dot(temp_dot_filename, False, False)
             if ret == True:
                 format = '-T' + os.path.splitext(filename)[1][1:]
-                output = subprocess.Popen(["dot", format, temp_dot_filename, "-o", filename], stdout = subprocess.PIPE).communicate()[0]
+                subprocess.Popen(["dot", format, temp_dot_filename, "-o", filename], stdout = subprocess.PIPE).communicate()[0]
             os.remove(temp_dot_filename)
         return ret
 
@@ -2047,7 +2028,6 @@ class STATGraph(xdot.Graph):
                 to_leaves = []
                 temporal_string_list = []
                 node_list = []
-                max_len = 1
                 dst_nodes = []
                 for edge in node.out_edges:
                     dst_nodes.append(edge.dst)
@@ -2293,8 +2273,6 @@ class STATGraph(xdot.Graph):
     def single_task_path(self, widget):
         """Hides any call path whose leaf was visited by multpile tasks."""
         single_task_list = []
-        show_nodes = []
-        show_edges = []
         hide_count = 0
         for node in self.nodes:
             if node.hide == True:
@@ -2590,8 +2568,6 @@ class STATDotWidget(xdot.DotWidget):
             if line.find('fillcolor') != -1:
                 tokens = line.split()
                 node_id = tokens[0]
-                label_start = line.find('label')
-                fill_start = line.find('fillcolor')
                 label = line[line.find('label') + 7:line.find('fillcolor') - 3].replace('\\', '')
                 self.node_label_map[node_id] = label
             elif line.find('->') != -1:
@@ -2699,12 +2675,12 @@ class STATDotWidget(xdot.DotWidget):
             state = event.state
             if event.button in (1, 2): # left or middle button
                 if state & gtk.gdk.CONTROL_MASK:
-                    return ZoomAction
+                    return xdot.ZoomAction
                 elif state & gtk.gdk.SHIFT_MASK:
-                    return ZoomAreaAction
+                    return xdot.ZoomAreaAction
                 else:
                     return STATPanAction
-            return NullAction
+            return xdot.NullAction
         else:
             return xdot.DotWidget.get_drag_action(self, event)
 
@@ -2785,8 +2761,6 @@ class STATDotWidget(xdot.DotWidget):
             elif pos != None:
                 x, y = pos
                 allocation = self.viewport.get_allocation()
-
-                rect = self.get_allocation()
                 hspan = allocation[2]
                 vspan = allocation[3]
                 hpos = x * adj_zoom_ratio - hspan / 2.0 + self.ZOOM_TO_FIT_MARGIN
@@ -2969,7 +2943,7 @@ class STATDotWindow(xdot.DotWindow):
             pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
             image.set_from_pixbuf(pixbuf)
             hbox.pack_start(image, False)
-        except gobject.GError, error:
+        except gobject.GError:
             pass
         self.vbox.pack_start(hbox, False)
         self.tabs = []
@@ -3296,7 +3270,7 @@ entered as a regular expression"""
             pdfviewer = _which('xpdf')
             if pdfviewer is None:
                 pdfviewer = _which('acroread')
-                if pdfviewere is None:
+                if pdfviewer is None:
                     show_error_dialog('Failed to find PDF viewer', self)
                 return False
         if os.fork() == 0:
@@ -3314,7 +3288,7 @@ entered as a regular expression"""
         try:
             pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
             about_dialog.set_logo(pixbuf)
-        except gobject.GError, error:
+        except gobject.GError:
             pass
         about_dialog.set_website('https://github.com/lee218llnl/STAT')
         about_dialog.show_all()
@@ -4169,7 +4143,6 @@ enterered as a regular expression.
             text_view.set_wrap_mode(gtk.WRAP_CHAR)
             text_view_buffer.create_tag("monospace", family = "monospace")
             iter = text_view_buffer.get_iter_at_offset(0)
-            cur_line_mark = text_view_buffer.create_mark('cur_line', iter, True)
             fore_color_tag = "color_fore%s" %(font_color_string)
             foreground = gtk.gdk.color_parse(font_color_string)
             text_view_buffer.create_tag(fore_color_tag, foreground_gdk = foreground)

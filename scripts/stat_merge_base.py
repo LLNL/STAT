@@ -162,8 +162,8 @@ class StatMergerArgs(object):
         except ValueError as e:
             sys.stderr.write('ERROR: You must specify trace files with the -c argument')
             self.print_usage()
-        trace_file_args = sys.argv[sys.argv.index('-c') + 1:]
-        sys.argv = sys.argv[0:sys.argv.index('-c')]
+        trace_file_args = sys.argv[trace_file_delim_index + 1:]
+        sys.argv = sys.argv[0:trace_file_delim_index]
 
         # get list of trace files
         if len(trace_file_args) == 1:

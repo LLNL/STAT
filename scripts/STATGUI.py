@@ -23,22 +23,20 @@ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendr
 __version__ = "2.0.0"
 
 import STAThelper
-from STAThelper import var_spec_to_string, get_task_list, ProcTab, get_ProcTab, decompose_node
+from STAThelper import var_spec_to_string, get_task_list, get_ProcTab, decompose_node
 import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
 import sys, DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_LOG_NONE, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON
 import commands
 import subprocess
-import shelve
 import time
 import string
 import os
 import gtk
 import gobject
 import re
-from collections import defaultdict
 
 ## The STATGUI window adds STAT operations to the STATview window.
 class STATGUI(STATDotWindow):
@@ -283,7 +281,7 @@ host[1-10,12,15-20];otherhost[30]
         try:
             pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
             about_dialog.set_logo(pixbuf)
-        except gobject.GError, error:
+        except gobject.GError:
             pass
         about_dialog.set_website('https://github.com/lee218llnl/STAT')
         about_dialog.show_all()
@@ -320,7 +318,6 @@ host[1-10,12,15-20];otherhost[30]
         # gather application properties
         num_nodes = self.STAT.getNumApplNodes()
         num_procs = self.STAT.getNumApplProcs()
-        appl_exe = self.STAT.getApplExe()
         ret = self.set_proctab()
         if ret == False:
             show_error_dialog('Failed to set process table file\n', self)
@@ -470,8 +467,6 @@ host[1-10,12,15-20];otherhost[30]
                     host_filter.append(node_name)
             elif host != '':
                 host_filter.append(host)
-        pid_filter = []
-        exe_Filter = []
         self.ptab_sw = gtk.ScrolledWindow()
         self.ptab_sw.set_shadow_type(gtk.SHADOW_ETCHED_IN)
         self.ptab_sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
@@ -702,10 +697,8 @@ host[1-10,12,15-20];otherhost[30]
         self.sample(True)
         for action in actions:
             if action.find('Traverse Most Progress') != -1:
-                depth = int(action[23:])
                 self.on_to_traverse_most_progress(None)
             if action.find('Traverse Least Progress') != -1:
-                depth = int(action[23:])
                 self.on_to_traverse_least_progress(None)
         self.get_current_graph().adjust_dims()
         self.get_current_widget().zoom_to_fit()
