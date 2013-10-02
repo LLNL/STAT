@@ -1,5 +1,6 @@
 2013-10-02 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/*.py : PEP8 conformance (except line length)
+	* scripts/*.py : pylint suggested fixes
 
 2013-09-05 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : need to pick up decompose_node for TO

@@ -301,12 +301,12 @@ class StatMerger(object):
 
             # parse and merge the traces
             length = len(self.trace_files)
-            for i, file in enumerate(self.trace_files):
+            for i, filename in enumerate(self.trace_files):
                 if self.verbose:
                     sys.stdout.write('\b\b\b\b%03u%%' % (i / (length / 100.0)))
                     sys.stdout.flush()
 
-                trace_object = self.trace_type(file, self.options)
+                trace_object = self.trace_type(filename, self.options)
                 for j, trace in enumerate(trace_object.traces):
                     for k, sub_trace in enumerate(trace):
                         if i == 0 and k == 0:

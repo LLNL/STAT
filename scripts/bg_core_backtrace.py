@@ -87,9 +87,9 @@ class BgCoreMerger(StatMerger):
     def get_high_rank(self, trace_files):
         # determine the highest ranked task for graphlib initialization
         high_rank = 0
-        for file in trace_files:
-            if file.find('core.') != -1:
-                rank = file[file.find('core.')+5:]
+        for filename in trace_files:
+            if filename.find('core.') != -1:
+                rank = filename[filename.find('core.')+5:]
                 rank = int(rank)
                 if rank > high_rank:
                     high_rank = rank

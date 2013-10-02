@@ -23,7 +23,7 @@ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendr
 __version__ = "2.0.0"
 
 import STAThelper
-from STAThelper import var_spec_to_string, get_task_list, get_ProcTab, decompose_node
+from STAThelper import var_spec_to_string, get_task_list, get_proctab, decompose_node
 import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
 import sys
@@ -124,9 +124,9 @@ class STATGUI(STATDotWindow):
                    'Run Time Before Sample (sec)':     0,
                    'Sample Type':                      'function only',
                    'Edge Type':                        'full list',
-                   'DDT Path':                         STAThelper._which('ddt'),
+                   'DDT Path':                         STAThelper.which('ddt'),
                    'DDT LaunchMON Prefix':             '/usr/local',
-                   'TotalView Path':                   STAThelper._which('totalview'),
+                   'TotalView Path':                   STAThelper.which('totalview'),
                    'Additional Debugger Args':         ''}
         if not hasattr(self, "options"):
             self.options = {}
@@ -246,8 +246,8 @@ host[1-10,12,15-20];otherhost[30]
         for host in temp_host_list:
             if host.find('[') != -1:
                 prefix = host[0:host.find('[')]
-                range = host[host.find('['):host.find(']') + 1]
-                node_list = get_task_list(range)
+                host_range = host[host.find('['):host.find(']') + 1]
+                node_list = get_task_list(host_range)
                 for node in node_list:
                     node_name = '%s%d' % (prefix, node)
                     host_list.append(node_name)
@@ -324,13 +324,10 @@ host[1-10,12,15-20];otherhost[30]
             show_error_dialog('Failed to set process table file\n', self)
             return False
 
-        process_table = ''
         job_launcher = "%s:%d" % (self.proctab.launcher_host, self.proctab.launcher_pid)
         entries = range(len(self.proctab.process_list))
         for rank, host, pid, exe_index in self.proctab.process_list:
             entries[rank] = '%d %s:%d %d\n' % (rank, host, pid, exe_index)
-        for entry in entries:
-            process_table += entry
 
         self.properties_window = gtk.Window()
         self.properties_window.set_title('Properties')
@@ -478,9 +475,9 @@ host[1-10,12,15-20];otherhost[30]
                 continue
             if host_filter != [] and host not in host_filter:
                 continue
-            iter = list_store.append()
+            iterator = list_store.append()
             item = (rank, host, pid, exe_index)
-            list_store.set(iter, PTAB_INDEX_RANK, item[PTAB_INDEX_RANK], PTAB_INDEX_HOST, item[PTAB_INDEX_HOST], PTAB_INDEX_PID, item[PTAB_INDEX_PID], PTAB_INDEX_EXE, item[PTAB_INDEX_EXE])
+            list_store.set(iterator, PTAB_INDEX_RANK, item[PTAB_INDEX_RANK], PTAB_INDEX_HOST, item[PTAB_INDEX_HOST], PTAB_INDEX_PID, item[PTAB_INDEX_PID], PTAB_INDEX_EXE, item[PTAB_INDEX_EXE])
         treeview = gtk.TreeView(list_store)
         treeview.set_rules_hint(True)
         treeview.set_search_column(PTAB_INDEX_RANK)
@@ -502,15 +499,15 @@ host[1-10,12,15-20];otherhost[30]
         treeview.append_column(column)
         self.properties_window.show_all()
 
-    def on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
+    def on_update_process_listing(self, widget, frame, attach_dialog, listing_filter=None):
         """Generate a wait dialog and search for user processes."""
-        stat_wait_dialog.show_wait_dialog_and_run(self._on_update_process_listing, (widget, frame, attach_dialog, filter), [], attach_dialog)
+        stat_wait_dialog.show_wait_dialog_and_run(self._on_update_process_listing, (widget, frame, attach_dialog, listing_filter), [], attach_dialog)
 
-    def on_update_serial_process_listing(self, widget, frame, attach_dialog, filter=None):
+    def on_update_serial_process_listing(self, widget, frame, attach_dialog, listing_filter=None):
         """Generate a wait dialog and search for user processes."""
-        stat_wait_dialog.show_wait_dialog_and_run(self._on_update_serial_process_listing, (widget, frame, attach_dialog, filter), [], attach_dialog)
+        stat_wait_dialog.show_wait_dialog_and_run(self._on_update_serial_process_listing, (widget, frame, attach_dialog, listing_filter), [], attach_dialog)
 
-    def _on_update_process_listing2(self, attach_dialog, filter, vbox, is_parallel):
+    def _on_update_process_listing2(self, attach_dialog, listing_filter, vbox, is_parallel):
         """Search for user processes."""
         self.options['Remote Host Shell'] = self.types['Remote Host Shell'][self.combo_boxes['Remote Host Shell'].get_active()]
         if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
@@ -535,7 +532,7 @@ host[1-10,12,15-20];otherhost[30]
                 pid_index = counter
             elif token == 'COMMAND':
                 command_index = counter
-        filter_compiled_re = re.compile(filter.get_text())
+        filter_compiled_re = re.compile(listing_filter.get_text())
         started = False
         for line in output[1:]:
             try:
@@ -544,8 +541,8 @@ host[1-10,12,15-20];otherhost[30]
                     text += ' %s' % token
             except:
                 continue
-            if filter is not None:
-                if filter.get_text() != '':
+            if listing_filter is not None:
+                if listing_filter.get_text() != '':
                     if filter_compiled_re.search(text) is None:
                         continue
             if started is False:
@@ -566,9 +563,9 @@ host[1-10,12,15-20];otherhost[30]
                 radio_button.connect("toggled", self.serial_pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
             vbox.pack_start(radio_button, False, False, 0)
 
-    def _on_update_process_listing(self, widget, frame, attach_dialog, filter=None):
+    def _on_update_process_listing(self, widget, frame, attach_dialog, listing_filter=None):
         vbox = gtk.VBox()
-        self._on_update_process_listing2(attach_dialog, filter, vbox, True)
+        self._on_update_process_listing2(attach_dialog, listing_filter, vbox, True)
         try:
             if self.sw is not None:
                 frame.remove(self.sw)
@@ -580,9 +577,9 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(self.sw)
         attach_dialog.show_all()
 
-    def _on_update_serial_process_listing(self, widget, frame, attach_dialog, filter=None):
+    def _on_update_serial_process_listing(self, widget, frame, attach_dialog, listing_filter=None):
         vbox = gtk.VBox()
-        self._on_update_process_listing2(attach_dialog, filter, vbox, False)
+        self._on_update_process_listing2(attach_dialog, listing_filter, vbox, False)
         try:
             if self.serial_sw is not None:
                 frame.remove(self.serial_sw)
@@ -639,9 +636,9 @@ host[1-10,12,15-20];otherhost[30]
         for node in self.get_current_graph().nodes:
             if node.lex_string is not None:
                 if node.lex_string.find('$') != -1 and node.lex_string.find('=') == -1:
-                    function_name, sourceLine, iter_string = decompose_node(node.label)
-                    source = sourceLine[:sourceLine.find(':')]
-                    line = int(sourceLine[sourceLine.find(':') + 1:])
+                    function_name, source_line, iter_string = decompose_node(node.label)
+                    source = source_line[:source_line.find(':')]
+                    line = int(source_line[source_line.find(':') + 1:])
                     temp = node.lex_string[node.lex_string.find('$') + 1:]
                     while 1:
                         var = temp[:temp.find('(')]
@@ -953,21 +950,21 @@ host[1-10,12,15-20];otherhost[30]
 
         self.STAT.setToolDaemonExe(self.options['Tool Daemon Path'])
         self.STAT.setFilterPath(self.options['Filter Path'])
-        logType = STAT_LOG_NONE
+        log_type = STAT_LOG_NONE
         if self.options['Log Frontend']:
-            logType |= STAT_LOG_FE
+            log_type |= STAT_LOG_FE
         if self.options['Log Backend']:
-            logType |= STAT_LOG_BE
+            log_type |= STAT_LOG_BE
         if self.options['Log CP']:
-            logType |= STAT_LOG_CP
+            log_type |= STAT_LOG_CP
         if self.options['Log SW']:
-            logType |= STAT_LOG_SW
+            log_type |= STAT_LOG_SW
         if self.options['Log SWERR']:
-            logType |= STAT_LOG_SWERR
+            log_type |= STAT_LOG_SWERR
         if self.options['Use MRNet Printf']:
-            logType |= STAT_LOG_MRN
-        if logType != STAT_LOG_NONE:
-            ret = self.STAT.startLog(logType, self.options['Log Dir'])
+            log_type |= STAT_LOG_MRN
+        if log_type != STAT_LOG_NONE:
+            ret = self.STAT.startLog(log_type, self.options['Log Dir'])
             if ret != STAT_OK:
                 show_error_dialog('Failed to Start Log:\n%s' % self.STAT.getLastErrorMessage(), self)
                 self.on_fatal_error()
@@ -1459,7 +1456,6 @@ host[1-10,12,15-20];otherhost[30]
         my_frame = gtk.Frame("%d Equivalence Classes:" % (len(num_eq_classes)))
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        eq_string = ''
         classes = []
         for eq_class in num_eq_classes:
             current_class = '['
@@ -1482,10 +1478,6 @@ host[1-10,12,15-20];otherhost[30]
             if in_range is True:
                 current_class += '-%d' % num
             current_class += ']\n'
-            if task_count == 1:
-                eq_string += '%d task: %s' % (task_count, current_class)
-            else:
-                eq_string += '%d tasks: %s' % (task_count, current_class)
             item = {}
             item['class'] = task_list
             item['fill_color_string'] = fill_color_string
@@ -1533,7 +1525,7 @@ host[1-10,12,15-20];otherhost[30]
             list_view.set_wrap_mode(True)
             list_view.set_editable(False)
             list_view.set_cursor_visible(False)
-            iter = list_view.get_buffer().get_iter_at_offset(0)
+            iterator = list_view.get_buffer().get_iter_at_offset(0)
             list_view.get_buffer().create_tag("monospace", family="monospace")
             foreground = gtk.gdk.color_parse(item['font_color_string'])
             background = gtk.gdk.color_parse(item['fill_color_string'])
@@ -1541,7 +1533,7 @@ host[1-10,12,15-20];otherhost[30]
             back_color_tag = 'back%s%s' % (item['font_color_string'], item['fill_color_string'])
             list_view.get_buffer().create_tag(fore_color_tag, foreground_gdk=foreground)
             list_view.get_buffer().create_tag(back_color_tag, background_gdk=background)
-            list_view.get_buffer().insert_with_tags_by_name(iter, item['string'], fore_color_tag, back_color_tag, "monospace")
+            list_view.get_buffer().insert_with_tags_by_name(iterator, item['string'], fore_color_tag, back_color_tag, "monospace")
             hbox.pack_start(list_view, True, True, 5)
             vbox.pack_start(gtk.HSeparator(), False, False, 0)
             vbox.pack_start(hbox, False, False, 0)
@@ -1596,7 +1588,7 @@ host[1-10,12,15-20];otherhost[30]
         dialog.show_all()
         dialog.run()
 
-    def on_toggle_eq(self, w, button, type):
+    def on_toggle_eq(self, w, button, button_type):
         """Callback to toggle equivalence class representatives."""
         if self.dont_recurse is True:
             return True
@@ -1606,8 +1598,8 @@ host[1-10,12,15-20];otherhost[30]
         self.eq_state['none_button'].set_active(False)
         if button == 'all':
             for item in self.eq_state['classes']:
-                item[type].set_active(True)
-            self.eq_state[type].set_active(True)
+                item[button_type].set_active(True)
+            self.eq_state[button_type].set_active(True)
         self.dont_recurse = False
         return True
 
@@ -1623,16 +1615,16 @@ host[1-10,12,15-20];otherhost[30]
             failed_ptab_path = self.proctab_file_path
             directory = os.path.dirname(os.path.abspath(self.get_current_graph().cur_filename))
             self.proctab_file_path = ''
-            for file in os.listdir(directory):
-                if file.find('.ptab') != -1:
-                    self.proctab_file_path = directory + '/' + file
+            for filename in os.listdir(directory):
+                if filename.find('.ptab') != -1:
+                    self.proctab_file_path = directory + '/' + filename
                     break
         if self.proctab_file_path == '':
             show_error_dialog('Failed to find process table file %s or .ptab file in %s.' % (failed_ptab_path, directory), self)
             return False
 
         try:
-            self.proctab = get_ProcTab(self.proctab_file_path)
+            self.proctab = get_proctab(self.proctab_file_path)
         except IOError as e:
             show_error_dialog('%s\nfailed to open process table file:\n\n%s\n\nPlease be sure that it is a valid process table file outputted from STAT.' % (repr(e), self.proctab_file_path), self)
             return False
@@ -1864,7 +1856,7 @@ host[1-10,12,15-20];otherhost[30]
             vbox.pack_start(frame, False, False, 5)
 
 
-def STATGUI_main(argv):
+def STATGUI_main():
     """The STATGUI main."""
     window = STATGUI()
     STATview.window = window
@@ -1873,4 +1865,4 @@ def STATGUI_main(argv):
     gtk.main()
 
 if __name__ == '__main__':
-    STATGUI_main(sys.argv)
+    STATGUI_main()

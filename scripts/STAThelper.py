@@ -23,14 +23,14 @@ __version__ = "2.0.0"
 import os.path
 
 ## A variable to determine whther we have the pygments module for syntax hilighting
-have_pygments = True
+HAVE_PYGMENTS = True
 try:
     from pygments.formatter import Formatter
 except:
-    have_pygments = False
+    HAVE_PYGMENTS = False
 
 ## A list of MPI function names, for the "Hide MPI" feature
-mpi_functions = ['mpi_file_iwrite_shared', 'mpi_info_set', 'mpio_request_c2f',
+MPI_FUNCTIONS = ['mpi_file_iwrite_shared', 'mpi_info_set', 'mpio_request_c2f',
                  'mpi_file_open', 'mpi_init', 'mpio_request_f2c',
                  'mpi_file_preallocate', 'mpi_init_thread', 'mpio_test',
                  'mpi_file_read', 'mpi_initialized', 'mpio_wait',
@@ -112,7 +112,7 @@ mpi_functions = ['mpi_file_iwrite_shared', 'mpi_info_set', 'mpio_request_c2f',
 ## A global variable to store to pygments highlighted source lines
 pygments_lines = []
 
-if have_pygments:
+if HAVE_PYGMENTS:
     ## Formatter for syntax highlighting the source view window.
     class STATviewFormatter(Formatter):
         """Formatter for syntax highlighting the source view window."""
@@ -188,6 +188,7 @@ if have_pygments:
 
 ## The ProcTab class stores the process table
 class ProcTab(object):
+    """The ProcTab class stores the process table"""
     def __init__(self):
         self.launcher_host = None
         self.launcher_pid = None
@@ -196,13 +197,14 @@ class ProcTab(object):
         self.process_list = []
 
 
-def get_ProcTab(proctab_file_path):
-    with open(proctab_file_path, 'r') as f:
-        launcher = f.next().strip('\n').split(':')
+def get_proctab(proctab_file_path):
+    """Retrieve the proctab object from a process table file"""
+    with open(proctab_file_path, 'r') as proctab_file:
+        launcher = proctab_file.next().strip('\n').split(':')
         proctab = ProcTab()
         proctab.launcher_host = launcher[0]
         proctab.launcher_pid = int(launcher[1])
-        for line in f:
+        for line in proctab_file:
             line = line.strip('\n').split()
             rank = int(line[0])
             host_pid = line[1].split(':')
@@ -224,12 +226,12 @@ def get_ProcTab(proctab_file_path):
 #  \return true if the input function is an MPI function
 #
 #  \n
-def is_MPI(function_name):
+def is_mpi(function_name):
     """Determine if a function is an MPI function."""
     function_name = function_name.lower()
     if function_name[0] == 'p':  # check for PMPI wrapper name
         function_name = function_name[1:]
-    if function_name in mpi_functions:
+    if function_name in MPI_FUNCTIONS:
         return True
     return False
 
@@ -290,11 +292,11 @@ def get_num_tasks(label):
 #  \return the executable file path"""
 #
 #  \n
-def _which(executable):
+def which(executable):
     """Search directories in the $PATH to find the requested executable"""
     path = os.environ.get("PATH")
-    for dir in path.split(':'):
-        filepath = os.path.join(dir, executable)
+    for directory in path.split(':'):
+        filepath = os.path.join(directory, executable)
         if os.access(filepath, os.X_OK):
             return filepath
     return None
@@ -314,60 +316,63 @@ def color_to_string(color):
     return ret
 
 
-## \param input - the stack frame text
+## \param label - the stack frame text
 #  \return True if the label includes source file and line number info
 #
 #  \n
-def label_has_source(input):
-    return input.find('@') != -1
+def label_has_source(label):
+    """return True if the label includes source file and line number info"""
+    return label.find('@') != -1
 
 
-## \param input - the stack frame text
+## \param label - the stack frame text
 #  \return True if the label includes source file and line number info and the node is not eq class collapsed
 #
 #  \n
-def label_collapsed(input):
-    return input.find('==\\>') != -1 or input.find('==>') != -1
+def label_collapsed(label):
+    """return True if the label includes source file and line number info and the node is not eq class collapsed"""
+    return label.find('==\\>') != -1 or label.find('==>') != -1
 
 
-## \param input - the stack frame text
+## \param label - the stack frame text
 #  \return True if the label includes source file and line number info and the node is not eq class collapsed
 #
 #  \n
-def has_source_and_not_collapsed(input):
-    return label_has_source(input) and not label_collapsed(input)
+def has_source_and_not_collapsed(label):
+    """return True if the label includes source file and line number info and the node is not eq class collapsed"""
+    return label_has_source(label) and not label_collapsed(label)
 
 
-## \param input - the stack frame text
+## \param label - the stack frame text
 #  \return - a tuple of (function name, line number, variable info)
 #
 #  \n
-def decompose_node(input, item=None):
+def decompose_node(label, item=None):
     """Decompose a stack frame's text into individual components."""
     function_name = ''
-    sourceLine = ''
+    source_line = ''
     iter_string = ''
-    if has_source_and_not_collapsed(input):
-        function_name = input[:input.find('@')]
-        if input.find('$') != -1 and input.find('$$') == -1:  # and clause for name mangling of C++ on BG/Q example
-            sourceLine = input[input.find('@') + 1:input.find('$')]
-            iter_string = input[input.find('$') + 1:]
+    if has_source_and_not_collapsed(label):
+        function_name = label[:label.find('@')]
+        if label.find('$') != -1 and label.find('$$') == -1:  # and clause for name mangling of C++ on BG/Q example
+            source_line = label[label.find('@') + 1:label.find('$')]
+            iter_string = label[label.find('$') + 1:]
         else:
-            sourceLine = input[input.find('@') + 1:]
+            source_line = label[label.find('@') + 1:]
             iter_string = ''
-    elif label_collapsed(input) and item is not None:
+    elif label_collapsed(label) and item is not None:
         if item == -1:
             return_list = []
-            frames = input.split(' ==> ')
+            frames = label.split(' ==> ')
             for frame in frames:
-                function_name, sourceLine, iter_string = decompose_node(frame)
-                return_list.append((function_name, sourceLine, iter_string))
+                function_name, source_line, iter_string = decompose_node(frame)
+                return_list.append((function_name, source_line, iter_string))
             return return_list
         else:
-            function_name, sourceLine, iter_string = decompose_node(input.split(' ==> ')[item])
+            function_name, source_line, iter_string = decompose_node(label.split(' ==> ')[item])
     else:
-        function_name = input
-    return function_name, sourceLine, iter_string
+        function_name = label
+    return function_name, source_line, iter_string
 
 
 ## \param var_spec - the variable specificaiton (location and name)
@@ -379,8 +384,8 @@ def var_spec_to_string(var_spec):
     if var_spec == []:
         return 'NULL'
     ret = '%d#' % len(var_spec)
-    for file, line, depth, var in var_spec:
-        ret += '%s:%d.%d$%s,' % (file, line, depth, var)
+    for filename, line, depth, var in var_spec:
+        ret += '%s:%d.%d$%s,' % (filename, line, depth, var)
     ret = ret[:len(ret) - 1]
     return ret
 
@@ -390,13 +395,14 @@ def var_spec_to_string(var_spec):
 #
 #  \n
 def escaped_label(label):
+    """return a copy of the label with appropriate escape characters added"""
     ret = ''
     prev = ' '
-    for c in label:
-        if prev != '\\' and (c == '<' or c == '>'):
+    for character in label:
+        if prev != '\\' and (character == '<' or character == '>'):
             ret += '\\'
-        ret += c
-        prev = c
+        ret += character
+        prev = character
     return ret
 
 #global DEBUG
