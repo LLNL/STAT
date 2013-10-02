@@ -44,18 +44,20 @@ if os.name != 'nt':
 
 # Check for required modules
 try:
-    import gtk, gobject, pango
+    import gtk
+    import gobject
+    import pango
 except ImportError as e:
-    sys.stderr.write('%s\n' %repr(e))
+    sys.stderr.write('%s\n' % repr(e))
     sys.stderr.write('STATview requires gtk and gobject\n')
     sys.exit(1)
 except RuntimeError as e:
-    sys.stderr.write('%s\n' %repr(e))
+    sys.stderr.write('%s\n' % repr(e))
     sys.stderr.write('There was a problem loading the gtk and gobject module.\n')
     sys.stderr.write('Is X11 forwarding enabled?\n')
     sys.exit(1)
 except Exception as e:
-    sys.stderr.write('%s\n' %repr(e))
+    sys.stderr.write('%s\n' % repr(e))
     sys.stderr.write('There was a problem loading the gtk module.\n')
     sys.exit(1)
 
@@ -63,7 +65,7 @@ try:
     import STAThelper
     from STAThelper import _which, color_to_string, decompose_node, get_num_tasks, get_task_list, have_pygments, is_MPI, escaped_label, has_source_and_not_collapsed, label_has_source, label_collapsed
 except Exception as e:
-    sys.stderr.write('%s\n' %repr(e))
+    sys.stderr.write('%s\n' % repr(e))
     sys.stderr.write('There was a problem loading the STAThelper module.\n')
     sys.exit(1)
 if have_pygments:
@@ -136,25 +138,26 @@ def list_to_string(task_list):
     last_val = -1
     for task in task_list:
         if in_range:
-            ret += '%d, %d' %(last_val, task)
+            ret += '%d, %d' % (last_val, task)
             in_range = False
         else:
             if first_iteration:
-                ret += '%d' %(task)
+                ret += '%d' % (task)
                 first_iteration = False
             else:
                 if task == last_val + 1:
                     in_range = True
                     ret += '-'
                 else:
-                    ret += ', %d' %(task)
+                    ret += ', %d' % (task)
         last_val = task
     if in_range:
-        ret += '%d' %(task)
+        ret += '%d' % (task)
     task_label_to_list[ret] = task_list
     next_label_id += 1
     task_label_id_to_list[next_label_id] = task_list
     return ret
+
 
 ## \param dot_filename - the input .dot file
 ## \param truncate - whether to truncate from "front" or "back"
@@ -170,11 +173,11 @@ def create_temp(dot_filename, truncate, max_node_name):
         temp_dot_file = open(temp_dot_filename, 'w')
     except:
         home_dir = os.environ.get("HOME")
-        temp_dot_filename = '%s/_temp.dot' %home_dir
+        temp_dot_filename = '%s/_temp.dot' % home_dir
         try:
             temp_dot_file = open(temp_dot_filename, 'w')
         except Exception as e:
-            show_error_dialog('Failed to open temp dot file %s for writing' %temp_dot_filename, exception = e)
+            show_error_dialog('Failed to open temp dot file %s for writing' % temp_dot_filename, exception=e)
             return None
     temp_dot_file.write('digraph G {\n\tnode [shape=record,style=filled,labeljust=c,height=0.2];\n')
     try:
@@ -195,19 +198,19 @@ def create_temp(dot_filename, truncate, max_node_name):
                                 source = os.path.basename(source)
                             if iter_string != '':
                                 iter_string = '$' + iter_string
-                            label = "%s@%s:%d%s" %(function_name, source, cur_lineNum, iter_string)
+                            label = "%s@%s:%d%s" % (function_name, source, cur_lineNum, iter_string)
                     if len(label) > max_node_name and truncate == "front":
                         # clip long node names at the front (preserve most significant characters)
                         if label[2-max_node_name] == '\\':
-                            label = '...\\%s' %label[3-max_node_name:]
+                            label = '...\\%s' % label[3-max_node_name:]
                         else:
-                            label = '...%s' %label[3-max_node_name:]
+                            label = '...%s' % label[3-max_node_name:]
                     if len(label) > max_node_name and truncate == "rear":
                         # clip long node names at the rear (preserve least significant characters)
                         if label[max_node_name-1] == '\\':
-                            label = '%s' %label[:max_node_name-2]
+                            label = '%s' % label[:max_node_name-2]
                         else:
-                            label = '%s...' %label[:max_node_name-3]
+                            label = '%s...' % label[:max_node_name-3]
                     temp_dot_file.write(label)
                     temp_dot_file.write(line[line.find('fillcolor') - 3:])
                 elif line.find('->') > -1:
@@ -222,9 +225,9 @@ def create_temp(dot_filename, truncate, max_node_name):
                         # this is just a count and representative
                         representative = get_task_list(label)[0]
                         if num_tasks == 1:
-                            label = label[0:8] + str(num_tasks) + ':[' +  str(representative) + ']"]'
+                            label = label[0:8] + str(num_tasks) + ':[' + str(representative) + ']"]'
                         else:
-                            label = label[0:8] + str(num_tasks) + ':[' +  str(representative) + ',...]"]'
+                            label = label[0:8] + str(num_tasks) + ':[' + str(representative) + ',...]"]'
                     else:
                         # this is a full node list
                         if len(label) > max_size and label.find('...') == -1:
@@ -232,8 +235,7 @@ def create_temp(dot_filename, truncate, max_node_name):
                             new_label = label[0:max_size]
                             char = 'x'
                             i = max_size-1
-                            while char != ',' and i+1 < len(label) and char != ']' and\
-                                  char != '"':
+                            while char != ',' and i + 1 < len(label) and char != ']' and char != '"':
                                 i += 1
                                 char = label[i]
                                 new_label += char
@@ -246,12 +248,12 @@ def create_temp(dot_filename, truncate, max_node_name):
                             label = new_label
                         label = label[0:8] + str(num_tasks) + ':' + label[8:]
                     line = '\t' + str(source) + ' -> ' + str(sink) + ' ' + label + '\n'
-                    temp_dot_file.write('%s' %line)
+                    temp_dot_file.write('%s' % line)
     except IOError as e:
-        show_error_dialog('Failed to open dot file %s' %dot_filename, exception = e)
+        show_error_dialog('Failed to open dot file %s' % dot_filename, exception=e)
         return None
     except Exception as e:
-        show_error_dialog('Failed to create temporary dot file %s\n %s' %(dot_filename, repr(e)), exception = e)
+        show_error_dialog('Failed to create temporary dot file %s\n %s' % (dot_filename, repr(e)), exception=e)
         return None
     finally:
         temp_dot_file.write('}\n')
@@ -260,7 +262,7 @@ def create_temp(dot_filename, truncate, max_node_name):
 
 
 class CellRendererButtonPixbuf(gtk.CellRendererPixbuf):
-    __gproperties__ = {"callable":(gobject.TYPE_PYOBJECT, "callable property", "callable property", gobject.PARAM_READWRITE)}
+    __gproperties__ = {"callable": (gobject.TYPE_PYOBJECT, "callable property", "callable property", gobject.PARAM_READWRITE)}
     _button_width = 20
     _button_height = 30
 
@@ -279,13 +281,13 @@ class CellRendererButtonPixbuf(gtk.CellRendererPixbuf):
             else:
                 raise TypeError("callable property must be callable!")
         else:
-            raise AttributeError("Unknown property %s" %pspec.name)
+            raise AttributeError("Unknown property %s" % pspec.name)
 
     def do_get_property(self, pspec):
         if pspec.name == "callable":
             return self.callable
         else:
-            raise AttributeError("Unknown property %s" %pspec.name)
+            raise AttributeError("Unknown property %s" % pspec.name)
 
     def do_get_size(self, wid, cell_area):
         xpad = self.get_property("xpad")
@@ -317,16 +319,17 @@ class CellRendererButtonPixbuf(gtk.CellRendererPixbuf):
             shadow = gtk.SHADOW_OUT
         wid.get_style().paint_box(window, state, shadow, cell_area, wid, "button", cell_area.x + x + xpad, cell_area.y + y + ypad, w - 6, h - 6)
         flags = flags & ~gtk.STATE_SELECTED
-        gtk.CellRendererPixbuf.do_render(self, window, wid, bg_area, (cell_area[0], cell_area[1] + ypad, cell_area[2],cell_area[3]), expose_area, flags)
+        gtk.CellRendererPixbuf.do_render(self, window, wid, bg_area, (cell_area[0], cell_area[1] + ypad, cell_area[2], cell_area[3]), expose_area, flags)
 
     def do_activate(self, event, wid, path, bg_area, cell_area, flags):
         cb = self.get_property("callable")
-        if cb != None:
+        if cb is not None:
             cb(path)
         return True
 
+
 class CellRendererButtonText(gtk.CellRendererText):
-    __gproperties__ = {"callable":(gobject.TYPE_PYOBJECT, "callable property", "callable property",gobject.PARAM_READWRITE)}
+    __gproperties__ = {"callable": (gobject.TYPE_PYOBJECT, "callable property", "callable property", gobject.PARAM_READWRITE)}
     _button_width = 40
     _button_height = 30
 
@@ -345,13 +348,13 @@ class CellRendererButtonText(gtk.CellRendererText):
             else:
                 raise TypeError("callable property must be callable!")
         else:
-            raise AttributeError("Unknown property %s" %pspec.name)
+            raise AttributeError("Unknown property %s" % pspec.name)
 
     def do_get_property(self, pspec):
         if pspec.name == "callable":
             return self.callable
         else:
-            raise AttributeError("Unknown property %s" %pspec.name)
+            raise AttributeError("Unknown property %s" % pspec.name)
 
     def do_get_size(self, wid, cell_area):
         xpad = self.get_property("xpad")
@@ -383,11 +386,11 @@ class CellRendererButtonText(gtk.CellRendererText):
             shadow = gtk.SHADOW_OUT
         wid.get_style().paint_box(window, state, shadow, cell_area, wid, "button", cell_area.x + x + xpad, cell_area.y + y + ypad, w - 6, h - 6)
         flags = flags & ~gtk.STATE_SELECTED
-        gtk.CellRendererText.do_render(self, window, wid, bg_area, (cell_area[0], cell_area[1] + ypad, cell_area[2],cell_area[3]), expose_area, flags)
+        gtk.CellRendererText.do_render(self, window, wid, bg_area, (cell_area[0], cell_area[1] + ypad, cell_area[2], cell_area[3]), expose_area, flags)
 
     def do_activate(self, event, wid, path, bg_area, cell_area, flags):
         cb = self.get_property("callable")
-        if cb != None:
+        if cb is not None:
             cb(path)
         return True
 
@@ -452,7 +455,7 @@ class STAT_wait_dialog(object):
             self.progress_bar.set_fraction(0.0)
             hbox.pack_start(self.progress_bar, False, False, 5)
             self.wait_dialog.vbox.pack_start(hbox)
-        if cancelable == True:
+        if cancelable is True:
             self.wait_dialog.vbox.pack_start(gtk.HSeparator(), False, False, 5)
             hbox = gtk.HButtonBox()
             button = gtk.Button(stock=gtk.STOCK_CANCEL)
@@ -480,8 +483,8 @@ class STAT_wait_dialog(object):
             ret = apply(fun, (args))
         except Exception as e:
             ret = False
-            show_error_dialog('Unexpected error:  %s\n%s\n%s\n' %(sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]), exception = e)
-        if self.wait_dialog != None:
+            show_error_dialog('Unexpected error:  %s\n%s\n%s\n' % (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]), exception=e)
+        if self.wait_dialog is not None:
             self.wait_dialog.destroy()
             self.wait_dialog = None
         if len(self.task_progress_bars) != 0:
@@ -526,16 +529,17 @@ class STAT_wait_dialog(object):
 ## The globally available STAT wait dialog
 stat_wait_dialog = STAT_wait_dialog()
 
+
 ## \param text - the error text
 #  \param parent - [optional] the parent dialog
 #  \param exception - [optional] the exception object
 #
 #  \n
-def show_error_dialog(text, parent = None, exception = None):
+def show_error_dialog(text, parent=None, exception=None):
     """Display an error dialog."""
 
     # print traceback information to the terminal
-    if exception != None:
+    if exception is not None:
         traceback.print_exc()
 
     # create error dialog with error message
@@ -562,7 +566,7 @@ def load_model_cuts(filename):
                     continue
                 if line[0] == '#':
                     continue
-                if line.find("model =") == 0 or line.find ("model=") == 0:
+                if line.find("model =") == 0 or line.find("model=") == 0:
                     model_name = line[line.find('"') + 1:line.rfind('"')]
                     line = line[line.rfind('"') + 1:].split()
                     case_sensitive = line[0].lower()
@@ -571,15 +575,15 @@ def load_model_cuts(filename):
                     if case_sensitive == "true":
                         models_case_sensitive[model_name] = True
                     continue
-                if model_name != None:
+                if model_name is not None:
                     models[model_name] += line + ';'
     except IOError as e:
-        #sys.stderr.write('%s\nfailed to open models file %s\n' %(repr(e), filename))
+        #sys.stderr.write('%s\nfailed to open models file %s\n' % (repr(e), filename))
         pass
     except Exception as e:
         import traceback
         traceback.print_exc()
-        sys.stderr.write('%s\nfailed to process models file %s\n' %(repr(e), filename))
+        sys.stderr.write('%s\nfailed to process models file %s\n' % (repr(e), filename))
     model_list = []
     for model in models:
         # toggled, name, case sensitive, regexs, editable, not editable
@@ -589,10 +593,10 @@ def load_model_cuts(filename):
 
 def re_search(function_name, (search_text, match_case)):
     """Function to test whether a search string matches a re"""
-    if match_case == False:
+    if match_case is False:
         search_text = string.lower(search_text)
         function_name = string.lower(function_name)
-    if re.search(search_text, function_name) != None:
+    if re.search(search_text, function_name) is not None:
         return True
     return False
 
@@ -651,7 +655,7 @@ class STATCompoundShape(xdot.CompoundShape):
         Hidden shapes are not completely hidden, rather they are made opaque.
         """
         a_val = 1.0
-        if self.hide == True:
+        if self.hide is True:
             a_val = 0.07
         for shape in self.shapes:
             color = shape.pen.color
@@ -752,15 +756,14 @@ class STATNode(STATElement):
 
     def __repr__(self):
         ret = "STAT Node: "
-        ret += "node_name(%s), " %self.node_name
-        ret += "label(%s), " %self.label
-        ret += "edge_label(%d: %s), " %(self.edge_label_id, self.edge_label)
-        ret += "hide(%s)" %str(self.hide)
-        ret += "num_tasks(%d)" %self.num_tasks
-        ret += "in_edge(%s)" %str(self.in_edge)
-        ret += "out_edges(%s)" %str(self.out_edges)
+        ret += "node_name(%s), " % self.node_name
+        ret += "label(%s), " % self.label
+        ret += "edge_label(%d: %s), " % (self.edge_label_id, self.edge_label)
+        ret += "hide(%s)" % str(self.hide)
+        ret += "num_tasks(%d)" % self.num_tasks
+        ret += "in_edge(%s)" % str(self.in_edge)
+        ret += "out_edges(%s)" % str(self.out_edges)
         return ret
-
 
     def is_inside(self, x, y):
         """Determine if the specified coordinates are in this node."""
@@ -788,7 +791,7 @@ class STATNode(STATElement):
 
     def get_jump(self, x, y):
         """Get the jump object if specified coordintes are in the node."""
-        if self.hide == True:
+        if self.hide is True:
             return None
         if self.is_inside(x, y):
             return xdot.Jump(self, self.x, self.y)
@@ -862,7 +865,6 @@ class STATNode(STATElement):
             out_set |= set(edge.dst.get_node_task_list())
         return sorted(list(in_set - out_set))
 
-
     #  \return the task count
     #
     #  \n
@@ -885,7 +887,7 @@ class STATNode(STATElement):
         """Get the number of tasks that ended on this node."""
         out_sum = 0
         for edge in self.out_edges:
-            if edge.hide == False:
+            if edge.hide is False:
                 out_sum += get_num_tasks(edge.label)
         if out_sum < get_num_tasks(self.edge_label):
             return get_num_tasks(self.edge_label) - out_sum
@@ -893,11 +895,11 @@ class STATNode(STATElement):
             return 0
 
     def can_join_eq_c(self):
-        if self.hide == True:
+        if self.hide is True:
             return False
         ret = False
         if len(self.out_edges) == 1 and self.in_edge is not None:
-            if self.out_edges[0].label == self.in_edge.label and self.out_edges[0].hide == False:
+            if self.out_edges[0].label == self.in_edge.label and self.out_edges[0].hide is False:
                 ret = True
         return ret
 
@@ -926,15 +928,15 @@ class STATEdge(STATElement):
     def __repr__(self):
         ret = "STATEdge: "
         try:
-            ret += "src(%s), " %str(self.src.label)
+            ret += "src(%s), " % str(self.src.label)
         except:
             ret += "src(?), "
         try:
-            ret += "dst(%s), " %str(self.dst.label)
+            ret += "dst(%s), " % str(self.dst.label)
         except:
-            ret += "dst(%s), " %str(self.dst.label)
-        ret += "label(%s), " %self.label
-        ret += "hide(%s), " %str(self.hide)
+            ret += "dst(%s), " % str(self.dst.label)
+        ret += "label(%s), " % self.label
+        ret += "hide(%s), " % str(self.hide)
         return ret
 
     def get_jump(self, x, y):
@@ -1092,7 +1094,7 @@ class STATGraph(xdot.Graph):
         if node is None:
             return False
         for edge in node.out_edges:
-            if edge.dst.hide == True:
+            if edge.dst.hide is True:
                 edge.dst.hide = False
                 modified = True
             edge.hide = False
@@ -1103,18 +1105,18 @@ class STATGraph(xdot.Graph):
         modified = False
         if node is None:
             return False
-        if orig == False:
-            if node.hide == False:
+        if orig is False:
+            if node.hide is False:
                 node.hide = True
                 modified = True
-        if node.in_edge != None and orig == False:
-            if node.in_edge.hide == False:
+        if node.in_edge is not None and orig is False:
+            if node.in_edge.hide is False:
                 node.in_edge.hide = True
                 modified = True
         for edge in node.out_edges:
             edge.hide = True
             ret = self.collapse(edge.dst)
-            if ret == True:
+            if ret is True:
                 modified = True
         return modified
 
@@ -1126,21 +1128,21 @@ class STATGraph(xdot.Graph):
         for cnode in self.nodes:
             if cnode.depth == node.depth:
                 ret = self.collapse(cnode, True)
-                if ret == True:
+                if ret is True:
                     modified = True
         return modified
 
-    def join_eq_c(self, node, root = False):
+    def join_eq_c(self, node, root=False):
         """Collapse descendent nodes of the same eq class into a single node."""
         modified = False
-        if node is None or node.hide == True:
+        if node is None or node.hide is True:
             return False, (None, None)
         if not node.can_join_eq_c():
             node.hide = True
             node.in_edge.hide = True
             return True, (node, node.label)
         modified, (leaf_node, label) = self.join_eq_c(node.out_edges[0].dst)
-        if root == True:
+        if root is True:
             node.out_edges[0].hide
             node.eq_collapsed_out_edges = []
             node.eq_collapsed_label = ''
@@ -1163,15 +1165,15 @@ class STATGraph(xdot.Graph):
         modified = False
         if node is None:
             return False
-        if node.hide == True:
+        if node.hide is True:
             node.hide = False
             modified = True
-        if node.in_edge != None:
+        if node.in_edge is not None:
             node.in_edge.hide = False
         for edge in node.out_edges:
             edge.hide = False
             ret = self.expand_all(edge.dst)
-            if ret == True:
+            if ret is True:
                 modified = True
         return modified
 
@@ -1179,16 +1181,16 @@ class STATGraph(xdot.Graph):
         """Find all visible (not hidden) children of the specified node."""
         ret_nodes = []
         ret_edges = []
-        if node != None:
-            if node.hide == False:
+        if node is not None:
+            if node.hide is False:
                 ret_nodes.append(node)
-                if node.in_edge != None:
+                if node.in_edge is not None:
                     ret_edges.append(node.in_edge)
             for edge in node.out_edges:
-                if edge.hide == False:
-                   n, e = self.visible_children(edge.dst)
-                   ret_nodes += n
-                   ret_edges += e
+                if edge.hide is False:
+                    n, e = self.visible_children(edge.dst)
+                    ret_nodes += n
+                    ret_edges += e
         return ret_nodes, ret_edges
 
     def focus(self, node):
@@ -1202,7 +1204,7 @@ class STATGraph(xdot.Graph):
         show_nodes, show_edges = self.visible_children(node)
         num_hidden_nodes = 0
         for temp in self.nodes:
-            if temp.hide == True:
+            if temp.hide is True:
                 num_hidden_nodes += 1
             temp.hide = True
         for temp in self.edges:
@@ -1210,7 +1212,7 @@ class STATGraph(xdot.Graph):
         temp_node = node
         while 1:
             temp_node.hide = False
-            if temp_node.in_edge != None:
+            if temp_node.in_edge is not None:
                 temp_node.in_edge.hide = False
                 temp_node = temp_node.in_edge.src
             else:
@@ -1221,14 +1223,14 @@ class STATGraph(xdot.Graph):
             temp.hide = False
         num_hidden_nodes2 = 0
         for temp in self.nodes:
-            if temp.hide == True:
+            if temp.hide is True:
                 num_hidden_nodes2 += 1
         if num_hidden_nodes == num_hidden_nodes2:
             return False
         else:
             return True
 
-    def view_source(self, node, item = None):
+    def view_source(self, node, item=None):
         """Generate a window that displays the source code for the node."""
         # find the source file name and line number
         if not label_has_source(node.label):
@@ -1279,8 +1281,8 @@ class STATGraph(xdot.Graph):
                 source_full_path = source
                 found = True
             else:
-                error_msg = 'Full path %s does not exist\n' %source
-        if found == False:
+                error_msg = 'Full path %s does not exist\n' % source
+        if found is False:
             # find the full path to the file
             source = os.path.basename(source)
             for sp in search_paths['source']:
@@ -1289,8 +1291,8 @@ class STATGraph(xdot.Graph):
                 if os.path.exists(sp + '/' + source):
                     found = True
                     break
-            if found == False:
-                show_error_dialog('%sFailed to find file "%s" in search paths.  Please add the source file search path for this file\n' %(error_msg, source))
+            if found is False:
+                show_error_dialog('%sFailed to find file "%s" in search paths.  Please add the source file search path for this file\n' % (error_msg, source))
                 return True
             source_full_path = sp + '/' + source
 
@@ -1298,7 +1300,7 @@ class STATGraph(xdot.Graph):
         if self.source_view_window is None:
             self.source_view_window = gtk.Window()
             self.source_view_window.set_default_size(800, 600)
-            self.source_view_window.set_title('Source View %s' %source)
+            self.source_view_window.set_title('Source View %s' % source)
             self.source_view_window.connect('destroy', self.on_source_view_destroy)
         if self.source_view_notebook is None:
             self.source_view_notebook = gtk.Notebook()
@@ -1310,7 +1312,7 @@ class STATGraph(xdot.Graph):
         source_view.set_cursor_visible(False)
         source_string = ''
         count = 0
-        source_view.get_buffer().create_tag("monospace", family = "monospace")
+        source_view.get_buffer().create_tag("monospace", family="monospace")
         iter = source_view.get_buffer().get_iter_at_offset(0)
 
         # determine the max number of ==> pointers so we can make space
@@ -1341,18 +1343,18 @@ class STATGraph(xdot.Graph):
                         pygments.highlight(file.read(), CppLexer(), STATviewFormatter())
                     elif source_extension in fortran_file_patterns:
                         pygments.highlight(file.read(), FortranLexer(), STATviewFormatter())
-                    else: # default to C
+                    else:  # default to C
                         pygments.highlight(file.read(), CLexer(), STATviewFormatter())
                     lines = STAThelper.pygments_lines
-                    source_view.get_buffer().create_tag('bold_tag', weight = pango.WEIGHT_BOLD)
-                    source_view.get_buffer().create_tag('italics_tag', style = pango.STYLE_ITALIC)
-                    source_view.get_buffer().create_tag('underline_tag', underline = pango.UNDERLINE_SINGLE)
+                    source_view.get_buffer().create_tag('bold_tag', weight=pango.WEIGHT_BOLD)
+                    source_view.get_buffer().create_tag('italics_tag', style=pango.STYLE_ITALIC)
+                    source_view.get_buffer().create_tag('underline_tag', underline=pango.UNDERLINE_SINGLE)
                 else:
                     lines = file.readlines()
         except IOError as e:
-            show_error_dialog('%s\nFailed to open file "%s"\n' %(repr(e), source_full_path), exception = e)
+            show_error_dialog('%s\nFailed to open file "%s"\n' % (repr(e), source_full_path), exception=e)
         except Exception as e:
-            show_error_dialog('%s\nFailed to process source file "%s"\n' %(repr(e), source_full_path), exception = e)
+            show_error_dialog('%s\nFailed to process source file "%s"\n' % (repr(e), source_full_path), exception=e)
         width = len(str(len(lines)))
         cur_line_iter = source_view.get_buffer().get_iter_at_offset(0)
         cur_line_mark = source_view.get_buffer().create_mark('cur_line', cur_line_iter, True)
@@ -1376,29 +1378,29 @@ class STATGraph(xdot.Graph):
                 if count == lineNum and not (lineNum, fill_color_string, font_color_string) in lineNum_tuples:
                     foreground = gtk.gdk.color_parse(font_color_string)
                     background = gtk.gdk.color_parse(fill_color_string)
-                    fore_color_tag = "color_fore%d%s" %(lineNum, font_color_string)
+                    fore_color_tag = "color_fore%d%s" % (lineNum, font_color_string)
                     try:
-                        source_view.get_buffer().create_tag(fore_color_tag, foreground_gdk = foreground)
+                        source_view.get_buffer().create_tag(fore_color_tag, foreground_gdk=foreground)
                     except:
                         pass
-                    back_color_tag = "color_back%d%s" %(lineNum, fill_color_string)
+                    back_color_tag = "color_back%d%s" % (lineNum, fill_color_string)
                     try:
-                        source_view.get_buffer().create_tag(back_color_tag, background_gdk = background)
+                        source_view.get_buffer().create_tag(back_color_tag, background_gdk=background)
                     except:
                         pass
                     source_string = "==>"
                     source_view.get_buffer().insert_with_tags_by_name(iter, source_string, fore_color_tag, back_color_tag, "monospace")
                     lineNum_tuples.append((lineNum, fill_color_string, font_color_string))
             if have_pygments:
-                source_string = "%0*d| " %(width, count)
+                source_string = "%0*d| " % (width, count)
                 source_view.get_buffer().insert_with_tags_by_name(iter, source_string, "monospace")
                 for item in line:
                     source_string, format_tuple = item
                     pygments_color, bold, italics, underline = format_tuple
                     foreground = gtk.gdk.color_parse(pygments_color)
-                    fore_color_tag = "color_fore%d%s" %(lineNum, pygments_color)
+                    fore_color_tag = "color_fore%d%s" % (lineNum, pygments_color)
                     try:
-                        source_view.get_buffer().create_tag(fore_color_tag, foreground_gdk = foreground)
+                        source_view.get_buffer().create_tag(fore_color_tag, foreground_gdk=foreground)
                     except:
                         pass
                     args = [iter, source_string, fore_color_tag, "monospace"]
@@ -1410,7 +1412,7 @@ class STATGraph(xdot.Graph):
                         args.append('underline_tag')
                     apply(source_view.get_buffer().insert_with_tags_by_name, tuple(args))
             else:
-                source_string = "%0*d| " %(width, count)
+                source_string = "%0*d| " % (width, count)
                 source_string += line
                 source_view.get_buffer().insert_with_tags_by_name(iter, source_string, "monospace")
 
@@ -1494,7 +1496,7 @@ class STATGraph(xdot.Graph):
                 lex_string = lex_map[lex_map_index]
                 if lex_string.find('$') != -1 and iter_string != '':
                     input_val = iter_string[iter_string.find('=') + 1:]
-                    lex_string = lex_string[:lex_string.find('$')] + input_val + lex_string[lex_string.find(')') +1:]
+                    lex_string = lex_string[:lex_string.find('$')] + input_val + lex_string[lex_string.find(')') + 1:]
                 node.lex_string = lex_string
                 return True
             source = sourceLine[:sourceLine.find(':')]
@@ -1510,21 +1512,21 @@ class STATGraph(xdot.Graph):
                     if os.path.exists(sp + '/' + source):
                         found = True
                         break
-                if found == False:
-                    show_error_dialog('Failed to find file "%s" in search paths.  Please add the source file search path for this file\n' %source)
+                if found is False:
+                    show_error_dialog('Failed to find file "%s" in search paths.  Please add the source file search path for this file\n' % source)
                     return False
                 node.source_dir = sp + '/'
             to_input = tomod.to_tuple()
             to_input.basepath = node.source_dir
             to_input.filename = source
             to_input.line = int(line)
-            if just_add == True:
+            if just_add is True:
                 tomod.add_program_point(to_input)
                 return True
             lex_string = tomod.get_lex_string(to_input)
             if lex_string.find('$') != -1 and iter_string != '':
                 input_val = iter_string[iter_string.find('=') + 1:]
-                lex_string = lex_string[:lex_string.find('$')] + input_val + lex_string[lex_string.find(')') +1:]
+                lex_string = lex_string[:lex_string.find('$')] + input_val + lex_string[lex_string.find(')') + 1:]
             node.lex_string = lex_string
             lex_map[lex_map_index] = lex_string
             if lex_string == '':
@@ -1541,32 +1543,32 @@ class STATGraph(xdot.Graph):
             if self.get_to_string(edge.dst) == '':
                 found = True
                 break
-        if found == False:
+        if found is False:
             return False
         source_map = defaultdict(list)
         progress = 0.0
         #import time
         #t11 = time.time()
         error_nodes = []
-        tomod.clear_program_points();
+        tomod.clear_program_points()
         for edge in node.out_edges:
             temp_node = edge.dst
             ret = self.get_lex(temp_node, True)
-            if ret == False:
+            if ret is False:
                 return False
         tomod.run_to()
         for edge in node.out_edges:
             temp_node = edge.dst
-            if temp_node.hide == True:
+            if temp_node.hide is True:
                 temp_node.hide = False
                 temp_node.in_edge.hide = False
             #t1 = time.time()
             ret = self.get_lex(temp_node)
-            if ret == False:
+            if ret is False:
                 return False
             #t2 = time.time()
             #print t2 - t1
-            if temp_node.lex_string is None or ret == False:
+            if temp_node.lex_string is None or ret is False:
                 node.lex_string = ''
                 error_nodes.append(temp_node.label)
                 continue
@@ -1596,7 +1598,7 @@ class STATGraph(xdot.Graph):
         #print t12 - t11
         #t1 = time.time()
         if error_nodes != []:
-            show_error_dialog('Failed to create lexicographical string for %s.  Please be sure to gather stack traces with line number information and be sure to include the appropriate search paths\n' %str(error_nodes))
+            show_error_dialog('Failed to create lexicographical string for %s.  Please be sure to gather stack traces with line number information and be sure to include the appropriate search paths\n' % str(error_nodes))
             return False
         for key, source in source_map.items():
             tomod.clear_program_points()
@@ -1616,7 +1618,7 @@ class STATGraph(xdot.Graph):
                                 skip_node_rename_list.append(node)
                         self.to_var_visit_list.append(node)
                 tomod.add_program_point(to_input_tuple)
-            if found == True:
+            if found is True:
                 for to_input_tuple, node in source:
                     # set lex string to None so we visit this next time around
                     node.lex_string = None
@@ -1627,7 +1629,7 @@ class STATGraph(xdot.Graph):
                 temporal_string = tomod.get_temporal_string(to_input_tuple)
                 parent = node.in_edge.src
                 parent_temporal_string = ''
-                if parent != None:
+                if parent is not None:
                     parent_temporal_string = self.get_to_string(parent)
                 function_name, sourceLine, iter_string = decompose_node(node.label)
                 node.temporally_ordered = True
@@ -1691,14 +1693,14 @@ class STATGraph(xdot.Graph):
     #  \n
     def get_to_list(self, nodes, leaves_only=False):
         """Find all temporally ordered nodes and their ancestors."""
-        to_leaves = [] # list of (node, to_leaf_string) tuples
+        to_leaves = []  # list of (node, to_leaf_string) tuples
         temporal_string_list = []
         node_list = []
         # generate list of all to leafs
         max_len = 1
         duplicates = 0
         for node in nodes:
-            if self.has_to_descendents(node) == False or leaves_only == False:
+            if self.has_to_descendents(node) is False or leaves_only is False:
                 temporal_string = self.get_to_string(node)
                 if temporal_string == '':
                     continue
@@ -1719,7 +1721,7 @@ class STATGraph(xdot.Graph):
                 temporal_string, node = to_leaves[i]
                 new_temporal_string = ''
                 for num_string in temporal_string.split('.'):
-                    new_temporal_string += '%0*d' %(max_len, int(num_string))
+                    new_temporal_string += '%0*d' % (max_len, int(num_string))
                 to_leaves[i] = new_temporal_string, node
                 temporal_string_list[temporal_string_list.index(temporal_string)] = new_temporal_string
         to_leaves.sort()
@@ -1786,7 +1788,7 @@ class STATGraph(xdot.Graph):
 
     def get_node_depth(self, node):
         """Determine the depth of the specified node."""
-        if node.in_edge != None:
+        if node.in_edge is not None:
             return 1 + self.get_node_depth(node.in_edge.src)
         else:
             return 1
@@ -1795,7 +1797,7 @@ class STATGraph(xdot.Graph):
         """Determine the equivalence class depth.
 
         i.e., number of colors along the path of the specified node."""
-        if node.in_edge != None:
+        if node.in_edge is not None:
             parent_node = node.in_edge.src
             if parent_node.in_edge is None:
                 return 1
@@ -1826,31 +1828,31 @@ class STATGraph(xdot.Graph):
                             node_text = shape.t
                         else:
                             fill_color = shape.pen.fillcolor
-                    if full_node_label == True:
+                    if full_node_label is True:
                         if (hasattr(node, 'eq_collapsed_label')):
                             node_text = node.eq_collapsed_label
                         else:
                             node_text = node.label
                     fill_string = ''
                     for fval in fill_color[0:3]:
-                        fill_string += "%02x" %(int(fval *255))
+                        fill_string += "%02x" % (int(fval * 255))
                     font_string = ''
                     for fval in font_color[0:3]:
-                        font_string += "%02x" %(int(fval *255))
-                    f.write('\t%s [pos="0,0", label="%s", fillcolor="#%s",fontcolor="#%s"];\n' %(node.node_name, escaped_label(node_text), fill_string, font_string))
+                        font_string += "%02x" % (int(fval * 255))
+                    f.write('\t%s [pos="0,0", label="%s", fillcolor="#%s",fontcolor="#%s"];\n' % (node.node_name, escaped_label(node_text), fill_string, font_string))
                 for edge in self.edges:
                     if edge.hide:
                         continue
-                    if full_edge_label == True:
-                        f.write('\t%s -> %s [label="%s"]\n' %(edge.src.node_name, edge.dst.node_name, edge.dst.edge_label))
+                    if full_edge_label is True:
+                        f.write('\t%s -> %s [label="%s"]\n' % (edge.src.node_name, edge.dst.node_name, edge.dst.edge_label))
                     else:
-                        f.write('\t%s -> %s [label="%s"]\n' %(edge.src.node_name, edge.dst.node_name, edge.label))
+                        f.write('\t%s -> %s [label="%s"]\n' % (edge.src.node_name, edge.dst.node_name, edge.label))
                 f.write('}\n')
         except IOError as e:
-            show_error_dialog('%s\nFailed to open file "%s" for writing' %(repr(e), filename), exception = e)
+            show_error_dialog('%s\nFailed to open file "%s" for writing' % (repr(e), filename), exception=e)
             return False
         except Exception as e:
-            show_error_dialog('%s\nFailed to process file "%s" for writing' %(repr(e), filename), exception = e)
+            show_error_dialog('%s\nFailed to process file "%s" for writing' % (repr(e), filename), exception=e)
             return False
         return True
 
@@ -1861,9 +1863,9 @@ class STATGraph(xdot.Graph):
         else:
             temp_dot_filename = os.path.splitext(filename)[0] + '_tmp.dot'
             ret = self.save_dot(temp_dot_filename, False, False)
-            if ret == True:
+            if ret is True:
                 format = '-T' + os.path.splitext(filename)[1][1:]
-                subprocess.Popen(["dot", format, temp_dot_filename, "-o", filename], stdout = subprocess.PIPE).communicate()[0]
+                subprocess.Popen(["dot", format, temp_dot_filename, "-o", filename], stdout=subprocess.PIPE).communicate()[0]
             os.remove(temp_dot_filename)
         return ret
 
@@ -1875,11 +1877,11 @@ class STATGraph(xdot.Graph):
             #node.set_text(node.label) # TODO, this was needed to restore TO'ed labels
             node.lex_string = None
             node.temporally_ordered = False
-            if node.hide == True:
+            if node.hide is True:
                 node.hide = False
                 modified = True
         for edge in self.edges:
-            if edge.hide == True:
+            if edge.hide is True:
                 edge.hide = False
                 modified = True
             for shape in edge.shapes:
@@ -1908,9 +1910,9 @@ class STATGraph(xdot.Graph):
                     hide = func(function_name, args)
                 else:
                     hide = func(function_name)
-                if hide == True:
+                if hide is True:
                     ret = self.collapse(node, True)
-                    if ret == True:
+                    if ret is True:
                         modified = True
                         break
         return modified
@@ -1934,7 +1936,7 @@ class STATGraph(xdot.Graph):
             temp_node = node
             while 1:
                 temp_node.hide = False
-                if temp_node.in_edge != None:
+                if temp_node.in_edge is not None:
                     temp_node.in_edge.hide = False
                     temp_node = temp_node.in_edge.src
                 else:
@@ -1954,7 +1956,7 @@ class STATGraph(xdot.Graph):
                 node.hide = False
 #                for edge in root.out_edges:
 #                    edge.hide = False
-                if root.out_edges != None:
+                if root.out_edges is not None:
                     if root.out_edges[0].dst.label.find('start') != -1 and root.out_edges[0].dst.label.find('libc') == -1:
                         root = root.out_edges[0].dst
                         root.temporally_ordered = True
@@ -1975,7 +1977,7 @@ class STATGraph(xdot.Graph):
                 node.hide = False
                 for edge in root.out_edges:
                     edge.hide = False
-                if root.out_edges != None:
+                if root.out_edges is not None:
                     for edge in root.out_edges:
                         if edge.dst.label.find('start') != -1 and edge.dst.label.find('libc') == -1:
                             edge.dst.temporally_ordered = True
@@ -1998,17 +2000,17 @@ class STATGraph(xdot.Graph):
             return True
         found_lex_string = False
         for edge in node.out_edges:
-            if edge.dst.temporally_ordered == True:
+            if edge.dst.temporally_ordered is True:
                 edge.hide = False
                 edge.dst.hide = False
                 found_lex_string = True
-        if found_lex_string == False:
+        if found_lex_string is False:
             function_name, sourceLine, iter_string = decompose_node(node.label)
             if is_MPI(function_name):
                 return False
             # we want to TO this node's children
             ret = self.get_children_temporal_order(node)
-            if ret == False:
+            if ret is False:
                 return ret
             if len(node.out_edges) == 1:
                 if node.out_edges[0].dst.lex_string.find('$') != -1:
@@ -2036,7 +2038,7 @@ class STATGraph(xdot.Graph):
                     to_leaves.reverse()
                 for temporal_string, temp_node in to_leaves:
                     ret = self._traverse_progress(temp_node, least_or_most)
-                    if ret == True:
+                    if ret is True:
                         return ret
                 return False
         return True
@@ -2066,19 +2068,19 @@ class STATGraph(xdot.Graph):
     def depth_first_search_text(self, node, text, case_sensitive=True):
         """search for specified text in a depth first order."""
         ret = False
-        if node.hide == True:
+        if node.hide is True:
             return False
         for edge in node.out_edges:
             if self.depth_first_search_text(edge.dst, text, case_sensitive):
                 ret = True
         search_text = text
         node_text = node.label
-        if case_sensitive == False:
+        if case_sensitive is False:
             search_text = string.lower(text)
             node_text = string.lower(node.label)
-        if re.search(search_text, node_text) != None:
+        if re.search(search_text, node_text) is not None:
             ret = True
-        if ret == False and node.node_name != '0':
+        if ret is False and node.node_name != '0':
             node.hide = True
             node.in_edge.hide = True
         return ret
@@ -2106,7 +2108,7 @@ class STATGraph(xdot.Graph):
             temp_node = node
             while 1:
                 temp_node.hide = False
-                if temp_node.in_edge != None:
+                if temp_node.in_edge is not None:
                     temp_node.in_edge.hide = False
                     temp_node = temp_node.in_edge.src
                 else:
@@ -2117,7 +2119,7 @@ class STATGraph(xdot.Graph):
 #        longest = 0
 #        long_list = []
 #        for node in self.nodes:
-#            if node.hide == True:
+#            if node.hide is True:
 #                continue
 #            if node.depth == longest:
 #                long_list.append(node)
@@ -2133,7 +2135,7 @@ class STATGraph(xdot.Graph):
 #            temp_node = node
 #            while 1:
 #                temp_node.hide = False
-#                if temp_node.in_edge != None:
+#                if temp_node.in_edge is not None:
 #                    temp_node.in_edge.hide = False
 #                    temp_node = temp_node.in_edge.src
 #                else:
@@ -2145,7 +2147,7 @@ class STATGraph(xdot.Graph):
             return False
         child_task_list = []
         for edge in node.out_edges:
-            if edge.dst != None:
+            if edge.dst is not None:
                 child_task_list += edge.dst.get_node_task_list()
         if set(child_task_list) == set(node.get_node_task_list()):
             return False
@@ -2173,7 +2175,7 @@ class STATGraph(xdot.Graph):
             temp_node = node
             while 1:
                 temp_node.hide = False
-                if temp_node.in_edge != None:
+                if temp_node.in_edge is not None:
                     temp_node.in_edge.hide = False
                     temp_node = temp_node.in_edge.src
                 else:
@@ -2184,7 +2186,7 @@ class STATGraph(xdot.Graph):
 #        shortest = 999999
 #        short_list = []
 #        for node in self.nodes:
-#            if node.hide == True:
+#            if node.hide is True:
 #                continue
 #            if node.is_leaf:
 #                if node.depth == shortest:
@@ -2201,7 +2203,7 @@ class STATGraph(xdot.Graph):
 #            temp_node = node
 #            while 1:
 #                temp_node.hide = False
-#                if temp_node.in_edge != None:
+#                if temp_node.in_edge is not None:
 #                    temp_node.in_edge.hide = False
 #                    temp_node = temp_node.in_edge.src
 #                else:
@@ -2231,7 +2233,7 @@ class STATGraph(xdot.Graph):
             temp_node = node
             while 1:
                 temp_node.hide = False
-                if temp_node.in_edge != None:
+                if temp_node.in_edge is not None:
                     temp_node.in_edge.hide = False
                     temp_node = temp_node.in_edge.src
                 else:
@@ -2263,7 +2265,7 @@ class STATGraph(xdot.Graph):
             temp_node = node
             while 1:
                 temp_node.hide = False
-                if temp_node.in_edge != None:
+                if temp_node.in_edge is not None:
                     temp_node.in_edge.hide = False
                     temp_node = temp_node.in_edge.src
                 else:
@@ -2275,9 +2277,9 @@ class STATGraph(xdot.Graph):
         single_task_list = []
         hide_count = 0
         for node in self.nodes:
-            if node.hide == True:
+            if node.hide is True:
                 hide_count += 1
-            if node.num_tasks == 1 and node.hide == False:
+            if node.num_tasks == 1 and node.hide is False:
                 single_task_list.append(node)
         for node in self.nodes:
             node.hide = True
@@ -2287,14 +2289,14 @@ class STATGraph(xdot.Graph):
             temp_node = node
             while 1:
                 temp_node.hide = False
-                if temp_node.in_edge != None:
+                if temp_node.in_edge is not None:
                     temp_node.in_edge.hide = False
                     temp_node = temp_node.in_edge.src
                 else:
                     break
         hide_count2 = 0
         for node in self.nodes:
-            if node.hide == True:
+            if node.hide is True:
                 hide_count2 += 1
         if hide_count == hide_count2:
             return False
@@ -2309,15 +2311,15 @@ class STATGraph(xdot.Graph):
         maxx = -999999.9
         maxy = -999999.9
         for node in self.nodes:
-            if node.x1 < minx and node.hide == False:
+            if node.x1 < minx and node.hide is False:
                 minx = node.x1
-            if node.y1 < miny and node.hide == False:
+            if node.y1 < miny and node.hide is False:
                 miny = node.y1
         if use_scroll_bars:
             for node in self.nodes:
-                if node.x2 > maxx and node.hide == False:
+                if node.x2 > maxx and node.hide is False:
                     maxx = node.x2
-                if node.y2 > maxy and node.hide == False:
+                if node.y2 > maxy and node.hide is False:
                     maxy = node.y2
             self.visible_width = int(math.ceil(maxx) - math.floor(minx))
             self.visible_height = int(math.ceil(maxy) - math.floor(miny))
@@ -2346,9 +2348,9 @@ class STATGraph(xdot.Graph):
                         shape.points = points
                     except:
                         pass
-                    if node.x2 > maxx and node.hide == False:
+                    if node.x2 > maxx and node.hide is False:
                         maxx = node.x2
-                    if node.y2 > maxy and node.hide == False:
+                    if node.y2 > maxy and node.hide is False:
                         maxy = node.y2
             for edge in self.edges:
                 points = []
@@ -2373,16 +2375,16 @@ class STATGraph(xdot.Graph):
 
     def node_is_visual_leaf(self, node):
         """Determine if the node is a leaf of the visible tree."""
-        if node.hide == True:
+        if node.hide is True:
             return False
         for edge in node.out_edges:
-            if edge.dst.hide == False:
+            if edge.dst.hide is False:
                 return False
         return True
 
     def node_is_visual_eq_leaf(self, node):
         """Determine if the node is an eq class leaf of the visible tree."""
-        if node.hide == True or node.node_name == '0':
+        if node.hide is True or node.node_name == '0':
             return False
 
         task_list = []
@@ -2394,12 +2396,11 @@ class STATGraph(xdot.Graph):
                 return False
         else:
             for edge in node.out_edges:
-                if edge.dst.hide == False:
+                if edge.dst.hide is False:
                     task_list += edge.dst.get_node_task_list()
             if set(node.get_node_task_list()) == set(task_list):
                 return False
             return True
-
 
     def identify_num_eq_classes(self, widget):
         """Find all equivalence classes (based on color) of the call tree."""
@@ -2425,7 +2426,7 @@ class STATGraph(xdot.Graph):
             task_list = node.get_node_task_list()
             task_list_set = set(task_list)
             for edge in node.out_edges:
-                if edge.dst.hide == True:
+                if edge.dst.hide is True:
                     continue
                 if set(edge.dst.get_node_task_list()) in leaf_task_sets:
                     task_list_set = task_list_set - set(edge.dst.get_node_task_list())
@@ -2438,14 +2439,14 @@ class STATGraph(xdot.Graph):
         """Finds all equivalence classes (based on visited paths) of the call tree."""
         leaves = []
         for node in self.nodes:
-            if node.hide == False:
+            if node.hide is False:
                 leaves.append(node)
         task_leaf_map = {}
         for node in leaves:
             task_list = node.get_node_task_list()
             for task in task_list:
                 try:
-                    task_leaf_map[task] += '#%s' %node.node_name
+                    task_leaf_map[task] += '#%s' % node.node_name
                 except:
                     task_leaf_map[task] = node.node_name
         num_eq_classes = {}
@@ -2522,10 +2523,10 @@ class STATNullAction(xdot.DragAction):
         if item is not None:
             node = dot_widget.get_node(event.x, event.y)
             if node is not None:
-                if node.hide == False:
+                if node.hide is False:
                     dot_widget.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.HAND2))
                     highlight_list = []
-                    while node != None:
+                    while node is not None:
                         #highlight_list.append(node)
                         edge = node.in_edge
                         if edge is None:
@@ -2555,7 +2556,7 @@ class STATDotWidget(xdot.DotWidget):
         self.drag_action = STATNullAction(self)
         self.user_zoom = False
 
-    def set_dotcode(self, dotcode, filename='<stdin>', truncate = "front", max_node_name = 64):
+    def set_dotcode(self, dotcode, filename='<stdin>', truncate="front", max_node_name=64):
         """Set the dotcode for the widget.
 
         Create a temporary dot file with truncated edge labels from the
@@ -2584,7 +2585,7 @@ class STATDotWidget(xdot.DotWidget):
             dotcode2 = f.read()
             f.close()
         except:
-            show_error_dialog('Failed to read temp dot file %s' %temp_dot_filename, self, exception = e)
+            show_error_dialog('Failed to read temp dot file %s' % temp_dot_filename, self, exception=e)
             return False
         os.remove(temp_dot_filename)
         xdot.DotWidget.set_dotcode(self, dotcode2, filename)
@@ -2673,7 +2674,7 @@ class STATDotWidget(xdot.DotWidget):
         """Overloaded get_drag_action for scroll window."""
         if use_scroll_bars:
             state = event.state
-            if event.button in (1, 2): # left or middle button
+            if event.button in (1, 2):  # left or middle button
                 if state & gtk.gdk.CONTROL_MASK:
                     return xdot.ZoomAction
                 elif state & gtk.gdk.SHIFT_MASK:
@@ -2729,7 +2730,7 @@ class STATDotWidget(xdot.DotWidget):
             self.user_zoom = False
             self.zoom_to_fit()
         return ret
-    
+
     def on_zoom_in(self, action):
         self.user_zoom = True
         return xdot.DotWidget.on_zoom_in(self, action)
@@ -2748,17 +2749,17 @@ class STATDotWidget(xdot.DotWidget):
             self.zoom_ration = zoom_ratio
             self.zoom_to_fit_on_resize = False
             self.queue_draw()
-            if center == False and pos is None:
+            if center is False and pos is None:
                 allocation = self.viewport.get_allocation()
                 hspan = allocation[2]
                 hcenter = old_hadj_value + hspan / 2 - self.ZOOM_TO_FIT_MARGIN
                 vspan = allocation[3]
                 vcenter = old_vadj_value + vspan / 2 - self.ZOOM_TO_FIT_MARGIN
                 pos = (hcenter, vcenter)
-            if center == True:
+            if center is True:
                 self.x = self.graph.visible_width/2
                 self.y = self.graph.visible_height/2
-            elif pos != None:
+            elif pos is not None:
                 x, y = pos
                 allocation = self.viewport.get_allocation()
                 hspan = allocation[2]
@@ -2769,6 +2770,7 @@ class STATDotWidget(xdot.DotWidget):
                 self.dotsw.get_vscrollbar().get_adjustment().set_value(vpos)
         else:
             return xdot.DotWidget.zoom_image(self, zoom_ratio, center, pos)
+
 
 ## The window object containing the STATDotWidget
 class STATDotWindow(xdot.DotWindow):
@@ -2920,7 +2922,7 @@ class STATDotWindow(xdot.DotWindow):
         actions.append(('Zoom100', gtk.STOCK_ZOOM_100, None, None, None, self.on_zoom_100))
         actions.append(('UserGuide', gtk.STOCK_HELP, None, None, None, self.on_user_guide))
         actions.append(('About', gtk.STOCK_ABOUT, None, None, None, self.on_about))
-        if input_actions != None:
+        if input_actions is not None:
             for action in input_actions:
                 action_text = action[0]
                 for a in actions:
@@ -2957,7 +2959,7 @@ class STATDotWindow(xdot.DotWindow):
             self.hbox = gtk.HBox()
             self.hbox.pack_start(self.notebook)
         self.vbox.pack_start(self.hbox)
-        if have_tomod == True:
+        if have_tomod is True:
             for path in search_paths['include']:
                 tomod.add_include_path(path)
         self.search_types = []
@@ -2987,17 +2989,17 @@ entered as a regular expression"""
 
     def update_option(self, w, label, parent_window, option):
         """Generate text entry dialog to update the specified option."""
-        dialog = gtk.Dialog('Update %s' %option, parent_window)
+        dialog = gtk.Dialog('Update %s' % option, parent_window)
         entry = gtk.Entry()
         entry.set_max_length(1024)
         entry.set_text(self.options[option])
         entry.connect("activate", lambda w: self.on_update_option(w, entry, label, dialog, option))
         dialog.vbox.pack_start(entry, True, True, 0)
         hbox = gtk.HButtonBox()
-        button = gtk.Button(stock = gtk.STOCK_CANCEL)
+        button = gtk.Button(stock=gtk.STOCK_CANCEL)
         button.connect("clicked", lambda w: dialog.destroy())
         hbox.pack_start(button, False, False, 0)
-        button = gtk.Button(stock = gtk.STOCK_OK)
+        button = gtk.Button(stock=gtk.STOCK_OK)
         button.connect("clicked", lambda w: self.on_update_option(w, entry, label, dialog, option))
         hbox.pack_start(button, False, False, 0)
         dialog.vbox.pack_start(hbox, False, False, 0)
@@ -3008,7 +3010,7 @@ entered as a regular expression"""
         """Callback to update the specified option."""
         self.options[option] = entry.get_text()
         entry.set_text('')
-        label.set_text('%s: %s' %(option, self.options[option]))
+        label.set_text('%s: %s' % (option, self.options[option]))
         dialog.destroy()
 
     def pack_entry_and_button(self, entry_text, function, frame, dialog, button_text, box, fill=False, center=False, pad=0):
@@ -3058,7 +3060,7 @@ entered as a regular expression"""
     def pack_combo_box(self, box, option):
         """Pack a combo box into the spcified box for the specified option."""
         hbox = gtk.HBox()
-        hbox.pack_start(gtk.Label("Specify %s:" %option), False, False, 0)
+        hbox.pack_start(gtk.Label("Specify %s:" % option), False, False, 0)
         combo_box = gtk.combo_box_new_text()
         for type in self.types[option]:
             combo_box.append_text(type)
@@ -3070,7 +3072,7 @@ entered as a regular expression"""
     def pack_check_button(self, box, option, center=False, expand=False, pad=0):
         """Pack a check button into the specified box for the specified option."""
         check_button = gtk.CheckButton(option)
-        if self.options[option] == True:
+        if self.options[option] is True:
             check_button.set_active(True)
         else:
             check_button.set_active(False)
@@ -3079,7 +3081,7 @@ entered as a regular expression"""
 
     def on_toggle_check_button(self, widget, option):
         """Callback to toggle on/off a check button."""
-        if self.options[option] == True:
+        if self.options[option] is True:
             self.options[option] = False
         else:
             self.options[option] = True
@@ -3087,10 +3089,10 @@ entered as a regular expression"""
     def pack_string_option(self, box, option, parent_window):
         """Pack a button into the specified box that generates a text entry dialog for the specified option."""
         hbox = gtk.HBox()
-        label =  gtk.Label('%s: %s' %(option, self.options[option]))
+        label = gtk.Label('%s: %s' % (option, self.options[option]))
         hbox.pack_start(label, False, False, 0)
         box.pack_start(hbox, False, False, 10)
-        button = gtk.Button('Modify %s' %option)
+        button = gtk.Button('Modify %s' % option)
         button.connect("clicked", lambda w: self.update_option(w, label, parent_window, option))
         box.pack_start(button, False, False, 0)
 
@@ -3116,10 +3118,10 @@ entered as a regular expression"""
                 else:
                     self.pack_string_option(dialog.vbox, option, dialog)
         hbox = gtk.HButtonBox()
-        button = gtk.Button(stock = gtk.STOCK_CANCEL)
+        button = gtk.Button(stock=gtk.STOCK_CANCEL)
         button.connect("clicked", lambda w: dialog.destroy())
         hbox.pack_start(button, False, True, 0)
-        button = gtk.Button(stock = gtk.STOCK_OK)
+        button = gtk.Button(stock=gtk.STOCK_OK)
         button.connect("clicked", lambda w: self.update_prefs_cb(w, dialog))
         hbox.pack_start(button, False, True, 0)
         dialog.vbox.pack_start(hbox, False, False, 0)
@@ -3128,7 +3130,7 @@ entered as a regular expression"""
 
     def on_load_prefs(self, action):
         """Load user-saved preferences from a file."""
-        chooser = gtk.FileChooserDialog(title = "Load Preferences", action = gtk.FILE_CHOOSER_ACTION_OPEN, buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
+        chooser = gtk.FileChooserDialog(title="Load Preferences", action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
         chooser.set_default_response(gtk.RESPONSE_OK)
         filter = gtk.FileFilter()
         filter.set_name('STAT Prefs File')
@@ -3138,7 +3140,7 @@ entered as a regular expression"""
         filter.set_name('All files')
         filter.add_pattern("*")
         chooser.add_filter(filter)
-        chooser.set_current_folder('%s/.STAT' %os.environ['HOME'])
+        chooser.set_current_folder('%s/.STAT' % os.environ['HOME'])
         if chooser.run() == gtk.RESPONSE_OK:
             filename = chooser.get_filename()
             try:
@@ -3147,14 +3149,14 @@ entered as a regular expression"""
                     self.options[key] = shelf[key]
                 shelf.close()
             except IOError as e:
-                show_error_dialog('%s\nFailed to load preferences file %s\n' %(repr(e), filename), self)
+                show_error_dialog('%s\nFailed to load preferences file %s\n' % (repr(e), filename), self)
             except Exception as e:
-                show_error_dialog('%s\nFailed to process preferences file %s\n' %(repr(e), filename), self)
+                show_error_dialog('%s\nFailed to process preferences file %s\n' % (repr(e), filename), self)
         chooser.destroy()
 
     def on_save_prefs(self, action):
         """Save user preferences to a file."""
-        chooser = gtk.FileChooserDialog(title = "Save Preferences", action = gtk.FILE_CHOOSER_ACTION_SAVE, buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
+        chooser = gtk.FileChooserDialog(title="Save Preferences", action=gtk.FILE_CHOOSER_ACTION_SAVE, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
         chooser.set_default_response(gtk.RESPONSE_OK)
         chooser.set_do_overwrite_confirmation(True)
         filter = gtk.FileFilter()
@@ -3165,7 +3167,7 @@ entered as a regular expression"""
         filter.set_name('All files')
         filter.add_pattern("*")
         chooser.add_filter(filter)
-        chooser.set_current_folder('%s/.STAT' %os.environ['HOME'])
+        chooser.set_current_folder('%s/.STAT' % os.environ['HOME'])
         if chooser.run() == gtk.RESPONSE_OK:
             filter = chooser.get_filter()
             ext = ''
@@ -3193,9 +3195,9 @@ entered as a regular expression"""
                     shelf[key] = self.options[key]
                 shelf.close()
             except IOError as e:
-                show_error_dialog('%s\nFailed to save preferences file %s\n' %(repr(e), filename), self)
+                show_error_dialog('%s\nFailed to save preferences file %s\n' % (repr(e), filename), self)
             except Exception as e:
-                show_error_dialog('%s\nFailed to save preferences file %s\n' %(repr(e), filename), self)
+                show_error_dialog('%s\nFailed to save preferences file %s\n' % (repr(e), filename), self)
         chooser.destroy()
 
     def on_destroy(self, action):
@@ -3263,7 +3265,7 @@ entered as a regular expression"""
         """Display the user guide."""
         user_guide_path = os.path.join(os.path.dirname(__file__), '../../../doc/stat_userguide.pdf')
         if not os.path.exists(user_guide_path):
-            show_error_dialog('Failed to find STAT user guide %s' %user_guide_path, self)
+            show_error_dialog('Failed to find STAT user guide %s' % user_guide_path, self)
             return False
         pdfviewer = _which('evince')
         if pdfviewer is None:
@@ -3323,9 +3325,9 @@ entered as a regular expression"""
             with open(filename, 'r') as f:
                 stat_wait_dialog.show_wait_dialog_and_run(self.set_dotcode, (f.read(), filename, self.notebook.get_current_page()), ['Opening DOT File'], self)
         except IOError as e:
-            show_error_dialog('%s\nFailed to open file:\n\n%s\n\nPlease be sure the file exists and is a valid STAT outputted dot file.' %(repr(e), filename), exception = e)
+            show_error_dialog('%s\nFailed to open file:\n\n%s\n\nPlease be sure the file exists and is a valid STAT outputted dot file.' % (repr(e), filename), exception=e)
         except IOError as e:
-            show_error_dialog('%s\nFailed to process file:\n\n%s\n\nPlease be sure the file exists and is a valid STAT outputted dot file.' %(repr(e), filename), exception = e)
+            show_error_dialog('%s\nFailed to process file:\n\n%s\n\nPlease be sure the file exists and is a valid STAT outputted dot file.' % (repr(e), filename), exception=e)
         self.show_all()
         self.update_history()
 
@@ -3380,7 +3382,7 @@ entered as a regular expression"""
         """Callback to confirm the file format."""
         self.ext_dialog.destroy()
         self.chooser.destroy()
-        self.on_save_as(None, data[0], os.path.basename('%s.%s' %(data[1], self.ext_type)))
+        self.on_save_as(None, data[0], os.path.basename('%s.%s' % (data[1], self.ext_type)))
 
     def on_save_as(self, action, dir='', file=''):
         """Callback to generate save dialog."""
@@ -3391,17 +3393,17 @@ entered as a regular expression"""
         for file_extension in file_extensions:
             short_file_extensions.append('.' + file_extension.split()[0])
         self.chooser = gtk.FileChooserDialog(title="Save File",
-                                        action=gtk.FILE_CHOOSER_ACTION_SAVE,
-                                        buttons=(gtk.STOCK_CANCEL,
-                                                 gtk.RESPONSE_CANCEL,
-                                                 gtk.STOCK_SAVE_AS,
-                                                 gtk.RESPONSE_OK))
+                                             action=gtk.FILE_CHOOSER_ACTION_SAVE,
+                                             buttons=(gtk.STOCK_CANCEL,
+                                                      gtk.RESPONSE_CANCEL,
+                                                      gtk.STOCK_SAVE_AS,
+                                                      gtk.RESPONSE_OK))
         self.chooser.set_default_response(gtk.RESPONSE_OK)
         self.chooser.set_do_overwrite_confirmation(True)
         for extension in file_extensions:
             filter = gtk.FileFilter()
             filter.set_name(extension)
-            filter.add_pattern("*.%s" %extension.split()[0])
+            filter.add_pattern("*.%s" % extension.split()[0])
             self.chooser.add_filter(filter)
         filter = gtk.FileFilter()
         filter.set_name("All files")
@@ -3419,7 +3421,7 @@ entered as a regular expression"""
             if not os.path.splitext(filename)[1] in short_file_extensions and file_type == 'All files':
                 self.ext_type = 'dot'
                 self.ext_dialog = gtk.Dialog("Choose Extension", self)
-                self.ext_dialog.set_default_size(300,80)
+                self.ext_dialog.set_default_size(300, 80)
                 ext_frame = gtk.Frame("File type explanation")
                 explanation = 'Saving as an AT&T dot format graph file allows the file to be reopened by this application.  Saving as an image or document file generates a file that can be easily viewed by other users and on other systems, but can not be manipulated by this application.'
                 ext_explanation = gtk.Label(explanation)
@@ -3445,13 +3447,13 @@ entered as a regular expression"""
                 self.ext_dialog.show_all()
             elif not os.path.splitext(filename)[1] in short_file_extensions and file_type != 'All files':
                 ret = self.save_file(filename + '.' + file_type.split()[0])
-                if ret == False:
-                    show_error_dialog('failed to save file "%s"' %filename + '.' + file_type.split()[0], self)
+                if ret is False:
+                    show_error_dialog('failed to save file "%s"' % filename + '.' + file_type.split()[0], self)
                 self.chooser.destroy()
             else:
                 ret = self.save_file(filename)
-                if ret == False:
-                    show_error_dialog('failed to save file "%s"' %filename + '.' + file_type.split()[0], self)
+                if ret is False:
+                    show_error_dialog('failed to save file "%s"' % filename + '.' + file_type.split()[0], self)
                 self.chooser.destroy()
         else:
             self.chooser.destroy()
@@ -3462,11 +3464,11 @@ entered as a regular expression"""
             temp_dot_file = open(temp_dot_filename, 'w')
         except:
             home_dir = os.environ.get("HOME")
-            temp_dot_filename = '%s/redraw.dot' %home_dir
+            temp_dot_filename = '%s/redraw.dot' % home_dir
             try:
                 temp_dot_file = open(temp_dot_filename, 'w')
             except:
-                show_error_dialog('Failed to open temp dot file %s for writing' %temp_dot_filename, exception = e)
+                show_error_dialog('Failed to open temp dot file %s for writing' % temp_dot_filename, exception=e)
                 return False
         temp_dot_file.close()
         self.get_current_graph().save_dot(temp_dot_filename)
@@ -3552,16 +3554,16 @@ entered as a regular expression"""
         path = entry.get_text()
         entry.set_text('')
         paths = []
-        if path == '' and destroy == True:
+        if path == '' and destroy is True:
             search_dialog.destroy()
             return
-        elif path == '' and destroy == False:
+        elif path == '' and destroy is False:
             return
         if not os.path.exists(path):
-            show_error_dialog('directory "%s" does not exist' %path, self)
+            show_error_dialog('directory "%s" does not exist' % path, self)
             return
         if check_buttons["recurse"].get_active():
-            for p,d,f in os.walk(path):
+            for p, d, f in os.walk(path):
                 paths.append(p)
         else:
             paths.append(path)
@@ -3576,7 +3578,7 @@ entered as a regular expression"""
                 for path in search_paths[path_type2]:
                     paths_string += path + '\n'
                 path_views[path_type2].get_buffer().set_text(paths_string)
-        if destroy == True:
+        if destroy is True:
             search_dialog.destroy()
             return
         search_dialog.show_all()
@@ -3585,15 +3587,15 @@ entered as a regular expression"""
         """Callback to handle action initiated from the toolbar."""
         if self.get_current_graph().cur_filename == '':
             return False
-        if name != None:
+        if name is not None:
             self.get_current_graph().set_undo_list()
         ret = apply(function, args)
-        if ret == True:
-            if name != None:
+        if ret is True:
+            if name is not None:
                 self.get_current_graph().action_history.append(name)
             self.update_history()
             global window
-            if self.get_current_widget().user_zoom == True and window.options["maintain user zoom"] == True and (function == self.get_current_graph().undo or function == self.get_current_graph().redo):
+            if self.get_current_widget().user_zoom is True and window.options["maintain user zoom"] is True and (function == self.get_current_graph().undo or function == self.get_current_graph().redo):
                 self.get_current_widget().queue_draw()
             else:
                 self.get_current_graph().adjust_dims()
@@ -3615,8 +3617,8 @@ entered as a regular expression"""
         except:
             traversal_depth = 1
         ret = self.get_current_graph().traverse(self.get_current_widget(), traversal_depth)
-        if ret == True:
-            self.get_current_graph().action_history.append('Traverse Graph %d' %traversal_depth)
+        if ret is True:
+            self.get_current_graph().action_history.append('Traverse Graph %d' % traversal_depth)
             self.update_history()
             self.get_current_graph().adjust_dims()
             self.get_current_widget().zoom_to_fit()
@@ -3637,7 +3639,7 @@ entered as a regular expression"""
         except:
             traversal_depth = 1
         ret = self.get_current_graph().to_traverse_least_progress(self.get_current_widget(), traversal_depth)
-        self.get_current_graph().action_history.append('Traverse Least Progress %d' %traversal_depth)
+        self.get_current_graph().action_history.append('Traverse Least Progress %d' % traversal_depth)
         self.update_history()
         self.get_current_graph().adjust_dims()
         self.get_current_widget().zoom_to_fit()
@@ -3656,26 +3658,26 @@ entered as a regular expression"""
         except:
             traversal_depth = 1
         ret = self.get_current_graph().to_traverse_most_progress(self.get_current_widget(), traversal_depth)
-        self.get_current_graph().action_history.append('Traverse Most Progress %d' %traversal_depth)
+        self.get_current_graph().action_history.append('Traverse Most Progress %d' % traversal_depth)
         self.update_history()
         self.get_current_graph().adjust_dims()
         self.get_current_widget().zoom_to_fit()
         return ret
 
-    def search_tasks(self, text, dummy = None):
+    def search_tasks(self, text, dummy=None):
         self.get_current_graph().focus_tasks(text)
 
     def search_text(self, text, match_case_check_box):
         self.get_current_graph().focus_text(text, match_case_check_box.get_active())
         highlight_list = []
         search_text = text
-        if match_case_check_box.get_active() == False:
+        if match_case_check_box.get_active() is False:
             search_text = string.lower(text)
         for node in self.get_current_graph().nodes:
             node_text = node.label
-            if match_case_check_box.get_active() == False:
+            if match_case_check_box.get_active() is False:
                 node_text = string.lower(node.label)
-            if node_text.find(search_text) != -1 and node.hide == False:
+            if node_text.find(search_text) != -1 and node.hide is False:
                 highlight_list.append(node)
         self.tabs[self.notebook.get_current_page()].widget.set_highlight(highlight_list)
 
@@ -3685,7 +3687,7 @@ entered as a regular expression"""
         text = entry.get_text()
         type, search_cb, search_help = self.search_types[combo_box.get_active()]
         self.get_current_graph().set_undo_list()
-        self.get_current_graph().action_history.append('Search for %s: %s' %(type, text))
+        self.get_current_graph().action_history.append('Search for %s: %s' % (type, text))
         self.update_history()
         search_cb(text, match_case_check_box)
         self.get_current_graph().adjust_dims()
@@ -3705,7 +3707,7 @@ entered as a regular expression"""
             self.programming_models = []
             site_models_path = os.path.dirname(os.path.realpath(__file__)) + '/../../../etc/STAT/STATview_models.conf'
             self.programming_models += load_model_cuts(site_models_path)
-            user_models_path = '%s/.STATview_models.conf' %(os.environ.get('HOME'))
+            user_models_path = '%s/.STATview_models.conf' % (os.environ.get('HOME'))
             self.programming_models += load_model_cuts(user_models_path)
         self.model_dialog = gtk.Dialog('Hide Programming Model Frames', self)
         self.model_dialog.set_default_size(400, 400)
@@ -3730,7 +3732,7 @@ entered as a regular expression"""
         column = gtk.TreeViewColumn(" Click\nto hide")
         column.set_fixed_width(20)
         column.pack_start(renderer)
-        column.set_attributes(renderer, stock_id=MODEL_INDEX_ICON, callable=MODEL_INDEX_CALLBACK, cell_background_set = MODEL_INDEX_NOTEDITABLE)
+        column.set_attributes(renderer, stock_id=MODEL_INDEX_ICON, callable=MODEL_INDEX_CALLBACK, cell_background_set=MODEL_INDEX_NOTEDITABLE)
         treeview.append_column(column)
 
         # name column
@@ -3738,14 +3740,14 @@ entered as a regular expression"""
         renderer.connect("edited", self.on_cell_edited, list_store)
         renderer.set_data("column", MODEL_INDEX_NAME)
         renderer.set_property('cell-background', 'grey')
-        column = gtk.TreeViewColumn("Programming\n     Model", renderer, text=MODEL_INDEX_NAME, editable=MODEL_INDEX_EDITABLE, cell_background_set = MODEL_INDEX_NOTEDITABLE)
+        column = gtk.TreeViewColumn("Programming\n     Model", renderer, text=MODEL_INDEX_NAME, editable=MODEL_INDEX_EDITABLE, cell_background_set=MODEL_INDEX_NOTEDITABLE)
         treeview.append_column(column)
 
         # column for case sensitive toggles
         renderer = gtk.CellRendererToggle()
         renderer.connect('toggled', self.case_sensitive_toggled, list_store)
         renderer.set_property('cell-background', 'grey')
-        column = gtk.TreeViewColumn('   Case\nSensitive', renderer, active=MODEL_INDEX_CASESENSITIVE, cell_background_set = MODEL_INDEX_NOTEDITABLE)
+        column = gtk.TreeViewColumn('   Case\nSensitive', renderer, active=MODEL_INDEX_CASESENSITIVE, cell_background_set=MODEL_INDEX_NOTEDITABLE)
         column.set_sizing(gtk.TREE_VIEW_COLUMN_FIXED)
         column.set_fixed_width(70)
         treeview.append_column(column)
@@ -3755,7 +3757,7 @@ entered as a regular expression"""
         renderer.connect("edited", self.on_cell_edited, list_store)
         renderer.set_data("column", MODEL_INDEX_REGEX)
         renderer.set_property('cell-background', 'grey')
-        column = gtk.TreeViewColumn("Regex", renderer, text=MODEL_INDEX_REGEX, editable=MODEL_INDEX_EDITABLE, cell_background_set = MODEL_INDEX_NOTEDITABLE)
+        column = gtk.TreeViewColumn("Regex", renderer, text=MODEL_INDEX_REGEX, editable=MODEL_INDEX_EDITABLE, cell_background_set=MODEL_INDEX_NOTEDITABLE)
         treeview.append_column(column)
 
         sw.add(treeview)
@@ -3786,7 +3788,7 @@ entered as a regular expression"""
         """Callback to handle activation of hide model button."""
         path = int(path)
         self.get_current_graph().set_undo_list()
-        self.get_current_graph().action_history.append('Hide Model: %s' %self.programming_models[path][MODEL_INDEX_NAME])
+        self.get_current_graph().action_history.append('Hide Model: %s' % self.programming_models[path][MODEL_INDEX_NAME])
         self.update_history()
         for regex in self.programming_models[path][MODEL_INDEX_REGEX].split(';'):
             if regex == '':
@@ -3800,7 +3802,7 @@ entered as a regular expression"""
         iter = list_store.get_iter((int(path),))
         if iter:
             path = list_store.get_path(iter)[0]
-            if self.programming_models[path][MODEL_INDEX_EDITABLE] == False:
+            if self.programming_models[path][MODEL_INDEX_EDITABLE] is False:
                 return True
         toggled = list_store.get_value(iter, MODEL_INDEX_CASESENSITIVE)
         toggled = not toggled
@@ -3811,17 +3813,16 @@ entered as a regular expression"""
         new_item = [False, "Name", True, "Regex", True, False]
         self.programming_models.append(new_item)
         iter = list_store.append()
-        list_store.set (iter, MODEL_INDEX_NAME, new_item[MODEL_INDEX_NAME], MODEL_INDEX_CASESENSITIVE, new_item[MODEL_INDEX_CASESENSITIVE], MODEL_INDEX_REGEX, new_item[MODEL_INDEX_REGEX], MODEL_INDEX_EDITABLE, new_item[MODEL_INDEX_EDITABLE], MODEL_INDEX_NOTEDITABLE, new_item[MODEL_INDEX_NOTEDITABLE], MODEL_INDEX_CALLBACK, self.hide_model_callback, MODEL_INDEX_ICON, gtk.STOCK_CUT)
+        list_store.set(iter, MODEL_INDEX_NAME, new_item[MODEL_INDEX_NAME], MODEL_INDEX_CASESENSITIVE, new_item[MODEL_INDEX_CASESENSITIVE], MODEL_INDEX_REGEX, new_item[MODEL_INDEX_REGEX], MODEL_INDEX_EDITABLE, new_item[MODEL_INDEX_EDITABLE], MODEL_INDEX_NOTEDITABLE, new_item[MODEL_INDEX_NOTEDITABLE], MODEL_INDEX_CALLBACK, self.hide_model_callback, MODEL_INDEX_ICON, gtk.STOCK_CUT)
 
     def on_remove_item_clicked(self, button, treeview):
         selection = treeview.get_selection()
         list_store, iter = selection.get_selected()
         if iter:
             path = list_store.get_path(iter)[0]
-            if self.programming_models[path][MODEL_INDEX_EDITABLE] == True:
+            if self.programming_models[path][MODEL_INDEX_EDITABLE] is True:
                 list_store.remove(iter)
-                del self.programming_models[ path ]
-
+                del self.programming_models[path]
 
     def on_cell_edited(self, cell, path_string, new_text, list_store):
         iter = list_store.get_iter_from_string(path_string)
@@ -3875,13 +3876,12 @@ entered as a regular expression"""
         self.task_dialog.show_all()
         return True
 
-
     def on_hide_text_enter_cb(self, widget, arg):
         """Callback to handle activation of focus task text entry."""
         entry, match_case_check_box = arg
         text = entry.get_text()
         self.get_current_graph().set_undo_list()
-        self.get_current_graph().action_history.append('Cut text: %s' %(text))
+        self.get_current_graph().action_history.append('Cut text: %s' % (text))
         self.update_history()
         self.get_current_graph().hide_re(text, match_case_check_box.get_active())
         self.get_current_graph().adjust_dims()
@@ -3924,7 +3924,6 @@ enterered as a regular expression.
         self.task_dialog.show_all()
         return True
 
-
     def on_longest_path(self, action):
         """Callback to handle pressing of longest path button."""
         if self.get_current_graph().cur_filename == '':
@@ -3938,8 +3937,8 @@ enterered as a regular expression.
         except:
             longest_depth = 1
         ret = self.get_current_graph().longest_path(self.get_current_widget(), longest_depth)
-        if ret == True:
-            self.get_current_graph().action_history.append('Longest Path %d' %longest_depth)
+        if ret is True:
+            self.get_current_graph().action_history.append('Longest Path %d' % longest_depth)
             self.update_history()
             self.get_current_graph().adjust_dims()
             self.get_current_widget().zoom_to_fit()
@@ -3960,8 +3959,8 @@ enterered as a regular expression.
         except:
             shortest_depth = 1
         ret = self.get_current_graph().shortest_path(self.get_current_widget(), shortest_depth)
-        if ret == True:
-            self.get_current_graph().action_history.append('Shortest Path %d' %shortest_depth)
+        if ret is True:
+            self.get_current_graph().action_history.append('Shortest Path %d' % shortest_depth)
             self.update_history()
             self.get_current_graph().adjust_dims()
             self.get_current_widget().zoom_to_fit()
@@ -3982,8 +3981,8 @@ enterered as a regular expression.
         except:
             least_tasks = 1
         ret = self.get_current_graph().least_tasks(self.get_current_widget(), least_tasks)
-        if ret == True:
-            self.get_current_graph().action_history.append('Least Tasks %d' %least_tasks)
+        if ret is True:
+            self.get_current_graph().action_history.append('Least Tasks %d' % least_tasks)
             self.update_history()
             self.get_current_graph().adjust_dims()
             self.get_current_widget().zoom_to_fit()
@@ -4004,8 +4003,8 @@ enterered as a regular expression.
         except:
             most_tasks = 1
         ret = self.get_current_graph().most_tasks(self.get_current_widget(), most_tasks)
-        if ret == True:
-            self.get_current_graph().action_history.append('Most Tasks %d' %most_tasks)
+        if ret is True:
+            self.get_current_graph().action_history.append('Most Tasks %d' % most_tasks)
             self.update_history()
             self.get_current_graph().adjust_dims()
             self.get_current_widget().zoom_to_fit()
@@ -4024,7 +4023,7 @@ enterered as a regular expression.
             if node.node_name == '0':
                 ret = self.join_eq_classes(node)
                 break
-        if ret == True:
+        if ret is True:
             self.on_reset_layout()
             for i in xrange(len(graph.edges) - num_edges):
                 graph.edges.pop()
@@ -4034,7 +4033,7 @@ enterered as a regular expression.
     def join_eq_classes(self, node):
         """Recursively collapse equivalence classes."""
         found = False
-        if node.hide == True:
+        if node.hide is True:
             return False
         if node.can_join_eq_c() and node.node_name != '0':
             self.get_current_graph().join_eq_c(node, True)
@@ -4045,7 +4044,7 @@ enterered as a regular expression.
             edges = node.out_edges
         for edge in edges:
             ret = self.join_eq_classes(edge.dst)
-            if ret == True:
+            if ret is True:
                 found = True
         return found
 
@@ -4056,7 +4055,7 @@ enterered as a regular expression.
         num_eq_classes = self.get_current_graph().identify_real_num_eq_classes(self.get_current_widget())
         #num_eq_classes = self.get_current_graph().identify_num_eq_classes(self.get_current_widget())
         eq_dialog = gtk.Dialog("Equivalence Classes", self)
-        my_frame = gtk.Frame("%d Equivalence Classes:" %(len(num_eq_classes)))
+        my_frame = gtk.Frame("%d Equivalence Classes:" % (len(num_eq_classes)))
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         task_view = gtk.TextView()
@@ -4075,20 +4074,20 @@ enterered as a regular expression.
                 if num == prev + 1:
                     in_range = True
                 else:
-                    if in_range == True:
-                        current_class += '-%d'%prev
+                    if in_range is True:
+                        current_class += '-%d' % prev
                     if prev != -2:
                         current_class += ','
-                    current_class += '%d'%num
+                    current_class += '%d' % num
                     in_range = False
                 prev = num
-            if in_range == True:
-                current_class += '-%d'%num
+            if in_range is True:
+                current_class += '-%d' % num
             current_class += ']\n'
             if task_count == 1:
-                eq_string += '%d task: %s' %(task_count, current_class)
+                eq_string += '%d task: %s' % (task_count, current_class)
             else:
-                eq_string += '%d tasks: %s' %(task_count, current_class)
+                eq_string += '%d tasks: %s' % (task_count, current_class)
         task_view_buffer.set_text(eq_string.replace(",", ", "))
         sw.add(task_view)
         my_frame.add(sw)
@@ -4111,11 +4110,11 @@ enterered as a regular expression.
             node = widget.get_node(int(event.x), int(event.y))
         function = node.label.replace('==>', '==>\n')
         tasks = node.edge_label
-        if node.hide == True:
+        if node.hide is True:
             return True
         options = ['Join Equivalence Class', 'Collapse', 'Collapse Depth', 'Hide', 'Expand', 'Expand All', 'Focus', 'View Source']
 
-        if have_tomod == True:
+        if have_tomod is True:
             options.append('Temporally Order Children')
         if button_clicked == 'left':
             if hasattr(self, 'get_full_edge_label') and tasks.find(':') != -1:
@@ -4141,14 +4140,14 @@ enterered as a regular expression.
             text_view.set_cursor_visible(False)
             text_view_buffer = text_view.get_buffer()
             text_view.set_wrap_mode(gtk.WRAP_CHAR)
-            text_view_buffer.create_tag("monospace", family = "monospace")
+            text_view_buffer.create_tag("monospace", family="monospace")
             iter = text_view_buffer.get_iter_at_offset(0)
-            fore_color_tag = "color_fore%s" %(font_color_string)
+            fore_color_tag = "color_fore%s" % (font_color_string)
             foreground = gtk.gdk.color_parse(font_color_string)
-            text_view_buffer.create_tag(fore_color_tag, foreground_gdk = foreground)
+            text_view_buffer.create_tag(fore_color_tag, foreground_gdk=foreground)
             background = gtk.gdk.color_parse(fill_color_string)
-            back_color_tag = "color_back%s" %(fill_color_string)
-            text_view_buffer.create_tag(back_color_tag, background_gdk = background)
+            back_color_tag = "color_back%s" % (fill_color_string)
+            text_view_buffer.create_tag(back_color_tag, background_gdk=background)
             text_view_buffer.insert_with_tags_by_name(iter, function, fore_color_tag, back_color_tag, "monospace")
             sw.add(text_view)
             my_frame.add(sw)
@@ -4161,9 +4160,9 @@ enterered as a regular expression.
                 if num_leaf_tasks != 0 and num_leaf_tasks == len(leaf_tasks):
                     vpaned2 = gtk.VPaned()
                     if num_leaf_tasks == 1:
-                        my_frame = gtk.Frame("%d Leaf Task:" %(num_leaf_tasks))
+                        my_frame = gtk.Frame("%d Leaf Task:" % (num_leaf_tasks))
                     else:
-                        my_frame = gtk.Frame("%d Leaf Tasks:" %(num_leaf_tasks))
+                        my_frame = gtk.Frame("%d Leaf Tasks:" % (num_leaf_tasks))
                     sw = gtk.ScrolledWindow()
                     sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
                     task_view = gtk.TextView()
@@ -4180,9 +4179,9 @@ enterered as a regular expression.
                         vpaned1.add2(my_frame)
                 if num_tasks != num_leaf_tasks:
                     if num_tasks == 1:
-                        my_frame = gtk.Frame("%d Total Task:" %(num_tasks))
+                        my_frame = gtk.Frame("%d Total Task:" % (num_tasks))
                     else:
-                        my_frame = gtk.Frame("%d Total Tasks:" %(num_tasks))
+                        my_frame = gtk.Frame("%d Total Tasks:" % (num_tasks))
                     sw = gtk.ScrolledWindow()
                     sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
                     task_view = gtk.TextView()
@@ -4210,7 +4209,7 @@ enterered as a regular expression.
                 summary_view.set_cursor_visible(False)
                 task_view_buffer = summary_view.get_buffer()
                 summary_view.set_wrap_mode(gtk.WRAP_WORD)
-                task_view_buffer.set_text("%d total tasks, %d leaf tasks, representative = %d" %(num_tasks, num_leaf_tasks, get_task_list(tasks)[0]))
+                task_view_buffer.set_text("%d total tasks, %d leaf tasks, representative = %d" % (num_tasks, num_leaf_tasks, get_task_list(tasks)[0]))
                 sw.add(summary_view)
                 my_frame.add(sw)
                 vpaned1.add2(my_frame)
@@ -4220,7 +4219,7 @@ enterered as a regular expression.
             box2 = gtk.HButtonBox()
             for option in options:
                 button = gtk.Button(option.replace(' ', '\n'))
-                if option !=  'View Source' and option != 'Get Full Edge Label':
+                if option != 'View Source' and option != 'Get Full Edge Label':
                     button.connect("clicked", self.manipulate_cb, option, node)
                 if option == 'View Source':
                     if not label_has_source(node.label):
@@ -4303,7 +4302,6 @@ enterered as a regular expression.
             self.my_dialog.vbox.pack_end(hbox, False, False, 0)
             self.my_dialog.show_all()
 
-
     def manipulate_cb(self, widget, data, node):
         """Callback to handle the request of a manipulation operation."""
         ret = True
@@ -4334,19 +4332,19 @@ enterered as a regular expression.
 
         # post process
         if data not in ['View Source', 'Join Equivalence Class']:
-            if ret == True:
-                self.get_current_graph().action_history.append('%s: %s' %(data, node.label))
+            if ret is True:
+                self.get_current_graph().action_history.append('%s: %s' % (data, node.label))
                 self.update_history()
             else:
                 self.get_current_graph().undo(False)
-        if data not in ['Temporally Order Children', 'View Source', 'Join Equivalence Class'] and ret == True:
+        if data not in ['Temporally Order Children', 'View Source', 'Join Equivalence Class'] and ret is True:
             global window
-            if self.get_current_widget().user_zoom == True and window.options["maintain user zoom"] == True:
+            if self.get_current_widget().user_zoom is True and window.options["maintain user zoom"] is True:
                 self.get_current_widget().queue_draw()
             else:
                 self.get_current_graph().adjust_dims()
                 self.get_current_widget().zoom_to_fit()
-        if data == 'Join Equivalence Class' and ret == True:
+        if data == 'Join Equivalence Class' and ret is True:
             old_graph = self.get_current_graph()
             self.on_reset_layout()
             for i in xrange(len(old_graph.edges) - num_edges):
@@ -4356,6 +4354,7 @@ enterered as a regular expression.
             self.my_dialog.destroy()
         except:
             pass
+
 
 def STATview_main(argv):
     """The STATview main."""
@@ -4374,11 +4373,11 @@ def STATview_main(argv):
                         window.create_new_tab()
                     stat_wait_dialog.show_wait_dialog_and_run(window.set_dotcode, (f.read(), filename, i), ['Opening DOT file'], window)
             except IOError as e:
-                sys.stderr.write('\n%s\nfailed to open file %s\n\n' %(repr(e), filename), exception = e)
+                sys.stderr.write('\n%s\nfailed to open file %s\n\n' % (repr(e), filename), exception=e)
                 sys.stderr.write('usage:\n\tSTATview [<your_STAT_generated_graph.dot>]*\n\n')
                 sys.exit(-1)
             except Exception as e:
-                sys.stderr.write('\n%s\nfailed to proess file %s\n\n' %(repr(e), filename), exception = e)
+                sys.stderr.write('\n%s\nfailed to proess file %s\n\n' % (repr(e), filename), exception=e)
                 sys.stderr.write('usage:\n\tSTATview [<your_STAT_generated_graph.dot>]*\n\n')
                 sys.exit(-1)
     window.connect('destroy', window.on_destroy)

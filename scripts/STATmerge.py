@@ -22,16 +22,19 @@ __version__ = "2.0.0"
 
 import _STATmerge
 
+
 ## Need to call this function first
 #  \param high_rank - the highest ranked task in the graphs to be created
 #  \return 0 on success
 def Init_Graphlib(high_rank):
     return _STATmerge.Init_Graphlib(high_rank)
 
+
 ## Create a new graph
 #  \return an integer handle for the graph on success or -1 on error
 def New_Graph():
     return _STATmerge.New_Graph()
+
 
 ## Add a trace to the graph
 #  \param handle - the integer handle for the graph to add the trace to
@@ -46,12 +49,14 @@ def Add_Trace(handle, rank, trace):
         trace_string += frame + '\n'
     return _STATmerge.Add_Trace(handle, rank, count, trace_string)
 
+
 ## Merge a graph to the graph
 #  \param handle1 - the integer handle for the graph to add the trace to
 #  \param handle2 - the integer handle for the graph to be added
 #  \return 0 on success
 def Merge_Traces(handle1, handle2):
     return _STATmerge.Merge_Traces(handle1, handle2)
+
 
 ## Serialize a graph to a file
 #  \param handle - the integer handle for the graph
@@ -60,11 +65,13 @@ def Merge_Traces(handle1, handle2):
 def Serialize_Graph(handle, filename):
     return _STATmerge.Serialize_Graph(handle, filename)
 
+
 ## Deserialize a graph from a file
 #  \param filename - the file to read from
 #  \return an integer handle for the graph on success or -1 on error
 def Deserialize_Graph(filename):
     return _STATmerge.Deserialize_Graph(filename)
+
 
 ## Output a graph to a .dot file
 #  \param handle - the integer handle for the graph to add the trace to
@@ -72,4 +79,3 @@ def Deserialize_Graph(filename):
 #  \return 0 on success
 def Output_Graph(handle, filename):
     return _STATmerge.Output_Graph(handle, filename)
-
