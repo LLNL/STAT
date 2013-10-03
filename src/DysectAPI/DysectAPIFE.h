@@ -36,7 +36,7 @@ namespace DysectAPI {
 
     DysectErrorCode requestBackendSetup(const char *libPath);
 
-    DysectErrorCode handleEvents();
+    DysectErrorCode handleEvents(bool blocking = true);
 
     DysectErrorCode requestBackendShutdown();
 

@@ -17,19 +17,21 @@ class STAT_FrontEnd* Frontend::statFE = 0;
 extern bool checkAppExit();
 extern bool checkDaemonExit();
 
-DysectAPI::DysectErrorCode Frontend::listen() {
+DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
   int ret;
-  int idle = 0;
+  static int count = 0;
 
   // Install handler for (ctrl-c) abort
   // signal(SIGINT, Frontend::interrupt);
   //
 
-  printf("Waiting for events (! denotes captured event)\n");
-  printf("Hit <enter> to stop session\n");
-  fflush(stdout);
+  if (count == 0) {
+    count++;
+    printf("Waiting for events (! denotes captured event)\n");
+    printf("Hit <enter> to stop session\n");
+    fflush(stdout);
+  }
 
-  {
   do {
     // select() overwrites fd_set with ready fd's
     // Copy fd_set structure
@@ -46,20 +48,24 @@ DysectAPI::DysectErrorCode Frontend::listen() {
 
     if(ret < 0) {
       //return Err::warn(DysectAPI::Error, "select() failed to listen on file descriptor set.");
-      return DysectAPI::OK;
-    }
+      return DysectAPI::Error;
+    } 
 
     if(FD_ISSET(0, &fdRead) && breakOnEnter) {
       Err::info(true, "Stopping session - enter key was hit");
-      break;
+      return DysectAPI::OK;
     }
     if (checkAppExit()) {
       Err::info(true, "Stopping session - application has exited");
-      break;
+      return DysectAPI::OK;
     }
     if (checkDaemonExit()) {
       Err::info(true, "Stopping session - daemons have exited");
-      break;
+      return DysectAPI::Error;
+    }
+    
+    if(ret == 0 && !blocking) {
+      return DysectAPI::SessionCont;
     }
 
     // Look for owners
@@ -134,9 +140,12 @@ DysectAPI::DysectErrorCode Frontend::listen() {
       } while(1);
 
       dom->getStream()->clear_DataNotificationFd();
-    }
+    } // for (doms)
   } while(running);
-  }
+
+  if (running)
+    return DysectAPI::SessionCont;
+  return DysectAPI::OK;
 }
 
 DysectAPI::DysectErrorCode Frontend::broadcastStreamInits() {

@@ -199,7 +199,7 @@ STAT_FrontEnd::STAT_FrontEnd()
 #endif
 
 #ifdef DYSECTAPI
-    daemonsKilled = false;
+    daemonsKilled_ = false;
 #endif
 
     graphlibError = graphlib_Init();
@@ -249,6 +249,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     snprintf(outDir_, BUFSIZE, "NULL");
     snprintf(logOutDir_, BUFSIZE, "NULL");
     snprintf(filePrefix_, BUFSIZE, "NULL");
+    snprintf(lastDotFileName_, BUFSIZE, "NULL");
     isStatBench_ = false;
     isLaunched_ = false;
     isConnected_ = false;
@@ -1646,7 +1647,7 @@ StatError_t STAT_FrontEnd::setDaemonNodes()
     if (nodes.size() <= 0)
     {
 #ifdef DYSECTAPI
-        daemonsKilled = true;
+        daemonsKilled_ = true;
         return STAT_APPLICATION_EXITED;
 #else
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "No daemons are connected\n");
@@ -3404,7 +3405,7 @@ StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bo
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Detaching from application...\n");
 
 #ifdef DYSECTAPI
-    if(daemonsKilled)
+    if(daemonsKilled_)
     {
         return STAT_OK;
     }
@@ -4665,3 +4666,60 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
     return STAT_OK;
 }
 
+#ifdef DYSECTAPI
+StatError_t STAT_FrontEnd::setupDysect(const char *dysectApiSessionPath, int dysectTimeout)
+{
+    StatError_t statError;
+
+    dysectFrontEnd_ = new DysectAPI::FE((const char*)dysectApiSessionPath, this, dysectTimeout);
+    if(!dysectFrontEnd_->isLoaded())
+    {
+        printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Failed to load dysect session %s\n", dysectApiSessionPath);
+        detachApplication(); 
+        shutDown();
+        return STAT_DYSECT_ERROR;
+    }
+
+    // Load backends with dynamic library and execute instrumentation setup
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Requesting session setup in backends...\n");
+    if(dysectFrontEnd_->requestBackendSetup((const char*)dysectApiSessionPath) != DysectAPI::OK)
+    {
+        printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Failed to setup backends %s\n", dysectApiSessionPath);
+        detachApplication(); 
+        shutDown();
+        return STAT_DYSECT_ERROR;
+    }
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Dysect session setup complete\n");
+
+    statError = resume();
+    if (statError != STAT_OK)
+    {
+        printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
+        shutDown();
+        return statError;
+    }
+}
+
+StatError_t STAT_FrontEnd::dysectListen(bool blocking)
+{
+    DysectAPI::DysectErrorCode dysectError;
+
+    if (dysectFrontEnd_ == NULL)
+    {
+        printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Dysect not setup\n");
+        return STAT_DYSECT_ERROR;
+    }
+    do 
+    {
+        dysectError = dysectFrontEnd_->handleEvents(blocking);
+    } while (dysectError == DysectAPI::SessionCont && blocking == true);
+    if (dysectError == DysectAPI::OK)
+        return STAT_OK;
+    if (blocking == false)
+    {
+        if (dysectError == DysectAPI::SessionCont)
+            return STAT_PENDING_ACK;
+    }
+    return STAT_DYSECT_ERROR;
+}
+#endif

@@ -206,47 +206,71 @@ int main(int argc, char **argv)
         // XXX: Refactoring work: Move sequence to Dysect::FE class
         printf("## Prototype DysectAPI enabled ##\n\n");
         printf("Notice: Traditional sampling is disabled troughout session!\n\n");
-
         printf("Setting up frontend session '%s'...\n", DysectAPISessionPath);
-        dysectFrontEnd = new DysectAPI::FE((const char*)DysectAPISessionPath, statFrontEnd, DysectTimeout);
-        if(!dysectFrontEnd->isLoaded())
-        {
-            printf("failed!\n");
-            statFrontEnd->detachApplication(); 
-            statFrontEnd->shutDown();
-            delete statFrontEnd;
-            return -1;
-        }
-
-        // Load backends with dynamic library and execute instrumentation setup
-        printf("Requesting session setup in backends...\n");
-        if(dysectFrontEnd->requestBackendSetup((const char*)DysectAPISessionPath) != DysectAPI::OK)
-        {
-            printf("failed!\n");
-
-            statFrontEnd->detachApplication(); 
-            statFrontEnd->shutDown();
-            delete statFrontEnd;
-            return -1;
-        }
-        else
-        {
-            printf("OK\n");
-        }
-        printf("Session setup complete\n");
-
-        statError = statFrontEnd->resume();
+        
+        statError = statFrontEnd->setupDysect(DysectAPISessionPath, DysectTimeout);
         if (statError != STAT_OK)
         {
-            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup Dysect session\n");
             statFrontEnd->shutDown();
             delete statFrontEnd;
             free(statArgs);
             return -1;
         }
-        // Handle incoming events
-        while (dysectFrontEnd->handleEvents() == DysectAPI::SessionCont);
 
+        statError = statFrontEnd->dysectListen(true);
+        //do
+        //{
+        //    statError = statFrontEnd->dysectListen(false);
+        //} while (statError == STAT_PENDING_ACK);
+        if (statError != STAT_OK)
+        {
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Dysect session failed\n");
+            statFrontEnd->shutDown();
+            delete statFrontEnd;
+            free(statArgs);
+            return -1;
+        }
+
+//        dysectFrontEnd = new DysectAPI::FE((const char*)DysectAPISessionPath, statFrontEnd, DysectTimeout);
+//        if(!dysectFrontEnd->isLoaded())
+//        {
+//            printf("failed!\n");
+//            statFrontEnd->detachApplication(); 
+//            statFrontEnd->shutDown();
+//            delete statFrontEnd;
+//            return -1;
+//        }
+//
+//        // Load backends with dynamic library and execute instrumentation setup
+//        printf("Requesting session setup in backends...\n");
+//        if(dysectFrontEnd->requestBackendSetup((const char*)DysectAPISessionPath) != DysectAPI::OK)
+//        {
+//            printf("failed!\n");
+//
+//            statFrontEnd->detachApplication(); 
+//            statFrontEnd->shutDown();
+//            delete statFrontEnd;
+//            return -1;
+//        }
+//        else
+//        {
+//            printf("OK\n");
+//        }
+//        printf("Session setup complete\n");
+//
+//        statError = statFrontEnd->resume();
+//        if (statError != STAT_OK)
+//        {
+//            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
+//            statFrontEnd->shutDown();
+//            delete statFrontEnd;
+//            free(statArgs);
+//            return -1;
+//        }
+//
+//        // Handle incoming events
+//        while (dysectFrontEnd->handleEvents() == DysectAPI::SessionCont);
     }
     else
     {
@@ -476,8 +500,8 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"usertopology",        required_argument,  0, 'u'},
         {"depth",               required_argument,  0, 'd'},
 #ifdef DYSECTAPI
-        {"dysectapi", required_argument, 0, 'X'},
-        {"dysectapi_batch", required_argument, 0, 'b'},
+        {"dysectapi",           required_argument, 0, 'X'},
+        {"dysectapi_batch",     required_argument, 0, 'b'},
 #endif
         {0,                     0,                  0, 0}
     };

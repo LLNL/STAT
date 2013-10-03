@@ -212,11 +212,9 @@ bool FE::isLoaded() {
   return loaded;
 }
 
-DysectErrorCode FE::handleEvents() {
-  DysectErrorCode result = Error;
-  if(Frontend::listen() == OK) {
-    result = OK;
-  }
+DysectErrorCode FE::handleEvents(bool blocking) {
+  DysectErrorCode result;
+  result = Frontend::listen(blocking);
 
   return result;
 }

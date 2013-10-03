@@ -64,8 +64,8 @@ extern "C"
 #define STAT_MAX_FANOUT 64
 
 #ifdef DYSECTAPI
-#include "STAT_shared.h"
-#include "DysectAPI/DysectAPIFE.h"
+  #include "STAT_shared.h"
+  #include "DysectAPI/DysectAPIFE.h"
 #endif
 
 //! An enum for STAT launch type
@@ -637,6 +637,11 @@ class STAT_FrontEnd
         */
         void getVersion(int *version);
 
+#ifdef DYSECTAPI
+        StatError_t setupDysect(const char *dysectApiSessionPath, int dysectTimeout);
+        StatError_t dysectListen(bool blocking = true);
+#endif
+
     private:
         //! Perform operations required after attach acknowledgement
         /*!
@@ -941,7 +946,8 @@ class STAT_FrontEnd
 #endif
 
 #ifdef DYSECTAPI
-        bool daemonsKilled;
+        bool daemonsKilled_;
+        DysectAPI::FE* dysectFrontEnd_;
 #endif
 };
 

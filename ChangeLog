@@ -1,3 +1,7 @@
+2013-10-03 Gregory L. Lee <lee218@llnl.gov>
+	* DysectAPIFE.[C,h], frontend.[cpp,h] : allow non-blocking event handling
+	* src/STAT_FrontEnd.C, src/STAT.C : moved Dysect setup and listen to STAT_FrontEnd class
+	
 2013-09-25 Gregory L. Lee <lee218@llnl.gov>
 	* : Dysect probe notifications sent to FE
 	* : Dysect STAT action triggered by FE during collect phase
