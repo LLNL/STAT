@@ -638,7 +638,7 @@ class STAT_FrontEnd
         void getVersion(int *version);
 
 #ifdef DYSECTAPI
-        StatError_t setupDysect(const char *dysectApiSessionPath, int dysectTimeout);
+        StatError_t dysectSetup(const char *dysectApiSessionPath, int dysectTimeout);
         StatError_t dysectListen(bool blocking = true);
 #endif
 

@@ -74,9 +74,9 @@ void mySleep(int sleepTime);
 
 
 #ifdef DYSECTAPI
-bool DysectAPIEnabled = false;
-char *DysectAPISessionPath = NULL;
-int DysectTimeout = -1;
+bool dysectApiEnabled = false;
+char *dysectApiSessionPath = NULL;
+int dysectTimeout = -1;
 #endif
 
 
@@ -200,15 +200,12 @@ int main(int argc, char **argv)
 #endif
 
 #ifdef DYSECTAPI
-    DysectAPI::FE* dysectFrontEnd = 0;
-    if(DysectAPIEnabled)
+    if (dysectApiEnabled)
     {
-        // XXX: Refactoring work: Move sequence to Dysect::FE class
-        printf("## Prototype DysectAPI enabled ##\n\n");
-        printf("Notice: Traditional sampling is disabled troughout session!\n\n");
-        printf("Setting up frontend session '%s'...\n", DysectAPISessionPath);
+        statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "\n## Prototype DysectAPI enabled ##\n");
+        statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "Notice: Traditional sampling is disabled troughout session!\n");
         
-        statError = statFrontEnd->setupDysect(DysectAPISessionPath, DysectTimeout);
+        statError = statFrontEnd->dysectSetup(dysectApiSessionPath, dysectTimeout);
         if (statError != STAT_OK)
         {
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup Dysect session\n");
@@ -219,10 +216,6 @@ int main(int argc, char **argv)
         }
 
         statError = statFrontEnd->dysectListen(true);
-        //do
-        //{
-        //    statError = statFrontEnd->dysectListen(false);
-        //} while (statError == STAT_PENDING_ACK);
         if (statError != STAT_OK)
         {
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Dysect session failed\n");
@@ -231,47 +224,7 @@ int main(int argc, char **argv)
             free(statArgs);
             return -1;
         }
-
-//        dysectFrontEnd = new DysectAPI::FE((const char*)DysectAPISessionPath, statFrontEnd, DysectTimeout);
-//        if(!dysectFrontEnd->isLoaded())
-//        {
-//            printf("failed!\n");
-//            statFrontEnd->detachApplication(); 
-//            statFrontEnd->shutDown();
-//            delete statFrontEnd;
-//            return -1;
-//        }
-//
-//        // Load backends with dynamic library and execute instrumentation setup
-//        printf("Requesting session setup in backends...\n");
-//        if(dysectFrontEnd->requestBackendSetup((const char*)DysectAPISessionPath) != DysectAPI::OK)
-//        {
-//            printf("failed!\n");
-//
-//            statFrontEnd->detachApplication(); 
-//            statFrontEnd->shutDown();
-//            delete statFrontEnd;
-//            return -1;
-//        }
-//        else
-//        {
-//            printf("OK\n");
-//        }
-//        printf("Session setup complete\n");
-//
-//        statError = statFrontEnd->resume();
-//        if (statError != STAT_OK)
-//        {
-//            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
-//            statFrontEnd->shutDown();
-//            delete statFrontEnd;
-//            free(statArgs);
-//            return -1;
-//        }
-//
-//        // Handle incoming events
-//        while (dysectFrontEnd->handleEvents() == DysectAPI::SessionCont);
-    }
+    } /* if dysectApiEnabled */
     else
     {
 #endif
@@ -385,7 +338,7 @@ int main(int argc, char **argv)
         }
     } /* for i */
 #ifdef DYSECTAPI
-    }
+    } /* else dysectApiEnabled */
 #endif
 
     /* Detach from the application */
@@ -421,15 +374,15 @@ void printUsage()
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
     fprintf(stderr, "  -y, --pythontrace\t\tgather Python script level stack traces\n");
-    fprintf(stderr, "  -s, --sleep <time>\t\tsleep time before attaching and gathering traces\n");
+    fprintf(stderr, "  -s, --sleep <secs>\t\tsleep time before attaching and gathering traces\n");
     fprintf(stderr, "\nTopology options:\n");
     fprintf(stderr, "  -a, --autotopo\t\tlet STAT automatically create topology\n");
     fprintf(stderr, "  -d, --depth <depth>\t\ttree topology depth\n");
     fprintf(stderr, "  -f, --fanout <width>\t\tmaximum tree topology fanout\n");
     fprintf(stderr, "  -u, --usertopology <topology>\tspecify the number of communication nodes per\n\t\t\t\tlayer in the tree topology, separated by dashes\n");
     fprintf(stderr, "  -n, --nodes <nodelist>\tlist of nodes for communication processes\n");
-    fprintf(stderr, "  -N, --nodesfile <filename>\t file containing list of nodes for communication processes\n");
-    fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication processes\n");
+    fprintf(stderr, "  -N, --nodesfile <filename>\tfile containing list of nodes for communication\n\t\t\t\tprocesses\n");
+    fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication\n\t\t\t\tprocesses\n");
     fprintf(stderr, "\t\t\t\tExample node lists:\thost1\n\t\t\t\t\t\t\thost1,host2\n\t\t\t\t\t\t\thost[1,5-7,9]\n");
     fprintf(stderr, "  -p, --procs <processes>\tthe maximum number of communication processes\n\t\t\t\tper node\n");
     fprintf(stderr, "\nMiscellaneous options:\n");
@@ -443,8 +396,8 @@ void printUsage()
     fprintf(stderr, "  -j, --jobid <id>\t\tappend <id> to the STAT output directory\n");
 
 #ifdef DYSECTAPI
-    fprintf(stderr, "  -X, --dysectapi <session bc>\tRun DySectAPI session. Notice: Sampling is disabled and session is run by loaded DySectAPI session only.\n");
-    fprintf(stderr, "  -b, --dysectapi_batch <seconds timeout>\tRun DySectAPI session in batch mode. Notice: Session stops after timeout or Act::detach() action\n");
+    fprintf(stderr, "  -X, --dysectapi <session>\trun specified DySectAPI session\n");
+    fprintf(stderr, "  -b, --dysectapi_batch <secs>\trun DySectAPI session in batch mode. Session\n\t\t\t\tstops after specified timeout or detach action.\n");
 #endif
     fprintf(stderr, "\n%% man STAT\n  for more information\n\n");
 }
@@ -633,6 +586,11 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             break;
         case 's':
             statArgs->sleepTime = atoi(optarg);
+            if (statArgs->sleepTime <= 0)
+            {
+                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "'%s' is not a valid timeout, must be a positive integer\n", optarg);
+                return STAT_ARG_ERROR;
+            }
             break;
         case 'l':
             if (strcmp(optarg, "FE") == 0)
@@ -663,16 +621,17 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             break;
 #ifdef DYSECTAPI
         case 'X':
-            DysectAPIEnabled = true;
-            DysectAPISessionPath = strdup(optarg);
             setenv("STAT_GROUP_OPS", "1", 1);
+            dysectApiEnabled = true;
+            dysectApiSessionPath = strdup(optarg);
             break;
         case 'b':
-            DysectTimeout = atoi(optarg);
-             if(DysectTimeout <= 0) {
-                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "'%s' is not a valid timeout\n", optarg);
+            dysectTimeout = atoi(optarg);
+            if (dysectTimeout <= 0)
+            {
+                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "'%s' is not a valid timeout, must be a positive integer\n", optarg);
                 return STAT_ARG_ERROR;
-             }
+            }
             break;
 #endif
         case '?':
