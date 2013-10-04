@@ -4905,6 +4905,49 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherLastTrace__SWIG_0(PyObject *SWIGU
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
   bool arg2 ;
+  char *arg3 = (char *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  bool val2 ;
+  int ecode2 = 0 ;
+  int res3 ;
+  char *buf3 = 0 ;
+  int alloc3 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  StatError_t result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OOO:STAT_FrontEnd_gatherLastTrace",&obj0,&obj1,&obj2)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_STAT_FrontEnd, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "STAT_FrontEnd_gatherLastTrace" "', argument " "1"" of type '" "STAT_FrontEnd *""'"); 
+  }
+  arg1 = reinterpret_cast< STAT_FrontEnd * >(argp1);
+  ecode2 = SWIG_AsVal_bool(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_gatherLastTrace" "', argument " "2"" of type '" "bool""'");
+  } 
+  arg2 = static_cast< bool >(val2);
+  res3 = SWIG_AsCharPtrAndSize(obj2, &buf3, NULL, &alloc3);
+  if (!SWIG_IsOK(res3)) {
+    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "STAT_FrontEnd_gatherLastTrace" "', argument " "3"" of type '" "char const *""'");
+  }
+  arg3 = reinterpret_cast< char * >(buf3);
+  result = (StatError_t)(arg1)->gatherLastTrace(arg2,(char const *)arg3);
+  resultobj = SWIG_From_int(static_cast< int >(result));
+  if (alloc3 == SWIG_NEWOBJ) delete[] buf3;
+  return resultobj;
+fail:
+  if (alloc3 == SWIG_NEWOBJ) delete[] buf3;
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherLastTrace__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
+  bool arg2 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   bool val2 ;
@@ -4932,7 +4975,7 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherLastTrace__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherLastTrace__SWIG_2(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
   void *argp1 = 0 ;
@@ -4956,12 +4999,12 @@ fail:
 
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherLastTrace(PyObject *self, PyObject *args) {
   int argc;
-  PyObject *argv[3];
+  PyObject *argv[4];
   int ii;
   
   if (!PyTuple_Check(args)) SWIG_fail;
   argc = (int)PyObject_Length(args);
-  for (ii = 0; (ii < argc) && (ii < 2); ii++) {
+  for (ii = 0; (ii < argc) && (ii < 3); ii++) {
     argv[ii] = PyTuple_GET_ITEM(args,ii);
   }
   if (argc == 1) {
@@ -4970,7 +5013,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherLastTrace(PyObject *self, PyObjec
     int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
     _v = SWIG_CheckState(res);
     if (_v) {
-      return _wrap_STAT_FrontEnd_gatherLastTrace__SWIG_1(self, args);
+      return _wrap_STAT_FrontEnd_gatherLastTrace__SWIG_2(self, args);
     }
   }
   if (argc == 2) {
@@ -4984,7 +5027,26 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherLastTrace(PyObject *self, PyObjec
         _v = SWIG_CheckState(res);
       }
       if (_v) {
-        return _wrap_STAT_FrontEnd_gatherLastTrace__SWIG_0(self, args);
+        return _wrap_STAT_FrontEnd_gatherLastTrace__SWIG_1(self, args);
+      }
+    }
+  }
+  if (argc == 3) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_bool(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        int res = SWIG_AsCharPtrAndSize(argv[2], 0, NULL, 0);
+        _v = SWIG_CheckState(res);
+        if (_v) {
+          return _wrap_STAT_FrontEnd_gatherLastTrace__SWIG_0(self, args);
+        }
       }
     }
   }
@@ -4992,6 +5054,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherLastTrace(PyObject *self, PyObjec
 fail:
   SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number of arguments for overloaded function 'STAT_FrontEnd_gatherLastTrace'.\n"
     "  Possible C/C++ prototypes are:\n"
+    "    gatherLastTrace(STAT_FrontEnd *,bool,char const *)\n"
     "    gatherLastTrace(STAT_FrontEnd *,bool)\n"
     "    gatherLastTrace(STAT_FrontEnd *)\n");
   return NULL;
@@ -4999,6 +5062,49 @@ fail:
 
 
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherTraces__SWIG_0(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
+  bool arg2 ;
+  char *arg3 = (char *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  bool val2 ;
+  int ecode2 = 0 ;
+  int res3 ;
+  char *buf3 = 0 ;
+  int alloc3 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  PyObject * obj2 = 0 ;
+  StatError_t result;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OOO:STAT_FrontEnd_gatherTraces",&obj0,&obj1,&obj2)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_STAT_FrontEnd, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "STAT_FrontEnd_gatherTraces" "', argument " "1"" of type '" "STAT_FrontEnd *""'"); 
+  }
+  arg1 = reinterpret_cast< STAT_FrontEnd * >(argp1);
+  ecode2 = SWIG_AsVal_bool(obj1, &val2);
+  if (!SWIG_IsOK(ecode2)) {
+    SWIG_exception_fail(SWIG_ArgError(ecode2), "in method '" "STAT_FrontEnd_gatherTraces" "', argument " "2"" of type '" "bool""'");
+  } 
+  arg2 = static_cast< bool >(val2);
+  res3 = SWIG_AsCharPtrAndSize(obj2, &buf3, NULL, &alloc3);
+  if (!SWIG_IsOK(res3)) {
+    SWIG_exception_fail(SWIG_ArgError(res3), "in method '" "STAT_FrontEnd_gatherTraces" "', argument " "3"" of type '" "char const *""'");
+  }
+  arg3 = reinterpret_cast< char * >(buf3);
+  result = (StatError_t)(arg1)->gatherTraces(arg2,(char const *)arg3);
+  resultobj = SWIG_From_int(static_cast< int >(result));
+  if (alloc3 == SWIG_NEWOBJ) delete[] buf3;
+  return resultobj;
+fail:
+  if (alloc3 == SWIG_NEWOBJ) delete[] buf3;
+  return NULL;
+}
+
+
+SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherTraces__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
   bool arg2 ;
@@ -5029,7 +5135,7 @@ fail:
 }
 
 
-SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherTraces__SWIG_1(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherTraces__SWIG_2(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
   PyObject *resultobj = 0;
   STAT_FrontEnd *arg1 = (STAT_FrontEnd *) 0 ;
   void *argp1 = 0 ;
@@ -5053,12 +5159,12 @@ fail:
 
 SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherTraces(PyObject *self, PyObject *args) {
   int argc;
-  PyObject *argv[3];
+  PyObject *argv[4];
   int ii;
   
   if (!PyTuple_Check(args)) SWIG_fail;
   argc = (int)PyObject_Length(args);
-  for (ii = 0; (ii < argc) && (ii < 2); ii++) {
+  for (ii = 0; (ii < argc) && (ii < 3); ii++) {
     argv[ii] = PyTuple_GET_ITEM(args,ii);
   }
   if (argc == 1) {
@@ -5067,7 +5173,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherTraces(PyObject *self, PyObject *
     int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
     _v = SWIG_CheckState(res);
     if (_v) {
-      return _wrap_STAT_FrontEnd_gatherTraces__SWIG_1(self, args);
+      return _wrap_STAT_FrontEnd_gatherTraces__SWIG_2(self, args);
     }
   }
   if (argc == 2) {
@@ -5081,7 +5187,26 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherTraces(PyObject *self, PyObject *
         _v = SWIG_CheckState(res);
       }
       if (_v) {
-        return _wrap_STAT_FrontEnd_gatherTraces__SWIG_0(self, args);
+        return _wrap_STAT_FrontEnd_gatherTraces__SWIG_1(self, args);
+      }
+    }
+  }
+  if (argc == 3) {
+    int _v;
+    void *vptr = 0;
+    int res = SWIG_ConvertPtr(argv[0], &vptr, SWIGTYPE_p_STAT_FrontEnd, 0);
+    _v = SWIG_CheckState(res);
+    if (_v) {
+      {
+        int res = SWIG_AsVal_bool(argv[1], NULL);
+        _v = SWIG_CheckState(res);
+      }
+      if (_v) {
+        int res = SWIG_AsCharPtrAndSize(argv[2], 0, NULL, 0);
+        _v = SWIG_CheckState(res);
+        if (_v) {
+          return _wrap_STAT_FrontEnd_gatherTraces__SWIG_0(self, args);
+        }
       }
     }
   }
@@ -5089,6 +5214,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_gatherTraces(PyObject *self, PyObject *
 fail:
   SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number of arguments for overloaded function 'STAT_FrontEnd_gatherTraces'.\n"
     "  Possible C/C++ prototypes are:\n"
+    "    gatherTraces(STAT_FrontEnd *,bool,char const *)\n"
     "    gatherTraces(STAT_FrontEnd *,bool)\n"
     "    gatherTraces(STAT_FrontEnd *)\n");
   return NULL;

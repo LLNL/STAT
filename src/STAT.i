@@ -124,8 +124,8 @@ class STAT_FrontEnd
         StatError_t resume(bool blocking = true);
         bool isRunning();
         StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
-        StatError_t gatherLastTrace(bool blocking = true);
-        StatError_t gatherTraces(bool blocking = true);
+        StatError_t gatherLastTrace(bool blocking = true, const char *altDotFilename = NULL);
+        StatError_t gatherTraces(bool blocking = true, const char *altDotFilename = NULL);
         char *getLastDotFilename();
         void shutDown();
         StatError_t detachApplication(bool blocking = true);

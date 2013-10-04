@@ -1,4 +1,8 @@
 2013-10-02 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.[C,h] : added ability to specify dot filename on gather
+	* src/STAT_FrontEnd.[C,h] : modified dot file naming convention
+
+2013-10-02 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/*.py : PEP8 conformance (except line length)
 	* scripts/*.py : pylint suggested fixes
 

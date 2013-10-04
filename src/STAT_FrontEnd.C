@@ -2665,9 +2665,14 @@ StatError_t STAT_FrontEnd::postSampleStackTraces()
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::gatherLastTrace(bool blocking)
+StatError_t STAT_FrontEnd::gatherLastTrace(bool blocking, const char *altDotFilename)
 {
     StatError_t statError;
+
+    if (altDotFilename == NULL)
+        snprintf(altDotFilename_, BUFSIZE, "NULL");
+    else
+        snprintf(altDotFilename_, BUFSIZE, altDotFilename);
 
     statError = receiveAck(true);
     if (statError != STAT_OK)
@@ -2680,10 +2685,15 @@ StatError_t STAT_FrontEnd::gatherLastTrace(bool blocking)
     return statError;
 }
 
-StatError_t STAT_FrontEnd::gatherTraces(bool blocking)
+StatError_t STAT_FrontEnd::gatherTraces(bool blocking, const char *altDotFilename)
 {
     StatError_t statError;
 
+    if (altDotFilename == NULL)
+        snprintf(altDotFilename_, BUFSIZE, "NULL");
+    else
+        snprintf(altDotFilename_, BUFSIZE, altDotFilename);
+    
     statError = receiveAck(true);
     if (statError != STAT_OK)
     {
@@ -2746,8 +2756,8 @@ StatError_t STAT_FrontEnd::gatherImpl(StatProt_t type, bool blocking)
 
 StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 {
-    static int sMergeCount2d = -1, sMergeCount3d = -1;
-    int tag, totalWidth, intRet, dummyRank, offset, mergeCount, nodeId;
+    static int sMergeCount = -1;
+    int tag, totalWidth, intRet, dummyRank, offset, nodeId;
     uint64_t byteArrayLen;
     unsigned int sampleType;
     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL;
@@ -2788,18 +2798,11 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         return STAT_MRNET_ERROR;
     }
 
+    sMergeCount++;
     if (tag == PROT_SEND_LAST_TRACE_RESP)
-    {
-        sMergeCount2d++;
-        mergeCount = sMergeCount2d;
         snprintf(outSuffix, BUFSIZE, "2D");
-    }
     else
-    {
-        sMergeCount3d++;
-        mergeCount = sMergeCount3d;
         snprintf(outSuffix, BUFSIZE, "3D");
-    }
     snprintf(perfData, BUFSIZE, "Gather %s Traces Time (receive and merge)", outSuffix);
     addPerfData(perfData, -1.0);
     isPendingAck_ = false;
@@ -2974,10 +2977,10 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error scaling node width\n");
         return STAT_GRAPHLIB_ERROR;
     }
-    if (mergeCount == 0)
-        snprintf(outFile, BUFSIZE, "%s/%s.%s.dot", outDir_, filePrefix_, outSuffix);
+    if (strcmp(altDotFilename_, "NULL") != 0)
+        snprintf(outFile, BUFSIZE, "%s/%02d_%s.%s.dot", outDir_, sMergeCount, altDotFilename_, outSuffix);
     else
-        snprintf(outFile, BUFSIZE, "%s/%s_%d.%s.dot", outDir_, filePrefix_, mergeCount, outSuffix);
+        snprintf(outFile, BUFSIZE, "%s/%02d_%s.%s.dot", outDir_, sMergeCount, filePrefix_, outSuffix);
     snprintf(lastDotFileName_, BUFSIZE, "%s", outFile);
     graphlibError = graphlib_exportGraph(outFile, GRF_DOT, sortedStackTraces);
     if (GRL_IS_FATALERROR(graphlibError))

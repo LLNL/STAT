@@ -294,17 +294,19 @@ class STAT_FrontEnd
         /*!
             \param blocking - [optional] whether to block until stack traces
                    are received
+            \param altDotFilename - [optional] filename for the .dot file
             \return STAT_OK on success
         */
-        StatError_t gatherLastTrace(bool blocking = true);
+        StatError_t gatherLastTrace(bool blocking = true, const char *altDotFilename = NULL);
 
         //! Collect the accumulated stack traces from all daemons
         /*!
             \param blocking - [optional] whether to block until stack traces
                    are received
+            \param altDotFilename - [optional] filename for the .dot file
             \return STAT_OK on success
         */
-        StatError_t gatherTraces(bool blocking = true);
+        StatError_t gatherTraces(bool blocking = true, const char *altDotFilename = NULL);
 
         //! Return the fileName of the last outputted dot file
         /*!
@@ -891,11 +893,12 @@ class STAT_FrontEnd
         char *applExe_;                                     /*!< the name of the application executable */
         char *filterPath_;                                  /*!< the path to the STAT_FilterDefinitions.so filter file */
         char *remoteNode_;                                  /*!< the hostname of the remote node running the job launcher */
-        char *nodeListFile_;                                /*!< The file to containing the nodelist */
+        char *nodeListFile_;                                /*!< the file to containing the nodelist */
         char lastDotFileName_[BUFSIZE];                     /*!< the path to the last generated .dot file */
         char outDir_[BUFSIZE];                              /*!< the output directory */
         char logOutDir_[BUFSIZE];                           /*!< the directory for log files */
         char filePrefix_[BUFSIZE];                          /*!< the output file prefix for STAT */
+        char altDotFilename_[BUFSIZE];                      /*!< a user specified filename for the .dot file */
         char lastErrorMessage_[BUFSIZE];                    /*!< the last error message */
         char hostname_[BUFSIZE];                            /*!< the FrontEnd hostname*/
         bool isStatBench_;                                  /*!< whether we are a STATBench instance */
