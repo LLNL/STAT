@@ -1,3 +1,6 @@
+2013-10-08 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STAT[helper,view].py : use newlines for joined node labels
+
 2013-10-02 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.[C,h] : added ability to specify dot filename on gather
 	* src/STAT_FrontEnd.[C,h] : modified dot file naming convention
