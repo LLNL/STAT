@@ -331,7 +331,7 @@ def label_has_source(label):
 #  \n
 def label_collapsed(label):
     """return True if the label includes source file and line number info and the node is not eq class collapsed"""
-    return label.find('==\\>') != -1 or label.find('==>') != -1
+    return label.find('\\n') != -1
 
 
 ## \param label - the stack frame text
@@ -363,13 +363,13 @@ def decompose_node(label, item=None):
     elif label_collapsed(label) and item is not None:
         if item == -1:
             return_list = []
-            frames = label.split(' ==> ')
+            frames = label.split('\\n')
             for frame in frames:
                 function_name, source_line, iter_string = decompose_node(frame)
                 return_list.append((function_name, source_line, iter_string))
             return return_list
         else:
-            function_name, source_line, iter_string = decompose_node(label.split(' ==> ')[item])
+            function_name, source_line, iter_string = decompose_node(label.split('\\n')[item])
     else:
         function_name = label
     return function_name, source_line, iter_string

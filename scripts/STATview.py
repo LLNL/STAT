@@ -199,18 +199,25 @@ def create_temp(dot_filename, truncate, max_node_name):
                             if iter_string != '':
                                 iter_string = '$' + iter_string
                             label = "%s@%s:%d%s" % (function_name, source, cur_line_num, iter_string)
-                    if len(label) > max_node_name and truncate == "front":
-                        # clip long node names at the front (preserve most significant characters)
-                        if label[2-max_node_name] == '\\':
-                            label = '...\\%s' % label[3-max_node_name:]
-                        else:
-                            label = '...%s' % label[3-max_node_name:]
-                    if len(label) > max_node_name and truncate == "rear":
-                        # clip long node names at the rear (preserve least significant characters)
-                        if label[max_node_name-1] == '\\':
-                            label = '%s' % label[:max_node_name-2]
-                        else:
-                            label = '%s...' % label[:max_node_name-3]
+                    final_label = ''
+                    label_lines = label.split('\\n')
+                    for i, label in enumerate(label_lines):
+                        if len(label) > max_node_name and truncate == "front":
+                            # clip long node names at the front (preserve most significant characters)
+                            if label[2-max_node_name] == '\\':
+                                label = '...\\%s' % label[3-max_node_name:]
+                            else:
+                                label = '...%s' % label[3-max_node_name:]
+                        if len(label) > max_node_name and truncate == "rear":
+                            # clip long node names at the rear (preserve least significant characters)
+                            if label[max_node_name-1] == '\\':
+                                label = '%s' % label[:max_node_name-2]
+                            else:
+                                label = '%s...' % label[:max_node_name-3]
+                        final_label += label
+                        if i != len(label_lines) - 1:
+                            final_label += '\\n'
+                    label = final_label
                     temp_dot_file.write(label)
                     temp_dot_file.write(line[line.find('fillcolor') - 3:])
                 elif line.find('->') > -1:
@@ -1153,11 +1160,11 @@ class STATGraph(xdot.Graph):
                     node.eq_collapsed_out_edges.append(new_edge)
                     new_edge.dst.eq_collapsed_in_edge = new_edge
                     self.edges.append(new_edge)
-                node.eq_collapsed_label = node.label + ' ==> ' + label
+                node.eq_collapsed_label = node.label + '\\n' + label
         else:
             node.hide = True
             node.in_edge.hide = True
-        return modified, (leaf_node, node.label + ' ==> ' + label)
+        return modified, (leaf_node, node.label + '\\n' + label)
 
     def expand_all(self, node):
         """Show all descendents of the specified node."""
@@ -2461,6 +2468,7 @@ class STATXDotParser(xdot.XDotParser):
     Derrived form the XDotParser and overrides some XDotParser methods
     to build a STATGraph.
     """
+    # TODO: use attrs to add STAT-specific values to nodes and edges
 
     def __init__(self, xdotcode, label_map=None, node_label_map=None):
         """The constructor."""
@@ -2565,7 +2573,7 @@ class STATDotWidget(xdot.DotWidget):
             if line.find('fillcolor') != -1:
                 tokens = line.split()
                 node_id = tokens[0]
-                label = line[line.find('label') + 7:line.find('fillcolor') - 3].replace('\\', '')
+                label = line[line.find('label') + 7:line.find('fillcolor') - 3].replace('\\<', '<').replace('\\>', '>')
                 self.node_label_map[node_id] = label
             elif line.find('->') != -1:
                 tokens = line.split()
@@ -4102,7 +4110,7 @@ enterered as a regular expression.
             node = event
         else:
             node = widget.get_node(int(event.x), int(event.y))
-        function = node.label.replace('==>', '==>\n')
+        function = node.label.replace('\\n', '\n')
         tasks = node.edge_label
         if node.hide is True:
             return True
@@ -4246,7 +4254,7 @@ enterered as a regular expression.
                             menu_item.connect('activate', self.manipulate_cb, option, node)
                         else:
                             sub_menu = gtk.Menu()
-                            frames = node.label.split(' ==> ')
+                            frames = node.label.split('\\n')
                             for i, frame in enumerate(frames):
                                 function_name, source_line, iter_string = decompose_node(frame)
                                 sub_menu_item = gtk.MenuItem(source_line)
