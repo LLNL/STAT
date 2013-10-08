@@ -265,12 +265,6 @@ def create_temp(dot_filename, truncate, max_node_name):
     finally:
         temp_dot_file.write('}\n')
         temp_dot_file.close()
-    try:
-        with open(dot_filename, 'r') as dot_file:
-            parser = STATXDotParser(xdotcode)
-            print dir(parser)
-    except:
-        print 'no good'
     return temp_dot_filename
 
 
