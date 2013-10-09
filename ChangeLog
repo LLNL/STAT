@@ -1,4 +1,8 @@
 2013-10-08 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added STATDotParser and use for STATview parsing
+	* scripts/STATview.py : added originallabel attribute to temp dot files
+
+2013-10-08 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STAT[helper,view].py : use newlines for joined node labels
 
 2013-10-02 Gregory L. Lee <lee218@llnl.gov>

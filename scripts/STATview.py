@@ -166,8 +166,8 @@ def list_to_string(task_list):
 #
 #  \n
 def create_temp(dot_filename, truncate, max_node_name):
-    """Create a temporary dot file with "..." truncated edge labels."""
-    # TODO we really should use the xdot parser to do this, instead of this ad hoc one!
+    """Create a temporary dot file with "..." truncated edge labels
+    and compressed node labels."""
     temp_dot_filename = '_temp.dot'
     try:
         temp_dot_file = open(temp_dot_filename, 'w')
@@ -182,80 +182,86 @@ def create_temp(dot_filename, truncate, max_node_name):
     temp_dot_file.write('digraph G {\n\tnode [shape=record,style=filled,labeljust=c,height=0.2];\n')
     try:
         with open(dot_filename, 'r') as dot_file:
-            for line in dot_file:
-                if line.find('fillcolor') > -1:
-                    # this is a node
-                    temp_dot_file.write(line[:line.find('label') + 7])
-                    label = line[line.find('label') + 7:line.find('fillcolor') - 3]
-                    label = escaped_label(label)
-                    if has_source_and_not_collapsed(label):
-                        # if the source file information is full path, reduce to the basename
-                        function_name, source_line, iter_string = decompose_node(label)
-                        if source_line.find(':') != -1 and source_line.find('?') == -1:
-                            source = source_line[:source_line.find(':')]
-                            cur_line_num = int(source_line[source_line.find(':') + 1:])
-                            if os.path.isabs(source):
-                                source = os.path.basename(source)
-                            if iter_string != '':
-                                iter_string = '$' + iter_string
-                            label = "%s@%s:%d%s" % (function_name, source, cur_line_num, iter_string)
-                    final_label = ''
-                    label_lines = label.split('\\n')
-                    for i, label in enumerate(label_lines):
-                        if len(label) > max_node_name and truncate == "front":
-                            # clip long node names at the front (preserve most significant characters)
-                            if label[2-max_node_name] == '\\':
-                                label = '...\\%s' % label[3-max_node_name:]
-                            else:
-                                label = '...%s' % label[3-max_node_name:]
-                        if len(label) > max_node_name and truncate == "rear":
-                            # clip long node names at the rear (preserve least significant characters)
-                            if label[max_node_name-1] == '\\':
-                                label = '%s' % label[:max_node_name-2]
-                            else:
-                                label = '%s...' % label[:max_node_name-3]
-                        final_label += label
-                        if i != len(label_lines) - 1:
-                            final_label += '\\n'
-                    label = final_label
-                    temp_dot_file.write(label)
-                    temp_dot_file.write(line[line.find('fillcolor') - 3:])
-                elif line.find('->') > -1:
-                    # this is an edge
-                    tokens = line.split()
-                    source = int(tokens[0])
-                    sink = int(tokens[2])
-                    label = tokens[3]
-                    max_size = 18
-                    num_tasks = get_num_tasks(label)
-                    if label.find(':') != -1:
-                        # this is just a count and representative
-                        representative = get_task_list(label)[0]
-                        if num_tasks == 1:
-                            label = label[0:8] + str(num_tasks) + ':[' + str(representative) + ']"]'
-                        else:
-                            label = label[0:8] + str(num_tasks) + ':[' + str(representative) + ',...]"]'
+            parser = STATDotParser(dot_file.read())
+            parser.parse()
+            for node in parser.nodes:
+                id, attrs = node
+                output_line = '\t%s [' % id
+                for key in attrs.keys():
+                    if key == 'label':
+                        label = escaped_label(attrs[key])
+                        original_label = label
+                        final_label = ''
+                        label_lines = label.split('\\n')
+                        for i, label in enumerate(label_lines):
+                            if has_source_and_not_collapsed(label):
+                                # if the source file information is full path, reduce to the basename
+                                function_name, source_line, iter_string = decompose_node(label)
+                                if source_line.find(':') != -1 and source_line.find('?') == -1:
+                                    source = source_line[:source_line.find(':')]
+                                    cur_line_num = int(source_line[source_line.find(':') + 1:])
+                                    if os.path.isabs(source):
+                                        source = os.path.basename(source)
+                                    if iter_string != '':
+                                        iter_string = '$' + iter_string
+                                    label = "%s@%s:%d%s" % (function_name, source, cur_line_num, iter_string)
+
+                            if len(label) > max_node_name and truncate == "front":
+                                # clip long node names at the front (preserve most significant characters)
+                                if label[2-max_node_name] == '\\':
+                                    label = '...\\%s' % label[3 - max_node_name:]
+                                else:
+                                    label = '...%s' % label[3 - max_node_name:]
+                            if len(label) > max_node_name and truncate == "rear":
+                                # clip long node names at the rear (preserve least significant characters)
+                                if label[max_node_name-1] == '\\':
+                                    label = '%s' % label[:max_node_name - 2]
+                                else:
+                                    label = '%s...' % label[:max_node_name - 3]
+                            final_label += label
+                            if i != len(label_lines) - 1:
+                                final_label += '\\n'
+                        label = final_label
+                        output_line += '%s="%s",' % (key, label)
                     else:
-                        # this is a full node list
-                        if len(label) > max_size and label.find('...') == -1:
-                            # truncate long edge labels
-                            new_label = label[0:max_size]
-                            char = 'x'
-                            i = max_size-1
-                            while char != ',' and i + 1 < len(label) and char != ']' and char != '"':
-                                i += 1
-                                char = label[i]
-                                new_label += char
-                            if char == ']' and i+1 < len(label):
-                                new_label += '"]'
-                            elif char == '"':
-                                new_label += ']'
-                            elif i+1 < len(label):
-                                new_label += '...]"]'
-                            label = new_label
-                        label = label[0:8] + str(num_tasks) + ':' + label[8:]
-                    line = '\t' + str(source) + ' -> ' + str(sink) + ' ' + label + '\n'
-                    temp_dot_file.write('%s' % line)
+                        output_line += '%s="%s",' % (key, attrs[key])
+                output_line += 'originallabel="%s"];\n' % original_label
+                temp_dot_file.write(output_line)
+            for edge in parser.edges:
+                src_id, dst_id, attrs = edge
+                output_line = '\t%s -> %s [' % (src_id, dst_id)
+                for key in attrs.keys():
+                    if key == 'label':
+                        label = attrs[key]
+                        original_label = label
+                        max_size = 12
+                        num_tasks = get_num_tasks(label)
+                        if label.find(':') != -1:
+                            # this is just a count and representative
+                            representative = get_task_list(label)[0]
+                            if num_tasks == 1:
+                                label = str(num_tasks) + ':[' + str(representative) + ']'
+                            else:
+                                label = str(num_tasks) + ':[' + str(representative) + ',...]'
+                        else:
+                            # this is a full node list
+                            if len(label) > max_size and label.find('...') == -1:
+                                # truncate long edge labels
+                                new_label = label[0:max_size]
+                                char = 'x'
+                                i = max_size - 1
+                                while char != ',' and i + 1 < len(label):
+                                    i += 1
+                                    char = label[i]
+                                    new_label += char
+                                if i + 1 < len(label):
+                                    new_label += '...]'
+                                label = new_label
+                        output_line += '%s="%d:%s",' % (key, num_tasks, label)
+                    else:
+                        output_line += '%s="%s",' % (key, attrs[key])
+                output_line += 'originallabel="%s"]\n' % original_label
+                temp_dot_file.write(output_line)
     except IOError as e:
         show_error_dialog('Failed to open dot file %s' % dot_filename, exception=e)
         return None
@@ -265,6 +271,7 @@ def create_temp(dot_filename, truncate, max_node_name):
     finally:
         temp_dot_file.write('}\n')
         temp_dot_file.close()
+
     return temp_dot_filename
 
 
@@ -1871,7 +1878,12 @@ class STATGraph(xdot.Graph):
             ret = self.save_dot(temp_dot_filename, False, False)
             if ret is True:
                 file_format = '-T' + os.path.splitext(filename)[1][1:]
-                subprocess.Popen(["dot", file_format, temp_dot_filename, "-o", filename], stdout=subprocess.PIPE).communicate()[0]
+                proc = subprocess.Popen(["dot", file_format, temp_dot_filename, "-o", filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                stdout_output, stderr_output = proc.communicate()
+                if stderr_output != '':
+                    sys.stderr.write('dot outputted error message: %s\n' % stderr_output)
+                if proc.returncode != 0:
+                    show_error_dialog('Failed to process file "%s" for writing: %s' % (temp_dot_filename, stderr_output))
             os.remove(temp_dot_filename)
         return ret
 
@@ -2461,6 +2473,22 @@ class STATGraph(xdot.Graph):
         return num_eq_classes
 
 
+class STATDotParser(xdot.DotParser):
+
+    def __init__(self, dot_code):
+        self.nodes = []
+        self.edges = []
+        xdot.DotParser.__init__(self, xdot.DotLexer(buf=dot_code))
+
+    def handle_node(self, id, attrs):
+        self.nodes.append((id, attrs))
+        pass
+
+    def handle_edge(self, src_id, dst_id, attrs):
+        self.edges.append((src_id, dst_id, attrs))
+        pass
+
+
 ## The STAT XDot Parser.
 class STATXDotParser(xdot.XDotParser):
     """The STAT XDot Parser.
@@ -2470,10 +2498,8 @@ class STATXDotParser(xdot.XDotParser):
     """
     # TODO: use attrs to add STAT-specific values to nodes and edges
 
-    def __init__(self, xdotcode, label_map=None, node_label_map=None):
+    def __init__(self, xdotcode):
         """The constructor."""
-        self.label_map = label_map
-        self.node_label_map = node_label_map
         xdot.XDotParser.__init__(self, xdotcode)
 
     def parse(self):
@@ -2486,7 +2512,9 @@ class STATXDotParser(xdot.XDotParser):
         new_id = node_id.strip('"')
         xdot.XDotParser.handle_node(self, new_id, attrs)
         node = self.node_by_name[new_id]
-        label = self.node_label_map[node_id]
+        label = attrs.get('originallabel', None)
+        if label == None:
+            label = attrs["label"]
         stat_node = STATNode(node.x, node.y, node.x1, node.y1, node.x2, node.y2, node.shapes, label)
         stat_node.node_name = new_id
         self.node_by_name[new_id] = stat_node
@@ -2504,11 +2532,14 @@ class STATXDotParser(xdot.XDotParser):
         self.edges.append(stat_edge)
         stat_edge.src.out_edges.append(stat_edge)
         stat_edge.dst.in_edge = stat_edge
+        new_dst_label = attrs.get('originallabel', None)
+        if new_dst_label == None:
+            new_dst_label = attrs["label"]
         if src_id == '0':
             self.node_by_name[new_src_id].edge_label = ''
-            self.node_by_name[new_src_id].num_tasks = get_num_tasks(self.label_map[new_dst_id])
-        self.node_by_name[new_dst_id].edge_label = self.label_map[new_dst_id]
-        self.node_by_name[new_dst_id].num_tasks = get_num_tasks(self.label_map[new_dst_id])
+            self.node_by_name[new_src_id].num_tasks = get_num_tasks(new_dst_label)
+        self.node_by_name[new_dst_id].edge_label = new_dst_label
+        self.node_by_name[new_dst_id].num_tasks = get_num_tasks(new_dst_label)
 
 
 ## The STATNullAction overloads the xdot NullAction.
@@ -2566,20 +2597,6 @@ class STATDotWidget(xdot.DotWidget):
         Create a temporary dot file with truncated edge labels from the
         specified dotcode and generates xdotcode with layout information.
         """
-        lines = dotcode.split('\n')
-        self.label_map = {}
-        self.node_label_map = {}
-        for line in lines:
-            if line.find('fillcolor') != -1:
-                tokens = line.split()
-                node_id = tokens[0]
-                label = line[line.find('label') + 7:line.find('fillcolor') - 3].replace('\\<', '<').replace('\\>', '>')
-                self.node_label_map[node_id] = label
-            elif line.find('->') != -1:
-                tokens = line.split()
-                dst = tokens[2]
-                label = tokens[3][8:-2]
-                self.label_map[dst] = label
         if filename != '<stdin>':
             temp_dot_filename = create_temp(filename, truncate, max_node_name)
             if temp_dot_filename is None:
@@ -2598,7 +2615,7 @@ class STATDotWidget(xdot.DotWidget):
 
     def set_xdotcode(self, xdotcode):
         """Parse the xdot code to create a STAT Graph."""
-        parser = STATXDotParser(xdotcode, self.label_map, self.node_label_map)
+        parser = STATXDotParser(xdotcode)
         self.graph = parser.parse()
         self.graph.visible_width = self.graph.width
         self.graph.visible_height = self.graph.height
@@ -4110,7 +4127,7 @@ enterered as a regular expression.
             node = event
         else:
             node = widget.get_node(int(event.x), int(event.y))
-        function = node.label.replace('\\n', '\n')
+        function = node.label.replace('\\n', '\n').replace('\\<', '<').replace('\\>', '>')
         tasks = node.edge_label
         if node.hide is True:
             return True
