@@ -250,6 +250,8 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
 StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphlib_graph_p *prefixTree3d)
 {
     int i;
+    string::size_type delimPos;
+    string tempString;
     StatCountRepEdge_t *countRepEdge = NULL;
     graphlib_graph_p *currentGraph;
     graphlib_error_t graphlibError;
@@ -292,7 +294,25 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
 
         for (nodesIter = (*nodes).begin(); nodesIter != (*nodes).end(); nodesIter++)
         {
-            nodeAttr.label = (void *)nodesIter->second.c_str();
+            /* Add \ character before '<' and '>' characters for dot format */
+            tempString = nodesIter->second;
+            delimPos = -2;
+            while (1)
+            {
+                delimPos = tempString.find('<', delimPos + 2);
+                if (delimPos == string::npos)
+                    break;
+                tempString.insert(delimPos, "\\");
+            }
+            delimPos = -2;
+            while (1)
+            {
+                delimPos = tempString.find('>', delimPos + 2);
+                if (delimPos == string::npos)
+                    break;
+                tempString.insert(delimPos, "\\");
+            }
+            nodeAttr.label = (void *)tempString.c_str();
             graphlibError = graphlib_addNode(*currentGraph, nodesIter->first, &nodeAttr);
             if (GRL_IS_FATALERROR(graphlibError))
             {
@@ -1788,7 +1808,7 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
     bool boolRet, isFirstPythonFrame;
     string name, path;
     vector<Frame> currentStackWalk, bestStackWalk;
-    vector<string> trace, outTrace;
+    vector<string> trace;
     StatBitVectorEdge_t *edge;
     vector<Dyninst::THR_ID> threads;
     ProcDebug *pDebug;
@@ -1949,35 +1969,13 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
 
         for (i = 0; i < trace.size(); i++)
         {
-            /* Add \ character before '<' and '>' characters for dot format */
-            delimPos = -2;
-            while (1)
-            {
-                delimPos = trace[i].find('<', delimPos + 2);
-                if (delimPos == string::npos)
-                    break;
-                trace[i].insert(delimPos, "\\");
-            }
-            delimPos = -2;
-            while (1)
-            {
-                delimPos = trace[i].find('>', delimPos + 2);
-                if (delimPos == string::npos)
-                    break;
-                trace[i].insert(delimPos, "\\");
-            }
-            outTrace.push_back(trace[i]);
-        }
-
-        for (i = 0; i < outTrace.size(); i++)
-        {
-            path += outTrace[i].c_str();
+            path += trace[i].c_str();
             nodeId = statStringHash(path.c_str());
-            nodes2d_[nodeId] = outTrace[i];
+            nodes2d_[nodeId] = trace[i];
             update2dEdge(prevId, nodeId, edge);
             prevId = nodeId;
         }
-        outTrace.clear();
+        trace.clear();
     } /* for j thread */
 
     statFreeEdge(edge);

@@ -396,6 +396,8 @@ def var_spec_to_string(var_spec):
 #  \n
 def escaped_label(label):
     """return a copy of the label with appropriate escape characters added"""
+    if label.find('<') == -1 and label.find('>') == -1:
+        return label
     ret = ''
     prev = ' '
     for character in label:
