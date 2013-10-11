@@ -63,7 +63,7 @@ except Exception as e:
 
 try:
     import STAThelper
-    from STAThelper import which, color_to_string, decompose_node, get_num_tasks, get_task_list, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, label_has_source, label_collapsed
+    from STAThelper import which, color_to_string, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, label_has_source, label_collapsed
 except Exception as e:
     sys.stderr.write('%s\n' % repr(e))
     sys.stderr.write('There was a problem loading the STAThelper module.\n')
@@ -122,6 +122,47 @@ task_label_id_to_list = {}
 next_label_id = -1
 
 
+## \param label - the edge label
+#  \return the list of ranks
+#
+#  \n
+def get_task_list(label):
+    if label == '':
+        return []
+    if label[0] != '[':
+        # this is just a count and representative
+        label = label[label.find(':') + 2:label.find(']')]
+        return [int(label)]
+    ret = []
+    if label in task_label_to_list:
+        ret = task_label_to_list[label]
+    else:
+        ret = STAThelper.get_task_list(label)
+        task_label_to_list[label] = ret
+        global next_label_id
+        next_label_id += 1
+        task_label_id_to_list[next_label_id] = ret
+    return ret
+
+
+## \param label - the edge label
+#  \return the number of ranks
+#
+#  \n
+def get_num_tasks(label):
+    if label == '':
+        return 0
+    ret = 0
+    if label[0] != '[':
+        # this is just a count and representative
+        if label.find('[') != -1:
+            count = label[0:label.find(':')]
+        ret = int(count)
+    else:
+        ret = len(get_task_list(label))
+    return ret
+
+
 ## \param task_list - the list of tasks
 #  \return the string representation
 #
@@ -138,7 +179,7 @@ def list_to_string(task_list):
     last_val = -1
     for task in task_list:
         if in_range:
-            ret += '%d, %d' % (last_val, task)
+            ret += '%d,%d' % (last_val, task)
             in_range = False
         else:
             if first_iteration:
@@ -149,11 +190,11 @@ def list_to_string(task_list):
                     in_range = True
                     ret += '-'
                 else:
-                    ret += ', %d' % (task)
+                    ret += ',%d' % (task)
         last_val = task
     if in_range:
         ret += '%d' % (task)
-    task_label_to_list[ret] = task_list
+    task_label_to_list['[' + ret + ']'] = task_list
     next_label_id += 1
     task_label_id_to_list[next_label_id] = task_list
     return ret
@@ -236,13 +277,13 @@ def create_temp(dot_filename, truncate, max_node_name):
                         original_label = label
                         max_size = 12
                         num_tasks = get_num_tasks(label)
-                        if label.find(':') != -1:
+                        if label[0] != '[':
                             # this is just a count and representative
                             representative = get_task_list(label)[0]
                             if num_tasks == 1:
-                                label = str(num_tasks) + ':[' + str(representative) + ']'
+                                label = ':[' + str(representative) + ']'
                             else:
-                                label = str(num_tasks) + ':[' + str(representative) + ',...]'
+                                label = ':[' + str(representative) + ',...]'
                         else:
                             # this is a full node list
                             if len(label) > max_size and label.find('...') == -1:
@@ -841,31 +882,9 @@ class STATNode(STATElement):
 
         First see if we have this label indexed to avoid duplicate generation."""
 
-        global next_label_id
         if self.edge_label_id in task_label_id_to_list:
             return task_label_id_to_list[self.edge_label_id]
-        colon_pos = self.edge_label.find(':')
-        if colon_pos != -1:
-            # this is just a count and representative
-            key = self.edge_label
-        else:
-            # this is a full node list
-            if self.edge_label.find('label') != -1:
-                key = self.edge_label[9:-3]
-            elif self.edge_label.find('[') != -1:
-                key = self.edge_label[1:-1]
-            else:
-                key = self.edge_label
-        if key in task_label_to_list:
-            task_list = task_label_to_list[key]
-        else:
-            task_list = get_task_list(key)
-        if key.find(':') == -1:
-            task_label_to_list[key] = task_list
-        next_label_id += 1
-        task_label_id_to_list[next_label_id] = task_list
-        self.edge_label_id = next_label_id
-        return task_list
+        return get_task_list(self.edge_label)
 
     #  \return the task list
     #
@@ -887,8 +906,9 @@ class STATNode(STATElement):
             out_sum = 0
             for edge in self.out_edges:
                 out_sum += get_num_tasks(edge.label)
-            if out_sum < get_num_tasks(self.edge_label):
-                self.num_leaf_tasks = get_num_tasks(self.edge_label) - out_sum
+            num_tasks = get_num_tasks(self.edge_label)
+            if out_sum < num_tasks:
+                self.num_leaf_tasks = num_tasks - out_sum
             else:
                 self.num_leaf_tasks = 0
         return self.num_leaf_tasks
@@ -902,8 +922,9 @@ class STATNode(STATElement):
         for edge in self.out_edges:
             if edge.hide is False:
                 out_sum += get_num_tasks(edge.label)
-        if out_sum < get_num_tasks(self.edge_label):
-            return get_num_tasks(self.edge_label) - out_sum
+        num_tasks = get_num_tasks(self.edge_label)
+        if out_sum < num_tasks:
+            return num_tasks - out_sum
         else:
             return 0
 
@@ -2538,6 +2559,7 @@ class STATXDotParser(xdot.XDotParser):
         if src_id == '0':
             self.node_by_name[new_src_id].edge_label = ''
             self.node_by_name[new_src_id].num_tasks = get_num_tasks(new_dst_label)
+        stat_edge.label = new_dst_label
         self.node_by_name[new_dst_id].edge_label = new_dst_label
         self.node_by_name[new_dst_id].num_tasks = get_num_tasks(new_dst_label)
 

@@ -1,4 +1,7 @@
 2013-10-08 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STAT[helper,view].py : optimized handling of edge labels
+
+2013-10-08 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STAThelper.py, src/STAT_BackEnd.C : improved handling of adding '\' escape character to '<' and '>' in node labels
 
 2013-10-08 Gregory L. Lee <lee218@llnl.gov>

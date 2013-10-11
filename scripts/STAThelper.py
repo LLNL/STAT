@@ -242,15 +242,15 @@ def is_mpi(function_name):
 #  \n
 def get_task_list(label):
     """Get an integer list of tasks from an edge label."""
-    colon_pos = label.find(':')
-    if colon_pos != -1:
+    if label == '':
+        return []
+    if label[0] != '[':
         # this is just a count and representative
-        label = label[colon_pos + 2:label.find(']')]
+        label = label[label.find(':') + 2:label.find(']')]
+        return [int(label)]
     else:
         # this is a full node list
-        if label.find('label') != -1:
-            label = label[9:-3]
-        elif label.find('[') != -1:
+        if label.find('[') != -1:
             label = label[1:-1]
     task_list = []
     if label == '':
@@ -260,32 +260,10 @@ def get_task_list(label):
         if dash_index != -1:
             start = int(element[:dash_index])
             end = int(element[dash_index + 1:])
-            task_list += range(start, end+1)
+            task_list += range(start, end + 1)
         else:
-            try:
-                task_list.append(int(element))
-            except:
-                pass
+            task_list.append(int(element))
     return task_list
-
-
-## \param label - the edge label string
-#  \return the number of tasks
-#
-#  \n
-def get_num_tasks(label):
-    """Get the number of tasks in an edge label."""
-    colon_pos = label.find(':')
-    if colon_pos != -1:
-        # this is just a count and representative
-        if label.find('label') != -1:
-            count = label[8:colon_pos]
-        elif label.find('[') != -1:
-            count = label[0:colon_pos]
-        return int(count)
-    else:
-        # this is a full node list
-        return len(get_task_list(label))
 
 
 ## \param executable - the executable to search for
