@@ -281,9 +281,9 @@ def create_temp(dot_filename, truncate, max_node_name):
                             # this is just a count and representative
                             representative = get_task_list(label)[0]
                             if num_tasks == 1:
-                                label = ':[' + str(representative) + ']'
+                                label = '[' + str(representative) + ']'
                             else:
-                                label = ':[' + str(representative) + ',...]'
+                                label = '[' + str(representative) + ',...]'
                         else:
                             # this is a full node list
                             if len(label) > max_size and label.find('...') == -1:
@@ -4211,7 +4211,7 @@ enterered as a regular expression.
                     task_view.set_cursor_visible(False)
                     task_view_buffer = task_view.get_buffer()
                     task_view.set_wrap_mode(gtk.WRAP_WORD)
-                    task_view_buffer.set_text(list_to_string(leaf_tasks).replace(",", ", "))
+                    task_view_buffer.set_text(list_to_string(leaf_tasks).replace(",", ", ").strip('[').strip(']'))
                     sw.add(task_view)
                     my_frame.add(sw)
                     if num_tasks != num_leaf_tasks:
