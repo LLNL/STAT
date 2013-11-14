@@ -2683,16 +2683,17 @@ SWIG_Python_MustGetPtr(PyObject *obj, swig_type_info *ty, int argnum, int flags)
 /* -------- TYPES TABLE (BEGIN) -------- */
 
 #define SWIGTYPE_p_STAT_FrontEnd swig_types[0]
-#define SWIGTYPE_p_StatError_t swig_types[1]
-#define SWIGTYPE_p_StatLaunch_t swig_types[2]
-#define SWIGTYPE_p_StatTopology_t swig_types[3]
-#define SWIGTYPE_p_StatVerbose_t swig_types[4]
-#define SWIGTYPE_p_char swig_types[5]
-#define SWIGTYPE_p_int swig_types[6]
-#define SWIGTYPE_p_intArray swig_types[7]
-#define SWIGTYPE_p_p_char swig_types[8]
-static swig_type_info *swig_types[10];
-static swig_module_info swig_module = {swig_types, 9, 0, 0, 0, 0};
+#define SWIGTYPE_p_StatCpPolicy_t swig_types[1]
+#define SWIGTYPE_p_StatError_t swig_types[2]
+#define SWIGTYPE_p_StatLaunch_t swig_types[3]
+#define SWIGTYPE_p_StatTopology_t swig_types[4]
+#define SWIGTYPE_p_StatVerbose_t swig_types[5]
+#define SWIGTYPE_p_char swig_types[6]
+#define SWIGTYPE_p_int swig_types[7]
+#define SWIGTYPE_p_intArray swig_types[8]
+#define SWIGTYPE_p_p_char swig_types[9]
+static swig_type_info *swig_types[11];
+static swig_module_info swig_module = {swig_types, 10, 0, 0, 0, 0};
 #define SWIG_TypeQuery(name) SWIG_TypeQueryModule(&swig_module, &swig_module, name)
 #define SWIG_MangledTypeQuery(name) SWIG_MangledTypeQueryModule(&swig_module, &swig_module, name)
 
@@ -3728,7 +3729,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_0(PyObject *SWIGU
   char *arg3 = (char *) 0 ;
   char *arg4 = (char *) 0 ;
   bool arg5 ;
-  bool arg6 ;
+  StatCpPolicy_t arg6 ;
   void *argp1 = 0 ;
   int res1 = 0 ;
   int val2 ;
@@ -3741,7 +3742,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_0(PyObject *SWIGU
   int alloc4 = 0 ;
   bool val5 ;
   int ecode5 = 0 ;
-  bool val6 ;
+  int val6 ;
   int ecode6 = 0 ;
   PyObject * obj0 = 0 ;
   PyObject * obj1 = 0 ;
@@ -3777,11 +3778,11 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree__SWIG_0(PyObject *SWIGU
     SWIG_exception_fail(SWIG_ArgError(ecode5), "in method '" "STAT_FrontEnd_launchMrnetTree" "', argument " "5"" of type '" "bool""'");
   } 
   arg5 = static_cast< bool >(val5);
-  ecode6 = SWIG_AsVal_bool(obj5, &val6);
+  ecode6 = SWIG_AsVal_int(obj5, &val6);
   if (!SWIG_IsOK(ecode6)) {
-    SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "STAT_FrontEnd_launchMrnetTree" "', argument " "6"" of type '" "bool""'");
+    SWIG_exception_fail(SWIG_ArgError(ecode6), "in method '" "STAT_FrontEnd_launchMrnetTree" "', argument " "6"" of type '" "StatCpPolicy_t""'");
   } 
-  arg6 = static_cast< bool >(val6);
+  arg6 = static_cast< StatCpPolicy_t >(val6);
   result = (StatError_t)(arg1)->launchMrnetTree(arg2,arg3,arg4,arg5,arg6);
   resultobj = SWIG_From_int(static_cast< int >(result));
   if (alloc3 == SWIG_NEWOBJ) delete[] buf3;
@@ -4060,7 +4061,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree(PyObject *self, PyObjec
             }
             if (_v) {
               {
-                int res = SWIG_AsVal_bool(argv[5], NULL);
+                int res = SWIG_AsVal_int(argv[5], NULL);
                 _v = SWIG_CheckState(res);
               }
               if (_v) {
@@ -4076,7 +4077,7 @@ SWIGINTERN PyObject *_wrap_STAT_FrontEnd_launchMrnetTree(PyObject *self, PyObjec
 fail:
   SWIG_SetErrorMsg(PyExc_NotImplementedError,"Wrong number of arguments for overloaded function 'STAT_FrontEnd_launchMrnetTree'.\n"
     "  Possible C/C++ prototypes are:\n"
-    "    launchMrnetTree(STAT_FrontEnd *,StatTopology_t,char *,char *,bool,bool)\n"
+    "    launchMrnetTree(STAT_FrontEnd *,StatTopology_t,char *,char *,bool,StatCpPolicy_t)\n"
     "    launchMrnetTree(STAT_FrontEnd *,StatTopology_t,char *,char *,bool)\n"
     "    launchMrnetTree(STAT_FrontEnd *,StatTopology_t,char *,char *)\n"
     "    launchMrnetTree(STAT_FrontEnd *,StatTopology_t,char *)\n");
@@ -6815,6 +6816,7 @@ static void *_p_intArrayTo_p_int(void *x, int *SWIGUNUSEDPARM(newmemory)) {
     return (void *)((int *)  ((intArray *) x));
 }
 static swig_type_info _swigt__p_STAT_FrontEnd = {"_p_STAT_FrontEnd", "STAT_FrontEnd *", 0, 0, (void*)0, 0};
+static swig_type_info _swigt__p_StatCpPolicy_t = {"_p_StatCpPolicy_t", "enum StatCpPolicy_t *|StatCpPolicy_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_StatError_t = {"_p_StatError_t", "enum StatError_t *|StatError_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_StatLaunch_t = {"_p_StatLaunch_t", "enum StatLaunch_t *|StatLaunch_t *", 0, 0, (void*)0, 0};
 static swig_type_info _swigt__p_StatTopology_t = {"_p_StatTopology_t", "enum StatTopology_t *|StatTopology_t *", 0, 0, (void*)0, 0};
@@ -6826,6 +6828,7 @@ static swig_type_info _swigt__p_p_char = {"_p_p_char", "char **", 0, 0, (void*)0
 
 static swig_type_info *swig_type_initial[] = {
   &_swigt__p_STAT_FrontEnd,
+  &_swigt__p_StatCpPolicy_t,
   &_swigt__p_StatError_t,
   &_swigt__p_StatLaunch_t,
   &_swigt__p_StatTopology_t,
@@ -6837,6 +6840,7 @@ static swig_type_info *swig_type_initial[] = {
 };
 
 static swig_cast_info _swigc__p_STAT_FrontEnd[] = {  {&_swigt__p_STAT_FrontEnd, 0, 0, 0},{0, 0, 0, 0}};
+static swig_cast_info _swigc__p_StatCpPolicy_t[] = {  {&_swigt__p_StatCpPolicy_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_StatError_t[] = {  {&_swigt__p_StatError_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_StatLaunch_t[] = {  {&_swigt__p_StatLaunch_t, 0, 0, 0},{0, 0, 0, 0}};
 static swig_cast_info _swigc__p_StatTopology_t[] = {  {&_swigt__p_StatTopology_t, 0, 0, 0},{0, 0, 0, 0}};
@@ -6848,6 +6852,7 @@ static swig_cast_info _swigc__p_p_char[] = {  {&_swigt__p_p_char, 0, 0, 0},{0, 0
 
 static swig_cast_info *swig_cast_initial[] = {
   _swigc__p_STAT_FrontEnd,
+  _swigc__p_StatCpPolicy_t,
   _swigc__p_StatError_t,
   _swigc__p_StatLaunch_t,
   _swigc__p_StatTopology_t,
@@ -7474,6 +7479,9 @@ SWIG_init(void) {
   SWIG_Python_SetConstant(d, "STAT_TOPOLOGY_FANOUT",SWIG_From_int(static_cast< int >(STAT_TOPOLOGY_FANOUT)));
   SWIG_Python_SetConstant(d, "STAT_TOPOLOGY_USER",SWIG_From_int(static_cast< int >(STAT_TOPOLOGY_USER)));
   SWIG_Python_SetConstant(d, "STAT_TOPOLOGY_AUTO",SWIG_From_int(static_cast< int >(STAT_TOPOLOGY_AUTO)));
+  SWIG_Python_SetConstant(d, "STAT_CP_NONE",SWIG_From_int(static_cast< int >(STAT_CP_NONE)));
+  SWIG_Python_SetConstant(d, "STAT_CP_SHAREAPPNODES",SWIG_From_int(static_cast< int >(STAT_CP_SHAREAPPNODES)));
+  SWIG_Python_SetConstant(d, "STAT_CP_EXCLUSIVE",SWIG_From_int(static_cast< int >(STAT_CP_EXCLUSIVE)));
   SWIG_Python_SetConstant(d, "STAT_OK",SWIG_From_int(static_cast< int >(STAT_OK)));
   SWIG_Python_SetConstant(d, "STAT_SYSTEM_ERROR",SWIG_From_int(static_cast< int >(STAT_SYSTEM_ERROR)));
   SWIG_Python_SetConstant(d, "STAT_MRNET_ERROR",SWIG_From_int(static_cast< int >(STAT_MRNET_ERROR)));

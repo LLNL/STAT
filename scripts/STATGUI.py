@@ -29,7 +29,7 @@ from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_
 import sys
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
 import commands
 import subprocess
 import time
@@ -83,7 +83,8 @@ class STATGUI(STATDotWindow):
                  'Verbosity Type':    ['error', 'stdout', 'full'],
                  'Sample Type':       ['function only', 'function and pc', 'function and line'],
                  'Edge Type':         ['full list', 'count and representative'],
-                 'Remote Host Shell': ['rsh', 'ssh']}
+                 'Remote Host Shell': ['rsh', 'ssh'],
+                 'CP Policy':         ['none', 'share app nodes', 'exclusive']}
         if not hasattr(self, "types"):
             self.types = {}
         for opt in types:
@@ -97,7 +98,7 @@ class STATGUI(STATDotWindow):
                    'Serial Process List':              '',
                    'Topology Type':                    'automatic',
                    'Topology':                         '1',
-                   'Share App Nodes':                  True,
+                   'CP Policy':                        'share app nodes',
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
                    'Job Launcher':                     'mpirun|srun|orterun|aprun|runjob',
@@ -848,7 +849,7 @@ host[1-10,12,15-20];otherhost[30]
         self.pack_combo_box(vbox2, 'Topology Type')
         self.pack_string_option(vbox2, 'Topology', attach_dialog)
         self.pack_string_option(vbox2, 'Communication Nodes', attach_dialog)
-        self.pack_check_button(vbox2, 'Share App Nodes')
+        self.pack_combo_box(vbox2, 'CP Policy')
         self.pack_spinbutton(vbox2, 'Communication Processes per Node')
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 0)
@@ -939,6 +940,7 @@ host[1-10,12,15-20];otherhost[30]
         if attach_dialog is not None:
             attach_dialog.destroy()
         self.options['Topology Type'] = self.types['Topology Type'][self.combo_boxes['Topology Type'].get_active()]
+        self.options['CP Policy'] = self.types['CP Policy'][self.combo_boxes['CP Policy'].get_active()]
         self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
         self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
         if self.STAT is None:
@@ -1017,10 +1019,17 @@ host[1-10,12,15-20];otherhost[30]
             topology_type = STAT_TOPOLOGY_FANOUT
         elif self.options['Topology Type'] == 'custom':
             topology_type = STAT_TOPOLOGY_USER
+
+        cp_policy = STAT_CP_NONE
+        if self.options['CP Policy'] == 'share app nodes':
+            cp_policy = STAT_CP_SHAREAPPNODES
+        elif self.options['CP Policy'] == 'exclusive':
+            cp_policy = STAT_CP_EXCLUSIVE
+
         if self.options['Communication Nodes'] != '':
-            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], self.options['Communication Nodes'], False, self.options['Share App Nodes'])
+            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], self.options['Communication Nodes'], False, cp_policy)
         else:
-            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], '', False, self.options['Share App Nodes'])
+            ret = self.STAT.launchMrnetTree(topology_type, self.options['Topology'], '', False, cp_policy)
         if ret != STAT_OK:
             show_error_dialog('Failed to Launch MRNet Tree:\n%s' % self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()

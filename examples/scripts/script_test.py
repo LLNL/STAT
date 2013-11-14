@@ -6,9 +6,9 @@ sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
 import os, time, subprocess
 import traceback
 
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_LOG_NONE, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_LOG_NONE, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_CP_NONE, STAT_CP_EXCLUSIVE, STAT_CP_SHAREAPPNODES
 from STAT import attach, launch, serial_attach, sample, detach, pause, resume, get_stat_fe, STATerror
-from STAThelper import ProcTab, get_ProcTab
+from STAThelper import ProcTab, get_proctab
 
 class STATapp:
     def __init__(self, launcher, exe, launcher_args = [], exe_args = []):
@@ -56,7 +56,7 @@ class STATtest:
             time.sleep(self.sleep_time)
             pid_arg = str(self.app.pid)
             if (attach_function == serial_attach):
-                proctab = get_ProcTab(self.app.proctab_file_path)
+                proctab = get_proctab(self.app.proctab_file_path)
                 pid_list = []
                 for rank, host, serial_pid, exe_index in proctab.process_list:
                     if rank % 3 == 0:
@@ -171,12 +171,12 @@ if __name__ == "__main__":
     tests.append((test_name, attach_options, sample_options))
     
     test_name = "insufficient nodes %s" %(os.path.basename(exe))
-    attach_options = ((), {"topology_type":STAT_TOPOLOGY_USER, "topology":"1-1", "share_app_nodes":False}, attach)
+    attach_options = ((), {"topology_type":STAT_TOPOLOGY_USER, "topology":"1-1", "cp_policy":STAT_CP_NONE}, attach)
     sample_options = [{}]
     tests.append((test_name, attach_options, sample_options))
     
     test_name = "localhost topology %s" %(os.path.basename(exe))
-    attach_options = ((), {"topology_type":STAT_TOPOLOGY_USER, "topology":"1", "share_app_nodes":False, "node_list":"localhost", "logging_tuple":(STAT_LOG_FE | STAT_LOG_BE | STAT_LOG_CP | STAT_LOG_MRN, '/g/g0/lee218/logs')}, attach)
+    attach_options = ((), {"topology_type":STAT_TOPOLOGY_USER, "topology":"1", "cp_policy":STAT_CP_NONE, "node_list":"localhost", "logging_tuple":(STAT_LOG_FE | STAT_LOG_BE | STAT_LOG_CP | STAT_LOG_MRN, '/g/g0/lee218/logs')}, attach)
     sample_options = [{}]
     tests.append((test_name, attach_options, sample_options))
     
