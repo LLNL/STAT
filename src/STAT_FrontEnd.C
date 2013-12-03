@@ -113,6 +113,9 @@ STAT_FrontEnd::STAT_FrontEnd()
     envValue = getenv("STAT_LMON_LAUNCHMON_ENGINE_PATH");
     if (envValue != NULL)
         setenv("LMON_LAUNCHMON_ENGINE_PATH", envValue, 1);
+    envValue = getenv("STAT_LMON_NEWLAUNCHMON_ENGINE_PATH");
+    if (envValue != NULL)
+        setenv("LMON_NEWLAUNCHMON_ENGINE_PATH", envValue, 1);
     envValue = getenv("STAT_MRNET_COMM_PATH");
     if (envValue != NULL)
     {
