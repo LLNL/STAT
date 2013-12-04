@@ -1,3 +1,6 @@
+2013-12-04 Gregory L. Lee <lee218@llnl.gov>
+	* : Added prototype temporal ordering capability
+
 2013-11-14 Gregory L. Lee <lee218@llnl.gov>
 	* : added CP location policy, including new exclusive mode
 

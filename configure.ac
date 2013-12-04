@@ -20,6 +20,7 @@ X_AC_MPICC
 X_AC_RSH
 
 # Checks for libraries.
+X_AC_TEMPORALORDERINGAPI
 X_AC_GUI
 X_AC_ARCH
 X_AC_DEBUGLIBS
@@ -56,11 +57,6 @@ AC_ARG_ENABLE(statbench,
   [WITH_STATBENCH=no]
 )  
 AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
-AC_ARG_ENABLE(to,
-  [AS_HELP_STRING([--enable-to],[Enable the use of temporal ordering])],
-  [CXXFLAGS="-DPROTOTYPE_TO $CXXFLAGS"],
-  [CXXFLAGS="$CXXFLAGS"]
-)  
 AC_ARG_ENABLE(python-debug,
   [AS_HELP_STRING([--enable-python-debug],[Enable the ability to gather python script debugging])],
   [CXXFLAGS="-DPROTOTYPE_PY $CXXFLAGS"],
