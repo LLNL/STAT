@@ -49,6 +49,7 @@ DIST_COMMON = $(am__python_PYTHON_DIST) $(dist_bin_SCRIPTS) \
 	$(srcdir)/stat-view.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
+	$(top_srcdir)/config/x_ac_boost.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
 	$(top_srcdir)/config/x_ac_enable_debug.m4 \
 	$(top_srcdir)/config/x_ac_fgfs.m4 \
@@ -59,8 +60,11 @@ am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_mpicc.m4 \
 	$(top_srcdir)/config/x_ac_mrnet.m4 \
 	$(top_srcdir)/config/x_ac_python.m4 \
+	$(top_srcdir)/config/x_ac_rose.m4 \
 	$(top_srcdir)/config/x_ac_rsh.m4 \
-	$(top_srcdir)/config/x_ac_swig.m4 $(top_srcdir)/configure.ac
+	$(top_srcdir)/config/x_ac_swig.m4 \
+	$(top_srcdir)/config/x_ac_temporalorderingapi.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -107,6 +111,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BELIBS = @BELIBS@
+BOOST_INCLUDE = @BOOST_INCLUDE@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -142,8 +147,16 @@ LAUNCHMONBIN = @LAUNCHMONBIN@
 LAUNCHMONPREFIX = @LAUNCHMONPREFIX@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LIBBOOST = @LIBBOOST@
+LIBBOOSTDIR = @LIBBOOSTDIR@
+LIBJAVADIR = @LIBJAVADIR@
+LIBJVM = @LIBJVM@
 LIBOBJS = @LIBOBJS@
+LIBROSE = @LIBROSE@
+LIBROSEDIR = @LIBROSEDIR@
 LIBS = @LIBS@
+LIBTOAPI = @LIBTOAPI@
+LIBTOAPIDIR = @LIBTOAPIDIR@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
 LN_S = @LN_S@
@@ -176,12 +189,14 @@ PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
+ROSE_INCLUDE = @ROSE_INCLUDE@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATPYTHON = @STATPYTHON@
 STRIP = @STRIP@
 SWIG = @SWIG@
+TOAPI_INCLUDE = @TOAPI_INCLUDE@
 VERSION = @VERSION@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@

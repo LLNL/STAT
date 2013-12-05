@@ -115,6 +115,9 @@ STAT_TOPOLOGY_DEPTH = _STAT.STAT_TOPOLOGY_DEPTH
 STAT_TOPOLOGY_FANOUT = _STAT.STAT_TOPOLOGY_FANOUT
 STAT_TOPOLOGY_USER = _STAT.STAT_TOPOLOGY_USER
 STAT_TOPOLOGY_AUTO = _STAT.STAT_TOPOLOGY_AUTO
+STAT_CP_NONE = _STAT.STAT_CP_NONE
+STAT_CP_SHAREAPPNODES = _STAT.STAT_CP_SHAREAPPNODES
+STAT_CP_EXCLUSIVE = _STAT.STAT_CP_EXCLUSIVE
 STAT_OK = _STAT.STAT_OK
 STAT_SYSTEM_ERROR = _STAT.STAT_SYSTEM_ERROR
 STAT_MRNET_ERROR = _STAT.STAT_MRNET_ERROR
@@ -237,14 +240,14 @@ def get_stat_fe():
 ## \param topology - the topology specification
 ## \param node_list - the nodes to use for communication processes
 ## \param procs_per_node - the max number of communication processes per node
-## \param share_app_nodes - whether to share application nodes for communication processes
+## \param cp_policy - policy about where to locate communication processes
 ## \param remote_host - the remote host for the job launcher in the attach or launch case
 ## \param verbosity - the STAT verbosity level
 ## \param logging_tuple - the log options (log_type, log_dir)
 #  \return true on successful launch/attach
 #
 #  \n
-def attach_impl(application_option, processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, share_app_nodes = True, remote_host = None, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
+def attach_impl(application_option, processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, cp_policy = STAT_CP_SHAREAPPNODES, remote_host = None, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
     log_type, log_dir = logging_tuple
     global stat_fe
 
@@ -271,7 +274,7 @@ def attach_impl(application_option, processes, topology_type = STAT_TOPOLOGY_AUT
         if stat_error != STAT_OK:
             raise STATerror('tool launch failed', stat_fe.getLastErrorMessage())
     
-        stat_error = stat_fe.launchMrnetTree(topology_type, topology, node_list, True, share_app_nodes)
+        stat_error = stat_fe.launchMrnetTree(topology_type, topology, node_list, True, cp_policy)
         if stat_error != STAT_OK:
             raise STATerror('launch mrnet failed', stat_fe.getLastErrorMessage())
     
@@ -305,14 +308,14 @@ def attach_impl(application_option, processes, topology_type = STAT_TOPOLOGY_AUT
 ## \param topology - the topology specification
 ## \param node_list - the nodes to use for communication processes
 ## \param procs_per_node - the max number of communication processes per node
-## \param share_app_nodes - whether to share application nodes for communication processes
+## \param cp_policy - policy about where to locate communication processes
 ## \param verbosity - the STAT verbosity level
 ## \param logging_tuple - the log options (log_type, log_dir)
 #  \return true on successful attach
 #
 #  \n
-def serial_attach(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, share_app_nodes = True, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
-    attach_impl(STAT_SERIAL_ATTACH, processes, topology_type, topology, node_list, procs_per_node, share_app_nodes, None, verbosity, logging_tuple)
+def serial_attach(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, cp_policy = STAT_CP_SHAREAPPNODES, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
+    attach_impl(STAT_SERIAL_ATTACH, processes, topology_type, topology, node_list, procs_per_node, cp_policy, None, verbosity, logging_tuple)
 
 
 ## \param processes - the parallel job launcher PID to attach to
@@ -320,15 +323,15 @@ def serial_attach(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1',
 ## \param topology - the topology specification
 ## \param node_list - the nodes to use for communication processes
 ## \param procs_per_node - the max number of communication processes per node
-## \param share_app_nodes - whether to share application nodes for communication processes
+## \param cp_policy - policy about where to locate communication processes
 ## \param remote_host - the remote host where the job launcher process is running
 ## \param verbosity - the STAT verbosity level
 ## \param logging_tuple - the log options (log_type, log_dir)
 #  \return true on successful attach
 #
 #  \n
-def attach(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, share_app_nodes = True, remote_host = None, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
-    attach_impl(STAT_ATTACH, processes, topology_type, topology, node_list, procs_per_node, share_app_nodes, remote_host, verbosity, logging_tuple)
+def attach(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, cp_policy = STAT_CP_SHAREAPPNODES, remote_host = None, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
+    attach_impl(STAT_ATTACH, processes, topology_type, topology, node_list, procs_per_node, cp_policy, remote_host, verbosity, logging_tuple)
 
 
 ## \param processes - the arguments for launch
@@ -336,15 +339,15 @@ def attach(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_l
 ## \param topology - the topology specification
 ## \param node_list - the nodes to use for communication processes
 ## \param procs_per_node - the max number of communication processes per node
-## \param share_app_nodes - whether to share application nodes for communication processes
+## \param cp_policy - policy about where to locate communication processes
 ## \param remote_host - the remote host on which to run the parallel job launcher process
 ## \param verbosity - the STAT verbosity level
 ## \param logging_tuple - the log options (log_type, log_dir)
 #  \return true on successful launch and attach
 #
 #  \n
-def launch(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, share_app_nodes = True, remote_host = None, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
-    attach_impl(STAT_LAUNCH, processes, topology_type, topology, node_list, procs_per_node, share_app_nodes, remote_host, verbosity, logging_tuple)
+def launch(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, cp_policy = STAT_CP_SHAREAPPNODES, remote_host = None, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
+    attach_impl(STAT_LAUNCH, processes, topology_type, topology, node_list, procs_per_node, cp_policy, remote_host, verbosity, logging_tuple)
 
 
 ## \param sample_type - the level of detail of the stack traces

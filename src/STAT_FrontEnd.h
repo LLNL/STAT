@@ -79,6 +79,14 @@ typedef enum {
     STAT_TOPOLOGY_AUTO
 } StatTopology_t;
 
+//! An enum for CP location policy
+typedef enum {
+    STAT_CP_NONE = 0,
+    STAT_CP_SHAREAPPNODES,
+    STAT_CP_EXCLUSIVE
+} StatCpPolicy_t;
+
+
 //! A struct that contains MRNet connection information to send to the daemons
 typedef struct
 {
@@ -219,7 +227,7 @@ class STAT_FrontEnd
             connection info to the daemons.  Waits for all daemons to connect
             if blocking set to true.
         */
-        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false);
+        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, StatCpPolicy_t cpPolicy = STAT_CP_SHAREAPPNODES);
 
         //! Connect the MRNet tree
         /*!
@@ -742,7 +750,7 @@ class STAT_FrontEnd
             per layer of the tree separated by dashes.
             For example: 4, 4-16, 5-20-75
         */
-        StatError_t createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool shareAppNodes);
+        StatError_t createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, StatCpPolicy_t cpPolicy);
 
         //! Set the list of daemon nodes from the MRNet topology
         /*!

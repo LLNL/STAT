@@ -717,7 +717,7 @@ void topologyChangeCb(Event *event, void *statObject)
 }
 
 
-StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, bool shareAppNodes)
+StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, StatCpPolicy_t cpPolicy)
 {
     int daemonArgc, statArgc, i;
     char topologyFileName[BUFSIZE], **daemonArgv = NULL, temp[BUFSIZE];
@@ -734,7 +734,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     gStartTime.setTime();
 
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Creating MRNet topology file\n");
-    statError = createTopology(topologyFileName, topologyType, topologySpecification, nodeList, shareAppNodes);
+    statError = createTopology(topologyFileName, topologyType, topologySpecification, nodeList, cpPolicy);
     if (statError != STAT_OK)
     {
         printMsg(statError, __FILE__, __LINE__, "Failed to create topology file\n");
@@ -1916,6 +1916,7 @@ StatError_t STAT_FrontEnd::setCommNodeList(const char *nodeList, bool checkAcces
     } /* while (1) */
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Communication node list created with %d nodes\n", communicationNodeSet_.size());
+
     return STAT_OK;
 }
 
@@ -1982,7 +1983,7 @@ StatError_t STAT_FrontEnd::createOutputDir()
 }
 
 
-StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool shareAppNodes)
+StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, StatCpPolicy_t cpPolicy)
 {
     int parentCount = 1, desiredDepth = 0, desiredMaxFanout = 0, procsNeeded = 0, size;
     unsigned int i, j, counter, layer, parentIter = 0, childIter, depth = 0, fanout = 0;
@@ -2017,7 +2018,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     if ((desiredMaxFanout < nApplProcs_ && desiredMaxFanout > 0) || topology != "" || desiredDepth != 0)
     {
         /* Add application nodes to list if requested */
-        if (shareAppNodes == true)
+        if (cpPolicy == STAT_CP_SHAREAPPNODES)
         {
             appNodes = "";
             for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++)
@@ -2054,6 +2055,16 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 printMsg(statError, __FILE__, __LINE__, "Failed to set the global node list\n");
                 return statError;
             }
+        }
+
+        if (cpPolicy == STAT_CP_EXCLUSIVE)
+        {
+            set<string> temp1, temp2;
+            set_difference(communicationNodeSet_.begin(), communicationNodeSet_.end(), applicationNodeMultiSet_.begin(), applicationNodeMultiSet_.end(), inserter(temp1, temp1.end()));
+            temp2.insert(hostname_);
+            communicationNodeSet_.clear();
+            set_difference(temp1.begin(), temp1.end(), temp2.begin(), temp2.end(), inserter(communicationNodeSet_, communicationNodeSet_.end()));
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Exclusive communication node list created with %d nodes\n", communicationNodeSet_.size());
         }
     }
 

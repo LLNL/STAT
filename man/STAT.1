@@ -52,6 +52,9 @@ Use the specified nodes in \fInodelist\fR\&. To be used with \fB--fanout\fR, \fB
 \fB-A, --appnodes\fR
 Allow tool communication processes to be co-located on nodes running application processes.
 .TP
+\fB-x, --exclusive\fR
+Do not use the front-end or back-end nodes for communication processes.
+.TP
 \fB-p, --procs \fIprocesses\fB\fR
 Sets the maximum number of communication processes to be spawned per node to \fIprocesses\fR\&. This should typically be set to a number less than or equal to the number of CPU cores per node.
 .TP

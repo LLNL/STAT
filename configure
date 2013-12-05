@@ -821,6 +821,19 @@ PYTHON_VERSION
 PYTHON
 ENABLE_GUI_FALSE
 ENABLE_GUI_TRUE
+ENABLE_TO_FALSE
+ENABLE_TO_TRUE
+LIBTOAPI
+LIBTOAPIDIR
+TOAPI_INCLUDE
+LIBJVM
+LIBROSE
+LIBJAVADIR
+LIBROSEDIR
+ROSE_INCLUDE
+LIBBOOST
+LIBBOOSTDIR
+BOOST_INCLUDE
 rshcmd
 MPIF77
 MPICXX
@@ -949,6 +962,9 @@ enable_fast_install
 with_gnu_ld
 enable_libtool_lock
 with_rsh
+with_to_api
+with_boost
+with_rose
 enable_gui
 with_python
 with_graphviz
@@ -966,7 +982,6 @@ with_mrnet
 enable_debug
 enable_rpath
 enable_statbench
-enable_to
 enable_python_debug
 with_procspernode
 with_usagelog
@@ -1635,7 +1650,6 @@ Optional Features:
   --enable-rpath          Enable the use of rpaths, default=yes
   --enable-statbench      Enable the compilation of STATBench, the STAT
                           performance emulator
-  --enable-to             Enable the use of temporal ordering
   --enable-python-debug   Enable the ability to gather python script debugging
 
 Optional Packages:
@@ -1645,6 +1659,12 @@ Optional Packages:
                           both]
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
   --with-rsh=cmd          Use cmd as the default remote shell
+  --with-to_api=prefix    Add the compile and link search paths for temporal
+                          ordering api
+  --with-boost[=boost installation path]
+                          specify the path to boost [default=/usr]
+  --with-rose[=rose installation path]
+                          specify the path to rose [default=/usr]
   --with-python=path      Use the specified path to python
   --with-graphviz=prefix  Add the search path, prefix to bin/dot, for graphviz
   --with-bluegene         Add the flags to run on a BlueGene system
@@ -5105,13 +5125,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:5108: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:5128: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5111: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:5131: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5114: output\"" >&5)
+  (eval echo "\"\$as_me:5134: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -6317,7 +6337,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6320 "configure"' > conftest.$ac_ext
+  echo '#line 6340 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -8878,11 +8898,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8881: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8901: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8885: \$? = $ac_status" >&5
+   echo "$as_me:8905: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9217,11 +9237,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9220: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9240: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:9224: \$? = $ac_status" >&5
+   echo "$as_me:9244: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9322,11 +9342,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9325: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9345: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9329: \$? = $ac_status" >&5
+   echo "$as_me:9349: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -9377,11 +9397,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9380: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9400: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9384: \$? = $ac_status" >&5
+   echo "$as_me:9404: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -12180,7 +12200,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12183 "configure"
+#line 12203 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12276,7 +12296,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12279 "configure"
+#line 12299 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14296,11 +14316,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14299: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14319: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14303: \$? = $ac_status" >&5
+   echo "$as_me:14323: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14395,11 +14415,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14398: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14418: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14402: \$? = $ac_status" >&5
+   echo "$as_me:14422: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14447,11 +14467,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14450: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14470: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14454: \$? = $ac_status" >&5
+   echo "$as_me:14474: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -15631,6 +15651,221 @@ test -n "$rshcmd" || rshcmd="/usr/bin/$withrsh"
 
 
 # Checks for libraries.
+
+
+# Check whether --with-to_api was given.
+if test "${with_to_api+set}" = set; then
+  withval=$with_to_api; CXXFLAGS="$CXXFLAGS -DPROTOTYPE"
+      WITH_TEMPORALORDERINGAPI=yes
+      to_prefix=${withval}
+
+else
+  CXXFLAGS="$CXXFLAGS"
+      WITH_TEMPORALORDERINGAPI=no
+
+
+fi
+
+  if test "$WITH_TEMPORALORDERINGAPI" = yes
+  then
+
+
+  { $as_echo "$as_me:$LINENO: checking boost installation" >&5
+$as_echo_n "checking boost installation... " >&6; }
+
+
+# Check whether --with-boost was given.
+if test "${with_boost+set}" = set; then
+  withval=$with_boost; with_boost_path=$withval
+else
+  with_boost_path="check"
+
+fi
+
+
+  boost_dflt_dir="/usr"
+  boost_found="no"
+  if test "x$with_boost_path" != "xcheck"; then
+    #boost root given
+    #TODO: remove dependency on 1_37 below
+    #
+    if test -f "$with_boost_path"/include/boost/algorithm/string.hpp ; then
+      BOOST_INCLUDE=-I$with_boost_path/include
+
+      LIBBOOSTDIR=$with_boost_path/lib
+
+      LIBBOOST="-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system-mt -lboost_wave-mt"
+
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_BOOST_TO 1
+_ACEOF
+
+      boost_found="yes"
+    elif test -f "$with_boost_path"/include/boost-1_37/boost/algorithm/string.hpp ; then
+      BOOST_INCLUDE=-I$with_boost_path/include/boost-1_37
+
+      LIBBOOSTDIR=$with_boost_path/lib
+
+      LIBBOOST="-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system-mt -lboost_wave-mt"
+
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_BOOST_TO 1
+_ACEOF
+
+      boost_found="yes"
+    else
+      boost_found="no"
+    fi
+  else
+    # boost path not given
+    if test -f $boost_dflt_dir/include/boost/algorithm/string.hpp ; then
+      BOOST_INCLUDE=-I$boost_dflt_dir/include
+
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_BOOST_TO 1
+_ACEOF
+
+      LIBBOOSTDIR=$boost_dflt_dir/lib
+
+      LIBBOOST="-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system-mt -lboost_wave-mt"
+
+      boost_found="yes"
+    else
+      boost_found="no"
+    fi
+  fi
+  { $as_echo "$as_me:$LINENO: result: $boost_found" >&5
+$as_echo "$boost_found" >&6; }
+
+    if test "$boost_found" = no
+    then
+      { { $as_echo "$as_me:$LINENO: error: Boost is required for temporal ordering.  Specify Boost prefix with --with-boost" >&5
+$as_echo "$as_me: error: Boost is required for temporal ordering.  Specify Boost prefix with --with-boost" >&2;}
+   { (exit 1); exit 1; }; }
+    fi
+
+
+
+  { $as_echo "$as_me:$LINENO: checking ROSE installation" >&5
+$as_echo_n "checking ROSE installation... " >&6; }
+
+
+# Check whether --with-rose was given.
+if test "${with_rose+set}" = set; then
+  withval=$with_rose; with_rose_path=$withval
+else
+  with_rose_path="check"
+
+fi
+
+
+  rose_dflt_dir="/usr"
+  rose_found="no"
+  if test "x$with_rose_path" != "xcheck"; then
+    #rose install root given
+    #
+    if test -f "$with_rose_path"/include/rose.h ; then
+      ROSE_INCLUDE=-I$with_rose_path/include
+
+      LIBROSEDIR=$with_rose_path/lib
+
+      LIBJAVADIR=/etc/alternatives/java_sdk_gcj/jre/lib/amd64/server
+
+      LIBROSE=-lrose
+
+      LIBJVM=-ljvm
+
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_ROSE_H 1
+_ACEOF
+
+      rose_found="yes"
+    else
+      rose_found="no"
+    fi
+  else
+    # rose path not given
+    if test -f $rose_dflt_dir/include/rose.hpp ; then
+      ROSE_INCLUDE=-I$rose_dflt_dir/include
+
+      LIBROSEDIR=$rose_dflt_dir/lib
+
+      LIBJAVADIR=/etc/alternatives/java_sdk_gcj/jre/lib/amd64/server
+
+      LIBROSE=-lrose
+
+      LIBJVM=-ljvm
+
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_ROSE_H 1
+_ACEOF
+
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_ROSE_H 1
+_ACEOF
+
+      rose_found="yes"
+    else
+      rose_found="no"
+    fi
+  fi
+  { $as_echo "$as_me:$LINENO: result: $rose_found" >&5
+$as_echo "$rose_found" >&6; }
+
+    if test "$rose_found" = no
+    then
+      { { $as_echo "$as_me:$LINENO: error: Rose is required for temporal ordering.  Specify Rose prefix with --with-rose" >&5
+$as_echo "$as_me: error: Rose is required for temporal ordering.  Specify Rose prefix with --with-rose" >&2;}
+   { (exit 1); exit 1; }; }
+    fi
+
+    { $as_echo "$as_me:$LINENO: checking Temporal Ordering API installation" >&5
+$as_echo_n "checking Temporal Ordering API installation... " >&6; }
+    if test -f "$to_prefix"/include/TO_std.h ; then
+      { $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+      TOAPI_INCLUDE=-I$to_prefix/include
+
+    else
+      { $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+      { { $as_echo "$as_me:$LINENO: error: TO_std.h is required for temporal ordering.  Specify Temporal Ordering API prefix with --with-to_api" >&5
+$as_echo "$as_me: error: TO_std.h is required for temporal ordering.  Specify Temporal Ordering API prefix with --with-to_api" >&2;}
+   { (exit 1); exit 1; }; }
+    fi
+
+    { $as_echo "$as_me:$LINENO: checking for libTemporalOrderAPI" >&5
+$as_echo_n "checking for libTemporalOrderAPI... " >&6; }
+    if test -f "$to_prefix"/lib/libTemporalOrderAPI.so ; then
+      { $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+      LIBTOAPIDIR=$to_prefix/lib
+
+      LIBTOAPI="-lTemporalOrderAPI"
+
+    else
+      { $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+      { { $as_echo "$as_me:$LINENO: error: TO_std.h is required for temporal ordering.  Specify Temporal Ordering API prefix with --with-to_api" >&5
+$as_echo "$as_me: error: TO_std.h is required for temporal ordering.  Specify Temporal Ordering API prefix with --with-to_api" >&2;}
+   { (exit 1); exit 1; }; }
+    fi
+  fi
+   if test "$WITH_TEMPORALORDERINGAPI" = yes; then
+  ENABLE_TO_TRUE=
+  ENABLE_TO_FALSE='#'
+else
+  ENABLE_TO_TRUE='#'
+  ENABLE_TO_FALSE=
+fi
+
+
 
   # Check whether --enable-gui was given.
 if test "${enable_gui+set}" = set; then
@@ -18573,14 +18808,6 @@ else
   ENABLE_STATBENCH_FALSE=
 fi
 
-# Check whether --enable-to was given.
-if test "${enable_to+set}" = set; then
-  enableval=$enable_to; CXXFLAGS="-DPROTOTYPE_TO $CXXFLAGS"
-else
-  CXXFLAGS="$CXXFLAGS"
-
-fi
-
 # Check whether --enable-python-debug was given.
 if test "${enable_python_debug+set}" = set; then
   enableval=$enable_python_debug; CXXFLAGS="-DPROTOTYPE_PY $CXXFLAGS"
@@ -19973,6 +20200,13 @@ if test -z "${am__fastdepCXX_TRUE}" && test -z "${am__fastdepCXX_FALSE}"; then
   { { $as_echo "$as_me:$LINENO: error: conditional \"am__fastdepCXX\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 $as_echo "$as_me: error: conditional \"am__fastdepCXX\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${ENABLE_TO_TRUE}" && test -z "${ENABLE_TO_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_TO\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"ENABLE_TO\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi

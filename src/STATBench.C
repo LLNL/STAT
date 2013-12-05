@@ -37,7 +37,7 @@ typedef struct
     int nEqClasses;                         /*!< the number of equivalence classes */
     char topologySpecification[BUFSIZE];    /*!< the topology specification */
     char *nodeList;                         /*!< the list of nodes for CPs */
-    bool shareAppNodes;                     /*!< whether to use the application nodes to run communication processes */
+    StatCpPolicy_t cpPolicy;                /*!< whether to use the application nodes to run communication processes */
     unsigned int sampleType;                /*!< the sample level of detail */
     StatTopology_t topologyType;            /*!< the topology specification type */
 } StatBenchArgs_t;
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
     }
 
     /* Launch the MRNet Tree */
-    statError = statFrontEnd->launchMrnetTree(statBenchArgs->topologyType, statBenchArgs->topologySpecification, statBenchArgs->nodeList, true, statBenchArgs->shareAppNodes);
+    statError = statFrontEnd->launchMrnetTree(statBenchArgs->topologyType, statBenchArgs->topologySpecification, statBenchArgs->nodeList, true, statBenchArgs->cpPolicy);
     if (statError != STAT_OK)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
@@ -204,8 +204,9 @@ void printUsage()
     fprintf(stderr, "  -f, --fanout <width>\t\tmaximum tree topology fanout\n");
     fprintf(stderr, "  -u, --usertopology <topology>\tspecify the number of communication nodes per\n\t\t\t\tlayer in the tree topology, separated by dashes\n");
     fprintf(stderr, "  -n, --nodes <nodelist>\tlist of nodes for communication processes\n");
-    fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication processes\n");
     fprintf(stderr, "\t\t\t\tExample node lists:\thost1\n\t\t\t\t\t\t\thost1,host2\n\t\t\t\t\t\t\thost[1,5-7,9]\n");
+    fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication\n\t\t\t\tprocesses\n");
+    fprintf(stderr, "  -x, --exclusive\t\tdo not use the FE or BE nodes for communication\n\t\t\t\tprocesses\n");
     fprintf(stderr, "  -p, --procs <processes>\tthe maximum number of communication processes\n\t\t\t\tper node\n");
     fprintf(stderr, "\nMiscellaneous options:\n");
     fprintf(stderr, "  -D, --daemon <path>\t\tthe full path to the STAT daemon\n");
@@ -237,6 +238,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         {"verbose",         no_argument,        0, 'v'},
         {"autotopo",        no_argument,        0, 'a'},
         {"appnodes",        no_argument,        0, 'A'},
+        {"exclusive",       no_argument,        0, 'x'},
         {"mrnetprintf",     no_argument,        0, 'M'},
         {"countrep",        no_argument,        0, 'U'},
         {"fanout",          required_argument,  0, 'f'},
@@ -262,7 +264,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvaAMUf:n:p:t:m:b:e:D:F:l:L:u:d:N:i:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvaAxMUf:n:p:t:m:b:e:D:F:l:L:u:d:N:i:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         switch(opt)
@@ -294,7 +296,10 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
             }
             break;
         case 'A':
-            statBenchArgs->shareAppNodes = true;
+            statBenchArgs->cpPolicy = STAT_CP_SHAREAPPNODES;
+            break;
+        case 'x':
+            statBenchArgs->cpPolicy = STAT_CP_EXCLUSIVE;
             break;
         case 'p':
             statFrontEnd->setProcsPerNode(atoi(optarg));

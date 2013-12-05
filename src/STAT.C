@@ -41,7 +41,7 @@ typedef struct
     bool countRep;                          /*!< whether to gather just a count and representative */
     bool withPython;                        /*!< whether to gather Python script level traces */
     bool withThreads;                       /*!< whether to gather traces from threads */
-    bool shareAppNodes;                     /*!< whether to use the application nodes to run communication processes */
+    StatCpPolicy_t cpPolicy;                     /*!< whether to use the application nodes to run communication processes */
     StatLaunch_t applicationOption;         /*!< attach or launch case */
     unsigned int sampleType;                /*!< the sample level of detail */
     StatTopology_t topologyType;            /*!< the topology specification type */
@@ -134,7 +134,7 @@ int main(int argc, char **argv)
     }
 
     /* Launch the MRNet Tree */
-    statError = statFrontEnd->launchMrnetTree(statArgs->topologyType, statArgs->topologySpecification, statArgs->nodeList, true, statArgs->shareAppNodes);
+    statError = statFrontEnd->launchMrnetTree(statArgs->topologyType, statArgs->topologySpecification, statArgs->nodeList, true, statArgs->cpPolicy);
     if (statError != STAT_OK)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
@@ -338,9 +338,10 @@ void printUsage()
     fprintf(stderr, "  -f, --fanout <width>\t\tmaximum tree topology fanout\n");
     fprintf(stderr, "  -u, --usertopology <topology>\tspecify the number of communication nodes per\n\t\t\t\tlayer in the tree topology, separated by dashes\n");
     fprintf(stderr, "  -n, --nodes <nodelist>\tlist of nodes for communication processes\n");
-    fprintf(stderr, "  -N, --nodesfile <filename>\t file containing list of nodes for communication processes\n");
-    fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication processes\n");
     fprintf(stderr, "\t\t\t\tExample node lists:\thost1\n\t\t\t\t\t\t\thost1,host2\n\t\t\t\t\t\t\thost[1,5-7,9]\n");
+    fprintf(stderr, "  -N, --nodesfile <filename>\tfile containing list of nodes for communication\n\t\t\t\tprocesses\n");
+    fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication\n\t\t\t\tprocesses\n");
+    fprintf(stderr, "  -x, --exclusive\t\tdo not use the FE or BE nodes for communication\n\t\t\t\tprocesses\n");
     fprintf(stderr, "  -p, --procs <processes>\tthe maximum number of communication processes\n\t\t\t\tper node\n");
     fprintf(stderr, "\nMiscellaneous options:\n");
     fprintf(stderr, "  -C, --create [<args>]+\tlaunch the application under STAT's control.\n\t\t\t\tAll args after -C are used to launch the app.\n");
@@ -385,6 +386,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"create",              no_argument,        0, 'C'},
         {"serial",              no_argument,        0, 'I'},
         {"appnodes",            no_argument,        0, 'A'},
+        {"exclusive",           no_argument,        0, 'x'},
         {"sampleindividual",    no_argument,        0, 'S'},
         {"mrnetprintf",         no_argument,        0, 'M'},
         {"countrep",            no_argument,        0, 'U'},
@@ -419,7 +421,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvPicwyaCIASMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'C')
@@ -483,7 +485,10 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             statArgs->individualSamples = true;
             break;
         case 'A':
-            statArgs->shareAppNodes = true;
+            statArgs->cpPolicy = STAT_CP_SHAREAPPNODES;
+            break;
+        case 'x':
+            statArgs->cpPolicy = STAT_CP_EXCLUSIVE;
             break;
         case 'n':
             statArgs->nodeList = strdup(optarg);

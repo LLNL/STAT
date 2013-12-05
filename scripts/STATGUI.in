@@ -8,7 +8,6 @@ export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
-    export PYTHONPATH=$STAT_PREFIX/lib/python2.6/site-packages:$STAT_PREFIX/lib64/python2.6/site-packages:@PYTHONPATH@
 fi
 
 if test -z "$STAT_LMON_REMOTE_LOGIN" ; then
