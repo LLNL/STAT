@@ -79,6 +79,10 @@ STAT_FrontEnd::STAT_FrontEnd()
 {
     int intRet;
     char tmp[BUFSIZE], *envValue;
+    struct timeval timeStamp;
+    time_t currentTime;
+    char timeBuf[BUFSIZE];
+    string invocationString;
     graphlib_error_t graphlibError;
 
     /* Enable MRNet logging if requested */
@@ -270,6 +274,14 @@ STAT_FrontEnd::STAT_FrontEnd()
     fgfsCommFabric_ = NULL;
 #endif
     gStatOutFp = NULL;
+
+    /* Add invocation time to perf file */
+    gettimeofday(&timeStamp, NULL);
+    currentTime = timeStamp.tv_sec;
+    strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtime(&currentTime));
+    invocationString = "STAT started at ";
+    invocationString.append(timeBuf);
+    addPerfData(invocationString.c_str(), -1.0);
 }
 
 

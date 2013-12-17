@@ -73,12 +73,20 @@ void mySleep(int sleepTime);
 int main(int argc, char **argv)
 {
     int i, j, samples = 1, traces;
+    struct timeval timeStamp;
+    time_t currentTime;
+    char timeBuf[BUFSIZE];
     STAT_FrontEnd *statFrontEnd;
     StatError_t statError, retval;
     string invocationString;
     StatArgs_t *statArgs;
 
     statFrontEnd = new STAT_FrontEnd();
+
+    gettimeofday(&timeStamp, NULL);
+    currentTime = timeStamp.tv_sec;
+    strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtime(&currentTime));
+    statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT started at %s\n", timeBuf);
 
     /* Parse arguments and fill in class variables */
     statArgs = (StatArgs_t *)calloc(1, sizeof(StatArgs_t));
@@ -109,7 +117,6 @@ int main(int argc, char **argv)
         invocationString.append(argv[i]);
         invocationString.append(" ");
     }
-    invocationString.append("\n");
     statFrontEnd->addPerfData(invocationString.c_str(), -1.0);
 
     /* If we're just attaching, sleep here */

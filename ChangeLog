@@ -1,3 +1,10 @@
+2013-10-25 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.C : print invocation time to terminal
+	* src/STAT_FrontEnd.C : add invocation time to .perf file
+
+2013-12-04 Dong H. Ahn <ahn1@llnl.gov>
+	* : port to new LaunchMON in preparation for FLUX
+
 2013-12-04 Gregory L. Lee <lee218@llnl.gov>
 	* : Added prototype temporal ordering capability
 
