@@ -936,6 +936,7 @@ class STAT_FrontEnd
 #ifdef STAT_FGFS
         char *fgfsFilterPath_;                              /*!< the path to the FGFS filter shared object */
         FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_;
+        MRN::Stream *fileRequestStream_;
 #endif
 };
 

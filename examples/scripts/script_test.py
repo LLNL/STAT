@@ -87,21 +87,21 @@ def run_tests(test_suites, launcher, launcher_args):
             sys.stderr.write(msg)
             failed_list.append(msg)
             continue
-    
+
         test_name = 'launch and sample %s' %(os.path.basename(exe))
         sys.stdout.write('\n%s test beginning...\n' %(test_name))
         app = STATapp(launcher, exe, launcher_args = num_tasks_args)
-        ret = app.launch() 
+        ret = app.launch()
         if ret == False:
             failed_list.append(test_name)
             continue
         sys.stdout.write('%s test complete\n' %(test_name))
-    
+
         test_name = 'basic samples %s' %(os.path.basename(exe))
         sample_options = [{}, {"sample_type":STAT_SAMPLE_FUNCTION_ONLY + STAT_SAMPLE_THREADS}, {"num_traces":10}, {"sample_type":STAT_SAMPLE_FUNCTION_ONLY + STAT_SAMPLE_COUNT_REP}, {"sample_type":STAT_SAMPLE_FUNCTION_ONLY + STAT_SAMPLE_LINE}]
         attach_options = ((app.pid,), {}, attach)
         tests.insert(0, (test_name, attach_options, sample_options))
-        
+
         for test in tests:
             count += 1
             test_name, attach_options, sample_options = test
@@ -110,18 +110,18 @@ def run_tests(test_suites, launcher, launcher_args):
             if ret == False:
                 failed_list.append(test_name)
                 continue
-    
+
         sys.stdout.write("\n%s tests complete, terminating application\n\n" %os.path.basename(exe))
         app.terminate()
         time.sleep(3)
-    
+
     if len(failed_list) != 0:
         sys.stdout.write('\n%d of %d tests failed:\n' %(len(failed_list), count))
         for failure in failed_list:
             sys.stdout.write('\t%s\n' %failure)
     else:
         sys.stdout.write('\nAll %d tests passed!\n\n' %(count))
-    
+
     sys.exit(0)
 
 if __name__ == "__main__":
@@ -137,49 +137,49 @@ if __name__ == "__main__":
     install_prefix = temp_fe.getInstallPrefix()
     temp_fe.getVersion(version)
     sys.stdout.write("STAT version %d.%d.%d installed in %s\n" %(version[0], version[1], version[2], install_prefix))
-    
+
     test_suites = []
     exe = '%s/share/STAT/examples/bin/hw' %(temp_fe.getInstallPrefix())
     tests = []
     test_suites.append((exe, tests))
-    
+
     exe = '%s/share/STAT/examples/bin/rank_test' %(temp_fe.getInstallPrefix())
     tests = []
     test_suites.append((exe, tests))
-    
+
     exe = '%s/share/STAT/examples/bin/mpi_ringtopo' %(temp_fe.getInstallPrefix())
     tests = []
-    
+
     test_name = 'serial attach %s' %(os.path.basename(exe))
     attach_options = ((), {}, serial_attach)
     sample_options = [{}]
     tests.append((test_name, attach_options, sample_options))
-    
+
     test_name = 'various samples %s' %(os.path.basename(exe))
     attach_options = ((), {}, attach)
     sample_options = [{}, {"sample_type":STAT_SAMPLE_FUNCTION_ONLY + STAT_SAMPLE_THREADS}, {"num_traces":10}, {"sample_type":STAT_SAMPLE_CLEAR_ON_SAMPLE, "num_traces":10}, {"sample_type":STAT_SAMPLE_FUNCTION_ONLY + STAT_SAMPLE_COUNT_REP}, {"sample_type":STAT_SAMPLE_FUNCTION_ONLY + STAT_SAMPLE_LINE}]
     tests.append((test_name, attach_options, sample_options))
-    
+
     test_name = "depth topology %s" %(os.path.basename(exe))
     attach_options = ((), {"topology_type":STAT_TOPOLOGY_DEPTH, "topology":"2"}, attach)
     sample_options = [{}]
     tests.append((test_name, attach_options, sample_options))
-    
+
     test_name = "user topology %s" %(os.path.basename(exe))
     attach_options = ((), {"topology_type":STAT_TOPOLOGY_USER, "topology":"1-1"}, attach)
     sample_options = [{}]
     tests.append((test_name, attach_options, sample_options))
-    
+
     test_name = "insufficient nodes %s" %(os.path.basename(exe))
     attach_options = ((), {"topology_type":STAT_TOPOLOGY_USER, "topology":"1-1", "cp_policy":STAT_CP_NONE}, attach)
     sample_options = [{}]
     tests.append((test_name, attach_options, sample_options))
-    
+
     test_name = "localhost topology %s" %(os.path.basename(exe))
     attach_options = ((), {"topology_type":STAT_TOPOLOGY_USER, "topology":"1", "cp_policy":STAT_CP_NONE, "node_list":"localhost", "logging_tuple":(STAT_LOG_FE | STAT_LOG_BE | STAT_LOG_CP | STAT_LOG_MRN, '/g/g0/lee218/logs')}, attach)
     sample_options = [{}]
     tests.append((test_name, attach_options, sample_options))
-    
+
     test_suites.append((exe, tests))
 
     run_tests(test_suites, launcher, num_tasks_args)

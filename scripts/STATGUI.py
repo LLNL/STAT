@@ -20,7 +20,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 import STAThelper
 from STAThelper import var_spec_to_string, get_task_list, get_proctab, decompose_node
@@ -453,7 +453,7 @@ host[1-10,12,15-20];otherhost[30]
                 proctab_frame.remove(self.ptab_sw)
         except:
             pass
-        rank_filter = get_task_list(self.options['Filter Ranks'])
+        rank_filter = get_task_list('[%s]' %self.options['Filter Ranks'])
         host_filter = []
         temp_host_list = self.options['Filter Hosts'].replace(' ', '').split(';')
         for host in temp_host_list:
@@ -1083,8 +1083,6 @@ host[1-10,12,15-20];otherhost[30]
         if self.attached is False:
             self.STAT = None
             self.reattach = False
-            self.proctab_file_path = None
-            self.proctab = None
             return True
         self.var_spec = []
         self.show_all()
@@ -1615,6 +1613,8 @@ host[1-10,12,15-20];otherhost[30]
     def set_proctab(self):
         if self.proctab_file_path is not None and self.proctab is not None:
             return True
+        if self.STAT is None:
+            return False
 
         self.proctab_file_path = ''
         out_dir = self.STAT.getOutDir()
@@ -1644,6 +1644,9 @@ host[1-10,12,15-20];otherhost[30]
 
     def launch_debugger_cb(self, widget, args):
         """Callback to launch full-featured debugger on a subset of tasks."""
+        if self.attached is False:
+            show_error_dialog('Subset attach is only available when STAT is attached to the application.  Please (re)attach to the application.', self)
+            return False
         debugger, eq_dialog = args
         subset_list = []
         for item in self.eq_state['classes']:

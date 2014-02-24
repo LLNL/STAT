@@ -65,6 +65,7 @@ int main(int argc, char **argv)
     if (statBenchArgs == NULL)
     {
         statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to calloc statBenchArgs\n");
+        free(statBenchArgs);
         return -1;
     }
     statBenchArgs->sampleType = 0;
@@ -82,6 +83,7 @@ int main(int argc, char **argv)
     if (statError != STAT_OK)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to parse arguments\n");
+        free(statBenchArgs);
         return -1;
     }
 
@@ -120,6 +122,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
         statFrontEnd->shutDown();
         delete statFrontEnd;
+        free(statBenchArgs);
         return -1;
     }
 
@@ -130,6 +133,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
         statFrontEnd->shutDown();
         delete statFrontEnd;
+        free(statBenchArgs);
         return -1;
     }
 
@@ -138,6 +142,7 @@ int main(int argc, char **argv)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup connected MRNet tree\n");
         delete statFrontEnd;
+        free(statBenchArgs);
         return -1;
     }
 
@@ -147,6 +152,7 @@ int main(int argc, char **argv)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to generate stack traces\n");
         statFrontEnd->shutDown();
+        free(statBenchArgs);
         return -1;
     }
 
@@ -159,6 +165,7 @@ int main(int argc, char **argv)
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
             statFrontEnd->shutDown();
             delete statFrontEnd;
+            free(statBenchArgs);
             return -1;
         }
     }
@@ -172,6 +179,7 @@ int main(int argc, char **argv)
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
             statFrontEnd->shutDown();
             delete statFrontEnd;
+            free(statBenchArgs);
             return -1;
         }
     }
@@ -180,6 +188,8 @@ int main(int argc, char **argv)
     printf("\nResults written to %s\n\n", statFrontEnd->getOutDir());
 
     delete statFrontEnd;
+    if (statBenchArgs != NULL)
+        free(statBenchArgs);
 
     return 0;
 }
@@ -321,6 +331,8 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
             if (statError != STAT_OK)
             {
                 statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to set tool daemon exe path\n");
+                if (logOutDir != NULL)
+                    free(logOutDir);
                 return statError;
             }
             break;
@@ -329,6 +341,8 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
             if (statError != STAT_OK)
             {
                 statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to set filter path\n");
+                if (logOutDir != NULL)
+                    free(logOutDir);
                 return statError;
             }
             break;
@@ -346,6 +360,8 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
             else
             {
                 statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or ALL, you entered %s\n", optarg);
+                if (logOutDir != NULL)
+                    free(logOutDir);
                 return STAT_ARG_ERROR;
             }
             break;
@@ -380,10 +396,14 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         case '?':
             statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
             printUsage();
+            if (logOutDir != NULL)
+                free(logOutDir);
             return STAT_ARG_ERROR;
         default:
             statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
             printUsage();
+            if (logOutDir != NULL)
+                free(logOutDir);
             return STAT_ARG_ERROR;
         }; /* switch */
     } /* while(1) */
@@ -394,9 +414,13 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         if (statError != STAT_OK)
         {
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed start logging\n");
+            free(logOutDir);
             return statError;
         }
     }
+
+    if (logOutDir != NULL)
+        free(logOutDir);
 
     if (statFrontEnd->getLauncherArgc() == 1)
         statFrontEnd->addLauncherArgv("srun");

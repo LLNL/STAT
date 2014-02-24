@@ -1,4 +1,10 @@
-2013-10-25 Gregory L. Lee <lee218@llnl.gov>
+2014-02-24 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : fixed ranks filter specification for node search
+	* scripts/xdot.py : fixed float to int conversion
+	* src/STAT_FrontEnd.C : fixed minor topology generation bug with empty hostname
+	* : fixed memory leaks identified by Inspector and SSA
+
+2013-12-09 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT.C : print invocation time to terminal
 	* src/STAT_FrontEnd.C : add invocation time to .perf file
 

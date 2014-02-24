@@ -19,7 +19,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #ifndef __STAT_BACKEND_H
 #define __STAT_BACKEND_H
 
-#define STAT_MAX_BUF_LEN 256
+#define STATBE_MAX_HN_LEN 256
 #define STAT_SW_DEBUG_BUFFER_LENGTH 33554432
 
 #include <stdio.h>
@@ -81,8 +81,8 @@ typedef enum {
 typedef struct
 {
     /* The char arrays are statically sized to make it easy to broadcast */
-    char hostName[STAT_MAX_BUF_LEN];
-    char parentHostName[STAT_MAX_BUF_LEN];
+    char hostName[STATBE_MAX_HN_LEN];
+    char parentHostName[STATBE_MAX_HN_LEN];
     int rank;
     int parentPort;
     int parentRank;
@@ -215,7 +215,7 @@ class STAT_BackEnd
         /*!
             \return STAT_OK on success
 
-            Loops on MRNet receive and executes the requested command
+            Loops on MRNet receive and executes the requested commands
         */
         StatError_t mainLoop();
 
@@ -239,7 +239,7 @@ class STAT_BackEnd
         */
         void printMsg(StatError_t statError, const char *sourceFile, int sourceLine, const char *fmt, ...);
 
-        //! Creates the log file
+        //! Creates the debug log file
         /*!
             \param logType - the level of logging
             \param logOutDir - the output log directory
@@ -256,7 +256,7 @@ class STAT_BackEnd
             \param enable - whether to enable signal handling
         */
 	    void registerSignalHandlers(bool enable);
-        
+
         //! Action to perform when signal caught
         /*!
             \param signal - the signal number
@@ -267,7 +267,7 @@ class STAT_BackEnd
 
         //! Get the process table
         /*!
-            \return the proces table
+            \return the process table
         */
         MPIR_PROCDESC_EXT *getProctab();
 
@@ -535,21 +535,21 @@ class STAT_BackEnd
                                              debug logging */
         FILE *swDebugFile_;             /*!< the stackwalker log file handle */
         FILE *errOutFp_;                /*!< the error output file handle */
-        bool initialized_;              /*!< whether STAT has been 
+        bool initialized_;              /*!< whether STAT has been
                                              initialized */
-        bool connected_;                /*!< whether this daemon has been 
+        bool connected_;                /*!< whether this daemon has been
                                              conected to MRNet */
-        bool isRunning_;                /*!< whether the target processes are 
+        bool isRunning_;                /*!< whether the target processes are
                                              running */
-        bool doGroupOps_;               /*!< do group operations through 
+        bool doGroupOps_;               /*!< do group operations through
                                              StackwalkerAPI */
-        bool isPyTrace_;                /*!< whether the current trace includes 
+        bool isPyTrace_;                /*!< whether the current trace includes
                                              Python script level functions */
         MRN::Network *network_;         /*!< the MRNet Network object */
         MRN::Rank myRank_;              /*!< this daemon's MRNet rank */
         MRN::Rank parentRank_;          /*!< the MRNet parent's rank */
         MRN::Port parentPort_;          /*!< the MRNet parent's port */
-        MRN::Stream *broadcastStream_;  /*!< the main broadcast and 
+        MRN::Stream *broadcastStream_;  /*!< the main broadcast and
                                              acknowledgement stream */
         std::map<int, std::string> nodes2d_; /*!< the 2D prefix tree nodes */
         std::map<int, std::string> nodes3d_; /*!< the 3D prefix tree nodes */
@@ -557,11 +557,11 @@ class STAT_BackEnd
         std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges3d_; /*!< the 3D prefix tree edges */
         MPIR_PROCDESC_EXT *proctab_;    /*!< the process table */
         StatDaemonLaunch_t launchType_; /*!< the launch type */
-        unsigned int sampleType_;       /*!< type of sample we're currently 
+        unsigned int sampleType_;       /*!< type of sample we're currently
                                              collecting */
-        int nVariables_;                /*!< the number of variables to 
+        int nVariables_;                /*!< the number of variables to
                                              extract */
-        StatVariable_t *extractVariables_;  /*!< a list of variables to extract 
+        StatVariable_t *extractVariables_;  /*!< a list of variables to extract
                                                  for the current sample */
 
         std::map<int, Dyninst::Stackwalker::Walker *> processMap_;  /*!< the debug process objects */

@@ -185,7 +185,7 @@ class STATerror(Exception):
     def __init__(self, etype, emsg):
         self.etype = etype
         self.emsg = emsg
-        
+
     def __str__(self):
         return '%s: %s' %(self.etype, self.emsg)
 
@@ -222,7 +222,7 @@ def attach_impl(application_option, processes, topology_type = STAT_TOPOLOGY_AUT
             stat_fe.startLog(log_type, log_dir)
         stat_fe.setVerbose(verbosity)
         stat_fe.setProcsPerNode(procs_per_node)
-    
+
         stat_fe.setApplicationOption(application_option)
         if application_option == STAT_ATTACH:
             stat_error = stat_fe.attachAndSpawnDaemons(int(processes), remote_host)
@@ -237,20 +237,20 @@ def attach_impl(application_option, processes, topology_type = STAT_TOPOLOGY_AUT
             time.sleep(3)
         if stat_error != STAT_OK:
             raise STATerror('tool launch failed', stat_fe.getLastErrorMessage())
-    
+
         stat_error = stat_fe.launchMrnetTree(topology_type, topology, node_list, True, cp_policy)
         if stat_error != STAT_OK:
             raise STATerror('launch mrnet failed', stat_fe.getLastErrorMessage())
-    
+
         if application_option != STAT_SERIAL_ATTACH:
             stat_error = stat_fe.connectMrnetTree(True)
             if stat_error != STAT_OK:
                 raise STATerror('connect mrnet failed', stat_fe.getLastErrorMessage())
-    
+
         stat_error = stat_fe.setupConnectedMrnetTree();
         if stat_error != STAT_OK:
             raise STATerror('setup mrnet failed', stat_fe.getLastErrorMessage())
-    
+
         stat_error = stat_fe.attachApplication(True)
         if stat_error != STAT_OK:
             raise STATerror('attach failed', stat_fe.getLastErrorMessage())

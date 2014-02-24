@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     statError = statInit(&argc, &argv, launchType);
     if (statError != STAT_OK)
     {
-        fprintf(stderr, __FILE__, __LINE__, "Failed to initialize STAT\n");
+        fprintf(stderr, "Failed to initialize STAT\n");
         return statError;
     }
 
