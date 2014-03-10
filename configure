@@ -20068,7 +20068,7 @@ done
 
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile scripts/STAT scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-script scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile etc/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile scripts/STAT scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-script scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -21119,6 +21119,7 @@ do
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "doc/userguide/Makefile") CONFIG_FILES="$CONFIG_FILES doc/userguide/Makefile" ;;
     "doc/quickstart/Makefile") CONFIG_FILES="$CONFIG_FILES doc/quickstart/Makefile" ;;
+    "etc/Makefile") CONFIG_FILES="$CONFIG_FILES etc/Makefile" ;;
     "man/Makefile") CONFIG_FILES="$CONFIG_FILES man/Makefile" ;;
     "examples/Makefile") CONFIG_FILES="$CONFIG_FILES examples/Makefile" ;;
     "examples/src/Makefile") CONFIG_FILES="$CONFIG_FILES examples/src/Makefile" ;;

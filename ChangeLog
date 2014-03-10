@@ -1,3 +1,12 @@
+2014-03-07 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : Allow setting of check node access
+
+2014-03-06 Gregory L. Lee <lee218@llnl.gov>
+	* etc/* : distribute with and install preference file templates
+
+2014-03-05 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : unblock all signals (alleviate detach hang on Cray)
+
 2014-02-24 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : fixed ranks filter specification for node search
 	* scripts/xdot.py : fixed float to int conversion

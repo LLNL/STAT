@@ -41,7 +41,15 @@ STAT_BackEnd *gBePtr;
 
 StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType)
 {
+    int intRet;
+    sigset_t mask;
     lmon_rc_e lmonRet;
+
+    /* unblock all signals. */
+    /* In 3/2014, SIGUSR2 was found to be blocked on Cray systems, which was causing detach to hang */
+    intRet = sigfillset(&mask);
+    if (intRet == 0)
+        intRet = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 
     if (launchType == STATD_LMON_LAUNCH)
     {

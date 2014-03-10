@@ -20,6 +20,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "config.h"
 #include "STAT_BackEnd.h"
 
+using namespace std;
 
 //! The daemon main
 /*!

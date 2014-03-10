@@ -5,7 +5,7 @@ stat-view <![%userguide[(<xref linkend="statview_screenshot">)]]> is a GUI for v
 <figure id="statview_screenshot">
     <title>A screenshot of the stat-view GUI.</title>
     <screenshot><mediaobject><imageobject>
-    <imagedata scale="40" fileref="figs/statview_screenshot.png">
+    <imagedata scale="50" fileref="figs/statview_screenshot.png">
     </imageobject></mediaobject></screenshot>
 </figure>
 ]]>

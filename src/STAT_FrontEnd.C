@@ -261,9 +261,6 @@ STAT_FrontEnd::STAT_FrontEnd()
     isPendingAck_ = false;
     hasFatalError_ = false;
     checkNodeAccess_ = false;
-    envValue = getenv("STAT_CHECK_NODE_ACCESS");
-    if (envValue != NULL)
-        checkNodeAccess_ = true;
     verbose_ = STAT_VERBOSE_STDOUT;
     applicationOption_ = STAT_ATTACH;
     proctab_ = NULL;
@@ -291,9 +288,12 @@ STAT_FrontEnd::~STAT_FrontEnd()
     StatError_t statError;
     graphlib_error_t graphlibError;
 
-    statError = dumpPerf();
-    if (statError != STAT_OK)
-        printMsg(statError, __FILE__, __LINE__, "Failed to dump performance results\n");
+    if (strcmp(outDir_, "NULL") != 0)
+    {
+        statError = dumpPerf();
+        if (statError != STAT_OK)
+            printMsg(statError, __FILE__, __LINE__, "Failed to dump performance results\n");
+    }
 
     if (launcherArgv_ != NULL)
     {
@@ -2032,6 +2032,10 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     StatError_t statError;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating MRNet topology file\n");
+
+    envValue = getenv("STAT_CHECK_NODE_ACCESS");
+    if (envValue != NULL)
+        checkNodeAccess_ = true;
 
     /* Set parameters based on requested topology */
     if (topologyType == STAT_TOPOLOGY_DEPTH)

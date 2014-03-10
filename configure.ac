@@ -100,6 +100,7 @@ AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  doc/userguide/Makefile
                  doc/quickstart/Makefile
+                 etc/Makefile
                  man/Makefile
                  examples/Makefile
                  examples/src/Makefile

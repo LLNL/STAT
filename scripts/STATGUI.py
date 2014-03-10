@@ -98,6 +98,7 @@ class STATGUI(STATDotWindow):
                    'Serial Process List':              '',
                    'Topology Type':                    'automatic',
                    'Topology':                         '1',
+                   'Check Node Access':                False,
                    'CP Policy':                        'share app nodes',
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
@@ -133,6 +134,8 @@ class STATGUI(STATDotWindow):
             self.options = {}
         for option in options:
             self.options[option] = options[option]
+        if 'STAT_CHECK_NODE_ACCESS' in os.environ:
+            self.options['Check Node Access'] = True
         if 'STAT_LMON_DEBUG_BES' in os.environ:
             self.options['Debug Backends'] = True
         else:
@@ -146,7 +149,7 @@ class STATGUI(STATDotWindow):
                 try:
                     with open(path, 'r') as f:
                         for line in f:
-                            if line[0] == '#':
+                            if line[0] == '#' or line.strip() == '':
                                 continue
                             split_line = line.split('=')
                             if len(split_line) != 2:
@@ -849,6 +852,7 @@ host[1-10,12,15-20];otherhost[30]
         self.pack_combo_box(vbox2, 'Topology Type')
         self.pack_string_option(vbox2, 'Topology', attach_dialog)
         self.pack_string_option(vbox2, 'Communication Nodes', attach_dialog)
+        self.pack_check_button(vbox2, 'Check Node Access', False, False, 5)
         self.pack_combo_box(vbox2, 'CP Policy')
         self.pack_spinbutton(vbox2, 'Communication Processes per Node')
         frame.add(vbox2)
@@ -943,6 +947,8 @@ host[1-10,12,15-20];otherhost[30]
         self.options['CP Policy'] = self.types['CP Policy'][self.combo_boxes['CP Policy'].get_active()]
         self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
         self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
+        if self.options['Check Node Access'] == True:
+            os.environ['STAT_CHECK_NODE_ACCESS'] = '1'
         if self.STAT is None:
             self.STAT = STAT_FrontEnd()
         if launch is False and serial is False:

@@ -1,6 +1,6 @@
 # to build various documenation:
 
-set -x
+set -ex
 
 docbook2man stat_man.sgml -o ../../man
 docbook2man statgui_man.sgml -o ../../man
