@@ -156,7 +156,7 @@ int main(int argc, char **argv)
             return statError;
         }
     }
-    
+
     if (serialProcesses.size() > 0)
     {
         for (i = 0; i < serialProcesses.size(); i++)

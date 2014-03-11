@@ -2032,7 +2032,8 @@ class STATGraph(xdot.Graph):
     def _traverse_progress(self, node, least_or_most):
         """Generic implementation for traversal by progress."""
         node.hide = False
-        node.in_edge.hide = False
+        if node.in_edge != None:
+            node.in_edge.hide = False
         if node.out_edges is None or node.out_edges == []:
             return False
         if len(node.out_edges) == 0:
@@ -4399,9 +4400,6 @@ enterered as a regular expression.
 
 def STATview_main(argv):
     """The STATview main."""
-    if xdot.__version__ != '0.4':
-        sys.stderr.write('STATview requires xdot version 0.4')
-        sys.exit(1)
     global window
     window = STATDotWindow()
     if len(argv) >= 2:

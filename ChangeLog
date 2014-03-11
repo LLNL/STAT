@@ -1,3 +1,9 @@
+2014-03-11 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_mrnet.m4 : search for MRNet lib/*/include directories for *_config.h files
+
+2014-03-10 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/[xdot,STATview].py : Updating from xdot version 0.4 to 0.6
+
 2014-03-07 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : Allow setting of check node access
 
