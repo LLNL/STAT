@@ -367,7 +367,10 @@ STAT_FrontEnd::~STAT_FrontEnd()
     {
         Stream *fgfsStream = (Stream *)fgfsCommFabric_->getChannel();
         if (fgfsStream != NULL)
+        {
             delete fgfsStream;
+            fgfsStream = NULL;
+        }
         delete fgfsCommFabric_;
         fgfsCommFabric_ = NULL;
     }
@@ -2187,7 +2190,10 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         {
             if (size > (int)sqrt(nApplNodes_))
                 size = (int)sqrt(nApplNodes_);
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology %s: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs.\n", topology.c_str(), procsNeeded, communicationNodeSet_.size() * procsPerNode_, size);
+            if (size > 0)
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology %s: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs.\n", topology.c_str(), procsNeeded, communicationNodeSet_.size() * procsPerNode_, size);
+            else
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology %s: %d processes needed, %d processes specified.  Reverting to flat topology.  Next time, please specify more resources with --nodes and --procs.\n", topology.c_str(), procsNeeded, communicationNodeSet_.size() * procsPerNode_);
             snprintf(tmp, BUFSIZE, "%d", size);
             topology = tmp;
         }

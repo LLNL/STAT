@@ -28,6 +28,7 @@ class STATapp:
             self.proctab_file_path = out_dir + '/' + file_prefix + '.ptab'
             sample()
             detach()
+            del self.stat_fe
         except Exception as e:
             sys.stderr.write('launch %s failed: %s\n' %(repr(launch_args), e))
             self.terminate()
@@ -121,8 +122,8 @@ def run_tests(test_suites, launcher, launcher_args):
             sys.stdout.write('\t%s\n' %failure)
     else:
         sys.stdout.write('\nAll %d tests passed!\n\n' %(count))
-
-    sys.exit(0)
+    
+    return True
 
 if __name__ == "__main__":
 
@@ -136,18 +137,19 @@ if __name__ == "__main__":
     version = intArray(3)
     install_prefix = temp_fe.getInstallPrefix()
     temp_fe.getVersion(version)
+    del temp_fe
     sys.stdout.write("STAT version %d.%d.%d installed in %s\n" %(version[0], version[1], version[2], install_prefix))
 
     test_suites = []
-    exe = '%s/share/STAT/examples/bin/hw' %(temp_fe.getInstallPrefix())
+    exe = '%s/share/STAT/examples/bin/hw' %(install_prefix)
     tests = []
     test_suites.append((exe, tests))
 
-    exe = '%s/share/STAT/examples/bin/rank_test' %(temp_fe.getInstallPrefix())
+    exe = '%s/share/STAT/examples/bin/rank_test' %(install_prefix)
     tests = []
     test_suites.append((exe, tests))
 
-    exe = '%s/share/STAT/examples/bin/mpi_ringtopo' %(temp_fe.getInstallPrefix())
+    exe = '%s/share/STAT/examples/bin/mpi_ringtopo' %(install_prefix)
     tests = []
 
     test_name = 'serial attach %s' %(os.path.basename(exe))

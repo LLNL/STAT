@@ -1,6 +1,7 @@
 #!/bin/sh
 # @configure_input@
 export prefix=@prefix@
+export exec_prefix=@exec_prefix@
 
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
