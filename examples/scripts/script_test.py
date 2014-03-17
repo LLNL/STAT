@@ -10,6 +10,8 @@ from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_B
 from STAT import attach, launch, serial_attach, sample, detach, pause, resume, get_stat_fe, STATerror
 from STAThelper import ProcTab, get_proctab
 
+test_name = ''
+
 class STATapp:
     def __init__(self, launcher, exe, launcher_args = [], exe_args = []):
         self.launcher = launcher
@@ -18,6 +20,7 @@ class STATapp:
         self.exe_args = exe_args
 
     def launch(self):
+        global test_name
         launch_args = [self.launcher] + self.launcher_args + [self.exe] + self.exe_args
         try:
             launch(launch_args)
@@ -26,7 +29,7 @@ class STATapp:
             out_dir = self.stat_fe.getOutDir()
             file_prefix = self.stat_fe.getFilePrefix()
             self.proctab_file_path = out_dir + '/' + file_prefix + '.ptab'
-            sample()
+            sample(alt_dot_filename = test_name.replace(' ', '_'))
             detach()
             del self.stat_fe
         except Exception as e:
@@ -50,6 +53,7 @@ class STATtest:
         self.sleep_time = sleep_time
 
     def run(self):
+        global test_name
         attached = False
         try:
             attach_args, attach_kw_args, attach_function = self.attach_options
@@ -68,6 +72,7 @@ class STATtest:
             attached = True
             resume()
             for kw_args in self.sample_options_list:
+                kw_args['alt_dot_filename'] = test_name.replace(' ', '_')
                 ret = apply(sample, (), kw_args)
             detach()
         except Exception as e:
@@ -80,6 +85,7 @@ class STATtest:
         return True
 
 def run_tests(test_suites, launcher, launcher_args):
+    global test_name
     failed_list = []
     count = 0
     for exe, tests in test_suites:

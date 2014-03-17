@@ -323,16 +323,22 @@ def launch(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_l
 #  \return true on successful stack sampling
 #
 #  \n
-def sample(sample_type = STAT_SAMPLE_FUNCTION_ONLY, num_traces = 1, trace_frequency = 100, num_retries = 5, retry_frequency = 100, var_spec = 'NULL'):
+def sample(sample_type = STAT_SAMPLE_FUNCTION_ONLY, num_traces = 1, trace_frequency = 100, num_retries = 5, retry_frequency = 100, var_spec = 'NULL', alt_dot_filename = ''):
     global stat_fe
     try:
         stat_error = stat_fe.sampleStackTraces(sample_type, num_traces, trace_frequency, num_retries, retry_frequency, True, var_spec)
         if stat_error != STAT_OK:
             raise STATerror('sample failed', stat_fe.getLastErrorMessage())
         if (num_traces == 1):
-            stat_error = stat_fe.gatherLastTrace(True)
+            if alt_dot_filename != '':
+                stat_error = stat_fe.gatherLastTrace(True, alt_dot_filename)
+            else:
+                stat_error = stat_fe.gatherLastTrace(True)
         else:
-            stat_error = stat_fe.gatherTraces(True)
+            if alt_dot_filename != '':
+                stat_error = stat_fe.gatherTraces(True, alt_dot_filename)
+            else:
+                stat_error = stat_fe.gatherTraces(True)
         if stat_error != STAT_OK:
             raise STATerror('gather failed', stat_fe.getLastErrorMessage())
         filename = stat_fe.getLastDotFilename()
