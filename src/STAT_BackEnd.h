@@ -244,9 +244,10 @@ class STAT_BackEnd
             \param logType - the level of logging
             \param logOutDir - the output log directory
             \param mrnetOutputLevel - [optional] the MRNet logging output level
+            \param withPid - [optional] whether to append the PID to the log file name
             \return STAT_OK on success
         */
-        StatError_t startLog(unsigned int logType, char *logOutDir, int mrnetOutputLevel = 1);
+        StatError_t startLog(unsigned int logType, char *logOutDir, int mrnetOutputLevel = 1, bool withPid = false);
 
         //! Dump the Stackwalker debug buffer to the log file
         void swDebugBufferToFile();

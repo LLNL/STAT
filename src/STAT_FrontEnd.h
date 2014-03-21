@@ -376,9 +376,10 @@ class STAT_FrontEnd
         /*!
             \param logType - the level of logging
             \param logOutDir - the output directory for the log files
+            \param withPid - [optional] whether to append the PID to the log file name
             \return STAT_OK on success
         */
-        StatError_t startLog(unsigned int logType, char *logOutDir);
+        StatError_t startLog(unsigned int logType, char *logOutDir, bool withPid = false);
 
         //! Receive an acknowledgement from the daemons
         /*!

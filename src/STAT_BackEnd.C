@@ -2460,7 +2460,7 @@ int unpackStatBeInfo(void *buf, int bufLen, void *data)
 }
 
 
-StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mrnetOutputLevel)
+StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mrnetOutputLevel, bool withPid)
 {
     char fileName[BUFSIZE];
 
@@ -2469,7 +2469,13 @@ StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mr
 
     if (logType_ & STAT_LOG_BE || logType_ & STAT_LOG_SW)
     {
-        snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir, localHostName_);
+        if (withPid == true)
+        {
+            pid_t myPid = getpid();
+            snprintf(fileName, BUFSIZE, "%s/%s.STATD.%d.log", logOutDir, localHostName_, myPid);
+        }
+        else
+            snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir, localHostName_);
         gStatOutFp = fopen(fileName, "w");
         if (gStatOutFp == NULL)
         {

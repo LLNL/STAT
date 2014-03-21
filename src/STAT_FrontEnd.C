@@ -1513,7 +1513,7 @@ StatError_t STAT_FrontEnd::dumpProctab()
     return STAT_OK;
 }
 
-StatError_t STAT_FrontEnd::startLog(unsigned int logType, char *logOutDir)
+StatError_t STAT_FrontEnd::startLog(unsigned int logType, char *logOutDir, bool withPid)
 {
     int intRet;
     char fileName[BUFSIZE];
@@ -1531,7 +1531,13 @@ StatError_t STAT_FrontEnd::startLog(unsigned int logType, char *logOutDir)
     /* If we're logging the FE, open the log file */
     if (logging_ & STAT_LOG_FE)
     {
-        snprintf(fileName, BUFSIZE, "%s/%s.STAT.log", logOutDir_, hostname_);
+        if (withPid == true)
+        {
+            pid_t myPid = getpid();
+            snprintf(fileName, BUFSIZE, "%s/%s.STATD.%d.log", logOutDir_, hostname_, myPid);
+        }
+        else
+            snprintf(fileName, BUFSIZE, "%s/%s.STAT.log", logOutDir_, hostname_);
         gStatOutFp = fopen(fileName, "w");
         if (gStatOutFp == NULL)
         {

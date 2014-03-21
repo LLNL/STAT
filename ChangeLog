@@ -1,3 +1,8 @@
+2014-03-21 Gregory L. Lee <lee218@llnl.gov>
+	* : allow appending of PID to log filename
+	* src/STATBenchD.C : perform argument parsing
+	* src/STATBenchD.C : allow debug logs to be generated
+
 2014-03-11 Gregory L. Lee <lee218@llnl.gov>
 	* config/x_ac_mrnet.m4 : search for MRNet lib/*/include directories for *_config.h files
 
