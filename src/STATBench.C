@@ -1,4 +1,11 @@
 /*
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
+Produced at the Lawrence Livermore National Laboratory
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
+LLNL-CODE-624152.
+All rights reserved.
+
+This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAt.html. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -8,7 +15,6 @@ Redistribution and use in source and binary forms, with or without modification,
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 
 
 /*********************************************************
@@ -65,6 +71,7 @@ int main(int argc, char **argv)
     if (statBenchArgs == NULL)
     {
         statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to calloc statBenchArgs\n");
+        free(statBenchArgs);
         return -1;
     }
     statBenchArgs->sampleType = 0;
@@ -82,6 +89,7 @@ int main(int argc, char **argv)
     if (statError != STAT_OK)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to parse arguments\n");
+        free(statBenchArgs);
         return -1;
     }
 
@@ -120,6 +128,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
         statFrontEnd->shutDown();
         delete statFrontEnd;
+        free(statBenchArgs);
         return -1;
     }
 
@@ -130,6 +139,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
         statFrontEnd->shutDown();
         delete statFrontEnd;
+        free(statBenchArgs);
         return -1;
     }
 
@@ -138,6 +148,7 @@ int main(int argc, char **argv)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup connected MRNet tree\n");
         delete statFrontEnd;
+        free(statBenchArgs);
         return -1;
     }
 
@@ -147,6 +158,7 @@ int main(int argc, char **argv)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to generate stack traces\n");
         statFrontEnd->shutDown();
+        free(statBenchArgs);
         return -1;
     }
 
@@ -159,6 +171,7 @@ int main(int argc, char **argv)
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
             statFrontEnd->shutDown();
             delete statFrontEnd;
+            free(statBenchArgs);
             return -1;
         }
     }
@@ -172,6 +185,7 @@ int main(int argc, char **argv)
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
             statFrontEnd->shutDown();
             delete statFrontEnd;
+            free(statBenchArgs);
             return -1;
         }
     }
@@ -180,6 +194,8 @@ int main(int argc, char **argv)
     printf("\nResults written to %s\n\n", statFrontEnd->getOutDir());
 
     delete statFrontEnd;
+    if (statBenchArgs != NULL)
+        free(statBenchArgs);
 
     return 0;
 }
@@ -229,7 +245,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
 {
     int i, opt, optionIndex = 0;
     unsigned int logType = 0;
-    char *logOutDir = NULL;
+    char logOutDir[BUFSIZE];
     StatError_t statError;
     struct option longOptions[] =
     {
@@ -259,6 +275,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         {0,                 0,                  0, 0}
     };
 
+    snprintf(logOutDir, BUFSIZE, "NULL");
     statBenchArgs->topologyType = STAT_TOPOLOGY_DEPTH;
     snprintf(statBenchArgs->topologySpecification, BUFSIZE, "0");
 
@@ -339,23 +356,14 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
                 logType |= STAT_LOG_BE;
             else if (strcmp(optarg, "CP") == 0)
                 logType |= STAT_LOG_CP;
-            else if (strcmp(optarg, "SW") == 0)
-                logType |= STAT_LOG_SW;
-            else if (strcmp(optarg, "SWERR") == 0)
-                logType |= STAT_LOG_SWERR;
             else
             {
-                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or ALL, you entered %s\n", optarg);
+                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or CP, you entered %s\n", optarg);
                 return STAT_ARG_ERROR;
             }
             break;
         case 'L':
-            logOutDir = strdup(optarg);
-            if (logOutDir == NULL)
-            {
-                statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
-                return STAT_ALLOCATE_ERROR;
-            }
+            snprintf(logOutDir, BUFSIZE, "%s", optarg);
             break;
         case 'M':
             logType |= STAT_LOG_MRN;
@@ -388,7 +396,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         }; /* switch */
     } /* while(1) */
 
-    if (logOutDir != NULL && logType != 0)
+    if (strcmp(logOutDir, "NULL") != 0 && logType != 0)
     {
         statError = statFrontEnd->startLog(logType, logOutDir);
         if (statError != STAT_OK)
@@ -402,6 +410,16 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         statFrontEnd->addLauncherArgv("srun");
     statFrontEnd->addLauncherArgv(statFrontEnd->getToolDaemonExe());
     statFrontEnd->addLauncherArgv("--STATBench");
+    if (logType & STAT_LOG_BE)
+    {
+        if (strcmp(logOutDir, "NULL") != 0)
+        {
+            statFrontEnd->addLauncherArgv("-L");
+            statFrontEnd->addLauncherArgv(logOutDir);
+        }
+        statFrontEnd->addLauncherArgv("-l");
+        statFrontEnd->addLauncherArgv("BE");
+    }
 
     return STAT_OK;
 }

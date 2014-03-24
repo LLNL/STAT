@@ -1,4 +1,33 @@
-2013-10-25 Gregory L. Lee <lee218@llnl.gov>
+2014-03-24 Gregory L. Lee <lee218@llnl.gov>
+	* : code cleanup + updated copyright date
+
+2014-03-21 Gregory L. Lee <lee218@llnl.gov>
+	* : allow appending of PID to log filename
+	* src/STATBenchD.C : perform argument parsing
+	* src/STATBenchD.C : allow debug logs to be generated
+
+2014-03-11 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_mrnet.m4 : search for MRNet lib/*/include directories for *_config.h files
+
+2014-03-10 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/[xdot,STATview].py : Updating from xdot version 0.4 to 0.6
+
+2014-03-07 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : Allow setting of check node access
+
+2014-03-06 Gregory L. Lee <lee218@llnl.gov>
+	* etc/* : distribute with and install preference file templates
+
+2014-03-05 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : unblock all signals (alleviate detach hang on Cray)
+
+2014-02-24 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : fixed ranks filter specification for node search
+	* scripts/xdot.py : fixed float to int conversion
+	* src/STAT_FrontEnd.C : fixed minor topology generation bug with empty hostname
+	* : fixed memory leaks identified by Inspector and SSA
+
+2013-12-09 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT.C : print invocation time to terminal
 	* src/STAT_FrontEnd.C : add invocation time to .perf file
 

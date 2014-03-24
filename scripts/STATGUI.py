@@ -3,7 +3,7 @@
 """@package STATGUI
 A GUI for driving the Stack Trace Analysis Tool."""
 
-__copyright__ = """Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -20,7 +20,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 import STAThelper
 from STAThelper import var_spec_to_string, get_task_list, get_proctab, decompose_node
@@ -98,6 +98,7 @@ class STATGUI(STATDotWindow):
                    'Serial Process List':              '',
                    'Topology Type':                    'automatic',
                    'Topology':                         '1',
+                   'Check Node Access':                False,
                    'CP Policy':                        'share app nodes',
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
@@ -133,6 +134,8 @@ class STATGUI(STATDotWindow):
             self.options = {}
         for option in options:
             self.options[option] = options[option]
+        if 'STAT_CHECK_NODE_ACCESS' in os.environ:
+            self.options['Check Node Access'] = True
         if 'STAT_LMON_DEBUG_BES' in os.environ:
             self.options['Debug Backends'] = True
         else:
@@ -146,7 +149,7 @@ class STATGUI(STATDotWindow):
                 try:
                     with open(path, 'r') as f:
                         for line in f:
-                            if line[0] == '#':
+                            if line[0] == '#' or line.strip() == '':
                                 continue
                             split_line = line.split('=')
                             if len(split_line) != 2:
@@ -453,7 +456,7 @@ host[1-10,12,15-20];otherhost[30]
                 proctab_frame.remove(self.ptab_sw)
         except:
             pass
-        rank_filter = get_task_list(self.options['Filter Ranks'])
+        rank_filter = get_task_list('[%s]' %self.options['Filter Ranks'])
         host_filter = []
         temp_host_list = self.options['Filter Hosts'].replace(' ', '').split(';')
         for host in temp_host_list:
@@ -849,6 +852,7 @@ host[1-10,12,15-20];otherhost[30]
         self.pack_combo_box(vbox2, 'Topology Type')
         self.pack_string_option(vbox2, 'Topology', attach_dialog)
         self.pack_string_option(vbox2, 'Communication Nodes', attach_dialog)
+        self.pack_check_button(vbox2, 'Check Node Access', False, False, 5)
         self.pack_combo_box(vbox2, 'CP Policy')
         self.pack_spinbutton(vbox2, 'Communication Processes per Node')
         frame.add(vbox2)
@@ -943,6 +947,8 @@ host[1-10,12,15-20];otherhost[30]
         self.options['CP Policy'] = self.types['CP Policy'][self.combo_boxes['CP Policy'].get_active()]
         self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
         self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
+        if self.options['Check Node Access'] == True:
+            os.environ['STAT_CHECK_NODE_ACCESS'] = '1'
         if self.STAT is None:
             self.STAT = STAT_FrontEnd()
         if launch is False and serial is False:
@@ -1083,8 +1089,6 @@ host[1-10,12,15-20];otherhost[30]
         if self.attached is False:
             self.STAT = None
             self.reattach = False
-            self.proctab_file_path = None
-            self.proctab = None
             return True
         self.var_spec = []
         self.show_all()
@@ -1615,6 +1619,8 @@ host[1-10,12,15-20];otherhost[30]
     def set_proctab(self):
         if self.proctab_file_path is not None and self.proctab is not None:
             return True
+        if self.STAT is None:
+            return False
 
         self.proctab_file_path = ''
         out_dir = self.STAT.getOutDir()
@@ -1644,6 +1650,9 @@ host[1-10,12,15-20];otherhost[30]
 
     def launch_debugger_cb(self, widget, args):
         """Callback to launch full-featured debugger on a subset of tasks."""
+        if self.attached is False:
+            show_error_dialog('Subset attach is only available when STAT is attached to the application.  Please (re)attach to the application.', self)
+            return False
         debugger, eq_dialog = args
         subset_list = []
         for item in self.eq_state['classes']:

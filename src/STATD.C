@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -20,6 +20,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "config.h"
 #include "STAT_BackEnd.h"
 
+using namespace std;
 
 //! The daemon main
 /*!
@@ -155,7 +156,7 @@ int main(int argc, char **argv)
             return statError;
         }
     }
-    
+
     if (serialProcesses.size() > 0)
     {
         for (i = 0; i < serialProcesses.size(); i++)

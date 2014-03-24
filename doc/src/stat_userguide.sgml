@@ -18,6 +18,7 @@
 <!ENTITY statgui_description SYSTEM "statgui_description.sgml">
 <!ENTITY statgui_toolbar SYSTEM "statgui_toolbar.sgml">
 <!ENTITY statgui_sample_options SYSTEM "statgui_sample_options.sgml">
+<!ENTITY statgui_proc_tab SYSTEM "statgui_proc_tab.sgml">
 <!ENTITY statgui_eq_class SYSTEM "statgui_eq_class.sgml">
 <!ENTITY stat_llnl_availability SYSTEM "stat_llnl_availability.sgml">
 <!ENTITY statbench_options SYSTEM "statbench_options.sgml">
@@ -95,6 +96,7 @@
     <section><title>Description</title>&statgui_description</section>
     <section><title>The stat-gui GUI Toolbar</title>&statgui_toolbar</section>
     <section><title>Sample Options</title>&statgui_sample_options</section>
+    <section><title>Process Table</title>&statgui_proc_tab</section>
     <section><title>Equivalence Classes and Subset Debugging</title>&statgui_eq_class</section>
     <![%llnluserguide[<section><title>Availability</title>&stat_llnl_availability</section>]]>
 </chapter>

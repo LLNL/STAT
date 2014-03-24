@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -376,9 +376,10 @@ class STAT_FrontEnd
         /*!
             \param logType - the level of logging
             \param logOutDir - the output directory for the log files
+            \param withPid - [optional] whether to append the PID to the log file name
             \return STAT_OK on success
         */
-        StatError_t startLog(unsigned int logType, char *logOutDir);
+        StatError_t startLog(unsigned int logType, char *logOutDir, bool withPid = false);
 
         //! Receive an acknowledgement from the daemons
         /*!
@@ -936,6 +937,7 @@ class STAT_FrontEnd
 #ifdef STAT_FGFS
         char *fgfsFilterPath_;                              /*!< the path to the FGFS filter shared object */
         FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_;
+        MRN::Stream *fileRequestStream_;
 #endif
 };
 

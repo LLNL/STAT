@@ -127,7 +127,7 @@ _STATmerge_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(_STATmerge_la_LDFLAGS) $(LDFLAGS) -o $@
 _tomod_la_LIBADD =
-am___tomod_la_SOURCES_DIST = to_wrap.C to.C to.i
+am___tomod_la_SOURCES_DIST = to_wrap.C to.C to.h to.i
 @ENABLE_TO_TRUE@am__tomod_la_OBJECTS = _tomod_la-to_wrap.lo \
 @ENABLE_TO_TRUE@	_tomod_la-to.lo $(am__objects_2)
 _tomod_la_OBJECTS = $(am__tomod_la_OBJECTS)
@@ -415,7 +415,7 @@ python_PYTHON = $(am__append_6) $(am__append_8)
 @ENABLE_GUI_TRUE@_STAT_la_LDFLAGS = -module -avoid-version
 @ENABLE_GUI_TRUE@_STAT_la_LIBADD = libstatfe.la @FELIBS@
 @ENABLE_TO_TRUE@TO_SWIG_SOURCES = to.i
-@ENABLE_TO_TRUE@_tomod_la_SOURCES = to_wrap.C to.C $(TO_SWIG_SOURCES)
+@ENABLE_TO_TRUE@_tomod_la_SOURCES = to_wrap.C to.C to.h $(TO_SWIG_SOURCES)
 @ENABLE_TO_TRUE@_tomod_la_CPPFLAGS = -I./ $(BOOST_INCLUDE) $(ROSE_INCLUDE) $(TOAPI_INCLUDE)
 @ENABLE_TO_TRUE@_tomod_la_LDFLAGS = -module -avoid-version -L$(LIBBOOSTDIR) -L$(LIBJAVADIR) -L$(LIBROSEDIR) -L$(LIBTOAPIDIR) $(LIBTOAPI) -Wl,-rpath=$(LIBBOOSTDIR) -Wl,-rpath=$(LIBROSEDIR) -Wl,-rpath=$(LIBTOAPIDIR) -Wl,-rpath=$(LIBJAVADIR)
 all: all-am
@@ -972,8 +972,14 @@ uninstall-am: uninstall-binPROGRAMS uninstall-includeHEADERS \
 @ENABLE_GUI_TRUE@STAT_wrap.C:$(GUI_SWIG_SOURCES) Makefile
 @ENABLE_GUI_TRUE@	$(SWIG) -c++ -python -o $@ $<
 
+@ENABLE_GUI_TRUE@STAT.py:$(GUI_SWIG_SOURCES) Makefile
+@ENABLE_GUI_TRUE@	$(MAKE) $(AM_MAKEFLAGS STAT_wrap.C
+
 @ENABLE_TO_TRUE@to_wrap.C:$(TO_SWIG_SOURCES) Makefile
 @ENABLE_TO_TRUE@	$(SWIG) -c++ -python -o $@ $<
+
+@ENABLE_TO_TRUE@tomod.py:$(TO_SWIG_SOURCES) Makefile
+@ENABLE_TO_TRUE@	$(MAKE) $(AM_MAKEFLAGS to_wrap.C
 
 clean-local:
 	-rm -rf STAT_wrap.C STAT.py to_wrap.C tomod.py

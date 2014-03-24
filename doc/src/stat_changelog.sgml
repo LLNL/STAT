@@ -1,4 +1,45 @@
 <section>
+  <title>STAT version 2.1</title>
+  <para>
+    <itemizedlist>
+      <listitem><para>
+        Added prototype DysectAPI
+      </para></listitem>
+      <listitem><para>
+        Added prototype temporal ordering capability
+      </para></listitem>
+      <listitem><para>
+        Improved Python wrapping, including new python-script command and a Python-based test script to run through STAT functionality
+      </para></listitem>
+      <listitem><para>
+        Modified cut/hide interface to allow for user-defined programming models
+      </para></listitem>
+      <listitem><para>
+        Modified dot file naming convention for easier sequencing.  Also allow specification of dot filename on gather.
+      </para></listitem>
+      <listitem><para>
+        New process table interface (via File->Properties)
+      </para></listitem>
+      <listitem><para>
+        Added CP location policy
+      </para></listitem>
+      <listitem><para>
+        Improved BG/Q support, including use of StackWalker timeouts.
+      </para></listitem>
+      <listitem><para>
+        Improved FGFS support, including adding BG/Q support and re-enabling MRNet failure recovery when FGFS is in use
+      </para></listitem>
+      <listitem><para>
+        Better labeling of error tasks in stack traces
+      </para></listitem>
+      <listitem><para>
+        As always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
+      </para></listitem>
+    </itemizedlist>
+  </para>
+</section>
+
+<section>
   <title>STAT version 2.0</title>
   <para>
     <itemizedlist>

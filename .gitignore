@@ -58,6 +58,10 @@ src/STATD
 src/STATbin
 src/ssa_be_link.sh
 src/ssa_fe_link.sh
+src/STAT.py
+src/STAT_wrap.C
+src/to_wrap.C
+src/tomod.py
 stamp-h1
 stat_results
 TODO

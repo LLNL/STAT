@@ -13,6 +13,11 @@ AC_DEFUN([X_AC_MRNET], [
       MRNETPREFIX=""
     ]
   )
+  mrn_incs=`ls -d $MRNETPREFIX/lib/*/include` 
+  for mrn_inc in $mrn_incs
+  do
+    CXXFLAGS="-I$mrn_inc $CXXFLAGS"
+  done
   AC_CHECK_HEADER(mrnet/MRNet.h,
     [],
     [AC_MSG_ERROR([mrnet/MRNet.h is required.  Specify mrnet prefix with --with-mrnet])],

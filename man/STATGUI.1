@@ -12,13 +12,13 @@ stat-gui is a GUI that drives STAT, the Stack Trace Analysis Tool, and allows yo
 In addition to the operations provided by stat-view, stat-gui provides a toolbar to control STAT's operation.
 .TP
 \fBAttach\fR
-Attach to your parallel application and gather an initial sample. 
+Attach to your application and gather an initial sample. 
 .TP
 \fBReAttach\fR
-Reattach to the previous parallel application and gather an initial sample.
+Reattach to the parallel application and gather an initial sample.
 .TP
 \fBDetach\fR
-Detach from your parallel application.
+Detach from your application.
 .TP
 \fBPause\fR
 Put the application in a stopped state.
@@ -27,10 +27,10 @@ Put the application in a stopped state.
 Set the application running.
 .TP
 \fBSample\fR
-Gather and merge a single stack trace from each task in your parallel application. The application is left in a stopped state upon sampling.
+Gather and merge a single stack trace from each task in your parallel application. The application is left in a stopped state after sampling.
 .TP
 \fBSample Multiple\fR
-Gather and merge multiple stack traces from each task in your parallel application over time. The application is left in a stopped state upon sampling.
+Gather and merge multiple stack traces from each task in your parallel application over time. The application is left in a stopped state after sampling.
 .PP
 stat-gui can also serve as an interface to attach a full-featured debugger such as TotalView or DDT to a subset of application tasks. This interface can be accessed through the "identify equivalence classes" \fBEq C\fR button, which will pop up the equivalence classes window . You can then select a single representative, all, or none of an equivalence classes' tasks to form a subset of tasks. The \fBAttach to Subset\fR buttons will launch the specified debugger and attach to the subset of tasks (note, this detaches STAT from the application). The \fBDebugger Options\fR button allows you to modify the debugger path.
 .PP
@@ -40,7 +40,7 @@ stat-gui can also serve as an interface to attach a full-featured debugger such 
 <lee218@llnl.gov>
 .SH "COPYRIGHT"
 .PP
-Copyright 2007-2013 Lawrence Livermore National Laboratory
+Copyright 2007-2014 Lawrence Livermore National Laboratory
 .PP
 This is free software; see the source for copying conditions. There is NO warranty; not even for MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 .SH "SEE ALSO"

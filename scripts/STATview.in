@@ -2,11 +2,12 @@
 # @configure_input@
 export prefix=@prefix@
 export exec_prefix=@exec_prefix@
-export PATH=$PATH:@DOTBINDIR@
-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
 fi
+
+export PATH=$PATH:@DOTBINDIR@
+export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 
 exec @STATPYTHON@ @pythondir@/STATview.py $@
