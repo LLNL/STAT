@@ -1,4 +1,11 @@
 /*
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
+Produced at the Lawrence Livermore National Laboratory
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
+LLNL-CODE-624152.
+All rights reserved.
+
+This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAt.html. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -8,7 +15,6 @@ Redistribution and use in source and binary forms, with or without modification,
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-
 
 
 /*********************************************************
@@ -37,7 +43,7 @@ typedef struct
     int nEqClasses;                         /*!< the number of equivalence classes */
     char topologySpecification[BUFSIZE];    /*!< the topology specification */
     char *nodeList;                         /*!< the list of nodes for CPs */
-    bool shareAppNodes;                     /*!< whether to use the application nodes to run communication processes */
+    StatCpPolicy_t cpPolicy;                /*!< whether to use the application nodes to run communication processes */
     unsigned int sampleType;                /*!< the sample level of detail */
     StatTopology_t topologyType;            /*!< the topology specification type */
 } StatBenchArgs_t;
@@ -65,6 +71,7 @@ int main(int argc, char **argv)
     if (statBenchArgs == NULL)
     {
         statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to calloc statBenchArgs\n");
+        free(statBenchArgs);
         return -1;
     }
     statBenchArgs->sampleType = 0;
@@ -82,6 +89,7 @@ int main(int argc, char **argv)
     if (statError != STAT_OK)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to parse arguments\n");
+        free(statBenchArgs);
         return -1;
     }
 
@@ -120,16 +128,18 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
         statFrontEnd->shutDown();
         delete statFrontEnd;
+        free(statBenchArgs);
         return -1;
     }
 
     /* Launch the MRNet Tree */
-    statError = statFrontEnd->launchMrnetTree(statBenchArgs->topologyType, statBenchArgs->topologySpecification, statBenchArgs->nodeList, true, statBenchArgs->shareAppNodes);
+    statError = statFrontEnd->launchMrnetTree(statBenchArgs->topologyType, statBenchArgs->topologySpecification, statBenchArgs->nodeList, true, statBenchArgs->cpPolicy);
     if (statError != STAT_OK)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to launch MRNet tree()\n");
         statFrontEnd->shutDown();
         delete statFrontEnd;
+        free(statBenchArgs);
         return -1;
     }
 
@@ -138,6 +148,7 @@ int main(int argc, char **argv)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup connected MRNet tree\n");
         delete statFrontEnd;
+        free(statBenchArgs);
         return -1;
     }
 
@@ -147,6 +158,7 @@ int main(int argc, char **argv)
     {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to generate stack traces\n");
         statFrontEnd->shutDown();
+        free(statBenchArgs);
         return -1;
     }
 
@@ -159,6 +171,7 @@ int main(int argc, char **argv)
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
             statFrontEnd->shutDown();
             delete statFrontEnd;
+            free(statBenchArgs);
             return -1;
         }
     }
@@ -172,6 +185,7 @@ int main(int argc, char **argv)
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to gather stack traces\n");
             statFrontEnd->shutDown();
             delete statFrontEnd;
+            free(statBenchArgs);
             return -1;
         }
     }
@@ -180,6 +194,8 @@ int main(int argc, char **argv)
     printf("\nResults written to %s\n\n", statFrontEnd->getOutDir());
 
     delete statFrontEnd;
+    if (statBenchArgs != NULL)
+        free(statBenchArgs);
 
     return 0;
 }
@@ -204,8 +220,9 @@ void printUsage()
     fprintf(stderr, "  -f, --fanout <width>\t\tmaximum tree topology fanout\n");
     fprintf(stderr, "  -u, --usertopology <topology>\tspecify the number of communication nodes per\n\t\t\t\tlayer in the tree topology, separated by dashes\n");
     fprintf(stderr, "  -n, --nodes <nodelist>\tlist of nodes for communication processes\n");
-    fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication processes\n");
     fprintf(stderr, "\t\t\t\tExample node lists:\thost1\n\t\t\t\t\t\t\thost1,host2\n\t\t\t\t\t\t\thost[1,5-7,9]\n");
+    fprintf(stderr, "  -A, --appnodes\t\tuse the application nodes for communication\n\t\t\t\tprocesses\n");
+    fprintf(stderr, "  -x, --exclusive\t\tdo not use the FE or BE nodes for communication\n\t\t\t\tprocesses\n");
     fprintf(stderr, "  -p, --procs <processes>\tthe maximum number of communication processes\n\t\t\t\tper node\n");
     fprintf(stderr, "\nMiscellaneous options:\n");
     fprintf(stderr, "  -D, --daemon <path>\t\tthe full path to the STAT daemon\n");
@@ -228,7 +245,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
 {
     int i, opt, optionIndex = 0;
     unsigned int logType = 0;
-    char *logOutDir = NULL;
+    char logOutDir[BUFSIZE];
     StatError_t statError;
     struct option longOptions[] =
     {
@@ -237,6 +254,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         {"verbose",         no_argument,        0, 'v'},
         {"autotopo",        no_argument,        0, 'a'},
         {"appnodes",        no_argument,        0, 'A'},
+        {"exclusive",       no_argument,        0, 'x'},
         {"mrnetprintf",     no_argument,        0, 'M'},
         {"countrep",        no_argument,        0, 'U'},
         {"fanout",          required_argument,  0, 'f'},
@@ -257,12 +275,13 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         {0,                 0,                  0, 0}
     };
 
+    snprintf(logOutDir, BUFSIZE, "NULL");
     statBenchArgs->topologyType = STAT_TOPOLOGY_DEPTH;
     snprintf(statBenchArgs->topologySpecification, BUFSIZE, "0");
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVvaAMUf:n:p:t:m:b:e:D:F:l:L:u:d:N:i:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvaAxMUf:n:p:t:m:b:e:D:F:l:L:u:d:N:i:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         switch(opt)
@@ -294,7 +313,10 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
             }
             break;
         case 'A':
-            statBenchArgs->shareAppNodes = true;
+            statBenchArgs->cpPolicy = STAT_CP_SHAREAPPNODES;
+            break;
+        case 'x':
+            statBenchArgs->cpPolicy = STAT_CP_EXCLUSIVE;
             break;
         case 'p':
             statFrontEnd->setProcsPerNode(atoi(optarg));
@@ -334,23 +356,14 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
                 logType |= STAT_LOG_BE;
             else if (strcmp(optarg, "CP") == 0)
                 logType |= STAT_LOG_CP;
-            else if (strcmp(optarg, "SW") == 0)
-                logType |= STAT_LOG_SW;
-            else if (strcmp(optarg, "SWERR") == 0)
-                logType |= STAT_LOG_SWERR;
             else
             {
-                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or ALL, you entered %s\n", optarg);
+                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal FE, BE, or CP, you entered %s\n", optarg);
                 return STAT_ARG_ERROR;
             }
             break;
         case 'L':
-            logOutDir = strdup(optarg);
-            if (logOutDir == NULL)
-            {
-                statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) to logOutDir\n", strerror(errno), optarg);
-                return STAT_ALLOCATE_ERROR;
-            }
+            snprintf(logOutDir, BUFSIZE, "%s", optarg);
             break;
         case 'M':
             logType |= STAT_LOG_MRN;
@@ -383,7 +396,7 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         }; /* switch */
     } /* while(1) */
 
-    if (logOutDir != NULL && logType != 0)
+    if (strcmp(logOutDir, "NULL") != 0 && logType != 0)
     {
         statError = statFrontEnd->startLog(logType, logOutDir);
         if (statError != STAT_OK)
@@ -397,6 +410,16 @@ StatError_t parseArgs(StatBenchArgs_t *statBenchArgs, STAT_FrontEnd *statFrontEn
         statFrontEnd->addLauncherArgv("srun");
     statFrontEnd->addLauncherArgv(statFrontEnd->getToolDaemonExe());
     statFrontEnd->addLauncherArgv("--STATBench");
+    if (logType & STAT_LOG_BE)
+    {
+        if (strcmp(logOutDir, "NULL") != 0)
+        {
+            statFrontEnd->addLauncherArgv("-L");
+            statFrontEnd->addLauncherArgv(logOutDir);
+        }
+        statFrontEnd->addLauncherArgv("-l");
+        statFrontEnd->addLauncherArgv("BE");
+    }
 
     return STAT_OK;
 }

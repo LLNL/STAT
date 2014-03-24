@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -27,6 +27,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "AsyncFastGlobalFileStat.h"
 #include "MRNetSymbolReader.h"
 #include "walker.h"
+#include "Symtab.h"
 
 using namespace Dyninst;
 using namespace MRN;
@@ -44,76 +45,71 @@ do { \
 
 extern FILE *gStatOutFp;
 
-class Elf_X;
-
-#if defined(SW_VERSION_8_0_1)
-#define SW_USE_SEGMENTS
-typedef void* SymRegion;
-#else
-typedef void* SymSegment;
-#endif
-
 class MRNetSymbolReader :public Dyninst::SymReader
 {
- public:
-   std::string file_;
-   const char *buffer_;
-   unsigned long size_;
-   SymReader *symReaderHandle_;
-   int refCount_;
+    public:
+        std::string file_;
+        const char *buffer_;
+        unsigned long size_;
+        SymReader *symReaderHandle_;
+        int refCount_;
 
-   MRNetSymbolReader(std::string file,
-                     const char* buffer,
-                     unsigned long size,
-                     SymReader* symReaderHandle)
-                      : file_(file), buffer_(buffer), size_(size),
-                        symReaderHandle_(symReaderHandle) {}
-   virtual ~MRNetSymbolReader() {}
-   virtual Symbol_t getSymbolByName(std::string symname);
-   virtual Symbol_t getContainingSymbol(Dyninst::Offset offset);
-   virtual std::string getInterpreterName();
-   virtual unsigned getAddressWidth();
-   virtual unsigned numRegions();
-   virtual bool getRegion(unsigned num, SymRegion &reg);
-   virtual unsigned numSegments();
-   virtual bool getSegment(unsigned num, SymSegment &reg);
-   virtual Dyninst::Offset getSymbolOffset(const Symbol_t &sym);
-   virtual std::string getSymbolName(const Symbol_t &sym);
-   virtual std::string getDemangledName(const Symbol_t &sym);
-   virtual unsigned long getSymbolSize(const Symbol_t &sym);
-   virtual bool isValidSymbol(const Symbol_t &sym);
-   virtual Section_t getSectionByName(std::string name);
-   virtual Section_t getSectionByAddress(Dyninst::Address addr);
-   virtual Dyninst::Address getSectionAddress(Section_t sec);
-   virtual std::string getSectionName(Section_t sec);
-   virtual bool isValidSection(Section_t sec);
-   virtual void *getElfHandle();
-   virtual Dyninst::Offset imageOffset();
-   virtual Dyninst::Offset dataOffset();
+        MRNetSymbolReader(std::string file,
+                          const char* buffer,
+                          unsigned long size,
+                          SymReader* symReaderHandle)
+                           : file_(file), buffer_(buffer), size_(size),
+                             symReaderHandle_(symReaderHandle) {}
+        virtual ~MRNetSymbolReader() {}
+        virtual Symbol_t getSymbolByName(std::string symname);
+        virtual Symbol_t getContainingSymbol(Dyninst::Offset offset);
+        virtual std::string getInterpreterName();
+        virtual unsigned getAddressWidth();
+#ifdef SW_VERSION_8_1_0
+        virtual unsigned numSegments();
+        virtual bool getSegment(unsigned num, SymSegment &reg);
+        virtual Dyninst::Offset getSymbolTOC(const Symbol_t &sym);
+#else
+        virtual unsigned numRegions();
+        virtual bool getRegion(unsigned num, SymRegion &reg);
+#endif
+        virtual Dyninst::Offset getSymbolOffset(const Symbol_t &sym);
+        virtual std::string getSymbolName(const Symbol_t &sym);
+        virtual std::string getDemangledName(const Symbol_t &sym);
+        virtual unsigned long getSymbolSize(const Symbol_t &sym);
+        virtual bool isValidSymbol(const Symbol_t &sym);
+        virtual Section_t getSectionByName(std::string name);
+        virtual Section_t getSectionByAddress(Dyninst::Address addr);
+        virtual Dyninst::Address getSectionAddress(Section_t sec);
+        virtual std::string getSectionName(Section_t sec);
+        virtual bool isValidSection(Section_t sec);
+        virtual void *getElfHandle();
+        virtual Dyninst::Offset imageOffset();
+        virtual Dyninst::Offset dataOffset();
 };
 
 class MRNetSymbolReaderFactory : public Dyninst::SymbolReaderFactory
 {
-
-   SymbolReaderFactory *symbolReaderFactoryHandle_;
-   Network *network_;
-   Stream *stream_;
-   std::map<std::string, MRNetSymbolReader *> openReaders_;
-   std::string perfFile_;
-   virtual MRNetSymbolReader *openSymReader(const char *bufferm,
-                                            unsigned long size,
-                                            std::string pathName="");
-
- public:
-   MRNetSymbolReaderFactory(SymbolReaderFactory *symbolReaderFactoryHandle,
+    public:
+        MRNetSymbolReaderFactory(SymbolReaderFactory *symbolReaderFactoryHandle,
                             Network *network,
                             Stream *stream)
                              : symbolReaderFactoryHandle_(symbolReaderFactoryHandle),
                                network_(network), stream_(stream) {}
-   virtual ~MRNetSymbolReaderFactory() {}
-   virtual SymReader *openSymbolReader(std::string pathName);
-   virtual SymReader *openSymbolReader(const char *buffer, unsigned long size);
-   virtual bool closeSymbolReader(SymReader *sr);
+        virtual ~MRNetSymbolReaderFactory() {}
+        virtual SymReader *openSymbolReader(std::string pathName);
+        virtual SymReader *openSymbolReader(const char *buffer, unsigned long size);
+        virtual bool closeSymbolReader(SymReader *sr);
+
+    private:
+        SymbolReaderFactory *symbolReaderFactoryHandle_;
+        Network *network_;
+        Stream *stream_;
+        std::map<std::string, MRNetSymbolReader *> openReaders_;
+        std::string perfFile_;
+        virtual MRNetSymbolReader *openSymReader(const char *bufferm,
+                                                 unsigned long size,
+                                                 std::string pathName="");
 };
 
 SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
@@ -128,16 +124,6 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
     PacketPtr packet;
     MRNetSymbolReader *msr;
     std::map<std::string, MRNetSymbolReader* >::iterator iter;
-
-////GLL comment: This is a temp feature to look for a copy in /tmp RAM disk first
-//std::string fileBaseName = basename(pathName.c_str());
-//std::string tmpFilePath = "/tmp/" + fileBaseName;
-//struct stat fileStat;
-//if (stat(tmpFilePath.c_str(), &fileStat) == 0)
-//{
-//fprintf(stderr, "%s %s\n", pathName.c_str(), tmpFilePath.c_str());
-//pathName = tmpFilePath;
-//}
 
     mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader", gStatOutFp,
             "Interposed lib functions called openSymbolReader(%s)\n",
@@ -170,12 +156,11 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                 return NULL;
             }
 
-            //ret = network_->recv(&tag, packet, &stream_);
             ret = stream_->recv(&tag, packet);
             if (ret != 1)
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        gStatOutFp, "BE: network::recv() failure\n"));
+                        gStatOutFp, "BE: stream::recv() failure\n"));
                 return NULL;
             }
 
@@ -226,42 +211,30 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                 fclose(fp);
                 return NULL;
             }
+            fileContentsLength = size;
             fseek(fp, 0, SEEK_SET);
             fileContents = (char *)malloc(size * sizeof(char));
             if (fileContents == NULL)
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
                         gStatOutFp, "Malloc returned NULL for %s\n", pathStr));
-                free(fileContents);
                 fclose(fp);
                 return NULL;
             }
             fread(fileContents, size, 1, fp);
             fclose(fp);
-
-            msr = openSymReader((char *)fileContents, size, pathName);
-            if (msr == NULL)
-            {
-                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        gStatOutFp, "openSymReader returned NULL for %s %d\n",
-                        pathName.c_str(), size));
-                free(fileContents);
-                return NULL;
-            }
         }
-        else
+
+        mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
+                gStatOutFp, "reading contents of %s\n", pathStr));
+        msr = openSymReader((char *)fileContents, fileContentsLength,
+                            pathName);
+        if (msr == NULL)
         {
             mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                    gStatOutFp, "reading contents of %s\n", pathStr));
-            msr = openSymReader((char *)fileContents, fileContentsLength,
-                                pathName);
-            if (msr == NULL)
-            {
-                mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
-                        gStatOutFp, "openSymReader returned NULL for %s %d\n",
-                        pathName.c_str(), fileContentsLength));
-                return NULL;
-            }
+                    gStatOutFp, "openSymReader returned NULL for %s %d\n",
+                    pathName.c_str(), fileContentsLength));
+            return NULL;
         }
         openReaders_[pathName] = msr;
         msr->refCount_ = 1;
@@ -299,7 +272,7 @@ MRNetSymbolReaderFactory::openSymReader(const char *buffer,
 SymReader *
 MRNetSymbolReaderFactory::openSymbolReader(const char *buffer, unsigned long size)
 {
-    MRNetSymbolReader *msr = openSymReader(buffer,size);
+    MRNetSymbolReader *msr = openSymReader(buffer, size);
     if (msr == NULL)
     {
         mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymReader", gStatOutFp,
@@ -342,45 +315,33 @@ inline unsigned MRNetSymbolReader::getAddressWidth()
     return symReaderHandle_->getAddressWidth();
 }
 
-inline unsigned MRNetSymbolReader::numRegions()
-{
-#if !defined(SW_USE_SEGMENTS)
-    return symReaderHandle_->numRegions();
-#else
-    assert(0);
-    return 0;
-#endif
-}
-
-inline bool MRNetSymbolReader::getRegion(unsigned num, SymRegion &reg)
-{
-#if !defined(SW_USE_SEGMENTS)
-    return symReaderHandle_->getRegion( num,reg);
-#else
-    assert(0);
-    return false;
-#endif
-}
-
+#ifdef SW_VERSION_8_1_0
 inline bool MRNetSymbolReader::getSegment(unsigned num, SymSegment &reg)
 {
-#if defined(SW_USE_SEGMENTS)
-    return symReaderHandle_->getSegment( num,reg);
-#else
-    assert(0);
-    return false;
-#endif
+    return symReaderHandle_->getSegment(num, reg);
 }
 
 inline unsigned int MRNetSymbolReader::numSegments()
 {
-#if defined(SW_USE_SEGMENTS)
-   return symReaderHandle_->numSegments();
-#else
-   assert(0);
-   return 0;
-#endif
+    return symReaderHandle_->numSegments();
 }
+
+inline Dyninst::Offset MRNetSymbolReader::getSymbolTOC(const Symbol_t &sym)
+{
+    return symReaderHandle_->getSymbolTOC(sym);
+}
+
+#else
+inline unsigned MRNetSymbolReader::numRegions()
+{
+    return symReaderHandle_->numRegions();
+}
+
+inline bool MRNetSymbolReader::getRegion(unsigned num, SymRegion &reg)
+{
+    return symReaderHandle_->getRegion(num, reg);
+}
+#endif /* SW_VERSION_8_1_0 */
 
 inline Dyninst::Offset MRNetSymbolReader::getSymbolOffset(const Symbol_t &sym)
 {

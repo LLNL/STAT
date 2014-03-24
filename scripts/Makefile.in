@@ -45,9 +45,11 @@ DIST_COMMON = $(am__python_PYTHON_DIST) $(dist_bin_SCRIPTS) \
 	$(srcdir)/STATBench.in $(srcdir)/STATGUI.in \
 	$(srcdir)/STATview.in $(srcdir)/core_stack_merge.in \
 	$(srcdir)/stat-bench.in $(srcdir)/stat-cl.in \
-	$(srcdir)/stat-gui.in $(srcdir)/stat-view.in
+	$(srcdir)/stat-gui.in $(srcdir)/stat-script.in \
+	$(srcdir)/stat-view.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
+	$(top_srcdir)/config/x_ac_boost.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
 	$(top_srcdir)/config/x_ac_enable_debug.m4 \
 	$(top_srcdir)/config/x_ac_fgfs.m4 \
@@ -58,14 +60,17 @@ am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_mpicc.m4 \
 	$(top_srcdir)/config/x_ac_mrnet.m4 \
 	$(top_srcdir)/config/x_ac_python.m4 \
+	$(top_srcdir)/config/x_ac_rose.m4 \
 	$(top_srcdir)/config/x_ac_rsh.m4 \
-	$(top_srcdir)/config/x_ac_swig.m4 $(top_srcdir)/configure.ac
+	$(top_srcdir)/config/x_ac_swig.m4 \
+	$(top_srcdir)/config/x_ac_temporalorderingapi.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES = STAT STATGUI core_stack_merge STATview STATBench \
-	stat-cl stat-gui stat-view stat-bench
+	stat-cl stat-script stat-gui stat-view stat-bench
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -106,6 +111,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BELIBS = @BELIBS@
+BOOST_INCLUDE = @BOOST_INCLUDE@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -141,8 +147,16 @@ LAUNCHMONBIN = @LAUNCHMONBIN@
 LAUNCHMONPREFIX = @LAUNCHMONPREFIX@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LIBBOOST = @LIBBOOST@
+LIBBOOSTDIR = @LIBBOOSTDIR@
+LIBJAVADIR = @LIBJAVADIR@
+LIBJVM = @LIBJVM@
 LIBOBJS = @LIBOBJS@
+LIBROSE = @LIBROSE@
+LIBROSEDIR = @LIBROSEDIR@
 LIBS = @LIBS@
+LIBTOAPI = @LIBTOAPI@
+LIBTOAPIDIR = @LIBTOAPIDIR@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
 LN_S = @LN_S@
@@ -154,6 +168,7 @@ MPICXX = @MPICXX@
 MPIF77 = @MPIF77@
 MRNETCOMMNODEBIN = @MRNETCOMMNODEBIN@
 MWLIBS = @MWLIBS@
+NEWLAUNCHMONBIN = @NEWLAUNCHMONBIN@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
@@ -174,12 +189,14 @@ PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
+ROSE_INCLUDE = @ROSE_INCLUDE@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATPYTHON = @STATPYTHON@
 STRIP = @STRIP@
 SWIG = @SWIG@
+TOAPI_INCLUDE = @TOAPI_INCLUDE@
 VERSION = @VERSION@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -240,7 +257,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 dist_bin_SCRIPTS = run_one_sec
-bin_SCRIPTS = STAT stat-cl $(am__append_1) $(am__append_4) \
+bin_SCRIPTS = STAT stat-cl stat-script $(am__append_1) $(am__append_4) \
 	$(am__append_5)
 python_PYTHON = stat_merge_base.py STATmerge.py $(am__append_2) \
 	$(am__append_3)
@@ -256,9 +273,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign scripts/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu scripts/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign scripts/Makefile
+	  $(AUTOMAKE) --gnu scripts/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -288,6 +305,8 @@ STATview: $(top_builddir)/config.status $(srcdir)/STATview.in
 STATBench: $(top_builddir)/config.status $(srcdir)/STATBench.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 stat-cl: $(top_builddir)/config.status $(srcdir)/stat-cl.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+stat-script: $(top_builddir)/config.status $(srcdir)/stat-script.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 stat-gui: $(top_builddir)/config.status $(srcdir)/stat-gui.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@

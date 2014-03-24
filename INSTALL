@@ -15,7 +15,7 @@ Dependent Packages
    Package Web Page
    Graphlib version 2.0 or greater Graph creation, merging, and
    export
-   https://outreach.scidac.gov/projects/stat/
+   https://github.com/lee218llnl/STAT/
    Launchmon Scalable daemon co-location
    http://sourceforge.net/projects/launchmon/
    Libdwarf Debug information parsing (Required by StackWalker)
@@ -31,22 +31,41 @@ Dependent Packages
    systems. The Pygments Python module can optionally be installed
    to allow the STAT GUI to perform syntax highlighting of source
    code.
+
+   STAT can also be optionally built with the Fast Global File
+   Status (FGFS) library. This library helps STAT identify when a
+   file (target binary) resides on a shared file system that may
+   become a bottleneck if all STAT daemons try to access that file
+   at the same time. If so, STAT will access the file from the
+   STAT frontend and distribute its contents to the daemons via
+   the MRNet communication tree. The two necessary components of
+   FGFS can be downloaded from
+   https://github.com/dongahn/MountPointAttributes and
+   https://github.com/dongahn/FastGlobalFileStatus
      __________________________________________________________
 
 Installation
 
-   First run configure. You will need to use the --with-package
-   options to specify the install prefix for mrnet, graphlib,
-   launchmon, libdwarf, and stackwalker. These options will add
-   the necessary includes and library search paths to the compile
-   options. Refer to configure --help for exact options. You may
-   also wish to specify the maximum number of communication
-   processes to launch per node with the option
+   A script that downloads and install STAT and all its
+   dependencies for BlueGene/Q has been created and can be
+   downloaded at
+   https://github.com/lee218llnl/STAT/blob/master/script-stat-inst
+   all or can be found in the top-level directory of the STAT
+   source. Note this script was developed for BlueGene/Q systems,
+   but can be used as guidance for other systems as well.
+
+   When building STAT itself, first run configure. You will need
+   to use the --with-package options to specify the install prefix
+   for mrnet, graphlib, launchmon, libdwarf, and stackwalker.
+   These options will add the necessary include and library search
+   paths to the compile options. Refer to configure --help for
+   exact options. You may also wish to specify the maximum number
+   of communication processes to launch per node with the option
    --with-procspernode=number, generally set to the number of
    cores per node.
 
-   STAT creates wrapper scripts for the stat-cl command line and
-   stat-gui commands. These wrappers set appropriate paths for the
+   STAT creates wrapper scripts for the stat-cl and stat-gui
+   commands. These wrappers set appropriate paths for the
    launchmon and mrnet_commnode executables, based on the the
    --with-launchmon and --with-mrnet configure options, thus it is
    important to specify both of these even if they share a prefix.
@@ -59,17 +78,24 @@ Installation
    within the stat-gui script. To disable the building of the GUI,
    use the --enable-gui=no configure option.
 
-   To compile on Cray systems, specify --with-cray-xt. On BlueGene
-   systems, also be sure to configure --with-bluegene. This will
-   enable the BGL macro for BlueGene specific compilation. It is
-   important to note that on BlueGene systems, you may need to use
-   an alternate hostname for the front-end node in order to get
-   MRNet to bind to the appropriate network interface that can
+   On BlueGene systems, be sure to configure --with-bluegene. This
+   will enable the BGL macro for BlueGene specific compilation. It
+   is important to note that on BlueGene systems, you may need to
+   use an alternate hostname for the front-end node in order to
+   get MRNet to bind to the appropriate network interface that can
    communicate with the I/O nodes. By default, STAT will append
    "-io" to the hostname. Alternatively, you can specify the
-   hostname with the STAT_FE_HOSTNAME environment variable.
+   hostname with the STAT_FE_HOSTNAME environment variable. A
+   script that downloads and install STAT and all its dependencies
+   for BlueGene/Q has been created and can be downloaded at
+   https://github.com/lee218llnl/STAT/blob/master/script-stat-inst
+   all or can be found in the top-level directory of the STAT
+   source. Due to system configurations, this may not completely
+   work out of the box, but it provides good guidance on the steps
+   required.
 
-   An example configure line for Cray:
+   To compile on Cray systems, specify --with-cray-xt. An example
+   configure line for Cray:
 
 ./configure --with-launchmon=/tmp/work/lee218/install \
 --with-mrnet=/tmp/work/lee218/install \
@@ -83,8 +109,9 @@ MPICC=cc MPICXX=CC MPIF77=ftn --enable-shared LD=/usr/bin/ld
    systems to avoid using the compute node linker. It is also
    worth noting that Cray includes a build of STAT as part of
    their system software stack. It is typically installed in
-   /opt/cray/stat and can be loaded via modules. After running
-   configure you just need to run:
+   /opt/cray/stat and can be loaded via modules.
+
+   After running configure you just need to run:
 
 make
 make install

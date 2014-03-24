@@ -1,7 +1,7 @@
 AC_DEFUN([X_AC_PYTHON], [
   AC_ARG_WITH(python,
     [AS_HELP_STRING([--with-python=path],
-      [Use the specified path to python]
+      [Use the specified path to python, or specify via PYTHON env var]
     )],
     [PYTHON=${withval}],
     [PYTHON=$PYTHON]

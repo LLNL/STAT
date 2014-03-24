@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -41,7 +41,15 @@ STAT_BackEnd *gBePtr;
 
 StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType)
 {
+    int intRet;
+    sigset_t mask;
     lmon_rc_e lmonRet;
+
+    /* unblock all signals. */
+    /* In 3/2014, SIGUSR2 was found to be blocked on Cray systems, which was causing detach to hang */
+    intRet = sigfillset(&mask);
+    if (intRet == 0)
+        intRet = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 
     if (launchType == STATD_LMON_LAUNCH)
     {
@@ -73,14 +81,15 @@ StatError_t statFinalize(StatDaemonLaunch_t launchType)
     return STAT_OK;
 }
 
-STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) : launchType_(launchType)
+STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
+    launchType_(launchType),
+    swLogBuffer_(STAT_SW_DEBUG_BUFFER_LENGTH)
 {
     gStatOutFp = NULL;
     proctabSize_ = 0;
     processMapNonNull_ = 0;
     logType_ = 0;
     parentHostName_ = NULL;
-    swDebugString_ = NULL;
     swDebugFile_ = NULL;
 #ifdef BGL
     errOutFp_ = stdout;
@@ -102,9 +111,13 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) : launchType_(launchTy
     sampleType_ = 0;
     nVariables_ = 0;
     extractVariables_ = NULL;
+    snprintf(outDir_, BUFSIZE, "NULL");
+    snprintf(filePrefix_, BUFSIZE, "NULL");
 #ifdef STAT_FGFS
     fgfsCommFabric_ = NULL;
 #endif
+    gBePtr = this;
+	registerSignalHandlers(true);
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -120,12 +133,6 @@ STAT_BackEnd::~STAT_BackEnd()
     {
         free(parentHostName_);
         parentHostName_ = NULL;
-    }
-
-    if (swDebugString_ != NULL)
-    {
-        free(swDebugString_);
-        swDebugString_ = NULL;
     }
 
     if (extractVariables_ != NULL)
@@ -173,6 +180,9 @@ STAT_BackEnd::~STAT_BackEnd()
         delete network_;
         network_ = NULL;
     }
+
+	registerSignalHandlers(false);
+    gBePtr = NULL;
 }
 
 void STAT_BackEnd::clear2dNodesAndEdges()
@@ -248,6 +258,8 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
 StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphlib_graph_p *prefixTree3d)
 {
     int i;
+    string::size_type delimPos;
+    string tempString;
     StatCountRepEdge_t *countRepEdge = NULL;
     graphlib_graph_p *currentGraph;
     graphlib_error_t graphlibError;
@@ -290,7 +302,25 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
 
         for (nodesIter = (*nodes).begin(); nodesIter != (*nodes).end(); nodesIter++)
         {
-            nodeAttr.label = (void *)nodesIter->second.c_str();
+            /* Add \ character before '<' and '>' characters for dot format */
+            tempString = nodesIter->second;
+            delimPos = -2;
+            while (1)
+            {
+                delimPos = tempString.find('<', delimPos + 2);
+                if (delimPos == string::npos)
+                    break;
+                tempString.insert(delimPos, "\\");
+            }
+            delimPos = -2;
+            while (1)
+            {
+                delimPos = tempString.find('>', delimPos + 2);
+                if (delimPos == string::npos)
+                    break;
+                tempString.insert(delimPos, "\\");
+            }
+            nodeAttr.label = (void *)tempString.c_str();
             graphlibError = graphlib_addNode(*currentGraph, nodesIter->first, &nodeAttr);
             if (GRL_IS_FATALERROR(graphlibError))
             {
@@ -302,7 +332,6 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
         {
             if (sampleType_ & STAT_SAMPLE_COUNT_REP)
             {
-                gBePtr = this;
                 countRepEdge = getBitVectorCountRep(edgesIter->second.second, statRelativeRankToAbsoluteRank);
                 if (countRepEdge == NULL)
                 {
@@ -351,6 +380,7 @@ StatError_t STAT_BackEnd::init()
         fprintf(errOutFp_, "Error: gethostname returned %d\n", intRet);
         return STAT_SYSTEM_ERROR;
     }
+
     intRet = getaddrinfo(localHostName_, NULL, NULL, &addinf);
     if (intRet != 0)
         fprintf(errOutFp_, "Warning: getaddrinfo returned %d\n", intRet);
@@ -467,6 +497,106 @@ StatError_t STAT_BackEnd::initLmon()
 }
 
 
+static void onCrashWrap(int sig, siginfo_t *info, void *context)
+{
+    gBePtr->onCrash(sig, info, context);
+}
+
+
+void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
+{
+    int addrListSize;
+    unsigned int j;
+    static const unsigned int maxStackSize = 256;
+    char **namedSw, **i;
+    void *stackSize[maxStackSize];
+    StatError_t statError;
+    graphlib_error_t graphlibError;
+    graphlib_graph_p prefixTree2d = NULL, prefixTree3d = NULL;
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STATD intercepted signal %d\n", sig);
+    registerSignalHandlers(false);
+
+    if (swDebugFile_)
+    {
+        addrListSize = backtrace(stackSize, maxStackSize);
+        namedSw = backtrace_symbols(stackSize, addrListSize);
+        if (namedSw)
+        {
+            fprintf(swDebugFile_, "Stacktrace upon signal %d:\n", sig);
+            for (i = namedSw, j = 0; j < addrListSize; i++, j++)
+            {
+                if (namedSw[j])
+                  	fprintf(swDebugFile_, "%p - %s\n", stackSize[j], namedSw[j]);
+            }
+            fflush(swDebugFile_);
+        }
+        swDebugBufferToFile();
+    }
+
+    if (strcmp(outDir_, "NULL") != 0 && strcmp(filePrefix_, "NULL") != 0)
+    {
+        statError = generateGraphs(&prefixTree2d, &prefixTree3d);
+        if (statError == STAT_OK)
+        {
+            extern int gStatGraphRoutinesTotalWidth;
+            char outFile[BUFSIZE];
+
+            gStatGraphRoutinesTotalWidth = statBitVectorLength(proctabSize_);
+
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Exporting 2D graph to dot\n");
+            graphlibError = graphlib_colorGraphByLeadingEdgeLabel(prefixTree2d);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error coloring graph by leading edge label\n");
+                abort();
+            }
+            graphlibError = graphlib_scaleNodeWidth(prefixTree2d, 80, 160);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error scaling node width\n");
+                abort();
+            }
+            snprintf(outFile, BUFSIZE, "%s/%s.BE_%s_%d.dot", outDir_, filePrefix_, localHostName_, myRank_);
+            graphlibError = graphlib_exportGraph(outFile, GRF_DOT, prefixTree2d);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error exporting graph to dot format\n");
+                abort();
+            }
+        }
+    }
+
+    abort();
+}
+
+
+void STAT_BackEnd::registerSignalHandlers(bool enable)
+{
+    struct sigaction action;
+
+    bzero(&action, sizeof(struct sigaction));
+    if (!enable)
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "de-registering signal handlers\n");
+        action.sa_handler = SIG_DFL;
+    }
+    else
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "registering signal handlers\n");
+        action.sa_sigaction = onCrashWrap;
+        action.sa_flags = SA_SIGINFO;
+    }
+
+    sigaction(SIGSEGV, &action, NULL);
+    sigaction(SIGBUS, &action, NULL);
+    sigaction(SIGABRT, &action, NULL);
+    sigaction(SIGILL, &action, NULL);
+    sigaction(SIGQUIT, &action, NULL);
+    sigaction(SIGTERM, &action, NULL);
+}
+
+
 StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
 {
     static int rank = -1;
@@ -476,6 +606,8 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
     string remotePid = pidString, remoteHost;
 
     rank++;
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Adding serial process %s with rank %d\n", pidString, rank);
+
     delimPos = remotePid.find_first_of("@");
     if (delimPos != string::npos)
     {
@@ -512,7 +644,7 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
     else
         pid = atoi(remotePid.c_str());
 
-    if (strcmp(remoteHost.c_str(), "localhost") == 0 || strcmp(remoteHost.c_str(), localHostName_) == 0)
+    if (strcmp(remoteHost.c_str(), "localhost") == 0 || strcmp(remoteHost.c_str(), localHostName_) == 0 || strcmp(remoteHost.c_str(), localIp_) == 0)
     {
         proctabSize_++;
         proctab_ = (MPIR_PROCDESC_EXT *)realloc(proctab_, proctabSize_ * sizeof(MPIR_PROCDESC_EXT));
@@ -625,6 +757,7 @@ StatError_t STAT_BackEnd::connect(int argc, char **argv)
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to find MRNet parent info\n");
             return STAT_MRNET_ERROR;
         }
+
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found MRNet connection info, parent hostname = %s, parent port = %d, my MRNet rank = %d\n", parentHostName_, parentPort_, myRank_);
 
         /* Connect to the MRNet Network */
@@ -699,9 +832,9 @@ StatError_t STAT_BackEnd::mainLoop()
     graphlib_graph_p prefixTree2d = NULL, prefixTree3d = NULL;
     StatBitVectorEdge_t *edge;
     map<int, Walker *>::iterator processMapIter;
-    ProcDebug *pDebug;
+    ProcDebug *pDebug = NULL;
 #ifdef STAT_FGFS
-    MRNetSymbolReaderFactory *msrf;
+    MRNetSymbolReaderFactory *msrf = NULL;
 #endif
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Beginning to execute main loop\n");
@@ -787,7 +920,7 @@ StatError_t STAT_BackEnd::mainLoop()
             continue;
         else if (intRet != 1)
         {
-            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::recv() failure\n");
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::recv() failure %d\n", intRet);
             return STAT_MRNET_ERROR;
         }
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Packet received with tag %d (first = %d)\n", tag, FirstApplicationTag);
@@ -799,6 +932,15 @@ StatError_t STAT_BackEnd::mainLoop()
         switch(tag)
         {
             case PROT_ATTACH_APPLICATION:
+                char *in1, *in2;
+                if (packet->unpack("%s %s", &in1, &in2) != -1)
+                {
+                    snprintf(outDir_, BUFSIZE, in1);
+                    snprintf(filePrefix_, BUFSIZE, in2);
+                    free(in1);
+                    free(in2);
+                }
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attach request received for %s %s\n", outDir_, filePrefix_);
                 statError = attach();
                 if (statError == STAT_OK)
                     intRet = 0;
@@ -1095,19 +1237,23 @@ StatError_t STAT_BackEnd::mainLoop()
 StatError_t STAT_BackEnd::attach()
 {
     int i;
-    Walker *proc;
+    Walker *proc = NULL;
     map<int, Walker *>::iterator processMapIter;
 #if defined(GROUP_OPS)
     vector<ProcessSet::AttachInfo> aInfo;
     ProcessSet::AttachInfo pAttach;
     Process::ptr pcProc;
+  #ifdef BGL
+    BGQData::setStartupTimeout(600);
+  #endif
 #endif
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
+
 #if defined(GROUP_OPS)
     ThreadTracking::setDefaultTrackThreads(false);
-  #ifdef SW_VERSION_8_0_1
+  #ifdef SW_VERSION_8_1_0
     LWPTracking::setDefaultTrackLWPs(false);
   #endif
     if (doGroupOps_)
@@ -1115,7 +1261,7 @@ StatError_t STAT_BackEnd::attach()
         aInfo.reserve(proctabSize_);
         for (i = 0; i < proctabSize_; i++)
         {
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+//            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
             pAttach.pid = proctab_[i].pd.pid;
             pAttach.executable = proctab_[i].pd.executable_name;
             pAttach.error_ret = ProcControlAPI::err_none;
@@ -1127,9 +1273,13 @@ StatError_t STAT_BackEnd::attach()
 #endif
 
     /* Attach to the processes in the process table */
+#if defined(GROUP_OPS)
+    map<int, string> mpiRankToErrMsg;
+#endif
+
     for (i = 0; i < proctabSize_; i++)
     {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+//        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
 
 #if defined(GROUP_OPS)
         if (doGroupOps_)
@@ -1139,7 +1289,7 @@ StatError_t STAT_BackEnd::attach()
             {
                 stringstream ss;
                 ss << "[PC Attach Error - 0x" << std::hex << aInfo[i].error_ret << std::dec << "]";
-                exitedProcesses_[ss.str()].insert(aInfo[i].pid);
+                mpiRankToErrMsg.insert(make_pair(proctab_[i].mpirank, ss.str()));
             }
             else
             {
@@ -1148,7 +1298,7 @@ StatError_t STAT_BackEnd::attach()
                 {
                     stringstream ss;
                     ss << "[SW Attach Error - 0x" << std::hex << Stackwalker::getLastError() << std::dec << "]";
-                    exitedProcesses_[ss.str()].insert(aInfo[i].pid);
+                    mpiRankToErrMsg.insert(make_pair(proctab_[i].mpirank, ss.str()));
                 }
                 else
                 {
@@ -1174,7 +1324,21 @@ StatError_t STAT_BackEnd::attach()
             processMapNonNull_++;
     }
     for (i = 0, processMapIter = processMap_.begin(); processMapIter != processMap_.end(); i++, processMapIter++)
+    {
         procsToRanks_.insert(make_pair(processMapIter->second, i));
+
+#if defined(GROUP_OPS)
+        int mpirank = processMapIter->first;
+        map<int, string>::iterator j = mpiRankToErrMsg.find(mpirank);
+        if (j != mpiRankToErrMsg.end())
+        {
+            string errMsg = j->second;
+            exitedProcesses_[errMsg].insert(i);
+        }
+#endif
+    }
+
+
     isRunning_ = false;
 
     return STAT_OK;
@@ -1225,7 +1389,7 @@ StatError_t STAT_BackEnd::resume()
 StatError_t STAT_BackEnd::pauseProcess(Walker *walker)
 {
     bool boolRet;
-    ProcDebug *pDebug;
+    ProcDebug *pDebug = NULL;
 
     if (walker != NULL)
     {
@@ -1248,7 +1412,7 @@ StatError_t STAT_BackEnd::pauseProcess(Walker *walker)
 StatError_t STAT_BackEnd::resumeProcess(Walker *walker)
 {
     bool boolRet;
-    ProcDebug *pDebug;
+    ProcDebug *pDebug = NULL;
 
     if (walker != NULL)
     {
@@ -1333,7 +1497,7 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
 {
     bool boolRet;
     Address loadAddr;
-    LibraryState *libState;
+    LibraryState *libState = NULL;
     LibAddrPair lib;
     Symtab *symtab = NULL;
     vector<LineNoTuple *> lines;
@@ -1470,7 +1634,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     map<int, Walker *>::iterator processMapIter;
     map<int, StatBitVectorEdge_t *>::iterator nodeInEdgeMapIter;
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with variables %s\n", nTraces, traceFrequency, nRetries, retryFrequency, variableSpecification);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with variables %s and type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, variableSpecification, sampleType_);
 
     wasRunning = isRunning_;
     if (sampleType_ & STAT_SAMPLE_CLEAR_ON_SAMPLE)
@@ -1591,7 +1755,7 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
     /* Gather PC value or line number info if requested */
     if (sampleType_ & STAT_SAMPLE_PC)
     {
-#ifdef SW_VERSION_8_0_0    
+#ifdef SW_VERSION_8_0_0
         if (frame.isTopFrame() == true)
             snprintf(buf, BUFSIZE, "@0x%lx", frame.getRA());
         else
@@ -1601,7 +1765,7 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
     }
     else if (sampleType_ & STAT_SAMPLE_LINE)
     {
-#ifdef SW_VERSION_8_0_0    
+#ifdef SW_VERSION_8_0_0
         if (frame.isTopFrame() == true)
             addr = frame.getRA();
         else
@@ -1629,13 +1793,13 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
                     depth == extractVariables_[i].depth)
                 {
                     statError = getVariable(frame, extractVariables_[i].variableName, buf, BUFSIZE);
-                    value = *((int *)buf);
-                    snprintf(buf, BUFSIZE, "$%s=%d", extractVariables_[i].variableName, value);
                     if (statError != STAT_OK)
                     {
                        printMsg(statError, __FILE__, __LINE__, "Failed to get variable information for $%s in %s\n", extractVariables_[i].variableName, name.c_str());
                        continue;
                     }
+                    value = *((int *)buf);
+                    snprintf(buf, BUFSIZE, "$%s=%d", extractVariables_[i].variableName, value);
                     name += buf;
                 }
             }
@@ -1653,10 +1817,10 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
     bool boolRet, isFirstPythonFrame;
     string name, path;
     vector<Frame> currentStackWalk, bestStackWalk;
-    vector<string> trace, outTrace;
-    StatBitVectorEdge_t *edge;
+    vector<string> trace;
+    StatBitVectorEdge_t *edge = NULL;
     vector<Dyninst::THR_ID> threads;
-    ProcDebug *pDebug;
+    ProcDebug *pDebug = NULL;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d of %d\n", rank, proctabSize_);
 
@@ -1693,9 +1857,12 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                     printMsg(STAT_WARNING, __FILE__, __LINE__, "Get threads failed... using null thread id instead to just check main thread\n");
                     threads.push_back(NULL_THR_ID);
                 }
+                else
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from %d threads\n", threads.size());
             }
         }
     }
+
 
     /* Loop over the threads and get the traces */
     for (j = 0; j < threads.size(); j++)
@@ -1811,35 +1978,13 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
 
         for (i = 0; i < trace.size(); i++)
         {
-            /* Add \ character before '<' and '>' characters for dot format */
-            delimPos = -2;
-            while (1)
-            {
-                delimPos = trace[i].find('<', delimPos + 2);
-                if (delimPos == string::npos)
-                    break;
-                trace[i].insert(delimPos, "\\");
-            }
-            delimPos = -2;
-            while (1)
-            {
-                delimPos = trace[i].find('>', delimPos + 2);
-                if (delimPos == string::npos)
-                    break;
-                trace[i].insert(delimPos, "\\");
-            }
-            outTrace.push_back(trace[i]);
-        }
-
-        for (i = 0; i < outTrace.size(); i++)
-        {
-            path += outTrace[i].c_str();
+            path += trace[i].c_str();
             nodeId = statStringHash(path.c_str());
-            nodes2d_[nodeId] = outTrace[i];
+            nodes2d_[nodeId] = trace[i];
             update2dEdge(prevId, nodeId, edge);
             prevId = nodeId;
         }
-        outTrace.clear();
+        trace.clear();
     } /* for j thread */
 
     statFreeEdge(edge);
@@ -2035,18 +2180,16 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
 {
     int dummyBranches = 0;
     unsigned int i;
-    bool boolRet, dummyAbort = false;
+    bool swSuccess, dummyAbort = false;
     string dummyString;
     set<int> ranks;
     StatError_t statError;
 
-#ifdef SW_VERSION_8_0_1
+#ifdef SW_VERSION_8_1_0
     if (procSet_->getLWPTracking() && sampleType_ & STAT_SAMPLE_THREADS)
         procSet_->getLWPTracking()->refreshLWPs();
 #endif
 
-    gBePtr = this;
-    
     if (procSet_->anyTerminated())
     {
         ProcessSet::ptr exitedSubset = procSet_->getExitedSubset();
@@ -2055,14 +2198,20 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         for (ProcessSet::iterator i = exitedSubset->begin(); i != exitedSubset->end(); i++)
         {
             stringstream ss;
-            ss << "[Task Exited with ]" << (*i)->getExitCode() << "]";
-            exitedProcesses_[ss.str()].insert((*i)->getPid());
+            ss << "[Task Exited with " << (*i)->getExitCode() << "]";
+            Walker *walker = static_cast<Walker *>((*i)->getData());
+            map<Walker *, int>::iterator j = procsToRanks_.find(walker);
+            if (j != procsToRanks_.end())
+                exitedProcesses_[ss.str()].insert(j->second);
         }
         for (ProcessSet::iterator i = crashedSubset->begin(); i != crashedSubset->end(); i++)
         {
             stringstream ss;
-            ss << "[Task Crashed with Signal ]" << (*i)->getCrashSignal() << "]";
-            exitedProcesses_[ss.str()].insert((*i)->getPid());
+            ss << "[Task Crashed with Signal " << (*i)->getCrashSignal() << "]";
+            Walker *walker = static_cast<Walker *>((*i)->getData());
+            map<Walker *, int>::iterator j = procsToRanks_.find(walker);
+            if (j != procsToRanks_.end())
+                exitedProcesses_[ss.str()].insert(j->second);
         }
 
         /* Erase the terminated procs from the procSet_ and walkerSet_ */
@@ -2079,20 +2228,48 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         }
         procSet_ = procSet_->set_difference(termSet);
     }
-    
+
 #if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
     CallTree tree(statFrameCmp);
 #else
     CallTree tree(frame_lib_offset_cmp);
 #endif
-#ifdef SW_VERSION_8_0_1
-    boolRet = walkerSet_->walkStacks(tree, !(sampleType_ & STAT_SAMPLE_THREADS));
+#ifdef SW_VERSION_8_1_0
+    swSuccess = walkerSet_->walkStacks(tree, !(sampleType_ & STAT_SAMPLE_THREADS));
 #else
-    boolRet = walkerSet_->walkStacks(tree);
+    swSuccess = walkerSet_->walkStacks(tree);
 #endif
-    if (boolRet == false)
+    if (!swSuccess)
     {
-#warning TODO: Start handling partial call stacks in group walks
+        ProcessSet::ptr errset = procSet_->getErrorSubset();
+        if (!errset->empty())
+        {
+            /* Add any process that hit an error during SWing to the exited list */
+            for (ProcessSet::iterator i = errset->begin(); i != errset->end(); i++)
+            {
+                Process::ptr err_proc = *i;
+                stringstream ss;
+                ss << "[Stackwalk Error - 0x" << std::hex << err_proc->getLastError() << "]";
+                string err_string = ss.str();
+
+                Walker *walker = static_cast<Walker *>(err_proc->getData());
+                map<Walker *, int>::iterator j = procsToRanks_.find(walker);
+                if (j != procsToRanks_.end())
+                    exitedProcesses_[err_string].insert(j->second);
+            }
+            /* Remove any error'd process from the walkerSet */
+            for (WalkerSet::iterator i = walkerSet_->begin(); i != walkerSet_->end(); )
+            {
+                ProcDebug *pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
+                if (errset->find(pDebug->getProc()) != errset->end())
+                {
+                    walkerSet_->erase(i++);
+                    continue;
+                }
+                i++;
+            }
+            procSet_ = procSet_->set_difference(errset);
+        }
     }
 
     isPyTrace_ = false;
@@ -2108,10 +2285,10 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
     {
         string msg = i->first;
         set<int> &pids = i->second;
-       
+
         int newChildId = statStringHash(msg.c_str());
         nodes2d_[newChildId] = msg;
-       
+
         StatBitVectorEdge_t *edge = initializeBitVectorEdge(proctabSize_);
         if (edge == NULL)
         {
@@ -2125,6 +2302,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         }
 
         update2dEdge(0, newChildId, edge);
+        statFreeEdge(edge);
     }
 
     return STAT_OK;
@@ -2156,7 +2334,7 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
     int i;
     bool leaveStopped;
     map<int, Walker *>::iterator processMapIter;
-    ProcDebug *pDebug;
+    ProcDebug *pDebug = NULL;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
 
@@ -2201,7 +2379,6 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
 StatError_t STAT_BackEnd::terminate()
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Terminating application processes\n");
-#warning TODO: Fill in terminate
 
     return STAT_OK;
 }
@@ -2225,8 +2402,7 @@ StatError_t STAT_BackEnd::sendAck(Stream *stream, int tag, int val)
 int unpackStatBeInfo(void *buf, int bufLen, void *data)
 {
     int parent, daemon, nChildren, nParents, child, currentParentPort, currentParentRank;
-    char currentParent[STAT_MAX_BUF_LEN];
-    char *ptr = (char *)buf;
+    char currentParent[STATBE_MAX_HN_LEN], *ptr = (char *)buf;
     StatLeafInfoArray_t *leafInfoArray = (StatLeafInfoArray_t *)data;
 
     /* Get the number of daemons and set up the leaf info array */
@@ -2246,7 +2422,7 @@ int unpackStatBeInfo(void *buf, int bufLen, void *data)
     for (parent = 0; parent < nParents; parent++)
     {
         /* Get the parent host name, port, rank and child count */
-        strncpy(currentParent, ptr, STAT_MAX_BUF_LEN);
+        strncpy(currentParent, ptr, STATBE_MAX_HN_LEN);
         ptr += strlen(currentParent) + 1;
         memcpy(&currentParentPort, ptr, sizeof(int));
         ptr += sizeof(int);
@@ -2266,12 +2442,12 @@ int unpackStatBeInfo(void *buf, int bufLen, void *data)
             }
 
             /* Fill in the parent information */
-            strncpy((leafInfoArray->leaves)[daemon].parentHostName, currentParent, STAT_MAX_BUF_LEN);
+            strncpy((leafInfoArray->leaves)[daemon].parentHostName, currentParent, STATBE_MAX_HN_LEN);
             (leafInfoArray->leaves)[daemon].parentRank = currentParentRank;
             (leafInfoArray->leaves)[daemon].parentPort = currentParentPort;
 
             /* Get the daemon host name */
-            strncpy((leafInfoArray->leaves)[daemon].hostName, ptr, STAT_MAX_BUF_LEN);
+            strncpy((leafInfoArray->leaves)[daemon].hostName, ptr, STATBE_MAX_HN_LEN);
             ptr += strlen((leafInfoArray->leaves)[daemon].hostName) + 1;
 
             /* Get the daemon rank */
@@ -2284,16 +2460,22 @@ int unpackStatBeInfo(void *buf, int bufLen, void *data)
 }
 
 
-StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mrnetOutputLevel)
+StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mrnetOutputLevel, bool withPid)
 {
     char fileName[BUFSIZE];
-    
+
     logType_ = logType;
     snprintf(logOutDir_, BUFSIZE, "%s", logOutDir);
 
     if (logType_ & STAT_LOG_BE || logType_ & STAT_LOG_SW)
     {
-        snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir, localHostName_);
+        if (withPid == true)
+        {
+            pid_t myPid = getpid();
+            snprintf(fileName, BUFSIZE, "%s/%s.STATD.%d.log", logOutDir, localHostName_, myPid);
+        }
+        else
+            snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir, localHostName_);
         gStatOutFp = fopen(fileName, "w");
         if (gStatOutFp == NULL)
         {
@@ -2313,22 +2495,12 @@ StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mr
             swDebugFile_ = gStatOutFp;
         else
         {
-            if (swDebugString_ != NULL)
-            {
-                free(swDebugString_);
-                swDebugString_ = NULL;
-            }
-            swDebugString_ = (char *)malloc(STAT_SW_DEBUG_BUFFER_LENGTH);
-            if (swDebugString_ == NULL)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc returned NULL for swDebugString_\n", strerror(errno));
-                return STAT_ALLOCATE_ERROR;
-            }
-            swDebugFile_ = fmemopen(swDebugString_, STAT_SW_DEBUG_BUFFER_LENGTH - 1, "w");
+            swLogBuffer_.reset();
+            swDebugFile_ = swLogBuffer_.handle();
             if (swDebugFile_ == NULL)
             {
-                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "%s: fmemopen failed\n", strerror(errno));
-                return STAT_STACKWALKER_ERROR;
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate circular buffer for SW logging\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
             }
         }
         Dyninst::Stackwalker::setDebug(true);
@@ -2337,6 +2509,7 @@ StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mr
         Dyninst::ProcControlAPI::setDebug(true);
         Dyninst::ProcControlAPI::setDebugChannel(swDebugFile_);
 #endif
+	registerSignalHandlers(true);
     }
 
     return STAT_OK;
@@ -2349,7 +2522,7 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     char timeString[BUFSIZE], msg[BUFSIZE];
     const char *timeFormat = "%b %d %T";
     time_t currentTime;
-    struct tm *localTime;
+    struct tm *localTime = NULL;
 
     if (statError == STAT_LOG_MESSAGE && !(logType_ & STAT_LOG_BE))
         return;
@@ -2385,7 +2558,10 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
             va_start(args, fmt);
             vsnprintf(msg, BUFSIZE, fmt, args);
             va_end(args);
-            mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+            if (sourceLine != -1 && sourceFile != NULL)
+                mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+            else
+                fprintf(gStatOutFp, "%s", msg);
         }
         else
         {
@@ -2404,16 +2580,16 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     }
 }
 
-        
+
 void STAT_BackEnd::swDebugBufferToFile()
 {
+    int statOutFD;
     char fileName[BUFSIZE];
 
     if (logType_ & STAT_LOG_SWERR)
     {
-        if (gStatOutFp != NULL && swDebugFile_ != NULL)
+        if (swDebugFile_ != NULL)
         {
-            fclose(swDebugFile_);
             if (gStatOutFp == NULL)
             {
                 snprintf(fileName, BUFSIZE, "%s/%s.STATD.log", logOutDir_, localHostName_);
@@ -2428,18 +2604,11 @@ void STAT_BackEnd::swDebugBufferToFile()
                     mrn_printf_init(gStatOutFp);
 #endif
             }
-            fwrite(swDebugString_, 1, strlen(swDebugString_), gStatOutFp);
-            
-            swDebugFile_ = fmemopen(swDebugString_, STAT_SW_DEBUG_BUFFER_LENGTH - 1, "w");
-            if (swDebugFile_ == NULL)
-            {
-                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "%s: fmemopen failed\n", strerror(errno));
-                return;
-            }
-            Dyninst::Stackwalker::setDebugChannel(swDebugFile_);
-#ifdef SW_VERSION_8_0_0
-            Dyninst::ProcControlAPI::setDebugChannel(swDebugFile_);
-#endif
+            fflush(gStatOutFp);
+            statOutFD = fileno(gStatOutFp);
+            fflush(swDebugFile_);
+            swLogBuffer_.flushBufferTo(statOutFD);
+            swLogBuffer_.reset();
         }
     }
 }
@@ -2447,9 +2616,9 @@ void STAT_BackEnd::swDebugBufferToFile()
 
 vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 {
-    typeTypedef *tt;
-    typeStruct *ts;
-    vector<Field *> *components;
+    typeTypedef *tt = NULL;
+    typeStruct *ts = NULL;
+    vector<Field *> *components = NULL;
 
     tt = type->getTypedefType();
     if (tt == NULL)
@@ -2491,11 +2660,11 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
     bool boolRet;
     char buffer[BUFSIZE], varName[BUFSIZE], exePath[BUFSIZE];
     static map<string, StatPythonOffsets_t *> pythonOffsetsMap;
-    StatPythonOffsets_t *pythonOffsets;
+    StatPythonOffsets_t *pythonOffsets = NULL;
     Symtab *symtab = NULL;
-    Type *type;
-    vector<Field *> *components;
-    Field *field;
+    Type *type = NULL;
+    vector<Field *> *components = NULL;
+    Field *field = NULL;
 #ifdef SW_VERSION_8_0_0
     LibraryPool::iterator libsIter;
 #endif
@@ -2917,7 +3086,7 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
 {
     int i, count, intRet, fd;
     unsigned int bytesWritten;
-    char fileName[BUFSIZE], data[BUFSIZE], *ptr;
+    char fileName[BUFSIZE], data[BUFSIZE], *ptr = NULL;
     string prettyHost, leafPrettyHost;
     lmon_rc_e lmonRet;
     StatLeafInfoArray_t leafInfoArray;
@@ -3039,7 +3208,7 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
 StatError_t STAT_BackEnd::statBenchConnect()
 {
     int i, intRet, fd, bytesRead, inPort, inParentRank, inRank, mpiRank;
-    char fileName[BUFSIZE], inHostName[BUFSIZE], data[BUFSIZE], *ptr, *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
+    char fileName[BUFSIZE], inHostName[BUFSIZE], data[BUFSIZE], *ptr = NULL, *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
 
     for (i = 0; i < 8192; i++)
     {
@@ -3191,7 +3360,7 @@ StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned i
     int depth, i, nodeId, prevId, currentTask;
     char frame[BUFSIZE];
     string path;
-    StatBitVectorEdge_t *edge;
+    StatBitVectorEdge_t *edge = NULL;
 
     edge = initializeBitVectorEdge(proctabSize_);
     if (edge == NULL)

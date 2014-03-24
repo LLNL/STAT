@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -78,6 +78,14 @@ typedef enum {
     STAT_TOPOLOGY_USER,
     STAT_TOPOLOGY_AUTO
 } StatTopology_t;
+
+//! An enum for CP location policy
+typedef enum {
+    STAT_CP_NONE = 0,
+    STAT_CP_SHAREAPPNODES,
+    STAT_CP_EXCLUSIVE
+} StatCpPolicy_t;
+
 
 //! A struct that contains MRNet connection information to send to the daemons
 typedef struct
@@ -219,7 +227,7 @@ class STAT_FrontEnd
             connection info to the daemons.  Waits for all daemons to connect
             if blocking set to true.
         */
-        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false);
+        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, StatCpPolicy_t cpPolicy = STAT_CP_SHAREAPPNODES);
 
         //! Connect the MRNet tree
         /*!
@@ -279,7 +287,7 @@ class STAT_FrontEnd
             \param sampleType - the level of detail to sample
             \param nTraces - the number of traces to gather per task
             \param traceFrequency - the amount of time to wait between samples
-            \param nRetries - the number of times to attempt to gather a 
+            \param nRetries - the number of times to attempt to gather a
                    complete trace
             \param retryFrequency - the amount of time to wait between retries
             \param blocking - [optional] set to true if blocks until all BE
@@ -294,17 +302,19 @@ class STAT_FrontEnd
         /*!
             \param blocking - [optional] whether to block until stack traces
                    are received
+            \param altDotFilename - [optional] filename for the .dot file
             \return STAT_OK on success
         */
-        StatError_t gatherLastTrace(bool blocking = true);
+        StatError_t gatherLastTrace(bool blocking = true, const char *altDotFilename = NULL);
 
         //! Collect the accumulated stack traces from all daemons
         /*!
             \param blocking - [optional] whether to block until stack traces
                    are received
+            \param altDotFilename - [optional] filename for the .dot file
             \return STAT_OK on success
         */
-        StatError_t gatherTraces(bool blocking = true);
+        StatError_t gatherTraces(bool blocking = true, const char *altDotFilename = NULL);
 
         //! Return the fileName of the last outputted dot file
         /*!
@@ -366,9 +376,10 @@ class STAT_FrontEnd
         /*!
             \param logType - the level of logging
             \param logOutDir - the output directory for the log files
+            \param withPid - [optional] whether to append the PID to the log file name
             \return STAT_OK on success
         */
-        StatError_t startLog(unsigned int logType, char *logOutDir);
+        StatError_t startLog(unsigned int logType, char *logOutDir, bool withPid = false);
 
         //! Receive an acknowledgement from the daemons
         /*!
@@ -740,7 +751,7 @@ class STAT_FrontEnd
             per layer of the tree separated by dashes.
             For example: 4, 4-16, 5-20-75
         */
-        StatError_t createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool shareAppNodes);
+        StatError_t createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, StatCpPolicy_t cpPolicy);
 
         //! Set the list of daemon nodes from the MRNet topology
         /*!
@@ -882,7 +893,7 @@ class STAT_FrontEnd
         unsigned int procsPerNode_;                         /*!< the number of CPs to launcher per node*/
         unsigned int launcherArgc_;                         /*!< the number of job launch arguments*/
         unsigned int topologySize_;                         /*!< the size of the MRNet topology */
-        unsigned int logging_;                             /*!< the logging level */
+        unsigned int logging_;                              /*!< the logging level */
         int jobId_;                                         /*!< the batch job ID */
         int lmonSession_;                                   /*!< the LaunchMON session ID */
         int mrnetOutputLevel_;                              /*!< the MRNet output level */
@@ -891,14 +902,15 @@ class STAT_FrontEnd
         char *applExe_;                                     /*!< the name of the application executable */
         char *filterPath_;                                  /*!< the path to the STAT_FilterDefinitions.so filter file */
         char *remoteNode_;                                  /*!< the hostname of the remote node running the job launcher */
-        char *nodeListFile_;                                /*!< The file to containing the nodelist */
+        char *nodeListFile_;                                /*!< the file to containing the nodelist */
         char lastDotFileName_[BUFSIZE];                     /*!< the path to the last generated .dot file */
         char outDir_[BUFSIZE];                              /*!< the output directory */
         char logOutDir_[BUFSIZE];                           /*!< the directory for log files */
-        char filePrefix_[BUFSIZE];                          /*!< the installation prefix for STAT */
+        char filePrefix_[BUFSIZE];                          /*!< the output file prefix for STAT */
+        char altDotFilename_[BUFSIZE];                      /*!< a user specified filename for the .dot file */
         char lastErrorMessage_[BUFSIZE];                    /*!< the last error message */
         char hostname_[BUFSIZE];                            /*!< the FrontEnd hostname*/
-        bool isStatBench_;                                   /*!< whether we are a STATBench instance */
+        bool isStatBench_;                                  /*!< whether we are a STATBench instance */
         bool isLaunched_;                                   /*!< whether the STAT daemons have been launched */
         bool isConnected_;                                  /*!< whether the STAT daemons are connected to the MRNet tree */
         bool isAttached_;                                   /*!< whether the STAT daemons are attached to the application */
@@ -925,6 +937,7 @@ class STAT_FrontEnd
 #ifdef STAT_FGFS
         char *fgfsFilterPath_;                              /*!< the path to the FGFS filter shared object */
         FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_;
+        MRN::Stream *fileRequestStream_;
 #endif
 };
 

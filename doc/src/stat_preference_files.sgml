@@ -1,5 +1,5 @@
 <para>
-Several files can influence how STAT runs.  The first such file is $prefix/etc/STAT/nodes.txt, which specifies a list of hostnames, one hostname per line, on which to launch MRNet communication processes.  This file is designed to be shared by all users and should point to shared resources that all users have remote shell access to, such as login nodes.  Note that (except on Cray XT) STAT will test access to a node before trying to launch communication processes, so it is OK to list nodes that may be down or unaccessible.  Also note that nodes.txt will not be used if the -A or "Share App Nodes" option is enabled.
+Several files can influence how STAT runs.  The first such file is $prefix/etc/STAT/nodes.txt, which specifies a list of hostnames, one hostname per line, on which to launch MRNet communication processes.  This file is designed to be shared by all users and should point to shared resources that all users have remote shell access to, such as login nodes.  Note that by default STAT will not test access to a node before trying to launch communication processes.  If the STAT_CHECK_NODE_ACCESS environment variable is set to any value, then STAT will try to run (via remote shell) a simple test to see if the node is accessible before adding it to the MRNet tree.  Also note that nodes.txt will not be used if the -A or "Share App Nodes" option is enabled.
 </para>
 <para>
 STAT GUI preferences can be set with an installation specific STAT.conf or user specific .STATrc file.  The installation specific file should be placed in $prefix/etc/STAT/STAT.conf, while the user specific file should be placed in $HOME/.STATrc.  Options specified in the user's .STATrc file will always take precedence over the STAT installation's .STATrc file.  Each preference file specifies one option per line of the format:
@@ -52,6 +52,22 @@ Here is a list of options:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>Topology Type = <replaceable class="parameter">automatic|depth|max fanout|custom</replaceable></term>
+    <listitem>
+        <para>
+        Use the specified topology type when building the MRNet communication tree.  The <replaceable class="parameter">automatic</replaceable> topology is typically recommended and set by default.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Topology = <replaceable class="parameter">topology</replaceable></term>
+    <listitem>
+        <para>
+        Use <replaceable class="parameter">topology</replaceable> for the specific topology configuration.  This should be used with the Topology Type option.  Refer to the stat-cl options to see valid Topology specifications for a given Topology Type.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>Communication Nodes = <replaceable class="parameter">nodelist</replaceable></term>
     <listitem>
         <para>
@@ -60,10 +76,18 @@ Here is a list of options:
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term>Share App Nodes = <replaceable class="parameter">true|false</replaceable></term>
+    <term>Check Node Access = <replaceable class="parameter">true|false</replaceable></term>
     <listitem>
         <para>
-        Controls whether to allow communication processes to be co-located on nodes running application processes.  Not supported on BlueGene systems.
+        Controls whether to check access to a node before trying to launch MRNet communication processes on it.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>CP policy = <replaceable class="parameter">none|share app nodes|exclusive</replaceable></term>
+    <listitem>
+        <para>
+        Controls where to launch communication processes.  When set to <replaceable class="parameter">share app nodes</replaceable>, they will be launched on nodes running application processes.  On BlueGene systems, this will actually place them on the I/O nodes, and requires users to be able to access the I/O nodes via a remote shell.  When set to <replaceable class="parameter">exclusive</replaceable>, then the communication processes will only be run on specified nodes that do not run other STAT tool processes (e.g., the STAT frontend and the back-end daemons).
         </para>
     </listitem>
 </varlistentry>
@@ -79,7 +103,7 @@ Here is a list of options:
     <term>Num Traces = <replaceable class="parameter">count</replaceable></term>
     <listitem>
         <para>
-        Gather <replaceable class="parameter">count</replaceable> stack trace when sampling multiple.
+        Gather <replaceable class="parameter">count</replaceable> stack traces when sampling multiple.
         </para>
     </listitem>
 </varlistentry>
@@ -103,7 +127,7 @@ Here is a list of options:
     <term>Retry Frequency (ms) = <replaceable class="parameter">count</replaceable></term>
     <listitem>
         <para>
-        Let the process run <replaceable class="parameter">count</replaceable> milliseconds between retries.
+        Let the process run <replaceable class="parameter">count</replaceable> milliseconds between stack sample retries.
         </para>
     </listitem>
 </varlistentry>
@@ -164,6 +188,14 @@ Here is a list of options:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>Additional Debugger Args = <replaceable class="parameter">args</replaceable></term>
+    <listitem>
+        <para>
+        Add <replaceable class="parameter">args</replaceable> to the argument list when launching TotalView or DDT.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>Log Dir = <replaceable class="parameter">directory</replaceable></term>
     <listitem>
         <para>
@@ -208,6 +240,14 @@ Here is a list of options:
     <listitem>
         <para>
         Controls whether to enable debug logging of Stackwalker by the STAT backend when a Stackwalker error is detected.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>Use MRNet Printf = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to use MRNet's printf when writing debug logs.  This is helpful to correlate timing between STAT log messages and MRNet debug log messages, when MRNet logging is being logged (via the STAT_MRNET_OUTPUT_LEVEL enviornment variable).
         </para>
     </listitem>
 </varlistentry>

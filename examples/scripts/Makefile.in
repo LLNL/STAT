@@ -39,6 +39,7 @@ DIST_COMMON = $(dist_examples_SCRIPTS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
+	$(top_srcdir)/config/x_ac_boost.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
 	$(top_srcdir)/config/x_ac_enable_debug.m4 \
 	$(top_srcdir)/config/x_ac_fgfs.m4 \
@@ -49,8 +50,11 @@ am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_mpicc.m4 \
 	$(top_srcdir)/config/x_ac_mrnet.m4 \
 	$(top_srcdir)/config/x_ac_python.m4 \
+	$(top_srcdir)/config/x_ac_rose.m4 \
 	$(top_srcdir)/config/x_ac_rsh.m4 \
-	$(top_srcdir)/config/x_ac_swig.m4 $(top_srcdir)/configure.ac
+	$(top_srcdir)/config/x_ac_swig.m4 \
+	$(top_srcdir)/config/x_ac_temporalorderingapi.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -91,6 +95,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BELIBS = @BELIBS@
+BOOST_INCLUDE = @BOOST_INCLUDE@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -126,8 +131,16 @@ LAUNCHMONBIN = @LAUNCHMONBIN@
 LAUNCHMONPREFIX = @LAUNCHMONPREFIX@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LIBBOOST = @LIBBOOST@
+LIBBOOSTDIR = @LIBBOOSTDIR@
+LIBJAVADIR = @LIBJAVADIR@
+LIBJVM = @LIBJVM@
 LIBOBJS = @LIBOBJS@
+LIBROSE = @LIBROSE@
+LIBROSEDIR = @LIBROSEDIR@
 LIBS = @LIBS@
+LIBTOAPI = @LIBTOAPI@
+LIBTOAPIDIR = @LIBTOAPIDIR@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
 LN_S = @LN_S@
@@ -139,6 +152,7 @@ MPICXX = @MPICXX@
 MPIF77 = @MPIF77@
 MRNETCOMMNODEBIN = @MRNETCOMMNODEBIN@
 MWLIBS = @MWLIBS@
+NEWLAUNCHMONBIN = @NEWLAUNCHMONBIN@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
@@ -159,12 +173,14 @@ PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
+ROSE_INCLUDE = @ROSE_INCLUDE@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATPYTHON = @STATPYTHON@
 STRIP = @STRIP@
 SWIG = @SWIG@
+TOAPI_INCLUDE = @TOAPI_INCLUDE@
 VERSION = @VERSION@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
@@ -225,7 +241,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 examplesdir = $(pkgdatadir)/examples/bin
-dist_examples_SCRIPTS = python_test.py
+dist_examples_SCRIPTS = python_test.py script_test.py
 all: all-am
 
 .SUFFIXES:
@@ -238,9 +254,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign examples/scripts/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu examples/scripts/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign examples/scripts/Makefile
+	  $(AUTOMAKE) --gnu examples/scripts/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \

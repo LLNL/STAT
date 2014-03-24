@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -151,7 +151,10 @@ void cpPrintMsg(StatError_t statError, const char *sourceFile, int sourceLine, c
             va_start(arg, fmt);
             vsnprintf(msg, BUFSIZE, fmt, arg);
             va_end(arg);
-            mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+            if (sourceLine != -1 && sourceFile != NULL)
+                mrn_printf(sourceFile, sourceLine, "", gStatOutFp, "%s", msg);
+            else
+                fprintf(gStatOutFp, "%s", msg);
         }
         else
         {

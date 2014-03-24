@@ -91,7 +91,7 @@ Dependent Packages
    Package     What It Does
    Package Web Page
    Graphlib    Graph creation, merging, and export
-   https://outreach.scidac.gov/projects/stat/
+   https://github.com/lee218llnl/STAT
    Launchmon   Scalable daemon co-location
    http://sourceforge.net/projects/launchmon/
    Libdwarf    Debug information parsing (Required by StackWalker)

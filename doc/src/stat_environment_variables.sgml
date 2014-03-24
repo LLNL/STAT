@@ -186,5 +186,13 @@ Several environment variables influence STAT and its dependent packages.  Note t
         </para>
     </listitem>
 </varlistentry>
+<varlistentry>
+    <term>STAT_GROUP_OPS=<replaceable class="parameter">value</replaceable></term>
+    <listitem>
+        <para>
+        If this environment variable is set on the daemons, STAT will use Stackwalker's group operations instead of operating on individual processes.  This is set by default on BG/Q systems.
+        </para>
+    </listitem>
+</varlistentry>
 </variablelist>
 

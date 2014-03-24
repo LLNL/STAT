@@ -14,7 +14,7 @@ In addition to the operations provided by stat-view, stat-gui provides a toolbar
     <term><GUIbutton>Attach</GUIbutton></term>
     <listitem>
         <para>
-        Attach to your parallel application and gather an initial sample.  
+        Attach to your application and gather an initial sample.  
         </para>
     </listitem>
 </varlistentry>
@@ -22,7 +22,7 @@ In addition to the operations provided by stat-view, stat-gui provides a toolbar
     <term><GUIbutton>ReAttach</GUIbutton></term>
     <listitem>
         <para>
-        Reattach to the previous parallel application and gather an initial sample.
+        Reattach to the parallel application and gather an initial sample.
         </para>
     </listitem>
 </varlistentry>
@@ -30,7 +30,7 @@ In addition to the operations provided by stat-view, stat-gui provides a toolbar
     <term><GUIbutton>Detach</GUIbutton></term>
     <listitem>
     <para>
-        Detach from your parallel application.
+        Detach from your application.
     </para>
     </listitem>
 </varlistentry>
@@ -54,7 +54,7 @@ In addition to the operations provided by stat-view, stat-gui provides a toolbar
     <term><GUIbutton>Sample</GUIbutton></term>
     <listitem>
         <para>
-        Gather and merge a single stack trace from each task in your parallel application.  The application is left in a stopped state upon sampling.
+        Gather and merge a single stack trace from each task in your parallel application.  The application is left in a stopped state after sampling.
         </para>
     </listitem>
 </varlistentry>
@@ -62,7 +62,7 @@ In addition to the operations provided by stat-view, stat-gui provides a toolbar
     <term><GUIbutton>Sample Multiple</GUIbutton></term>
     <listitem>
         <para>
-        Gather and merge multiple stack traces from each task in your parallel application over time.  The application is left in a stopped state upon sampling.
+        Gather and merge multiple stack traces from each task in your parallel application over time.  The application is left in a stopped state after sampling.
         </para>
     </listitem>
 </varlistentry>

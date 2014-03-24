@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -22,7 +22,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define BUFSIZE 1024
 #define STAT_UNKNOWN -1
 #define STAT_MAJOR_VERSION 2
-#define STAT_MINOR_VERSION 0
+#define STAT_MINOR_VERSION 1
 #define STAT_REVISION_VERSION 0
 
 #include "STAT_IncMRNet.h"
