@@ -2,7 +2,7 @@
 A base class and implementation for merging trace files into a .dot format
 suitable for the Stack Trace Analysis Tool."""
 
-__copyright__ = """Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.

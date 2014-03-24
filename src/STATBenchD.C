@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -60,7 +60,6 @@ int main(int argc, char **argv)
         }
     }
 
-    /* TODO this needs to be changed! We could be sending the log output dir */
     if (argc >= 2)
     {
         for (i = 0; i < argc; i++)
@@ -72,8 +71,6 @@ int main(int argc, char **argv)
                 break;
             }
         }
-        //isHelperDaemon = false;
-        //launchType = STATD_SERIAL_LAUNCH;
     }
 
     statError = statInit(&argc, &argv, launchType);

@@ -9,7 +9,7 @@
 # This configure script is free software; the Free Software Foundation
 # gives unlimited permission to copy, distribute and modify it.
 #
-# Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+# Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 ## --------------------- ##
 ## M4sh Initialization.  ##
 ## --------------------- ##
@@ -1776,7 +1776,7 @@ Copyright (C) 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001,
 This configure script is free software; the Free Software Foundation
 gives unlimited permission to copy, distribute and modify it.
 
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 _ACEOF
   exit
 fi

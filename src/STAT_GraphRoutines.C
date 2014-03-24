@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -85,7 +85,7 @@ graphlib_graph_p createRootedGraph(unsigned int sampleType)
 StatBitVectorEdge_t *initializeBitVectorEdge(int numTasks)
 {
     StatBitVectorEdge_t *edge;
-    
+
     edge = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
     if (edge == NULL)
     {
@@ -422,7 +422,7 @@ void *statMergeEdge(void *edge1, const void *edge2)
     unsigned int i;
     size_t length;
     StatBitVectorEdge_t *e1, *e2;
-    
+
     e1 = (StatBitVectorEdge_t *)edge1;
     e2 = (StatBitVectorEdge_t *)edge2;
 
@@ -437,7 +437,7 @@ void *statMergeEdge(void *edge1, const void *edge2)
 void *statCopyEdge(const void *edge)
 {
     StatBitVectorEdge_t *e, *bvRet;
-    
+
     e = (StatBitVectorEdge_t *)edge;
     bvRet = (StatBitVectorEdge_t *)malloc(sizeof(StatBitVectorEdge_t));
     if (bvRet == NULL)
