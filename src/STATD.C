@@ -214,6 +214,11 @@ int main(int argc, char **argv)
         return statError;
     }
 
+#ifdef DYSECTAPI
+    sleep(2);
+#endif
+
+
     return 0;
 }
 

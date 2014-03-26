@@ -791,6 +791,11 @@ ac_includes_default="\
 ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
+YFLAGS
+YACC
+LEXLIB
+LEX_OUTPUT_ROOT
+LEX
 STATPYTHON
 GRAPHLIBPREFIX
 MWLIBS
@@ -802,7 +807,11 @@ ENABLE_STATBENCH_TRUE
 LAUNCHMONPREFIX
 NEWLAUNCHMONBIN
 LAUNCHMONBIN
+ENABLE_DYSECTAPI_FALSE
+ENABLE_DYSECTAPI_TRUE
 FGFSFILTERPATH
+ENABLE_FGFS_FALSE
+ENABLE_FGFS_TRUE
 ENABLE_GRAPHLIB20_FALSE
 ENABLE_GRAPHLIB20_TRUE
 ENABLE_BGL_FALSE
@@ -976,6 +985,7 @@ with_stackwalker
 with_libdwarf
 with_graphlib
 with_fgfs
+enable_dysectapi
 with_launchmon
 with_rmcomm
 with_mrnet
@@ -1002,7 +1012,9 @@ CXXCPP
 MPICC
 MPICXX
 MPIF77
-SWIG'
+SWIG
+YACC
+YFLAGS'
 
 
 # Initialize some variables set by options.
@@ -1646,6 +1658,7 @@ Optional Features:
                           Enable the use of rpm-installed stackwalker,
                           default=no
   --enable-libdwarf-rpm   Enable the use of rpm-installed libdwarf, default=no
+  --enable-dysectapi      Enable to include DysectAPI prototype
   --enable-debug          enable debug build
   --enable-rpath          Enable the use of rpaths, default=yes
   --enable-statbench      Enable the compilation of STATBench, the STAT
@@ -1701,6 +1714,11 @@ Some influential environment variables:
   MPICXX      MPI C++ compiler wrapper
   MPIF77      MPI Fortran compiler wrapper
   SWIG        SWIG wrapper generator
+  YACC        The `Yet Another C Compiler' implementation to use. Defaults to
+              the first program found out of: `bison -y', `byacc', `yacc'.
+  YFLAGS      The list of arguments that will be passed by default to $YACC.
+              This script will default YFLAGS to the empty string to avoid a
+              default value of `-d' given by some make applications.
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -5126,13 +5144,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:5129: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:5147: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5132: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:5150: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5135: output\"" >&5)
+  (eval echo "\"\$as_me:5153: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -6338,7 +6356,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6341 "configure"' > conftest.$ac_ext
+  echo '#line 6359 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -8899,11 +8917,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8902: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8920: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8906: \$? = $ac_status" >&5
+   echo "$as_me:8924: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9238,11 +9256,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9241: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9259: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:9245: \$? = $ac_status" >&5
+   echo "$as_me:9263: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9343,11 +9361,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9346: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9364: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9350: \$? = $ac_status" >&5
+   echo "$as_me:9368: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -9398,11 +9416,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9401: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9419: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9405: \$? = $ac_status" >&5
+   echo "$as_me:9423: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -12201,7 +12219,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12204 "configure"
+#line 12222 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12297,7 +12315,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12300 "configure"
+#line 12318 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14317,11 +14335,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14320: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14338: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14324: \$? = $ac_status" >&5
+   echo "$as_me:14342: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14416,11 +14434,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14419: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14437: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14423: \$? = $ac_status" >&5
+   echo "$as_me:14441: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14468,11 +14486,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14471: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14489: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14475: \$? = $ac_status" >&5
+   echo "$as_me:14493: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16882,6 +16900,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+   if false; then
+  ENABLE_FGFS_TRUE=
+  ENABLE_FGFS_FALSE='#'
+else
+  ENABLE_FGFS_TRUE='#'
+  ENABLE_FGFS_FALSE=
+fi
+
 
 # Check whether --with-fgfs was given.
 if test "${with_fgfs+set}" = set; then
@@ -16890,6 +16916,14 @@ if test "${with_fgfs+set}" = set; then
       WITH_FGFS=yes
       LDFLAGS="$LDFLAGS -L${withval}/lib"
       RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"
+       if true; then
+  ENABLE_FGFS_TRUE=
+  ENABLE_FGFS_FALSE='#'
+else
+  ENABLE_FGFS_TRUE='#'
+  ENABLE_FGFS_FALSE=
+fi
+
 
 else
   CXXFLAGS="$CXXFLAGS"
@@ -17082,6 +17116,33 @@ $as_echo "$as_me: error: the libfgfs_filter.so shared object is required and was
    { (exit 1); exit 1; }; }
     fi
   fi
+
+
+
+   if false; then
+  ENABLE_DYSECTAPI_TRUE=
+  ENABLE_DYSECTAPI_FALSE='#'
+else
+  ENABLE_DYSECTAPI_TRUE='#'
+  ENABLE_DYSECTAPI_FALSE=
+fi
+
+  # Check whether --enable-dysectapi was given.
+if test "${enable_dysectapi+set}" = set; then
+  enableval=$enable_dysectapi; CXXFLAGS="$CXXFLAGS -DDYSECTAPI -DGROUP_OPS"
+       if true; then
+  ENABLE_DYSECTAPI_TRUE=
+  ENABLE_DYSECTAPI_FALSE='#'
+else
+  ENABLE_DYSECTAPI_TRUE='#'
+  ENABLE_DYSECTAPI_FALSE=
+fi
+
+
+else
+  CXXFLAGS="$CXXFLAGS"
+
+fi
 
 
 
@@ -20074,7 +20135,447 @@ done
 
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile etc/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile scripts/STAT scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-script scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
+#tools/Makefile
+#tools/DysectAPI/Makefile
+#tools/DysectAPI/src/Makefile
+#tools/DysectAPI/include/Makefile
+for ac_prog in flex lex
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
+{ $as_echo "$as_me:$LINENO: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if test "${ac_cv_prog_LEX+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$LEX"; then
+  ac_cv_prog_LEX="$LEX" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_prog_LEX="$ac_prog"
+    $as_echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+IFS=$as_save_IFS
+
+fi
+fi
+LEX=$ac_cv_prog_LEX
+if test -n "$LEX"; then
+  { $as_echo "$as_me:$LINENO: result: $LEX" >&5
+$as_echo "$LEX" >&6; }
+else
+  { $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+  test -n "$LEX" && break
+done
+test -n "$LEX" || LEX=":"
+
+if test "x$LEX" != "x:"; then
+  cat >conftest.l <<_ACEOF
+%%
+a { ECHO; }
+b { REJECT; }
+c { yymore (); }
+d { yyless (1); }
+e { yyless (input () != 0); }
+f { unput (yytext[0]); }
+. { BEGIN INITIAL; }
+%%
+#ifdef YYTEXT_POINTER
+extern char *yytext;
+#endif
+int
+main (void)
+{
+  return ! yylex () + ! yywrap ();
+}
+_ACEOF
+{ (ac_try="$LEX conftest.l"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$LEX conftest.l") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }
+{ $as_echo "$as_me:$LINENO: checking lex output file root" >&5
+$as_echo_n "checking lex output file root... " >&6; }
+if test "${ac_cv_prog_lex_root+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+
+if test -f lex.yy.c; then
+  ac_cv_prog_lex_root=lex.yy
+elif test -f lexyy.c; then
+  ac_cv_prog_lex_root=lexyy
+else
+  { { $as_echo "$as_me:$LINENO: error: cannot find output from $LEX; giving up" >&5
+$as_echo "$as_me: error: cannot find output from $LEX; giving up" >&2;}
+   { (exit 1); exit 1; }; }
+fi
+fi
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_prog_lex_root" >&5
+$as_echo "$ac_cv_prog_lex_root" >&6; }
+LEX_OUTPUT_ROOT=$ac_cv_prog_lex_root
+
+if test -z "${LEXLIB+set}"; then
+  { $as_echo "$as_me:$LINENO: checking lex library" >&5
+$as_echo_n "checking lex library... " >&6; }
+if test "${ac_cv_lib_lex+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+
+    ac_save_LIBS=$LIBS
+    ac_cv_lib_lex='none needed'
+    for ac_lib in '' -lfl -ll; do
+      LIBS="$ac_lib $ac_save_LIBS"
+      cat >conftest.$ac_ext <<_ACEOF
+`cat $LEX_OUTPUT_ROOT.c`
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 $as_test_x conftest$ac_exeext
+       }; then
+  ac_cv_lib_lex=$ac_lib
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+fi
+
+rm -rf conftest.dSYM
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+      test "$ac_cv_lib_lex" != 'none needed' && break
+    done
+    LIBS=$ac_save_LIBS
+
+fi
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_lib_lex" >&5
+$as_echo "$ac_cv_lib_lex" >&6; }
+  test "$ac_cv_lib_lex" != 'none needed' && LEXLIB=$ac_cv_lib_lex
+fi
+
+
+{ $as_echo "$as_me:$LINENO: checking whether yytext is a pointer" >&5
+$as_echo_n "checking whether yytext is a pointer... " >&6; }
+if test "${ac_cv_prog_lex_yytext_pointer+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  # POSIX says lex can declare yytext either as a pointer or an array; the
+# default is implementation-dependent.  Figure out which it is, since
+# not all implementations provide the %pointer and %array declarations.
+ac_cv_prog_lex_yytext_pointer=no
+ac_save_LIBS=$LIBS
+LIBS="$LEXLIB $ac_save_LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+#define YYTEXT_POINTER 1
+`cat $LEX_OUTPUT_ROOT.c`
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 $as_test_x conftest$ac_exeext
+       }; then
+  ac_cv_prog_lex_yytext_pointer=yes
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+fi
+
+rm -rf conftest.dSYM
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_save_LIBS
+
+fi
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_prog_lex_yytext_pointer" >&5
+$as_echo "$ac_cv_prog_lex_yytext_pointer" >&6; }
+if test $ac_cv_prog_lex_yytext_pointer = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define YYTEXT_POINTER 1
+_ACEOF
+
+fi
+rm -f conftest.l $LEX_OUTPUT_ROOT.c
+
+fi
+if test "$LEX" = :; then
+  LEX=${am_missing_run}flex
+fi
+for ac_prog in 'bison -y' byacc
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
+{ $as_echo "$as_me:$LINENO: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if test "${ac_cv_prog_YACC+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$YACC"; then
+  ac_cv_prog_YACC="$YACC" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_prog_YACC="$ac_prog"
+    $as_echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+IFS=$as_save_IFS
+
+fi
+fi
+YACC=$ac_cv_prog_YACC
+if test -n "$YACC"; then
+  { $as_echo "$as_me:$LINENO: result: $YACC" >&5
+$as_echo "$YACC" >&6; }
+else
+  { $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+  test -n "$YACC" && break
+done
+test -n "$YACC" || YACC="yacc"
+
+
+
+
+
+        # Find any Python interpreter.
+    if test -z "$PYTHON"; then
+      for ac_prog in python python2 python3 python3.0 python2.5 python2.4 python2.3 python2.2 python2.1 python2.0
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
+{ $as_echo "$as_me:$LINENO: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if test "${ac_cv_path_PYTHON+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  case $PYTHON in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PYTHON="$PYTHON" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_path_PYTHON="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PYTHON=$ac_cv_path_PYTHON
+if test -n "$PYTHON"; then
+  { $as_echo "$as_me:$LINENO: result: $PYTHON" >&5
+$as_echo "$PYTHON" >&6; }
+else
+  { $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+  test -n "$PYTHON" && break
+done
+test -n "$PYTHON" || PYTHON=":"
+
+    fi
+    am_display_PYTHON=python
+
+
+  if test "$PYTHON" = :; then
+      { { $as_echo "$as_me:$LINENO: error: no suitable Python interpreter found" >&5
+$as_echo "$as_me: error: no suitable Python interpreter found" >&2;}
+   { (exit 1); exit 1; }; }
+  else
+
+
+  { $as_echo "$as_me:$LINENO: checking for $am_display_PYTHON version" >&5
+$as_echo_n "checking for $am_display_PYTHON version... " >&6; }
+if test "${am_cv_python_version+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  am_cv_python_version=`$PYTHON -c "import sys; sys.stdout.write(sys.version[:3])"`
+fi
+{ $as_echo "$as_me:$LINENO: result: $am_cv_python_version" >&5
+$as_echo "$am_cv_python_version" >&6; }
+  PYTHON_VERSION=$am_cv_python_version
+
+
+
+  PYTHON_PREFIX='${prefix}'
+
+  PYTHON_EXEC_PREFIX='${exec_prefix}'
+
+
+
+  { $as_echo "$as_me:$LINENO: checking for $am_display_PYTHON platform" >&5
+$as_echo_n "checking for $am_display_PYTHON platform... " >&6; }
+if test "${am_cv_python_platform+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  am_cv_python_platform=`$PYTHON -c "import sys; sys.stdout.write(sys.platform)"`
+fi
+{ $as_echo "$as_me:$LINENO: result: $am_cv_python_platform" >&5
+$as_echo "$am_cv_python_platform" >&6; }
+  PYTHON_PLATFORM=$am_cv_python_platform
+
+
+
+
+                { $as_echo "$as_me:$LINENO: checking for $am_display_PYTHON script directory" >&5
+$as_echo_n "checking for $am_display_PYTHON script directory... " >&6; }
+if test "${am_cv_python_pythondir+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  if test "x$prefix" = xNONE
+     then
+       am_py_prefix=$ac_default_prefix
+     else
+       am_py_prefix=$prefix
+     fi
+     am_cv_python_pythondir=`$PYTHON -c "import sys; from distutils import sysconfig; sys.stdout.write(sysconfig.get_python_lib(0,0,prefix='$am_py_prefix'))" 2>/dev/null ||
+     echo "$PYTHON_PREFIX/lib/python$PYTHON_VERSION/site-packages"`
+     case $am_cv_python_pythondir in
+     $am_py_prefix*)
+       am__strip_prefix=`echo "$am_py_prefix" | sed 's|.|.|g'`
+       am_cv_python_pythondir=`echo "$am_cv_python_pythondir" | sed "s,^$am__strip_prefix,$PYTHON_PREFIX,"`
+       ;;
+     *)
+       case $am_py_prefix in
+         /usr|/System*) ;;
+         *)
+	  am_cv_python_pythondir=$PYTHON_PREFIX/lib/python$PYTHON_VERSION/site-packages
+	  ;;
+       esac
+       ;;
+     esac
+
+fi
+{ $as_echo "$as_me:$LINENO: result: $am_cv_python_pythondir" >&5
+$as_echo "$am_cv_python_pythondir" >&6; }
+  pythondir=$am_cv_python_pythondir
+
+
+
+  pkgpythondir=\${pythondir}/$PACKAGE
+
+
+            { $as_echo "$as_me:$LINENO: checking for $am_display_PYTHON extension module directory" >&5
+$as_echo_n "checking for $am_display_PYTHON extension module directory... " >&6; }
+if test "${am_cv_python_pyexecdir+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  if test "x$exec_prefix" = xNONE
+     then
+       am_py_exec_prefix=$am_py_prefix
+     else
+       am_py_exec_prefix=$exec_prefix
+     fi
+     am_cv_python_pyexecdir=`$PYTHON -c "import sys; from distutils import sysconfig; sys.stdout.write(sysconfig.get_python_lib(1,0,prefix='$am_py_exec_prefix'))" 2>/dev/null ||
+     echo "$PYTHON_EXEC_PREFIX/lib/python$PYTHON_VERSION/site-packages"`
+     case $am_cv_python_pyexecdir in
+     $am_py_exec_prefix*)
+       am__strip_prefix=`echo "$am_py_exec_prefix" | sed 's|.|.|g'`
+       am_cv_python_pyexecdir=`echo "$am_cv_python_pyexecdir" | sed "s,^$am__strip_prefix,$PYTHON_EXEC_PREFIX,"`
+       ;;
+     *)
+       case $am_py_exec_prefix in
+         /usr|/System*) ;;
+         *)
+	   am_cv_python_pyexecdir=$PYTHON_EXEC_PREFIX/lib/python$PYTHON_VERSION/site-packages
+	   ;;
+       esac
+       ;;
+     esac
+
+fi
+{ $as_echo "$as_me:$LINENO: result: $am_cv_python_pyexecdir" >&5
+$as_echo "$am_cv_python_pyexecdir" >&6; }
+  pyexecdir=$am_cv_python_pyexecdir
+
+
+
+  pkgpyexecdir=\${pyexecdir}/$PACKAGE
+
+
+
+  fi
+
+
+
+ac_config_files="$ac_config_files Makefile src/Makefile src/libDysectAPI/Makefile src/libDysectAPI/include/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile etc/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile examples/sessions/Makefile scripts/STAT scripts/dysectc scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-script scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -20248,6 +20749,34 @@ if test -z "${ENABLE_GRAPHLIB20_TRUE}" && test -z "${ENABLE_GRAPHLIB20_FALSE}"; 
   { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_GRAPHLIB20\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 $as_echo "$as_me: error: conditional \"ENABLE_GRAPHLIB20\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${ENABLE_FGFS_TRUE}" && test -z "${ENABLE_FGFS_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_FGFS\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"ENABLE_FGFS\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${ENABLE_FGFS_TRUE}" && test -z "${ENABLE_FGFS_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_FGFS\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"ENABLE_FGFS\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${ENABLE_DYSECTAPI_TRUE}" && test -z "${ENABLE_DYSECTAPI_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_DYSECTAPI\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"ENABLE_DYSECTAPI\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${ENABLE_DYSECTAPI_TRUE}" && test -z "${ENABLE_DYSECTAPI_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_DYSECTAPI\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"ENABLE_DYSECTAPI\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -21122,6 +21651,8 @@ do
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
+    "src/libDysectAPI/Makefile") CONFIG_FILES="$CONFIG_FILES src/libDysectAPI/Makefile" ;;
+    "src/libDysectAPI/include/Makefile") CONFIG_FILES="$CONFIG_FILES src/libDysectAPI/include/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "doc/userguide/Makefile") CONFIG_FILES="$CONFIG_FILES doc/userguide/Makefile" ;;
     "doc/quickstart/Makefile") CONFIG_FILES="$CONFIG_FILES doc/quickstart/Makefile" ;;
@@ -21130,7 +21661,9 @@ do
     "examples/Makefile") CONFIG_FILES="$CONFIG_FILES examples/Makefile" ;;
     "examples/src/Makefile") CONFIG_FILES="$CONFIG_FILES examples/src/Makefile" ;;
     "examples/scripts/Makefile") CONFIG_FILES="$CONFIG_FILES examples/scripts/Makefile" ;;
+    "examples/sessions/Makefile") CONFIG_FILES="$CONFIG_FILES examples/sessions/Makefile" ;;
     "scripts/STAT") CONFIG_FILES="$CONFIG_FILES scripts/STAT" ;;
+    "scripts/dysectc") CONFIG_FILES="$CONFIG_FILES scripts/dysectc" ;;
     "scripts/STATGUI") CONFIG_FILES="$CONFIG_FILES scripts/STATGUI" ;;
     "scripts/core_stack_merge") CONFIG_FILES="$CONFIG_FILES scripts/core_stack_merge" ;;
     "scripts/STATview") CONFIG_FILES="$CONFIG_FILES scripts/STATview" ;;

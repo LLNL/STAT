@@ -26,6 +26,7 @@ X_AC_ARCH
 X_AC_DEBUGLIBS
 X_AC_GRAPHLIB
 X_AC_FGFS
+X_AC_DYSECTAPI
 X_AC_LAUNCHMON
 X_AC_RM_COMM
 X_AC_MRNET
@@ -95,8 +96,18 @@ AC_SUBST(LAUNCHMONPREFIX)
 AC_SUBST(GRAPHLIBPREFIX)
 AC_SUBST(STATPYTHON)
 
+#tools/Makefile
+#tools/DysectAPI/Makefile
+#tools/DysectAPI/src/Makefile
+#tools/DysectAPI/include/Makefile
+AM_PROG_LEX
+AC_PROG_YACC
+AM_PATH_PYTHON 
+
 AC_CONFIG_FILES([Makefile
                  src/Makefile
+                 src/libDysectAPI/Makefile
+                 src/libDysectAPI/include/Makefile
                  doc/Makefile
                  doc/userguide/Makefile
                  doc/quickstart/Makefile
@@ -105,7 +116,9 @@ AC_CONFIG_FILES([Makefile
                  examples/Makefile
                  examples/src/Makefile
                  examples/scripts/Makefile
+                 examples/sessions/Makefile
                  scripts/STAT
+                 scripts/dysectc
                  scripts/STATGUI
                  scripts/core_stack_merge
                  scripts/STATview

@@ -63,6 +63,10 @@ extern "C"
 #define STAT_MAX_FILENAME_ID 8192
 #define STAT_MAX_FANOUT 64
 
+#ifdef DYSECTAPI
+  #include "STAT_shared.h"
+  #include "DysectAPI/DysectAPIFE.h"
+#endif
 
 //! An enum for STAT launch type
 typedef enum {
@@ -95,12 +99,14 @@ typedef struct
     std::vector<MRN::NetworkTopology::Node *> leafCps;
 } LeafInfo_t;
 
+#ifndef DYSECTAPI
 //! A simple integer list
 typedef struct
 {
     int count;
     int *list;
 } IntList_t;
+#endif
 
 //! A struct to help devise the bit vector remap ordering
 typedef struct _remap_node
@@ -166,9 +172,16 @@ void nodeRemovedCb(MRN::Event *event, void *statObject);
 void topologyChangeCb(MRN::Event *event, void *statObject);
 
 
+bool checkAppExit();
+bool checkDaemonExit();
+
 //! The STAT FrontEnd object is used to Launch STAT daemons and gather and merge stack traces
 class STAT_FrontEnd
 {
+#ifdef DYSECTAPI
+    friend class DysectAPI::FE;
+#endif
+
     public:
         //! Default constructor
         /*!
@@ -635,6 +648,11 @@ class STAT_FrontEnd
         */
         void getVersion(int *version);
 
+#ifdef DYSECTAPI
+        StatError_t dysectSetup(const char *dysectApiSessionPath, int dysectTimeout);
+        StatError_t dysectListen(bool blocking = true);
+#endif
+
     private:
         //! Perform operations required after attach acknowledgement
         /*!
@@ -938,6 +956,11 @@ class STAT_FrontEnd
         char *fgfsFilterPath_;                              /*!< the path to the FGFS filter shared object */
         FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_;
         MRN::Stream *fileRequestStream_;
+#endif
+
+#ifdef DYSECTAPI
+        bool daemonsKilled_;
+        DysectAPI::FE* dysectFrontEnd_;
 #endif
 };
 

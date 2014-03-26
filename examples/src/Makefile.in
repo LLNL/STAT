@@ -36,13 +36,15 @@ build_triplet = @build@
 host_triplet = @host@
 examples_PROGRAMS = hw$(EXEEXT) mpi_ringtopo$(EXEEXT) \
 	mpi_ringtopo_defunct$(EXEEXT) to_test$(EXEEXT) \
-	rank_test$(EXEEXT)
+	rank_test$(EXEEXT) template_test$(EXEEXT) \
+	mpi_ringtopo2$(EXEEXT)
 subdir = examples/src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_boost.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
+	$(top_srcdir)/config/x_ac_dysectapi.m4 \
 	$(top_srcdir)/config/x_ac_enable_debug.m4 \
 	$(top_srcdir)/config/x_ac_fgfs.m4 \
 	$(top_srcdir)/config/x_ac_graphlib.m4 \
@@ -71,12 +73,18 @@ hw_LDADD = $(LDADD)
 am_mpi_ringtopo_OBJECTS = mpi_ringtopo.$(OBJEXT)
 mpi_ringtopo_OBJECTS = $(am_mpi_ringtopo_OBJECTS)
 mpi_ringtopo_LDADD = $(LDADD)
+am_mpi_ringtopo2_OBJECTS = mpi_ringtopo2.$(OBJEXT)
+mpi_ringtopo2_OBJECTS = $(am_mpi_ringtopo2_OBJECTS)
+mpi_ringtopo2_LDADD = $(LDADD)
 am_mpi_ringtopo_defunct_OBJECTS = mpi_ringtopo_defunct.$(OBJEXT)
 mpi_ringtopo_defunct_OBJECTS = $(am_mpi_ringtopo_defunct_OBJECTS)
 mpi_ringtopo_defunct_LDADD = $(LDADD)
 am_rank_test_OBJECTS = rank_test.$(OBJEXT)
 rank_test_OBJECTS = $(am_rank_test_OBJECTS)
 rank_test_LDADD = $(LDADD)
+am_template_test_OBJECTS = template_test.$(OBJEXT)
+template_test_OBJECTS = $(am_template_test_OBJECTS)
+template_test_LDADD = $(LDADD)
 am_to_test_OBJECTS = to_test.$(OBJEXT)
 to_test_OBJECTS = $(am_to_test_OBJECTS)
 to_test_LDADD = $(LDADD)
@@ -101,11 +109,22 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
+CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
+LTCXXCOMPILE = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
+CXXLD = $(CXX)
+CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
+	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 SOURCES = $(hw_SOURCES) $(mpi_ringtopo_SOURCES) \
-	$(mpi_ringtopo_defunct_SOURCES) $(rank_test_SOURCES) \
+	$(mpi_ringtopo2_SOURCES) $(mpi_ringtopo_defunct_SOURCES) \
+	$(rank_test_SOURCES) $(template_test_SOURCES) \
 	$(to_test_SOURCES)
 DIST_SOURCES = $(hw_SOURCES) $(mpi_ringtopo_SOURCES) \
-	$(mpi_ringtopo_defunct_SOURCES) $(rank_test_SOURCES) \
+	$(mpi_ringtopo2_SOURCES) $(mpi_ringtopo_defunct_SOURCES) \
+	$(rank_test_SOURCES) $(template_test_SOURCES) \
 	$(to_test_SOURCES)
 ETAGS = etags
 CTAGS = ctags
@@ -154,6 +173,9 @@ LAUNCHMONBIN = @LAUNCHMONBIN@
 LAUNCHMONPREFIX = @LAUNCHMONPREFIX@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LEX = @LEX@
+LEXLIB = @LEXLIB@
+LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
 LIBBOOST = @LIBBOOST@
 LIBBOOSTDIR = @LIBBOOSTDIR@
 LIBJAVADIR = @LIBJAVADIR@
@@ -205,6 +227,8 @@ STRIP = @STRIP@
 SWIG = @SWIG@
 TOAPI_INCLUDE = @TOAPI_INCLUDE@
 VERSION = @VERSION@
+YACC = @YACC@
+YFLAGS = @YFLAGS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -270,10 +294,12 @@ mpi_ringtopo_SOURCES = mpi_ringtopo.c
 rank_test_SOURCES = rank_test.c
 mpi_ringtopo_defunct_SOURCES = mpi_ringtopo_defunct.c
 to_test_SOURCES = to_test.c
+template_test_SOURCES = template_test.cpp
+mpi_ringtopo2_SOURCES = mpi_ringtopo2.cpp
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .F .c .f .lo .o .obj
+.SUFFIXES: .F .c .cpp .f .lo .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -355,8 +381,10 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpi_ringtopo.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpi_ringtopo2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpi_ringtopo_defunct.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rank_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/template_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/to_test.Po@am__quote@
 
 .F.o:
@@ -390,6 +418,27 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+.cpp.o:
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ $<
+
+.cpp.obj:
+@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+.cpp.lo:
+@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -601,15 +650,19 @@ uninstall-am: uninstall-examplesPROGRAMS
 
 
 hw: hw.F Makefile
-	$(MPIF77) -g -o $@ $<
+	$(MPIF77) -gdwarf-2 -o $@ $<
 mpi_ringtopo: mpi_ringtopo.c Makefile
 	$(MPICC) -g -o $@ $<
 rank_test: rank_test.c Makefile
-	$(MPICC) -g -o $@ $<
+	$(MPICXX) -g -gdwarf-2 -o $@ $<
 mpi_ringtopo_defunct: mpi_ringtopo_defunct.c Makefile
-	$(MPICC) -g -o $@ $<
+	$(MPICC) -g -gdwarf-2  -o $@ $<
 to_test: to_test.c Makefile
-	$(MPICC) -g -o $@ $<
+	$(MPICC) -g -gdwarf-2 -o $@ $<
+template_test: template_test.cpp Makefile
+	$(MPICXX) -g -gdwarf-2 -o $@ $<
+mpi_ringtopo2: mpi_ringtopo2.cpp Makefile
+	$(MPICXX) -g -gdwarf-2 -O0 -o $@ $<
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

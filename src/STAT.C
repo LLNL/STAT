@@ -21,8 +21,17 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <getopt.h>
 #include "STAT_FrontEnd.h"
 
+#ifdef DYSECTAPI
+  #include "DysectAPI/DysectAPIFE.h"
+#endif
+
 using namespace std;
 using namespace MRN;
+
+#ifdef DYSECTAPI
+using namespace DysectAPI;
+#endif
+
 
 //! A struct to encapsulate user command line args
 typedef struct
@@ -62,6 +71,13 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
 
 //! Sleeps for requested amount of time and prints a message to inform the user
 void mySleep(int sleepTime);
+
+
+#ifdef DYSECTAPI
+bool dysectApiEnabled = false;
+char *dysectApiSessionPath = NULL;
+int dysectTimeout = -1;
+#endif
 
 
 //! main() function to run STAT
@@ -190,6 +206,36 @@ int main(int argc, char **argv)
     sleep(1);
 #endif
 
+#ifdef DYSECTAPI
+    if (dysectApiEnabled)
+    {
+        statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "\n## Prototype DysectAPI enabled ##\n");
+        statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "Notice: Traditional sampling is disabled troughout session!\n");
+        
+        statError = statFrontEnd->dysectSetup(dysectApiSessionPath, dysectTimeout);
+        if (statError != STAT_OK)
+        {
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup Dysect session\n");
+            statFrontEnd->shutDown();
+            delete statFrontEnd;
+            free(statArgs);
+            return -1;
+        }
+
+        statError = statFrontEnd->dysectListen(true);
+        if (statError != STAT_OK)
+        {
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Dysect session failed\n");
+            statFrontEnd->shutDown();
+            delete statFrontEnd;
+            free(statArgs);
+            return -1;
+        }
+    } /* if dysectApiEnabled */
+    else
+    {
+#endif
+
     retval = STAT_OK;
     if (statArgs->nTraces <= 0)
         traces = 1;
@@ -298,17 +344,14 @@ int main(int argc, char **argv)
             return -1;
         }
     } /* for i */
+#ifdef DYSECTAPI
+    } /* else dysectApiEnabled */
+#endif
 
     /* Detach from the application */
     statError = statFrontEnd->detachApplication();
     if (statError != STAT_OK)
-    {
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to detach from application\n");
-        statFrontEnd->shutDown();
-        delete statFrontEnd;
-        free(statArgs);
-        return -1;
-    }
 
     statFrontEnd->shutDown();
     printf("\nResults written to %s\n\n", statFrontEnd->getOutDir());
@@ -338,7 +381,7 @@ void printUsage()
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
     fprintf(stderr, "  -y, --pythontrace\t\tgather Python script level stack traces\n");
-    fprintf(stderr, "  -s, --sleep <time>\t\tsleep time before attaching and gathering traces\n");
+    fprintf(stderr, "  -s, --sleep <secs>\t\tsleep time before attaching and gathering traces\n");
     fprintf(stderr, "\nTopology options:\n");
     fprintf(stderr, "  -a, --autotopo\t\tlet STAT automatically create topology\n");
     fprintf(stderr, "  -d, --depth <depth>\t\ttree topology depth\n");
@@ -359,6 +402,11 @@ void printUsage()
     fprintf(stderr, "  -L, --logdir <log_directory>\tlogging output directory\n");
     fprintf(stderr, "  -M, --mrnetprintf\t\tuse MRNet's print for logging\n");
     fprintf(stderr, "  -j, --jobid <id>\t\tappend <id> to the STAT output directory\n");
+
+#ifdef DYSECTAPI
+    fprintf(stderr, "  -X, --dysectapi <session>\trun specified DySectAPI session\n");
+    fprintf(stderr, "  -b, --dysectapi_batch <secs>\trun DySectAPI session in batch mode. Session\n\t\t\t\tstops after specified timeout or detach action.\n");
+#endif
     fprintf(stderr, "\n%% man STAT\n  for more information\n\n");
 }
 
@@ -413,6 +461,10 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"logdir",              required_argument,  0, 'L'},
         {"usertopology",        required_argument,  0, 'u'},
         {"depth",               required_argument,  0, 'd'},
+#ifdef DYSECTAPI
+        {"dysectapi",           required_argument, 0, 'X'},
+        {"dysectapi_batch",     required_argument, 0, 'b'},
+#endif
         {0,                     0,                  0, 0}
     };
 
@@ -428,7 +480,11 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
 
     while (1)
     {
+#ifdef DYSECTAPI
+        opt = getopt_long(argc, argv,"hVvPicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:", longOptions, &optionIndex);
+#else
         opt = getopt_long(argc, argv,"hVvPicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+#endif
         if (opt == -1)
             break;
         if (opt == 'C')
@@ -545,6 +601,11 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             break;
         case 's':
             statArgs->sleepTime = atoi(optarg);
+            if (statArgs->sleepTime <= 0)
+            {
+                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "'%s' is not a valid timeout, must be a positive integer\n", optarg);
+                return STAT_ARG_ERROR;
+            }
             break;
         case 'l':
             if (strcmp(optarg, "FE") == 0)
@@ -573,6 +634,21 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             statArgs->countRep = true;
             statArgs->sampleType |= STAT_SAMPLE_COUNT_REP;
             break;
+#ifdef DYSECTAPI
+        case 'X':
+            setenv("STAT_GROUP_OPS", "1", 1);
+            dysectApiEnabled = true;
+            dysectApiSessionPath = strdup(optarg);
+            break;
+        case 'b':
+            dysectTimeout = atoi(optarg);
+            if (dysectTimeout <= 0)
+            {
+                statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "'%s' is not a valid timeout, must be a positive integer\n", optarg);
+                return STAT_ARG_ERROR;
+            }
+            break;
+#endif
         case '?':
             statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
             printUsage();

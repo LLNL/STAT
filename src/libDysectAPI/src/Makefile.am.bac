@@ -1,0 +1,13 @@
+tools_LIBRARIES=libDysectAPIFE.a libDysectAPIBE.a
+
+dysect_sources = action.cpp condition.cpp domain.cpp event.cpp probe.cpp lib.cpp parser.cpp frontend.cpp backend.cpp probe_tree.cpp group.cpp err.cpp 
+dysect_fe_sources = $(dysect_sources) location_fe.cpp
+dysect_be_sources = $(dysect_sources) location_be.cpp
+
+dysect_includes = -I../include -I../../../src 
+
+libDysectAPIFE_a_SOURCES=$(dysect_fe_sources)
+libDysectAPIFE_a_CPPFLAGS=-g -O2 -fPIC $(dysect_includes)
+
+libDysectAPIBE_a_SOURCES=$(dysect_be_sources)
+libDysectAPIBE_a_CPPFLAGS=-g -O2 -fPIC $(dysect_includes)
