@@ -36,7 +36,10 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = STATbin$(EXEEXT) STATD$(EXEEXT) $(am__EXEEXT_1)
-@ENABLE_GUI_TRUE@am__append_1 = _STAT.la 
+@ENABLE_GUI_TRUE@am__append_1 = _STAT.la
+@ENABLE_GUI_TRUE@am__append_2 = STAT.py
+@ENABLE_TO_TRUE@am__append_3 = _tomod.la
+@ENABLE_TO_TRUE@am__append_4 = tomod.py
 subdir = src
 DIST_COMMON = $(am__nobase_include_HEADERS_DIST) \
 	$(am__python_PYTHON_DIST) $(include_HEADERS) \
@@ -44,6 +47,7 @@ DIST_COMMON = $(am__nobase_include_HEADERS_DIST) \
 	expr-scanner.cc
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
+	$(top_srcdir)/config/x_ac_boost.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
 	$(top_srcdir)/config/x_ac_dysectapi.m4 \
 	$(top_srcdir)/config/x_ac_enable_debug.m4 \
@@ -55,8 +59,11 @@ am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_mpicc.m4 \
 	$(top_srcdir)/config/x_ac_mrnet.m4 \
 	$(top_srcdir)/config/x_ac_python.m4 \
+	$(top_srcdir)/config/x_ac_rose.m4 \
 	$(top_srcdir)/config/x_ac_rsh.m4 \
-	$(top_srcdir)/config/x_ac_swig.m4 $(top_srcdir)/configure.ac
+	$(top_srcdir)/config/x_ac_swig.m4 \
+	$(top_srcdir)/config/x_ac_temporalorderingapi.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -132,6 +139,15 @@ _STATmerge_la_OBJECTS = $(am__STATmerge_la_OBJECTS)
 _STATmerge_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(_STATmerge_la_LDFLAGS) $(LDFLAGS) -o $@
+_tomod_la_LIBADD =
+am___tomod_la_SOURCES_DIST = to_wrap.C to.C to.h to.i
+@ENABLE_TO_TRUE@am__tomod_la_OBJECTS = _tomod_la-to_wrap.lo \
+@ENABLE_TO_TRUE@	_tomod_la-to.lo $(am__objects_3)
+_tomod_la_OBJECTS = $(am__tomod_la_OBJECTS)
+_tomod_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
+	$(CXXFLAGS) $(_tomod_la_LDFLAGS) $(LDFLAGS) -o $@
+@ENABLE_TO_TRUE@am__tomod_la_rpath = -rpath $(pyexecdir)
 libDysectAPIBE_la_LIBADD =
 am__libDysectAPIBE_la_SOURCES_DIST = libDysectAPI/src/action.cpp \
 	libDysectAPI/src/condition.cpp libDysectAPI/src/domain.cpp \
@@ -352,12 +368,14 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(STAT_FilterDefinitions_la_SOURCES) $(_STAT_la_SOURCES) \
-	$(_STATmerge_la_SOURCES) $(libDysectAPIBE_la_SOURCES) \
-	$(libDysectAPIFE_la_SOURCES) $(libstatbe_la_SOURCES) \
-	$(libstatfe_la_SOURCES) $(STATBenchD_SOURCES) \
-	$(STATBenchbin_SOURCES) $(STATD_SOURCES) $(STATbin_SOURCES)
+	$(_STATmerge_la_SOURCES) $(_tomod_la_SOURCES) \
+	$(libDysectAPIBE_la_SOURCES) $(libDysectAPIFE_la_SOURCES) \
+	$(libstatbe_la_SOURCES) $(libstatfe_la_SOURCES) \
+	$(STATBenchD_SOURCES) $(STATBenchbin_SOURCES) $(STATD_SOURCES) \
+	$(STATbin_SOURCES)
 DIST_SOURCES = $(am__STAT_FilterDefinitions_la_SOURCES_DIST) \
 	$(am___STAT_la_SOURCES_DIST) $(_STATmerge_la_SOURCES) \
+	$(am___tomod_la_SOURCES_DIST) \
 	$(am__libDysectAPIBE_la_SOURCES_DIST) \
 	$(am__libDysectAPIFE_la_SOURCES_DIST) \
 	$(am__libstatbe_la_SOURCES_DIST) \
@@ -372,7 +390,7 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	install-pdf-recursive install-ps-recursive install-recursive \
 	installcheck-recursive installdirs-recursive pdf-recursive \
 	ps-recursive uninstall-recursive
-am__python_PYTHON_DIST = STAT.py
+am__python_PYTHON_DIST = STAT.py tomod.py
 py_compile = $(top_srcdir)/config/py-compile
 am__nobase_include_HEADERS_DIST = DysectAPI/DysectAPIProcessMgr.h \
 	DysectAPI/Aggregates/Aggregate.h \
@@ -424,6 +442,7 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 BELIBS = @BELIBS@
+BOOST_INCLUDE = @BOOST_INCLUDE@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -462,8 +481,16 @@ LDFLAGS = @LDFLAGS@
 LEX = @LEX@
 LEXLIB = @LEXLIB@
 LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
+LIBBOOST = @LIBBOOST@
+LIBBOOSTDIR = @LIBBOOSTDIR@
+LIBJAVADIR = @LIBJAVADIR@
+LIBJVM = @LIBJVM@
 LIBOBJS = @LIBOBJS@
+LIBROSE = @LIBROSE@
+LIBROSEDIR = @LIBROSEDIR@
 LIBS = @LIBS@
+LIBTOAPI = @LIBTOAPI@
+LIBTOAPIDIR = @LIBTOAPIDIR@
 LIBTOOL = @LIBTOOL@
 LIPO = @LIPO@
 LN_S = @LN_S@
@@ -475,6 +502,7 @@ MPICXX = @MPICXX@
 MPIF77 = @MPIF77@
 MRNETCOMMNODEBIN = @MRNETCOMMNODEBIN@
 MWLIBS = @MWLIBS@
+NEWLAUNCHMONBIN = @NEWLAUNCHMONBIN@
 NM = @NM@
 NMEDIT = @NMEDIT@
 OBJDUMP = @OBJDUMP@
@@ -495,12 +523,14 @@ PYTHON_PLATFORM = @PYTHON_PLATFORM@
 PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 RANLIB = @RANLIB@
+ROSE_INCLUDE = @ROSE_INCLUDE@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STATPYTHON = @STATPYTHON@
 STRIP = @STRIP@
 SWIG = @SWIG@
+TOAPI_INCLUDE = @TOAPI_INCLUDE@
 VERSION = @VERSION@
 YACC = @YACC@
 YFLAGS = @YFLAGS@
@@ -565,11 +595,8 @@ top_srcdir = @top_srcdir@
 @ENABLE_DYSECTAPI_TRUE@SUBDIRS = libDysectAPI
 
 # what flags you want to pass to the C compiler & linker
-AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\" 
+AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
 AM_LDFLAGS = 
-
-# this lists the binaries to produce, the (non-PHONY, binary) targets in
-# the previous manual Makefile
 include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h STAT_shared.h
 @ENABLE_DYSECTAPI_TRUE@nobase_include_HEADERS = DysectAPI/DysectAPIProcessMgr.h DysectAPI/Aggregates/Aggregate.h DysectAPI/Aggregates/AggregateFunction.h DysectAPI/Aggregates/Data.h DysectAPI/Aggregates/Packet.h DysectAPI/Aggregates/Location.h DysectAPI/Aggregates/StrAgg.h DysectAPI/Aggregates/DescVar.h DysectAPI/Aggregates/CmpAgg.h
 @ENABLE_DYSECTAPI_TRUE@stat_fe_ldadd_dysectapi = libDysectAPIFE.la @BELIBS@
@@ -630,20 +657,22 @@ pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
 STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C $(stat_graphlib_sources) $(stat_fd_la_sources_dysectapi)
 STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version
 STAT_FilterDefinitions_la_LIBADD = @MWLIBS@
-pyexec_LTLIBRARIES = _STATmerge.la $(am__append_1)
+pyexec_LTLIBRARIES = _STATmerge.la $(am__append_1) $(am__append_3)
 _STATmerge_la_SOURCES = STAT_merge.C STAT_GraphRoutines.C
-_STATmerge_la_CPPFLAGS = -I./ 
+_STATmerge_la_CPPFLAGS = -I./
 _STATmerge_la_LDFLAGS = -module -avoid-version
 _STATmerge_la_LIBADD = -llnlgraph
-@ENABLE_GUI_TRUE@BUILT_SOURCES = STAT_wrap.C
-@ENABLE_GUI_TRUE@SWIG_SOURCES = STAT.i
-@ENABLE_GUI_TRUE@python_PYTHON = STAT.py
-@ENABLE_GUI_TRUE@_STAT_la_SOURCES = STAT_wrap.C $(SWIG_SOURCES)
-@ENABLE_GUI_TRUE@_STAT_la_CPPFLAGS = -I./ $(stat_la_cppflags_dysectapi)
+python_PYTHON = $(am__append_2) $(am__append_4)
+@ENABLE_GUI_TRUE@GUI_SWIG_SOURCES = STAT.i
+@ENABLE_GUI_TRUE@_STAT_la_SOURCES = STAT_wrap.C $(GUI_SWIG_SOURCES)
+@ENABLE_GUI_TRUE@_STAT_la_CPPFLAGS = -I./ $(dysect_includes) -D__DYSECT_IS_FRONTEND
 @ENABLE_GUI_TRUE@_STAT_la_LDFLAGS = -module -avoid-version
 @ENABLE_GUI_TRUE@_STAT_la_LIBADD = libstatfe.la $(stat_fe_ldadd_dysectapi) @FELIBS@
-all: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) all-recursive
+@ENABLE_TO_TRUE@TO_SWIG_SOURCES = to.i
+@ENABLE_TO_TRUE@_tomod_la_SOURCES = to_wrap.C to.C to.h $(TO_SWIG_SOURCES)
+@ENABLE_TO_TRUE@_tomod_la_CPPFLAGS = -I./ $(BOOST_INCLUDE) $(ROSE_INCLUDE) $(TOAPI_INCLUDE)
+@ENABLE_TO_TRUE@_tomod_la_LDFLAGS = -module -avoid-version -L$(LIBBOOSTDIR) -L$(LIBJAVADIR) -L$(LIBROSEDIR) -L$(LIBTOAPIDIR) $(LIBTOAPI) -Wl,-rpath=$(LIBBOOSTDIR) -Wl,-rpath=$(LIBROSEDIR) -Wl,-rpath=$(LIBTOAPIDIR) -Wl,-rpath=$(LIBJAVADIR)
+all: all-recursive
 
 .SUFFIXES:
 .SUFFIXES: .C .cc .cpp .ll .lo .o .obj .yy
@@ -656,9 +685,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign src/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu src/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign src/Makefile
+	  $(AUTOMAKE) --gnu src/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -776,6 +805,8 @@ _STAT.la: $(_STAT_la_OBJECTS) $(_STAT_la_DEPENDENCIES)
 	$(_STAT_la_LINK) $(am__STAT_la_rpath) $(_STAT_la_OBJECTS) $(_STAT_la_LIBADD) $(LIBS)
 _STATmerge.la: $(_STATmerge_la_OBJECTS) $(_STATmerge_la_DEPENDENCIES) 
 	$(_STATmerge_la_LINK) -rpath $(pyexecdir) $(_STATmerge_la_OBJECTS) $(_STATmerge_la_LIBADD) $(LIBS)
+_tomod.la: $(_tomod_la_OBJECTS) $(_tomod_la_DEPENDENCIES) 
+	$(_tomod_la_LINK) $(am__tomod_la_rpath) $(_tomod_la_OBJECTS) $(_tomod_la_LIBADD) $(LIBS)
 libDysectAPIBE.la: $(libDysectAPIBE_la_OBJECTS) $(libDysectAPIBE_la_DEPENDENCIES) 
 	$(libDysectAPIBE_la_LINK) $(am_libDysectAPIBE_la_rpath) $(libDysectAPIBE_la_OBJECTS) $(libDysectAPIBE_la_LIBADD) $(LIBS)
 libDysectAPIFE.la: $(libDysectAPIFE_la_OBJECTS) $(libDysectAPIFE_la_DEPENDENCIES) 
@@ -865,6 +896,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STAT_la-STAT_wrap.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STATmerge_la-STAT_GraphRoutines.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STATmerge_la-STAT_merge.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_tomod_la-to.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_tomod_la-to_wrap.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-action.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-action_be.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-backend.Plo@am__quote@
@@ -1056,6 +1089,20 @@ _STATmerge_la-STAT_GraphRoutines.lo: STAT_GraphRoutines.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STAT_GraphRoutines.C' object='_STATmerge_la-STAT_GraphRoutines.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STATmerge_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o _STATmerge_la-STAT_GraphRoutines.lo `test -f 'STAT_GraphRoutines.C' || echo '$(srcdir)/'`STAT_GraphRoutines.C
+
+_tomod_la-to_wrap.lo: to_wrap.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_tomod_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT _tomod_la-to_wrap.lo -MD -MP -MF $(DEPDIR)/_tomod_la-to_wrap.Tpo -c -o _tomod_la-to_wrap.lo `test -f 'to_wrap.C' || echo '$(srcdir)/'`to_wrap.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/_tomod_la-to_wrap.Tpo $(DEPDIR)/_tomod_la-to_wrap.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='to_wrap.C' object='_tomod_la-to_wrap.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_tomod_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o _tomod_la-to_wrap.lo `test -f 'to_wrap.C' || echo '$(srcdir)/'`to_wrap.C
+
+_tomod_la-to.lo: to.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_tomod_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT _tomod_la-to.lo -MD -MP -MF $(DEPDIR)/_tomod_la-to.Tpo -c -o _tomod_la-to.lo `test -f 'to.C' || echo '$(srcdir)/'`to.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/_tomod_la-to.Tpo $(DEPDIR)/_tomod_la-to.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='to.C' object='_tomod_la-to.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_tomod_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o _tomod_la-to.lo `test -f 'to.C' || echo '$(srcdir)/'`to.C
 
 libDysectAPIBE_la-action.lo: libDysectAPI/src/action.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-action.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-action.Tpo -c -o libDysectAPIBE_la-action.lo `test -f 'libDysectAPI/src/action.cpp' || echo '$(srcdir)/'`libDysectAPI/src/action.cpp
@@ -2005,8 +2052,7 @@ distdir: $(DISTFILES)
 	  fi; \
 	done
 check-am: all-am
-check: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) check-recursive
+check: check-recursive
 all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(HEADERS)
 install-binPROGRAMS: install-libLTLIBRARIES
 
@@ -2015,8 +2061,7 @@ installdirs-am:
 	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(pkglibdir)" "$(DESTDIR)$(pyexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pythondir)" "$(DESTDIR)$(includedir)" "$(DESTDIR)$(includedir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: $(BUILT_SOURCES)
-	$(MAKE) $(AM_MAKEFLAGS) install-recursive
+install: install-recursive
 install-exec: install-exec-recursive
 install-data: install-data-recursive
 uninstall: uninstall-recursive
@@ -2043,7 +2088,6 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 	-rm -f expr-parser.cc
 	-rm -f expr-scanner.cc
-	-test -z "$(BUILT_SOURCES)" || rm -f $(BUILT_SOURCES)
 clean: clean-recursive
 
 clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
@@ -2121,9 +2165,8 @@ uninstall-am: uninstall-binPROGRAMS uninstall-includeHEADERS \
 	uninstall-pkglibLTLIBRARIES uninstall-pyexecLTLIBRARIES \
 	uninstall-pythonPYTHON
 
-.MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) all check \
-	ctags-recursive install install-am install-strip \
-	tags-recursive
+.MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) ctags-recursive \
+	install-am install-strip tags-recursive
 
 .PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
 	all all-am check check-am clean clean-binPROGRAMS \
@@ -2149,11 +2192,20 @@ uninstall-am: uninstall-binPROGRAMS uninstall-includeHEADERS \
 	uninstall-pythonPYTHON
 
 
-@ENABLE_GUI_TRUE@STAT_wrap.C:$(SWIG_SOURCES) Makefile
+@ENABLE_GUI_TRUE@STAT_wrap.C:$(GUI_SWIG_SOURCES) Makefile
 @ENABLE_GUI_TRUE@	$(SWIG) -c++ -python -o $@ $<
 
+@ENABLE_GUI_TRUE@STAT.py:$(GUI_SWIG_SOURCES) Makefile
+@ENABLE_GUI_TRUE@	$(MAKE) $(AM_MAKEFLAGS) STAT_wrap.C
+
+@ENABLE_TO_TRUE@to_wrap.C:$(TO_SWIG_SOURCES) Makefile
+@ENABLE_TO_TRUE@	$(SWIG) -c++ -python -o $@ $<
+
+@ENABLE_TO_TRUE@tomod.py:$(TO_SWIG_SOURCES) Makefile
+@ENABLE_TO_TRUE@	$(MAKE) $(AM_MAKEFLAGS) to_wrap.C
+
 clean-local:
-	-rm -rf STAT_wrap.C STAT.py
+	-rm -rf STAT_wrap.C STAT.py to_wrap.C tomod.py
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

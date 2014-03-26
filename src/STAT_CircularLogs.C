@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+  Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
   Produced at the Lawrence Livermore National Laboratory
   Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
   LLNL-CODE-624152.
@@ -19,7 +19,7 @@
 #include "STAT_CircularLogs.h"
 
 #if !defined(_GNU_SOURCE)
-#define _GNU_SOURCE
+  #define _GNU_SOURCE
 #endif
 
 #include <unistd.h>
@@ -37,7 +37,7 @@ CircularBuffer::CircularBuffer(size_t size) :
     funcs.write = writeWrapper;
     funcs.seek = NULL;
     funcs.close = closeWrapper;
-   
+
     fHandle_ = fopencookie(this, "w", funcs);
     if (!fHandle_)
         return;
@@ -58,9 +58,10 @@ void CircularBuffer::init()
     if (!buffer_)
     {
         buffer_ = new Buffer_t(bufferSize_);
-        if (!buffer_) return;
+        if (!buffer_)
+            return;
     }
-   
+
     if (!fHandle_)
     {
         cookie_io_functions_t funcs;
@@ -68,11 +69,12 @@ void CircularBuffer::init()
         funcs.write = writeWrapper;
         funcs.seek = NULL;
         funcs.close = closeWrapper;
-      
         fHandle_ = fopencookie(this, "w", funcs);
     }
 }
-ssize_t CircularBuffer::writeWrapper(void *cookie, const char *buf, size_t size){
+
+ssize_t CircularBuffer::writeWrapper(void *cookie, const char *buf, size_t size)
+{
     CircularBuffer *me = static_cast<CircularBuffer *>(cookie);
     return me->cWrite(buf, size);
 }
@@ -83,66 +85,68 @@ int CircularBuffer::closeWrapper(void *cookie)
     return me->cClose();
 }
 
-ssize_t CircularBuffer::cWrite(const char *buf, size_t size) {
-    for (unsigned i = 0; i < size; i++) {
+ssize_t CircularBuffer::cWrite(const char *buf, size_t size)
+{
+    for (unsigned i = 0; i < size; i++)
         buffer_->push_back(buf[i]);
-    }
     return size;
 }
 
-int CircularBuffer::cClose() {
+int CircularBuffer::cClose()
+{
     reset();
     fHandle_ = NULL;
     return 0;
 }
 
-FILE *CircularBuffer::handle() {
+FILE *CircularBuffer::handle()
+{
     init();
     return fHandle_;
 }
 
 bool CircularBuffer::getBuffer(char* &buffer1, size_t &buffer1Size, char* &buffer2, size_t &buffer2Size)
 {
-   if (!buffer_)
-      return false;
+    if (!buffer_)
+       return false;
 
-   buffer1 = buffer_->array_one().first;
-   buffer1Size = buffer_->array_one().second;
-   buffer2 = buffer_->array_two().first;
-   buffer2Size = buffer_->array_two().second;
+    buffer1 = buffer_->array_one().first;
+    buffer1Size = buffer_->array_one().second;
+    buffer2 = buffer_->array_two().first;
+    buffer2Size = buffer_->array_two().second;
 
-   return true;
+    return true;
 }
 
 int CircularBuffer::flushBufferTo(int fd)
 {
-   int numWritten = 0, result;
-   char *buffer1, *buffer2;
-   size_t buffer1Size, buffer2Size;
+    int numWritten = 0, result;
+    char *buffer1, *buffer2;
+    size_t buffer1Size, buffer2Size;
 
-   getBuffer(buffer1, buffer1Size, buffer2, buffer2Size);
-   if (buffer1)
-   {
-       result = write(fd, buffer1, buffer1Size);
-       if (result == -1)
-           return -1;
-       numWritten += result;
-   }
-   
-   if (buffer2)
-   {
-       result = write(fd, buffer2, buffer2Size);
-       if (result == -1)
-           return -1;
-       numWritten += result;
-   }
-   
-   return numWritten;
+    getBuffer(buffer1, buffer1Size, buffer2, buffer2Size);
+    if (buffer1)
+    {
+        result = write(fd, buffer1, buffer1Size);
+        if (result == -1)
+            return -1;
+        numWritten += result;
+    }
+
+    if (buffer2)
+    {
+        result = write(fd, buffer2, buffer2Size);
+        if (result == -1)
+            return -1;
+        numWritten += result;
+    }
+
+    return numWritten;
 }
 
 const char *CircularBuffer::str()
 {
-    if (!buffer_) 
+    if (!buffer_)
         return "";
 
     buffer_->push_back(0);

@@ -2,7 +2,7 @@
 An implementation for merging BlueGene lightweight core files into a .dot
 format suitable for the Stack Trace Analysis Tool."""
 
-__copyright__ = """Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -19,7 +19,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 import sys
 import os
@@ -29,6 +29,7 @@ from subprocess import Popen, PIPE
 addr2line_exe = '/usr/bin/addr2line'
 addr2line_map = {}
 job_ids = []
+
 
 class BgCoreTrace(StatTrace):
     def get_traces(self):
@@ -46,7 +47,7 @@ class BgCoreTrace(StatTrace):
                 job_id = int(line.split(':')[1][1:])
                 if job_id not in job_ids:
                     job_ids.append(job_id)
-                    if len(job_ids) == 2 and self.options['jobid'] == None:
+                    if len(job_ids) == 2 and self.options['jobid'] is None:
                         sys.stderr.write('\n\nWarning, multiple Job IDs detected in core files. Stack traces will still be merged into a single tree. To have traces differentiated by job ID, please use the -j or --jobid option\n\n')
                 continue
             if line.find('+++STACK') != -1 or line.find('Function Call Chain') != -1:
@@ -56,7 +57,7 @@ class BgCoreTrace(StatTrace):
             if line.find("Frame Address") == 0:
                 in_stack = True
             if line.find('---STACK') != -1 or line.find('End of stack') != -1:
-                if self.options['jobid'] != None:
+                if self.options['jobid'] is not None:
                     line_number_trace.insert(0, str(job_id))
                     function_only_trace.insert(0, str(job_id))
                 line_number_traces.append(line_number_trace)
@@ -66,14 +67,14 @@ class BgCoreTrace(StatTrace):
                 in_stack = False
                 continue
             line = line.strip(' ')
-            if line.find('0x') == 0 or in_stack == True:
+            if line.find('0x') == 0 or in_stack is True:
                 addr = line.split(' ')[-1]
                 if addr in addr2line_map:
                     line_info = addr2line_map[addr]
                 else:
-                    output = Popen([addr2line_exe, '-e' , self.options["exe"], '--demangle', '-s', '-f', addr], stdout = PIPE).communicate()[0]
+                    output = Popen([addr2line_exe, '-e', self.options["exe"], '--demangle', '-s', '-f', addr], stdout=PIPE).communicate()[0]
                     out_lines = output.split('\n')
-                    line_info = '%s@%s' %(out_lines[0], out_lines[1])
+                    line_info = '%s@%s' % (out_lines[0], out_lines[1])
                     line_info = line_info.replace('<', '\<').replace('>', '\>')
                     addr2line_map[addr] = line_info
                 function = line_info[:line_info.find('@')]
@@ -81,22 +82,24 @@ class BgCoreTrace(StatTrace):
                 function_only_trace.insert(0, function)
         return [function_only_traces, line_number_traces]
 
+
 class BgCoreMerger(StatMerger):
     def get_high_rank(self, trace_files):
         # determine the highest ranked task for graphlib initialization
         high_rank = 0
-        for file in trace_files:
-            if file.find('core.') != -1:
-                rank = file[file.find('core.')+5:]
+        for filename in trace_files:
+            if filename.find('core.') != -1:
+                rank = filename[filename.find('core.')+5:]
                 rank = int(rank)
                 if rank > high_rank:
                     high_rank = rank
         return high_rank
 
+
 class BgCoreMergerArgs(StatMergerArgs):
     def __init__(self):
         StatMergerArgs.__init__(self)
-        
+
         # add the -j --jobid option to prefix traces with job ID
         self.arg_map["jobid"] = self.StatMergerArgElement("j", False, None, None, "delineate traces based on Job ID in the core file")
 
@@ -108,8 +111,8 @@ class BgCoreMergerArgs(StatMergerArgs):
 
         # override the usage messages:
         self.usage_msg_synopsis = '\nThis tool will merge the stack traces from the user specified lightweight core files and output 2 .dot files, one with just function names, the other with function names + line number information\n'
-        self.usage_msg_command = '\nUSAGE:\n\tpython %s [options] -x <exe_path> -c <corefile>*\n\tpython tracer_merge.py [options] -x <exe_path> -c <core_files_dir>\n' %(sys.argv[0])
-        self.usage_msg_examples = '\nEXAMPLES:\n\tpython %s -x a.out -c core.0 core.1\n\tpython %s -x a.out -c core.*\n\tpython %s -x a.out -c ./\n\tpython %s -x a.out -c core_dir\n' %(sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0])
+        self.usage_msg_command = '\nUSAGE:\n\tpython %s [options] -x <exe_path> -c <corefile>*\n\tpython tracer_merge.py [options] -x <exe_path> -c <core_files_dir>\n' % (sys.argv[0])
+        self.usage_msg_examples = '\nEXAMPLES:\n\tpython %s -x a.out -c core.0 core.1\n\tpython %s -x a.out -c core.*\n\tpython %s -x a.out -c ./\n\tpython %s -x a.out -c core_dir\n' % (sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0])
 
     def is_valid_file(self, file_path):
         if file_path.find('core.') == 0:
@@ -121,7 +124,7 @@ class BgCoreMergerArgs(StatMergerArgs):
             sys.stderr.write('\nYou must specify an executable with the -x or --exe= options\n')
             self.print_usage()
         if not os.path.exists(options["exe"]):
-            sys.stderr.write('\nFailed to find executable "%s".\n' %options["exe"])
+            sys.stderr.write('\nFailed to find executable "%s".\n' % options["exe"])
             self.print_usage()
         StatMergerArgs.error_check(self, options)
 

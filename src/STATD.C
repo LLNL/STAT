@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -20,6 +20,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "config.h"
 #include "STAT_BackEnd.h"
 
+using namespace std;
 
 //! The daemon main
 /*!
@@ -29,9 +30,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 int main(int argc, char **argv)
 {
-    int opt, optionIndex = 0, mrnetOutputLevel = 1;
+    int opt, optionIndex = 0, mrnetOutputLevel = 1, i;
     unsigned int logType = 0;
     char logOutDir[BUFSIZE], *pid;
+    vector<string> serialProcesses;
     StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
     StatError_t statError;
     STAT_BackEnd *statBackEnd;
@@ -105,7 +107,7 @@ int main(int argc, char **argv)
             mrnetOutputLevel = atoi(optarg);
             break;
         case 'p':
-            statBackEnd->addSerialProcess(optarg);
+            serialProcesses.push_back(optarg);
             break;
         case 'L':
             snprintf(logOutDir, BUFSIZE, "%s", optarg);
@@ -152,6 +154,21 @@ int main(int argc, char **argv)
             delete statBackEnd;
             statFinalize(launchType);
             return statError;
+        }
+    }
+
+    if (serialProcesses.size() > 0)
+    {
+        for (i = 0; i < serialProcesses.size(); i++)
+        {
+            statError = statBackEnd->addSerialProcess(serialProcesses[i].c_str());
+            if (statError != STAT_OK)
+            {
+                statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");
+                delete statBackEnd;
+                statFinalize(launchType);
+                return statError;
+            }
         }
     }
 

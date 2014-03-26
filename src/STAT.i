@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -76,6 +76,13 @@ typedef enum {
 } StatTopology_t;
 
 typedef enum {
+    STAT_CP_NONE = 0,
+    STAT_CP_SHAREAPPNODES,
+    STAT_CP_EXCLUSIVE
+} StatCpPolicy_t;
+
+
+typedef enum {
                STAT_OK = 0,
                STAT_SYSTEM_ERROR,
                STAT_MRNET_ERROR,
@@ -116,7 +123,7 @@ class STAT_FrontEnd
         StatError_t attachAndSpawnDaemons(unsigned int pid, char *remoteNode = NULL);
         StatError_t launchAndSpawnDaemons(char *remoteNode = NULL, bool isStatBench = false);
         StatError_t setupForSerialAttach();
-        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, bool shareAppNodes = false);
+        StatError_t launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList = NULL, bool blocking = true, StatCpPolicy_t cpPolicy = STAT_CP_SHAREAPPNODES);
         StatError_t connectMrnetTree(bool blocking = true);
         StatError_t setupConnectedMrnetTree();
         StatError_t attachApplication(bool blocking = true);
@@ -124,15 +131,15 @@ class STAT_FrontEnd
         StatError_t resume(bool blocking = true);
         bool isRunning();
         StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
-        StatError_t gatherLastTrace(bool blocking = true);
-        StatError_t gatherTraces(bool blocking = true);
+        StatError_t gatherLastTrace(bool blocking = true, const char *altDotFilename = NULL);
+        StatError_t gatherTraces(bool blocking = true, const char *altDotFilename = NULL);
         char *getLastDotFilename();
         void shutDown();
         StatError_t detachApplication(bool blocking = true);
         StatError_t detachApplication(int *stopList, int stopListSize, bool blocking = true);
         StatError_t terminateApplication(bool blocking = true);
         void printMsg(StatError_t statError, const char *sourceFile, int sourceLine, const char *fmt, ...);
-        StatError_t startLog(unsigned char logType, char *logOutDir);
+        StatError_t startLog(unsigned char logType, char *logOutDir, bool withPid = false);
         StatError_t receiveAck(bool blocking = true);
         StatError_t statBenchCreateStackTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses, int iCountRep);
         char *getNodeInEdge(int nodeId);
@@ -170,3 +177,220 @@ class STAT_FrontEnd
         void getVersion(int *version);
 };
 
+%pythoncode %{
+
+import time, sys, os, subprocess
+
+class STATerror(Exception):
+    def __init__(self, etype, emsg):
+        self.etype = etype
+        self.emsg = emsg
+
+    def __str__(self):
+        return '%s: %s' %(self.etype, self.emsg)
+
+stat_fe = None
+
+#  \return the STAT_FrontEnd object
+#
+#  \n
+def get_stat_fe():
+    global stat_fe
+    return stat_fe
+
+## \param application_option - STAT_ATTACH, STAT_LAUNCH, or STAT_SERIAL_ATTACH
+## \param processes - the process(es) to attach to or the arguments for launch
+## \param topology_type - the STAT topology type
+## \param topology - the topology specification
+## \param node_list - the nodes to use for communication processes
+## \param procs_per_node - the max number of communication processes per node
+## \param cp_policy - policy about where to locate communication processes
+## \param remote_host - the remote host for the job launcher in the attach or launch case
+## \param verbosity - the STAT verbosity level
+## \param logging_tuple - the log options (log_type, log_dir)
+#  \return true on successful launch/attach
+#
+#  \n
+def attach_impl(application_option, processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, cp_policy = STAT_CP_SHAREAPPNODES, remote_host = None, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
+    log_type, log_dir = logging_tuple
+    global stat_fe
+
+    try:
+        if stat_fe == None:
+            stat_fe = STAT_FrontEnd()
+        if log_type != STAT_LOG_NONE:
+            stat_fe.startLog(log_type, log_dir)
+        stat_fe.setVerbose(verbosity)
+        stat_fe.setProcsPerNode(procs_per_node)
+
+        stat_fe.setApplicationOption(application_option)
+        if application_option == STAT_ATTACH:
+            stat_error = stat_fe.attachAndSpawnDaemons(int(processes), remote_host)
+        elif application_option == STAT_SERIAL_ATTACH:
+            for process in processes:
+                stat_fe.addSerialProcess(process)
+            stat_error = stat_fe.setupForSerialAttach()
+        elif application_option == STAT_LAUNCH:
+            for arg in processes:
+                stat_fe.addLauncherArgv(arg)
+            stat_error = stat_fe.launchAndSpawnDaemons(remote_host)
+            time.sleep(3)
+        if stat_error != STAT_OK:
+            raise STATerror('tool launch failed', stat_fe.getLastErrorMessage())
+
+        stat_error = stat_fe.launchMrnetTree(topology_type, topology, node_list, True, cp_policy)
+        if stat_error != STAT_OK:
+            raise STATerror('launch mrnet failed', stat_fe.getLastErrorMessage())
+
+        if application_option != STAT_SERIAL_ATTACH:
+            stat_error = stat_fe.connectMrnetTree(True)
+            if stat_error != STAT_OK:
+                raise STATerror('connect mrnet failed', stat_fe.getLastErrorMessage())
+
+        stat_error = stat_fe.setupConnectedMrnetTree();
+        if stat_error != STAT_OK:
+            raise STATerror('setup mrnet failed', stat_fe.getLastErrorMessage())
+
+        stat_error = stat_fe.attachApplication(True)
+        if stat_error != STAT_OK:
+            raise STATerror('attach failed', stat_fe.getLastErrorMessage())
+
+    except Exception as e:
+        if application_option == STAT_LAUNCH:
+            pid = stat_fe.getLauncherPid()
+            subprocess.call(['kill', '-TERM', str(pid)])
+        if type(e) == STATerror:
+            if e.etype == 'attach failed':
+                stat_fe.shutDown()
+        stat_fe = None
+        raise
+    return True
+
+
+## \param processes - the processes to attach to
+## \param topology_type - the STAT topology type
+## \param topology - the topology specification
+## \param node_list - the nodes to use for communication processes
+## \param procs_per_node - the max number of communication processes per node
+## \param cp_policy - policy about where to locate communication processes
+## \param verbosity - the STAT verbosity level
+## \param logging_tuple - the log options (log_type, log_dir)
+#  \return true on successful attach
+#
+#  \n
+def serial_attach(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, cp_policy = STAT_CP_SHAREAPPNODES, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
+    attach_impl(STAT_SERIAL_ATTACH, processes, topology_type, topology, node_list, procs_per_node, cp_policy, None, verbosity, logging_tuple)
+
+
+## \param processes - the parallel job launcher PID to attach to
+## \param topology_type - the STAT topology type
+## \param topology - the topology specification
+## \param node_list - the nodes to use for communication processes
+## \param procs_per_node - the max number of communication processes per node
+## \param cp_policy - policy about where to locate communication processes
+## \param remote_host - the remote host where the job launcher process is running
+## \param verbosity - the STAT verbosity level
+## \param logging_tuple - the log options (log_type, log_dir)
+#  \return true on successful attach
+#
+#  \n
+def attach(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, cp_policy = STAT_CP_SHAREAPPNODES, remote_host = None, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
+    attach_impl(STAT_ATTACH, processes, topology_type, topology, node_list, procs_per_node, cp_policy, remote_host, verbosity, logging_tuple)
+
+
+## \param processes - the arguments for launch
+## \param topology_type - the STAT topology type
+## \param topology - the topology specification
+## \param node_list - the nodes to use for communication processes
+## \param procs_per_node - the max number of communication processes per node
+## \param cp_policy - policy about where to locate communication processes
+## \param remote_host - the remote host on which to run the parallel job launcher process
+## \param verbosity - the STAT verbosity level
+## \param logging_tuple - the log options (log_type, log_dir)
+#  \return true on successful launch and attach
+#
+#  \n
+def launch(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_list = '', procs_per_node = 8, cp_policy = STAT_CP_SHAREAPPNODES, remote_host = None, verbosity = STAT_VERBOSE_ERROR, logging_tuple = (STAT_LOG_NONE, '')):
+    attach_impl(STAT_LAUNCH, processes, topology_type, topology, node_list, procs_per_node, cp_policy, remote_host, verbosity, logging_tuple)
+
+
+## \param sample_type - the level of detail of the stack traces
+## \param num_traces - the number of traces to gather
+## \param trace_frequency - the time (ms) between samples
+## \param num_retries - the number of retry attemps
+## \param retry_frequency - the time (ms) between retries
+## \param var_spec - the list of variables to gather
+#  \return true on successful stack sampling
+#
+#  \n
+def sample(sample_type = STAT_SAMPLE_FUNCTION_ONLY, num_traces = 1, trace_frequency = 100, num_retries = 5, retry_frequency = 100, var_spec = 'NULL', alt_dot_filename = ''):
+    global stat_fe
+    try:
+        stat_error = stat_fe.sampleStackTraces(sample_type, num_traces, trace_frequency, num_retries, retry_frequency, True, var_spec)
+        if stat_error != STAT_OK:
+            raise STATerror('sample failed', stat_fe.getLastErrorMessage())
+        if (num_traces == 1):
+            if alt_dot_filename != '':
+                stat_error = stat_fe.gatherLastTrace(True, alt_dot_filename)
+            else:
+                stat_error = stat_fe.gatherLastTrace(True)
+        else:
+            if alt_dot_filename != '':
+                stat_error = stat_fe.gatherTraces(True, alt_dot_filename)
+            else:
+                stat_error = stat_fe.gatherTraces(True)
+        if stat_error != STAT_OK:
+            raise STATerror('gather failed', stat_fe.getLastErrorMessage())
+        filename = stat_fe.getLastDotFilename()
+    except Exception as e:
+        stat_fe.shutDown()
+        stat_fe = None
+        raise
+
+    return True
+
+
+#  \return true on successful pause
+#
+#  \n
+def pause():
+    global stat_fe
+    stat_error = stat_fe.pause(True)
+    if stat_error != STAT_OK:
+        msg = stat_fe.getLastErrorMessage()
+        stat_fe.shutDown()
+        stat_fe = None
+        raise STATerror('pause failed', msg)
+    return True
+
+
+#  \return true on successful resume
+#
+#  \n
+def resume():
+    global stat_fe
+    stat_error = stat_fe.resume(True)
+    if stat_error != STAT_OK:
+        msg = stat_fe.getLastErrorMessage()
+        stat_fe.shutDown()
+        stat_fe = None
+        raise STATerror('resume failed', msg)
+    return True
+
+
+#  \return true on successful detach
+#
+#  \n
+def detach():
+    global stat_fe
+    stat_error = stat_fe.detachApplication(intArray(0), 0, True)
+    if stat_error != STAT_OK:
+        msg = stat_fe.getLastErrorMessage()
+        stat_fe.shutDown()
+        stat_fe = None
+        raise STATerror('detach failed', msg)
+    stat_fe.shutDown()
+    stat_fe = None
+    return True
+
+%}

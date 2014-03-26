@@ -40,6 +40,38 @@ AC_DEFUN([X_AC_LAUNCHMON], [
   if test $LAUNCHMONBIN = no; then
     AC_MSG_ERROR([the launchmon executable is required.  Specify launchmon prefix with --with-launchmon])
   fi
+  AC_PATH_PROG([NEWLAUNCHMONBIN], [newlaunchmon], [no], [$LAUNCHMONPREFIX/bin$PATH_SEPARATOR$PATH])
+  if test $NEWLAUNCHMONBIN = no; then
+    AC_MSG_WARN([the newlaunchmon executable is not found.])
+  fi
 AC_SUBST(LAUNCHMONBIN)
+AC_SUBST(NEWLAUNCHMONBIN)
 AC_SUBST(LAUNCHMONPREFIX)
 ])
+
+
+AC_DEFUN([X_AC_RM_COMM], [
+  AC_MSG_CHECKING([specify RM's communication library])
+
+  AC_ARG_WITH([rmcomm],
+    AS_HELP_STRING(--with-rmcomm@<:@=ARG@:>@,specify rm communication@<:@default=/lib64@:>@), 
+    [with_rmcomm=$withval],
+    [with_rmcomm="check"]
+  )
+  
+  rmcomm_configured="no"
+  if test "x$with_rmcomm" = "xyes"; then 
+      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=/lib64"
+      rmcomm_configured="yes"
+  elif test "x$with_rmcomm" != "xcheck"; then
+    if test -d $withval; then
+      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}"
+      rmcomm_configured="yes"
+    else
+      AC_MSG_ERROR([directory $withval not found])
+    fi
+  fi
+
+  AC_MSG_RESULT($rmcomm_configured)
+])
+

@@ -56,3 +56,8 @@ STAT has several dependencies
 <para>
 In addition, the STAT GUI requires <ulink url="http://www.python.org/">Python</ulink> with <ulink url="http://www.pygtk.org/">PyGTK</ulink>, both of which are commonly preinstalled with many Linux operating systems.  The <ulink url="http://pygments.org/">Pygments</ulink> Python module can optionally be installed to allow the STAT GUI to perform syntax highlighting of source code.
 </para>
+<para>
+STAT can also be optionally built with the <ulink url="https://computation-rnd.llnl.gov/fgfs/">Fast Global File Status (FGFS)</ulink> library.  This library helps STAT identify when a file (target binary) resides on a shared file system that may become a bottleneck if all STAT daemons try to access that file at the same time.  If so, STAT will access the file from the STAT frontend and distribute its contents to the daemons via the MRNet communication tree.  The two necessary components of FGFS can be downloaded from <ulink url="https://github.com/dongahn/MountPointAttributes"></ulink> and <ulink url="https://github.com/dongahn/FastGlobalFileStatus"></ulink>
+</para>
+<para>
+</para>

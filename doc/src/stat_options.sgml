@@ -48,6 +48,14 @@
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>-x, --exclusive</term>
+    <listitem>
+        <para>
+        Do not use the front-end or back-end nodes for communication processes.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>-p, --procs <replaceable class="parameter">processes</replaceable></term>
     <listitem>
         <para>

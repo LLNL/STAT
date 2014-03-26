@@ -1,4 +1,27 @@
 <bibliography>
+
+<bibliomixed>
+  <bibliomset relation="article">
+  <authorgroup>
+    <author><firstname>Dong H.</firstname><surname>Ahn</surname></author>
+    <author><firstname>Michael J.</firstname><surname>Brim</surname></author>
+    <author><firstname>Bronis R.</firstname><surname>de Supinski</surname></author>
+    <author><firstname>Todd</firstname><surname>Gamblin</surname></author>
+    <author><firstname>Gregory L.</firstname><surname>Lee</surname></author>
+    <author><firstname>Matthew P.</firstname><surname>Legendre</surname></author>
+    <author><firstname>Barton P.</firstname><surname>Miller</surname></author>
+    <author><firstname>Adam</firstname><surname>Moody</surname></author>
+    <author><firstname>Martin</firstname><surname>Schulz,</surname></author>
+  </authorgroup>
+  <title role="article">Efficient and Scalable Retrieval Techniques for Global File Properties,</title>
+  </bibliomset>
+  <bibliomset relation="conference">
+  <title>International Parallel & Distributed Processing Symposium,</title>
+  <pubdate>Boston, Massachusetts, May 2013.</pubdate>
+  </bibliomset>
+  <bibliomisc>[<ulink url="ftp://ftp.cs.wisc.edu/paradyn/papers/FGFS-IPDPS13-Ahn-validated.pdf">pdf</ulink>]</bibliomisc>
+</bibliomixed>
+
 <bibliomixed>
   <bibliomset relation="article">
   <authorgroup>

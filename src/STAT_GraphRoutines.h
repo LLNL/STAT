@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -224,11 +224,11 @@ long statEdgeCheckSum(const void *edge);
     \param[out] edge - a pointer to the edge object
     \param buf - the serialized buffer
     \param bufLength - the length of the serialized buffer
-    
-    Deserialize a STAT edge object from a buffer into the appropriate location 
-    in the bit vector for the STAT filter. This requires 
-    gStatGraphRoutinesTotalWidth to be set to the final bit vector width, 
-    gStatGraphRoutinesEdgeLabelWidths must be a list of bit vector widths, and 
+
+    Deserialize a STAT edge object from a buffer into the appropriate location
+    in the bit vector for the STAT filter. This requires
+    gStatGraphRoutinesTotalWidth to be set to the final bit vector width,
+    gStatGraphRoutinesEdgeLabelWidths must be a list of bit vector widths, and
     gStatGraphRoutinesCurrentIndex must be set to the current index.
 */
 void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLength);
@@ -247,8 +247,8 @@ void *statCopyEdgeInitializeEmpty(const void *edge);
 
     Merge the unordered input vector bits into the appropriate in-order bits of
     the frontend's reorder graph. This requires gStatGraphRoutinesRanksList to
-    be set to the ranks list for the current bit vector, 
-    gStatGraphRoutinesRanksListLength must be set to the length of the ranks 
+    be set to the ranks list for the current bit vector,
+    gStatGraphRoutinesRanksListLength must be set to the length of the ranks
     list for the current bitvector, and gStatGraphRoutinesCurrentIndex must be
     set to the start index for the bit vector in edge
 */

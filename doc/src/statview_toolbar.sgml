@@ -62,6 +62,22 @@ The toolbar operations are defined as follows:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term><GUIbutton>Cut</GUIbutton></term>
+    <listitem>
+        <para>
+        This feature <![%userguide[(<xref linkend="statview_prog_model">)]]> allows you to collapse the prefix tree below the implementation frames for various programming models. For instance, a user may wish to hide all calls that happen within the MPI library.  The programming models may be entered in a configuration file or added by the user. STATview looks for configuration files in $prefix/etc/STAT/STATview_models.conf and in $HOME/.STATview_models.conf. Programming models are specified as regular expressions, using Python's <command>re</command> module syntax, and the <command>re.search</command> function is used in favor of <command>re.match</command>.
+        </para>
+<![%userguide[
+<figure id="statview_prog_model">
+    <title>The stat-view programming model cutting interface.</title>
+    <screenshot><mediaobject><imageobject>
+    <imagedata scale="50" fileref="figs/statview_prog_model.png">
+    </imageobject></mediaobject></screenshot>
+</figure>
+]]>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>[Cut] MPI</GUIbutton></term>
     <listitem>
         <para>
@@ -70,10 +86,10 @@ The toolbar operations are defined as follows:
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term><GUIbutton>[Cut] Text</GUIbutton></term>
+    <term><GUIbutton>[Cut] Pthreads</GUIbutton></term>
     <listitem>
         <para>
-        Collapse the frames below the specified text, which can be entered as a regular expression.
+        Collapse the Pthread implementation frames below the Pthread function call.
         </para>
     </listitem>
 </varlistentry>

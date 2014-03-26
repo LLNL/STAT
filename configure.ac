@@ -2,12 +2,12 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(STAT, 2.0.0, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
-AC_COPYRIGHT([Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.])
+AC_INIT(STAT, 2.1.0, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
+AC_COPYRIGHT([Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADER([config.h])
-AM_INIT_AUTOMAKE(STAT, 2.0.0)
+AM_INIT_AUTOMAKE(STAT, 2.1.0)
 AC_CANONICAL_HOST
 
 # Checks for programs.
@@ -20,6 +20,7 @@ X_AC_MPICC
 X_AC_RSH
 
 # Checks for libraries.
+X_AC_TEMPORALORDERINGAPI
 X_AC_GUI
 X_AC_ARCH
 X_AC_DEBUGLIBS
@@ -27,6 +28,7 @@ X_AC_GRAPHLIB
 X_AC_FGFS
 X_AC_DYSECTAPI
 X_AC_LAUNCHMON
+X_AC_RM_COMM
 X_AC_MRNET
 
 # Checks for header files.
@@ -57,11 +59,6 @@ AC_ARG_ENABLE(statbench,
   [WITH_STATBENCH=no]
 )  
 AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
-AC_ARG_ENABLE(to,
-  [AS_HELP_STRING([--enable-to],[Enable the use of temporal ordering])],
-  [CXXFLAGS="-DPROTOTYPE_TO $CXXFLAGS"],
-  [CXXFLAGS="$CXXFLAGS"]
-)  
 AC_ARG_ENABLE(python-debug,
   [AS_HELP_STRING([--enable-python-debug],[Enable the ability to gather python script debugging])],
   [CXXFLAGS="-DPROTOTYPE_PY $CXXFLAGS"],
@@ -114,6 +111,7 @@ AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  doc/userguide/Makefile
                  doc/quickstart/Makefile
+                 etc/Makefile
                  man/Makefile
                  examples/Makefile
                  examples/src/Makefile
@@ -126,6 +124,7 @@ AC_CONFIG_FILES([Makefile
                  scripts/STATview
                  scripts/STATBench
                  scripts/stat-cl
+                 scripts/stat-script
                  scripts/stat-gui
                  scripts/stat-view
                  scripts/stat-bench

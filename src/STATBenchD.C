@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -17,6 +17,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 
+#include <getopt.h>
 #include "config.h"
 #include "STAT_BackEnd.h"
 
@@ -29,10 +30,25 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 int main(int argc, char **argv)
 {
+    int opt, optionIndex = 0, mrnetOutputLevel = 1, i;
     bool isHelperDaemon = true;
+    unsigned int logType = 0;
+    char logOutDir[BUFSIZE];
     STAT_BackEnd *statBackEnd;
     StatError_t statError;
     StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
+
+    struct option longOptions[] =
+    {
+        {"mrnetprintf",         no_argument,        0, 'm'},
+        {"mrnetoutputlevel",    required_argument,  0, 'o'},
+        {"logdir",              required_argument,  0, 'L'},
+        {"log",                 required_argument,  0, 'l'},
+        {"STATBench",           no_argument,        0, 'S'},
+        {0,                     0,                  0, 0}
+    };
+
+    snprintf(logOutDir, BUFSIZE, "NULL");
 
     /* If user querying for version, print it and exit */
     if (argc == 2)
@@ -44,17 +60,23 @@ int main(int argc, char **argv)
         }
     }
 
-    /* TODO this needs to be changed! We could be sending the log output dir */
-    if (argc == 2)
+    if (argc >= 2)
     {
-        isHelperDaemon = false;
-        launchType = STATD_SERIAL_LAUNCH;
+        for (i = 0; i < argc; i++)
+        {
+            if (strcmp(argv[i], "-S") == 0 || strcmp(argv[i], "--STATBench") == 0)
+            {
+                isHelperDaemon = false;
+                launchType = STATD_SERIAL_LAUNCH;
+                break;
+            }
+        }
     }
 
     statError = statInit(&argc, &argv, launchType);
     if (statError != STAT_OK)
     {
-        fprintf(stderr, __FILE__, __LINE__, "Failed to initialize STAT\n");
+        fprintf(stderr, "Failed to initialize STAT\n");
         return statError;
     }
 
@@ -64,6 +86,76 @@ int main(int argc, char **argv)
     {
         fprintf(stderr, "Failed to initialize STAT_BackEnd object\n");
         return statError;
+    }
+
+    while (1)
+    {
+        opt = getopt_long(argc, argv,"hVmSo:L:l:", longOptions, &optionIndex);
+        if (opt == -1)
+            break;
+        switch(opt)
+        {
+        case 'h':
+            printf("STATD-%d.%d.%d\n", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
+            delete statBackEnd;
+            statFinalize(launchType);
+            return 0;
+            break;
+        case 'V':
+            printf("STATD-%d.%d.%d\n", STAT_MAJOR_VERSION, STAT_MINOR_VERSION, STAT_REVISION_VERSION);
+            delete statBackEnd;
+            statFinalize(launchType);
+            return 0;
+            break;
+        case 'o':
+            mrnetOutputLevel = atoi(optarg);
+            break;
+        case 'L':
+            snprintf(logOutDir, BUFSIZE, "%s", optarg);
+            break;
+        case 'l':
+            if (strcmp(optarg, "BE") == 0)
+                logType |= STAT_LOG_BE;
+            else if (strcmp(optarg, "SW") == 0)
+                logType |= STAT_LOG_SW;
+            else if (strcmp(optarg, "SWERR") == 0)
+                logType |= STAT_LOG_SWERR;
+            else
+            {
+                statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Log option must equal BE, SW, SWERR, you entered %s\n", optarg);
+                delete statBackEnd;
+                statFinalize(launchType);
+                return STAT_ARG_ERROR;
+            }
+            break;
+        case 'S':
+            break;
+        case 'm':
+            logType |= STAT_LOG_MRN;
+            break;
+        case '?':
+            statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            delete statBackEnd;
+            statFinalize(launchType);
+            return STAT_ARG_ERROR;
+        default:
+            statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            delete statBackEnd;
+            statFinalize(launchType);
+            return STAT_ARG_ERROR;
+        }; /* switch(opt) */
+    } /* while(1) */
+
+    if (strcmp(logOutDir, "NULL") != 0)
+    {
+        statError = statBackEnd->startLog(logType, logOutDir, mrnetOutputLevel, true);
+        if (statError != STAT_OK)
+        {
+            statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");
+            delete statBackEnd;
+            statFinalize(launchType);
+            return statError;
+        }
     }
 
     if (isHelperDaemon == false)

@@ -1,9 +1,75 @@
+2014-03-24 Gregory L. Lee <lee218@llnl.gov>
+	* : code cleanup + updated copyright date
+
+2014-03-21 Gregory L. Lee <lee218@llnl.gov>
+	* : allow appending of PID to log filename
+	* src/STATBenchD.C : perform argument parsing
+	* src/STATBenchD.C : allow debug logs to be generated
+
+2014-03-11 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_mrnet.m4 : search for MRNet lib/*/include directories for *_config.h files
+
+2014-03-10 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/[xdot,STATview].py : Updating from xdot version 0.4 to 0.6
+
+2014-03-07 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : Allow setting of check node access
+
+2014-03-06 Gregory L. Lee <lee218@llnl.gov>
+	* etc/* : distribute with and install preference file templates
+
+2014-03-05 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : unblock all signals (alleviate detach hang on Cray)
+
+2014-02-24 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : fixed ranks filter specification for node search
+	* scripts/xdot.py : fixed float to int conversion
+	* src/STAT_FrontEnd.C : fixed minor topology generation bug with empty hostname
+	* : fixed memory leaks identified by Inspector and SSA
+
+2013-12-09 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.C : print invocation time to terminal
+	* src/STAT_FrontEnd.C : add invocation time to .perf file
+
+2013-12-04 Dong H. Ahn <ahn1@llnl.gov>
+	* : port to new LaunchMON in preparation for FLUX
+
+2013-12-04 Gregory L. Lee <lee218@llnl.gov>
+	* : Added prototype temporal ordering capability
+
+2013-11-14 Gregory L. Lee <lee218@llnl.gov>
+	* : added CP location policy, including new exclusive mode
+
+2013-10-25 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : fixed topology generation bug
+
+2013-10-11 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STAT[helper,view].py : optimized handling of edge labels
+
+2013-10-10 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STAThelper.py, src/STAT_BackEnd.C : improved handling of adding '\' escape character to '<' and '>' in node labels
+
+2013-10-09 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added STATDotParser and use for STATview parsing
+	* scripts/STATview.py : added originallabel attribute to temp dot files
+
+2013-10-08 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STAT[helper,view].py : use newlines for joined node labels
+
 2013-10-04 Gregory L. Lee <lee218@llnl.gov>
 	* : code clean up
 
 2013-10-03 Gregory L. Lee <lee218@llnl.gov>
 	* DysectAPIFE.[C,h], frontend.[cpp,h] : allow non-blocking event handling
 	* src/STAT_FrontEnd.C, src/STAT.C : moved Dysect setup and listen to STAT_FrontEnd class
+
+2013-10-02 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.[C,h] : added ability to specify dot filename on gather
+	* src/STAT_FrontEnd.[C,h] : modified dot file naming convention
+
+2013-10-02 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/*.py : PEP8 conformance (except line length)
+	* scripts/*.py : pylint suggested fixes
 	
 2013-09-25 Gregory L. Lee <lee218@llnl.gov>
 	* : Dysect probe notifications sent to FE
@@ -22,6 +88,33 @@
 	* src/libDysectAPI/src/action_fe.cpp : increment aggIter in Trace action to fix Trace w/ multiple aggregates (was repeating first aggregate string)
 	* src/STAT_BackEnd.C : track detached, exited, and terminated tasks under group_ops
 
+2013-09-05 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : need to pick up decompose_node for TO
+
+2013-08-29 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : set BG/Q timeout value to 10 minutes
+	* src/STAT_BackEnd.C : fixed valgrind-reported uninit memory condition
+
+2013-08-01 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : maintain user zoom for undo/redo
+
+2013-07-31 Gregory L. Lee <lee218@llnl.gov>
+	* scr/STAT.i : added higher-level Python wrapping
+	* examples/scripts/script_test.py : added basic test suite
+	* src/STAT_FrontEnd.C : re-enabled MRNet failure recovery with FGFS
+
+2013-07-30 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : disabled serial attach for BlueGene
+	* src/STAT_FrontEnd.C : first-level of check node access look for localhost
+	* src/STATD.C : add serial processes after log enabled
+
+2013-07-24 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATview.py : added maintain user zoom option for node manipulation operations
+
+2013-07-17 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : new filter/searchable ptab dialog
+	* scripts/STATview.py : new cut/hide programming models interface
+
 2013-06-27 Gregory L. Lee <lee218@llnl.gov>
 	* : Dysect hold target processes on STAT action
 
@@ -31,6 +124,29 @@
 2013-06-21 Gregory L. Lee <lee218@llnl.gov>
 	* : fixes to build system
 	* src/STAT.C : need to issue a resume after Dysect setup complete
+
+2013-06-07 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/STATGUI.py : fixed bug in TV attach when STAT not attached
+	* scripts/STATGUI.py : user can add command-line args to TV/DDT
+
+2013-06-05 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_BackEnd.C : Dump local stack traces on signal
+	* src/STAT_FrontEnd.C : Send output directory and file prefix to BE on attach
+	* src/STAT.h : incremented minor version for protocol change
+
+2013-05-28 Matthew LeGendre <legendre1@llnl.gov>
+	* src/STAT_BackEnd.C : Added BGQ Timeouts during hang while stackwalking
+
+2013-05-15 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/stat-cl.in : enable -c by default
+	* src/STAT.C : -P -i -t will disable -c
+
+2013-05-14 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT_FrontEnd.C : write to perf file after every merge
+
+2013-05-10 Gregory L. Lee <lee218@llnl.gov>
+	* : integrated DysectAPI from Niklas Nielsen
+	* src/MRNetSymbolReader.h : removed BGQ FGFS workaround
 
 2013-04-30 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.C : fixed handling of missing ranks list for STATBench

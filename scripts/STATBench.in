@@ -1,6 +1,7 @@
 #!/bin/sh
 # @configure_input@
 export prefix=@prefix@
+export exec_prefix=@exec_prefix@
 
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
@@ -38,6 +39,13 @@ if test -z "$STAT_LMON_LAUNCHMON_ENGINE_PATH" ; then
         export STAT_LMON_LAUNCHMON_ENGINE_PATH=$LMON_PREFIX/bin/launchmon
     else
         export STAT_LMON_LAUNCHMON_ENGINE_PATH=@LAUNCHMONBIN@
+    fi
+fi
+if test -z "$STAT_LMON_NEWLAUNCHMON_ENGINE_PATH" ; then
+    if test -n "$LMON_PREFIX" ; then
+        export STAT_LMON_NEWLAUNCHMON_ENGINE_PATH=$LMON_PREFIX/bin/newlaunchmon
+    else
+        export STAT_LMON_NEWLAUNCHMON_ENGINE_PATH=@NEWLAUNCHMONBIN@
     fi
 fi
 if test -z "$STAT_MRNET_DEBUG_LOG_DIRECTORY" ; then

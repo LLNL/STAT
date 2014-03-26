@@ -1,23 +1,11 @@
 #!/bin/sh
 # @configure_input@
 export prefix=@prefix@
+export exec_prefix=@exec_prefix@
 
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
-    export PYTHONPATH=$STAT_PREFIX/lib/python2.6/site-packages/STAT:$STAT_PREFIX/lib64/python2.6/site-packages/STAT:@PYTHONPATH@
-fi
-if test -n "$FGFS_PREFIX" ; then
-    export STAT_FGFS_FILTER_PATH=$FGFS_PREFIX/lib/libfgfs_filter.so
-fi
-if test -n "$MRNET_PREFIX" ; then
-    export STAT_MRNET_COMM_PATH=$MRNET_PREFIX/bin/mrnet_commnode
-fi
-if test -n "$LMON_PREFIX" ; then
-    export STAT_LMON_LAUNCHMON_ENGINE_PATH=$LMON_PREFIX/bin/launchmon
-    export STAT_LMON_PREFIX=$LMON_PREFIX
 fi
 
-export exec_prefix=@exec_prefix@
 export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
-
 exec @STATPYTHON@ @pythondir@/bg_core_backtrace.py $@

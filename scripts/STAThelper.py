@@ -1,7 +1,7 @@
 """@package STAThelper
 Helper routines for STAT and STATview."""
 
-__copyright__ = """Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
 LLNL-CODE-624152.
@@ -21,84 +21,98 @@ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendr
 __version__ = "2.0.0"
 
 import os.path
-import string
-import time
-import sys
 
 ## A variable to determine whther we have the pygments module for syntax hilighting
-have_pygments = True
+HAVE_PYGMENTS = True
 try:
     from pygments.formatter import Formatter
 except:
-    have_pygments = False
+    HAVE_PYGMENTS = False
 
 ## A list of MPI function names, for the "Hide MPI" feature
-mpi_functions = ['mpi_file_iwrite_shared', 'mpi_info_set', 'mpio_request_c2f',\
-'mpi_file_open', 'mpi_init', 'mpio_request_f2c', 'mpi_file_preallocate',\
-'mpi_init_thread', 'mpio_test', 'mpi_file_read', 'mpi_initialized',\
-'mpio_wait', 'mpi_file_read_all', 'mpi_int2handle', 'mpi_abort',\
-'mpi_file_read_all_begin', 'mpi_intercomm_create', 'mpi_address',\
-'mpi_file_read_all_end', 'mpi_intercomm_merge', 'mpi_allgather',\
-'mpi_file_read_at', 'mpi_iprobe', 'mpi_allgatherv', 'mpi_file_read_at_all',\
-'mpi_irecv', 'mpi_allreduce', 'mpi_file_read_at_all_begin', 'mpi_irsend',\
-'mpi_alltoall', 'mpi_file_read_at_all_end', 'mpi_isend', 'mpi_alltoallv',\
-'mpi_file_read_ordered', 'mpi_issend', 'mpi_attr_delete',\
-'mpi_file_read_ordered_begin', 'mpi_keyval_create', 'mpi_attr_get',\
-'mpi_file_read_ordered_end', 'mpi_keyval_free', 'mpi_attr_put',\
-'mpi_file_read_shared', 'mpi_null_copy_fn', 'mpi_barrier', 'mpi_file_seek',\
-'mpi_null_delete_fn', 'mpi_bcast', 'mpi_file_seek_shared', 'mpi_op_create',\
-'mpi_bsend', 'mpi_file_set_atomicity', 'mpi_op_free', 'mpi_bsend_init',\
-'mpi_file_set_errhandler', 'mpi_pack', 'mpi_buffer_attach',\
-'mpi_file_set_info', 'mpi_pack_size', 'mpi_buffer_detach', 'mpi_file_set_size',\
-'mpi_pcontrol', 'mpi_char', 'mpi_file_set_view', 'mpi_probe', 'mpi_cancel',\
-'mpi_file_sync', 'mpi_recv', 'mpi_cart_coords', 'mpi_file_write',\
-'mpi_recv_init', 'mpi_cart_create', 'mpi_file_write_all', 'mpi_reduce',\
-'mpi_cart_get', 'mpi_file_write_all_begin', 'mpi_reduce_scatter',\
-'mpi_cart_map', 'mpi_file_write_all_end', 'mpi_request_c2f', 'mpi_cart_rank',\
-'mpi_file_write_at', 'mpi_request_free', 'mpi_cart_shift',\
-'mpi_file_write_at_all', 'mpi_rsend', 'mpi_cart_sub',\
-'mpi_file_write_at_all_begin', 'mpi_rsend_init', 'mpi_cartdim_get',\
-'mpi_file_write_at_all_end', 'mpi_scan', 'mpi_comm_compare',\
-'mpi_file_write_ordered', 'mpi_scatter', 'mpi_comm_create',\
-'mpi_file_write_ordered_begin', 'mpi_scatterv', 'mpi_comm_dup',\
-'mpi_file_write_ordered_end', 'mpi_send', 'mpi_comm_free',\
-'mpi_file_write_shared', 'mpi_send_init', 'mpi_comm_get_name', 'mpi_finalize',\
-'mpi_sendrecv', 'mpi_comm_group', 'mpi_finalized', 'mpi_sendrecv_replace',\
-'mpi_comm_rank', 'mpi_gather', 'mpi_ssend', 'mpi_comm_remote_group',\
-'mpi_gatherv', 'mpi_ssend_init', 'mpi_comm_remote_size', 'mpi_get_count',\
-'mpi_start', 'mpi_comm_set_name', 'mpi_get_elements', 'mpi_startall',\
-'mpi_comm_size', 'mpi_get_processor_name', 'mpi_status_c2f', 'mpi_comm_split',\
-'mpi_getVersion', 'mpi_status_set_cancelled', 'mpi_comm_test_inter',\
-'mpi_graph_create', 'mpi_status_set_elements', 'mpi_dup_fn', 'mpi_graph_get',\
-'mpi_test', 'mpi_dims_create', 'mpi_graph_map', 'mpi_test_cancelled',\
-'mpi_errhandler_create', 'mpi_graph_neighbors', 'mpi_testall',\
-'mpi_errhandler_free', 'mpi_graph_neighbors_count', 'mpi_testany',\
-'mpi_errhandler_get', 'mpi_graphdims_get', 'mpi_testsome',\
-'mpi_errhandler_set', 'mpi_group_compare', 'mpi_topo_test', 'mpi_error_class',\
-'mpi_group_difference', 'mpi_type_commit', 'mpi_error_string',\
-'mpi_group_excl', 'mpi_type_contiguous', 'mpi_file_c2f', 'mpi_group_free',\
-'mpi_type_create_darray', 'mpi_file_close', 'mpi_group_incl',\
-'mpi_type_create_subarray', 'mpi_file_delete', 'mpi_group_intersection',\
-'mpi_type_extent', 'mpi_file_f2c', 'mpi_group_range_excl', 'mpi_type_free',\
-'mpi_file_get_amode', 'mpi_group_range_incl', 'mpi_type_get_contents',\
-'mpi_file_get_atomicity', 'mpi_group_rank', 'mpi_type_get_envelope',\
-'mpi_file_get_byte_offset', 'mpi_group_size', 'mpi_type_hvector',\
-'mpi_file_get_errhandler', 'mpi_group_translate_ranks', 'mpi_type_lb',\
-'mpi_file_get_group', 'mpi_group_union', 'mpi_type_size', 'mpi_file_get_info',\
-'mpi_ibsend', 'mpi_type_struct', 'mpi_file_get_position', 'mpi_info_c2f',\
-'mpi_type_ub', 'mpi_file_get_position_shared', 'mpi_info_create',\
-'mpi_type_vector', 'mpi_file_get_size', 'mpi_info_delete', 'mpi_unpack',\
-'mpi_file_get_type_extent', 'mpi_info_dup', 'mpi_wait', 'mpi_file_get_view',\
-'mpi_info_f2c', 'mpi_waitall', 'mpi_file_iread', 'mpi_info_free',\
-'mpi_waitany', 'mpi_file_iread_at', 'mpi_info_get', 'mpi_waitsome',\
-'mpi_file_iread_shared', 'mpi_info_get_nkeys', 'mpi_wtick', 'mpi_file_iwrite',\
-'mpi_info_get_nthkey', 'mpi_wtime', 'mpi_file_iwrite_at',\
-'mpi_info_get_valuelen', 'mpi_file_iwrite_shared', 'mpi_info_set']
-
+MPI_FUNCTIONS = ['mpi_file_iwrite_shared', 'mpi_info_set', 'mpio_request_c2f',
+                 'mpi_file_open', 'mpi_init', 'mpio_request_f2c',
+                 'mpi_file_preallocate', 'mpi_init_thread', 'mpio_test',
+                 'mpi_file_read', 'mpi_initialized', 'mpio_wait',
+                 'mpi_file_read_all', 'mpi_int2handle', 'mpi_abort',
+                 'mpi_file_read_all_begin', 'mpi_intercomm_create',
+                 'mpi_address', 'mpi_file_read_all_end', 'mpi_intercomm_merge',
+                 'mpi_allgather', 'mpi_file_read_at', 'mpi_iprobe',
+                 'mpi_allgatherv', 'mpi_file_read_at_all', 'mpi_irecv',
+                 'mpi_allreduce', 'mpi_file_read_at_all_begin', 'mpi_irsend',
+                 'mpi_alltoall', 'mpi_file_read_at_all_end', 'mpi_isend',
+                 'mpi_alltoallv', 'mpi_file_read_ordered', 'mpi_issend',
+                 'mpi_attr_delete', 'mpi_file_read_ordered_begin',
+                 'mpi_keyval_create', 'mpi_attr_get',
+                 'mpi_file_read_ordered_end', 'mpi_keyval_free',
+                 'mpi_attr_put', 'mpi_file_read_shared', 'mpi_null_copy_fn',
+                 'mpi_barrier', 'mpi_file_seek', 'mpi_null_delete_fn',
+                 'mpi_bcast', 'mpi_file_seek_shared', 'mpi_op_create',
+                 'mpi_bsend', 'mpi_file_set_atomicity', 'mpi_op_free',
+                 'mpi_bsend_init', 'mpi_file_set_errhandler', 'mpi_pack',
+                 'mpi_buffer_attach', 'mpi_file_set_info', 'mpi_pack_size',
+                 'mpi_buffer_detach', 'mpi_file_set_size', 'mpi_pcontrol',
+                 'mpi_char', 'mpi_file_set_view', 'mpi_probe', 'mpi_cancel',
+                 'mpi_file_sync', 'mpi_recv', 'mpi_cart_coords',
+                 'mpi_file_write', 'mpi_recv_init', 'mpi_cart_create',
+                 'mpi_file_write_all', 'mpi_reduce', 'mpi_cart_get',
+                 'mpi_file_write_all_begin', 'mpi_reduce_scatter',
+                 'mpi_cart_map', 'mpi_file_write_all_end', 'mpi_request_c2f',
+                 'mpi_cart_rank', 'mpi_file_write_at', 'mpi_request_free',
+                 'mpi_cart_shift', 'mpi_file_write_at_all', 'mpi_rsend',
+                 'mpi_cart_sub', 'mpi_file_write_at_all_begin',
+                 'mpi_rsend_init', 'mpi_cartdim_get',
+                 'mpi_file_write_at_all_end', 'mpi_scan', 'mpi_comm_compare',
+                 'mpi_file_write_ordered', 'mpi_scatter', 'mpi_comm_create',
+                 'mpi_file_write_ordered_begin', 'mpi_scatterv',
+                 'mpi_comm_dup', 'mpi_file_write_ordered_end', 'mpi_send',
+                 'mpi_comm_free', 'mpi_file_write_shared', 'mpi_send_init',
+                 'mpi_comm_get_name', 'mpi_finalize', 'mpi_sendrecv',
+                 'mpi_comm_group', 'mpi_finalized', 'mpi_sendrecv_replace',
+                 'mpi_comm_rank', 'mpi_gather', 'mpi_ssend',
+                 'mpi_comm_remote_group', 'mpi_gatherv', 'mpi_ssend_init',
+                 'mpi_comm_remote_size', 'mpi_get_count', 'mpi_start',
+                 'mpi_comm_set_name', 'mpi_get_elements', 'mpi_startall',
+                 'mpi_comm_size', 'mpi_get_processor_name', 'mpi_status_c2f',
+                 'mpi_comm_split', 'mpi_getVersion',
+                 'mpi_status_set_cancelled', 'mpi_comm_test_inter',
+                 'mpi_graph_create', 'mpi_status_set_elements', 'mpi_dup_fn',
+                 'mpi_graph_get', 'mpi_test', 'mpi_dims_create',
+                 'mpi_graph_map', 'mpi_test_cancelled',
+                 'mpi_errhandler_create', 'mpi_graph_neighbors', 'mpi_testall',
+                 'mpi_errhandler_free', 'mpi_graph_neighbors_count',
+                 'mpi_testany', 'mpi_errhandler_get', 'mpi_graphdims_get',
+                 'mpi_testsome', 'mpi_errhandler_set', 'mpi_group_compare',
+                 'mpi_topo_test', 'mpi_error_class', 'mpi_group_difference',
+                 'mpi_type_commit', 'mpi_error_string', 'mpi_group_excl',
+                 'mpi_type_contiguous', 'mpi_file_c2f', 'mpi_group_free',
+                 'mpi_type_create_darray', 'mpi_file_close', 'mpi_group_incl',
+                 'mpi_type_create_subarray', 'mpi_file_delete',
+                 'mpi_group_intersection', 'mpi_type_extent', 'mpi_file_f2c',
+                 'mpi_group_range_excl', 'mpi_type_free', 'mpi_file_get_amode',
+                 'mpi_group_range_incl', 'mpi_type_get_contents',
+                 'mpi_file_get_atomicity', 'mpi_group_rank',
+                 'mpi_type_get_envelope', 'mpi_file_get_byte_offset',
+                 'mpi_group_size', 'mpi_type_hvector',
+                 'mpi_file_get_errhandler', 'mpi_group_translate_ranks',
+                 'mpi_type_lb', 'mpi_file_get_group', 'mpi_group_union',
+                 'mpi_type_size', 'mpi_file_get_info', 'mpi_ibsend',
+                 'mpi_type_struct', 'mpi_file_get_position', 'mpi_info_c2f',
+                 'mpi_type_ub', 'mpi_file_get_position_shared',
+                 'mpi_info_create', 'mpi_type_vector', 'mpi_file_get_size',
+                 'mpi_info_delete', 'mpi_unpack', 'mpi_file_get_type_extent',
+                 'mpi_info_dup', 'mpi_wait', 'mpi_file_get_view',
+                 'mpi_info_f2c', 'mpi_waitall', 'mpi_file_iread',
+                 'mpi_info_free', 'mpi_waitany', 'mpi_file_iread_at',
+                 'mpi_info_get', 'mpi_waitsome', 'mpi_file_iread_shared',
+                 'mpi_info_get_nkeys', 'mpi_wtick', 'mpi_file_iwrite',
+                 'mpi_info_get_nthkey', 'mpi_wtime', 'mpi_file_iwrite_at',
+                 'mpi_info_get_valuelen', 'mpi_file_iwrite_shared',
+                 'mpi_info_set']
 ## A global variable to store to pygments highlighted source lines
 pygments_lines = []
 
-if have_pygments:
+if HAVE_PYGMENTS:
     ## Formatter for syntax highlighting the source view window.
     class STATviewFormatter(Formatter):
         """Formatter for syntax highlighting the source view window."""
@@ -140,11 +154,6 @@ if have_pygments:
 
         def format(self, tokensource, outfile):
             """Define the output format, generate the pygments_list."""
-            lastval = ''
-            lasttype = None
-            last_style_end_newline = False
-            last_value_end_newline = True
-
             # parse step to generate structure
             current_line = []
             for ttype, value in tokensource:
@@ -165,7 +174,7 @@ if have_pygments:
                 count = -1
                 for value in values:
                     count += 1
-                    if count != len(values) -1:
+                    if count != len(values) - 1:
                         value = value + '\n'
                     current_line.append((value, (color, bold, italics, underline)))
                     if value != values[-1] and len(values) != 1:
@@ -177,16 +186,52 @@ if have_pygments:
                 outfile.write(value)
 
 
+## The ProcTab class stores the process table
+class ProcTab(object):
+    """The ProcTab class stores the process table"""
+    def __init__(self):
+        self.launcher_host = None
+        self.launcher_pid = None
+        self.executable_path = None
+        self.executable_paths = []
+        self.process_list = []
+
+
+def get_proctab(proctab_file_path):
+    """Retrieve the proctab object from a process table file"""
+    with open(proctab_file_path, 'r') as proctab_file:
+        launcher = proctab_file.next().strip('\n').split(':')
+        proctab = ProcTab()
+        proctab.launcher_host = launcher[0]
+        proctab.launcher_pid = int(launcher[1])
+        for line in proctab_file:
+            line = line.strip('\n').split()
+            rank = int(line[0])
+            host_pid = line[1].split(':')
+            host = host_pid[0]
+            pid = int(host_pid[1])
+            exe = line[2]
+            if exe in proctab.executable_paths:
+                index = proctab.executable_paths.index(exe)
+            else:
+                index = len(proctab.executable_paths)
+                proctab.executable_paths.append(exe)
+            if proctab.executable_path is None:
+                proctab.executable_path = exe
+            proctab.process_list.append((rank, host, pid, index))
+    return proctab
+
+
 ## \param function_name - the edge label string
 #  \return true if the input function is an MPI function
 #
 #  \n
-def is_MPI(function_name):
+def is_mpi(function_name):
     """Determine if a function is an MPI function."""
     function_name = function_name.lower()
-    if function_name[0] == 'p': # check for PMPI wrapper name
+    if function_name[0] == 'p':  # check for PMPI wrapper name
         function_name = function_name[1:]
-    if function_name in mpi_functions:
+    if function_name in MPI_FUNCTIONS:
         return True
     return False
 
@@ -197,15 +242,15 @@ def is_MPI(function_name):
 #  \n
 def get_task_list(label):
     """Get an integer list of tasks from an edge label."""
-    colon_pos = label.find(':')
-    if colon_pos != -1:
+    if label == '':
+        return []
+    if label[0] != '[':
         # this is just a count and representative
-        label = label[colon_pos + 2:label.find(']')]
+        label = label[label.find(':') + 2:label.find(']')]
+        return [int(label)]
     else:
         # this is a full node list
-        if label.find('label') != -1:
-            label = label[9:-3]
-        elif label.find('[') != -1:
+        if label.find('[') != -1:
             label = label[1:-1]
     task_list = []
     if label == '':
@@ -215,43 +260,21 @@ def get_task_list(label):
         if dash_index != -1:
             start = int(element[:dash_index])
             end = int(element[dash_index + 1:])
-            task_list += range(start, end+1)
+            task_list += range(start, end + 1)
         else:
-            try:
-                task_list.append(int(element))
-            except:
-                pass
+            task_list.append(int(element))
     return task_list
-
-
-## \param label - the edge label string
-#  \return the number of tasks
-#
-#  \n
-def get_num_tasks(label):
-    """Get the number of tasks in an edge label."""
-    colon_pos = label.find(':')
-    if colon_pos != -1:
-        # this is just a count and representative
-        if label.find('label') != -1:
-            count = label[8:colon_pos]
-        elif label.find('[') != -1:
-            count = label[0:colon_pos]
-        return int(count)
-    else:
-        # this is a full node list
-        return len(get_task_list(label))
 
 
 ## \param executable - the executable to search for
 #  \return the executable file path"""
 #
 #  \n
-def _which(executable):
+def which(executable):
     """Search directories in the $PATH to find the requested executable"""
     path = os.environ.get("PATH")
-    for dir in path.split(':'):
-        filepath = os.path.join(dir, executable)
+    for directory in path.split(':'):
+        filepath = os.path.join(directory, executable)
         if os.access(filepath, os.X_OK):
             return filepath
     return None
@@ -265,64 +288,69 @@ def color_to_string(color):
     """Translate a color specification to a color string."""
     r, g, b, a = color
     ret = '#'
-    ret += "%02x"%int(r * 255 * a + 255 * (1.0 - a))
-    ret += "%02x"%int(g * 255 * a + 255 * (1.0 - a))
-    ret += "%02x"%int(b * 255 * a + 255 * (1.0 - a))
+    ret += "%02x" % int(r * 255 * a + 255 * (1.0 - a))
+    ret += "%02x" % int(g * 255 * a + 255 * (1.0 - a))
+    ret += "%02x" % int(b * 255 * a + 255 * (1.0 - a))
     return ret
 
 
-## \param input - the stack frame text
+## \param label - the stack frame text
 #  \return True if the label includes source file and line number info
 #
 #  \n
-def label_has_source(input):
-    return input.find('@') != -1
+def label_has_source(label):
+    """return True if the label includes source file and line number info"""
+    return label.find('@') != -1
 
-## \param input - the stack frame text
+
+## \param label - the stack frame text
 #  \return True if the label includes source file and line number info and the node is not eq class collapsed
 #
 #  \n
-def label_collapsed(input):
-    return input.find('==\\>') != -1 or input.find('==>') != -1
+def label_collapsed(label):
+    """return True if the label includes source file and line number info and the node is not eq class collapsed"""
+    return label.find('\\n') != -1
 
-## \param input - the stack frame text
+
+## \param label - the stack frame text
 #  \return True if the label includes source file and line number info and the node is not eq class collapsed
 #
 #  \n
-def has_source_and_not_collapsed(input):
-    return label_has_source(input) and not label_collapsed(input)
+def has_source_and_not_collapsed(label):
+    """return True if the label includes source file and line number info and the node is not eq class collapsed"""
+    return label_has_source(label) and not label_collapsed(label)
 
 
-## \param input - the stack frame text
+## \param label - the stack frame text
 #  \return - a tuple of (function name, line number, variable info)
 #
 #  \n
-def decompose_node(input, item = None):
+def decompose_node(label, item=None):
     """Decompose a stack frame's text into individual components."""
     function_name = ''
-    sourceLine = ''
+    source_line = ''
     iter_string = ''
-    if has_source_and_not_collapsed(input):
-        function_name = input[:input.find('@')]
-        if input.find('$') != -1 and input.find('$$') == -1: # and clause for name mangling of C++ on BG/Q example
-            sourceLine = input[input.find('@') + 1:input.find('$')]
-            iter_string = input[input.find('$') + 1:]
+    if has_source_and_not_collapsed(label):
+        function_name = label[:label.find('@')]
+        if label.find('$') != -1 and label.find('$$') == -1:  # and clause for name mangling of C++ on BG/Q example
+            source_line = label[label.find('@') + 1:label.find('$')]
+            iter_string = label[label.find('$') + 1:]
         else:
-            sourceLine = input[input.find('@') + 1:]
+            source_line = label[label.find('@') + 1:]
             iter_string = ''
-    elif label_collapsed(input) and item is not None:
+    elif label_collapsed(label) and item is not None:
         if item == -1:
             return_list = []
-            frames = input.split(' ==> ')
+            frames = label.split('\\n')
             for frame in frames:
-                function_name, sourceLine, iter_string = decompose_node(frame)
-                return_list.append((function_name, sourceLine, iter_string))
+                function_name, source_line, iter_string = decompose_node(frame)
+                return_list.append((function_name, source_line, iter_string))
             return return_list
         else:
-            function_name, sourceLine, iter_string = decompose_node(input.split(' ==> ')[item])
+            function_name, source_line, iter_string = decompose_node(label.split('\\n')[item])
     else:
-        function_name = input
-    return function_name, sourceLine, iter_string
+        function_name = label
+    return function_name, source_line, iter_string
 
 
 ## \param var_spec - the variable specificaiton (location and name)
@@ -333,24 +361,28 @@ def var_spec_to_string(var_spec):
     """Translates a variable specificaiton list into a string."""
     if var_spec == []:
         return 'NULL'
-    ret = '%d#' %len(var_spec)
-    for file, line, depth, var in var_spec:
-        ret += '%s:%d.%d$%s,' %(file, line, depth, var)
+    ret = '%d#' % len(var_spec)
+    for filename, line, depth, var in var_spec:
+        ret += '%s:%d.%d$%s,' % (filename, line, depth, var)
     ret = ret[:len(ret) - 1]
     return ret
+
 
 ## \param label - the input label
 #  \return a copy of the label with appropriate escape characters added
 #
 #  \n
 def escaped_label(label):
+    """return a copy of the label with appropriate escape characters added"""
+    if label.find('<') == -1 and label.find('>') == -1:
+        return label
     ret = ''
     prev = ' '
-    for c in label:
-        if prev != '\\' and (c == '<' or c == '>'):
+    for character in label:
+        if prev != '\\' and (character == '<' or character == '>'):
             ret += '\\'
-        ret += c
-        prev = c
+        ret += character
+        prev = character
     return ret
 
 #global DEBUG
@@ -359,4 +391,3 @@ def escaped_label(label):
 #def debug_msg(msg):
 #    if DEBUG == True:
 #        sys.stdout.write('%s:%d: %s\n"' %(inspect.stack()[1][1], inspect.stack()[1][2], msg))
-

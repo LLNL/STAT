@@ -15,6 +15,9 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
+/* Define 1 if a compatible boost package is found */
+#undef HAVE_BOOST_TO
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
@@ -64,6 +67,9 @@
 /* Define to 1 if your system has a GNU libc compatible `realloc' function,
    and to 0 otherwise. */
 #undef HAVE_REALLOC
+
+/* Define 1 if rose.h is found */
+#undef HAVE_ROSE_H
 
 /* Define to 1 if you have the `select' function. */
 #undef HAVE_SELECT
