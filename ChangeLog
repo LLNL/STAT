@@ -1,3 +1,7 @@
+2014-03-26 Gregory L. Lee <lee218@llnl.gov>
+	* : merge with dysect-integration
+	* src/DysectAPI/DysectAPIFE.C : fixed hang when combined with FGFS
+
 2014-03-24 Gregory L. Lee <lee218@llnl.gov>
 	* : code cleanup + updated copyright date
 

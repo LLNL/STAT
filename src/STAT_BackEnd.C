@@ -817,10 +817,12 @@ StatError_t STAT_BackEnd::connect(int argc, char **argv)
     return STAT_OK;
 }
 
+#ifdef DYSECTAPI
 DysectAPI::BE *STAT_BackEnd::getDysectBe()
 {
     return dysectBE_;
 }
+#endif
 
 StatError_t STAT_BackEnd::mainLoop()
 {

@@ -120,11 +120,28 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
   //
   int tag;
   MRN::PacketPtr packet;
-  
   Err::verbose(true, "Block and wait for all backends to confirm library load...");
+
+#ifdef STAT_FGFS
+  unsigned int streamId = 0;
+  StatError_t statError;
+
+  do
+  {
+    statError = statFE->waitForFileRequests(streamId, tag, packet, ret);
+    if (statError == STAT_PENDING_ACK)
+    {
+        usleep(1000);
+        continue;
+    }
+    else if (statError != STAT_OK)
+        return Error;
+  } while (ret == 0);
+#else
   if(controlStream->recv(&tag, packet, true) == -1) {
     return Error;
   }
+#endif
 
   int numIllBackends = 0;
   //
