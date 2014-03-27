@@ -1,5 +1,5 @@
 if ENABLE_DYSECTAPI
-SUBDIRS = dysect/libDysectAPI
+SUBDIRS = dysect
 endif
 
 # what flags you want to pass to the C compiler & linker
@@ -8,7 +8,6 @@ AM_LDFLAGS =
 
 include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h STAT_shared.h
 if ENABLE_DYSECTAPI
-nobase_include_HEADERS = dysect/DysectAPI/DysectAPIProcessMgr.h dysect/DysectAPI/Aggregates/Aggregate.h dysect/DysectAPI/Aggregates/AggregateFunction.h dysect/DysectAPI/Aggregates/Data.h dysect/DysectAPI/Aggregates/Packet.h dysect/DysectAPI/Aggregates/Location.h dysect/DysectAPI/Aggregates/StrAgg.h dysect/DysectAPI/Aggregates/DescVar.h dysect/DysectAPI/Aggregates/CmpAgg.h
 stat_fe_ldadd_dysectapi = libDysectAPIFE.la @BELIBS@
 stat_be_ldadd_dysectapi = libDysectAPIBE.la
 stat_lib_ltlibraries_dysectapi = libDysectAPIFE.la libDysectAPIBE.la
