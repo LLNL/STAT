@@ -1,3 +1,6 @@
+2014-03-27 Gregory L. Lee <lee218@llnl.gov>
+	* : moved DysectAPI and libDysectAPI subdirs into dysect dir
+
 2014-03-26 Gregory L. Lee <lee218@llnl.gov>
 	* : merge with dysect-integration
 	* src/DysectAPI/DysectAPIFE.C : fixed hang when combined with FGFS

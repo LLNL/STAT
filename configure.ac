@@ -106,8 +106,9 @@ AM_PATH_PYTHON
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile
-                 src/libDysectAPI/Makefile
-                 src/libDysectAPI/include/Makefile
+                 src/dysect/Makefile
+                 src/dysect/libDysectAPI/Makefile
+                 src/dysect/libDysectAPI/include/Makefile
                  doc/Makefile
                  doc/userguide/Makefile
                  doc/quickstart/Makefile

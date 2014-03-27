@@ -20575,7 +20575,7 @@ $as_echo "$am_cv_python_pyexecdir" >&6; }
 
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile src/libDysectAPI/Makefile src/libDysectAPI/include/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile etc/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile examples/sessions/Makefile scripts/STAT scripts/dysectc scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-script scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile src/dysect/Makefile src/dysect/libDysectAPI/Makefile src/dysect/libDysectAPI/include/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile etc/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile examples/sessions/Makefile scripts/STAT scripts/dysectc scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-script scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -21651,8 +21651,9 @@ do
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
-    "src/libDysectAPI/Makefile") CONFIG_FILES="$CONFIG_FILES src/libDysectAPI/Makefile" ;;
-    "src/libDysectAPI/include/Makefile") CONFIG_FILES="$CONFIG_FILES src/libDysectAPI/include/Makefile" ;;
+    "src/dysect/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/Makefile" ;;
+    "src/dysect/libDysectAPI/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/libDysectAPI/Makefile" ;;
+    "src/dysect/libDysectAPI/include/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/libDysectAPI/include/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "doc/userguide/Makefile") CONFIG_FILES="$CONFIG_FILES doc/userguide/Makefile" ;;
     "doc/quickstart/Makefile") CONFIG_FILES="$CONFIG_FILES doc/quickstart/Makefile" ;;
