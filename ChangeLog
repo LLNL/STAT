@@ -1,4 +1,5 @@
 2014-03-27 Gregory L. Lee <lee218@llnl.gov>
+	* : updated license info
 	* : moved DysectAPI and libDysectAPI subdirs into dysect dir
 
 2014-03-26 Gregory L. Lee <lee218@llnl.gov>

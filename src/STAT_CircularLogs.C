@@ -5,7 +5,7 @@
   LLNL-CODE-624152.
   All rights reserved.
 
-  This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAt.html. Please also read STAT/LICENSE.
+  This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
 
   Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
