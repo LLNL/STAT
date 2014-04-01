@@ -1,3 +1,10 @@
+2014-03-31 Gregory L. Lee <lee218@llnl.gov>
+	* : fixed dysectapi build system for make distcheck
+
+2014-03-27 Gregory L. Lee <lee218@llnl.gov>
+	* : updated dysectapi build system
+	* : restructuring of dysectapi source
+
 2014-03-27 Gregory L. Lee <lee218@llnl.gov>
 	* : updated license info
 	* : moved DysectAPI and libDysectAPI subdirs into dysect dir

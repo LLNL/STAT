@@ -46,7 +46,7 @@ AC_ARG_ENABLE(rpath,
   [AS_HELP_STRING([--enable-rpath],[Enable the use of rpaths, default=yes])],
   [WITH_RPATH=$enableval],
   [WITH_RPATH=yes]
-)  
+)
 if test "$WITH_RPATH" = "yes"
 then
   LDFLAGS="$LDFLAGS $RPATH_FLAGS"
@@ -57,13 +57,13 @@ AC_ARG_ENABLE(statbench,
   [AS_HELP_STRING([--enable-statbench],[Enable the compilation of STATBench, the STAT performance emulator])],
   [WITH_STATBENCH=$enableval],
   [WITH_STATBENCH=no]
-)  
+)
 AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
 AC_ARG_ENABLE(python-debug,
   [AS_HELP_STRING([--enable-python-debug],[Enable the ability to gather python script debugging])],
   [CXXFLAGS="-DPROTOTYPE_PY $CXXFLAGS"],
   [CXXFLAGS="$CXXFLAGS"]
-)  
+)
 AC_ARG_WITH(procspernode,
   [AS_HELP_STRING([--with-procspernode=num],[Set the maximum number of communication processes per node equal to num, defaults to 1 if not specified])],
   [AC_DEFINE_UNQUOTED([STAT_PROCS_PER_NODE], [$withval], [The max number of CPs per node])],
@@ -96,19 +96,17 @@ AC_SUBST(LAUNCHMONPREFIX)
 AC_SUBST(GRAPHLIBPREFIX)
 AC_SUBST(STATPYTHON)
 
-#tools/Makefile
-#tools/DysectAPI/Makefile
-#tools/DysectAPI/src/Makefile
-#tools/DysectAPI/include/Makefile
 AM_PROG_LEX
 AC_PROG_YACC
-AM_PATH_PYTHON 
+AM_PATH_PYTHON
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile
                  src/dysect/Makefile
+                 src/dysect/DysectAPI/Makefile
                  src/dysect/libDysectAPI/Makefile
                  src/dysect/libDysectAPI/include/Makefile
+                 src/dysect/libDysectAPI/src/Makefile
                  doc/Makefile
                  doc/userguide/Makefile
                  doc/quickstart/Makefile

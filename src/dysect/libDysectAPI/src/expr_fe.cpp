@@ -16,9 +16,9 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include <DysectAPI.h>
-#include <libDysectAPI/src/expr-parser.tab.hh>
-#include <libDysectAPI/src/lex.yy.h>
+#include <LibDysectAPI.h>
+#include <expr-parser.h>
+#include <expr-scanner.h>
 
 using namespace std;
 using namespace DysectAPI;

@@ -29,7 +29,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include "STAT_shared.h"
 #include "DysectAPI/DysectAPI.h"
 
-#include "libDysectAPI/include/DysectAPI.h"
+#include "LibDysectAPI.h"
 
 class STAT_BackEnd;
 

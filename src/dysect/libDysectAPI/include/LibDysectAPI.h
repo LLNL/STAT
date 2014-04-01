@@ -16,8 +16,8 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef __DYSECT_API_H
-#define __DYSECT_API_H
+#ifndef __LIBDYSECT_API_H
+#define __LIBDYSECT_API_H
 
 typedef enum DysectStatus {
   DysectOK = 0,

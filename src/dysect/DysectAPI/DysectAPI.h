@@ -40,7 +40,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include "lmon_api/lmon_fe.h"
 #include "STAT_shared.h"
-#include "DysectAPI/DysectAPI.h"
+#include "LibDysectAPI.h"
 
 namespace DysectAPI {
 

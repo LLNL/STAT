@@ -1,6 +1,6 @@
 %{
-#include <DysectAPI.h>
-#include <libDysectAPI/src/expr-parser.tab.hh>
+#include <LibDysectAPI.h>
+#include <expr-parser.h>
 #include <stdarg.h>
 
 int yyerror(const char *p, ...) {

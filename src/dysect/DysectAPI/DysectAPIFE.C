@@ -19,7 +19,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include "DysectAPI/DysectAPIFE.h" 
 #include "STAT_FrontEnd.h"
 
-#include "libDysectAPI/include/DysectAPI/Frontend.h"
+#include "DysectAPI/Frontend.h"
 
 using namespace std;
 using namespace DysectAPI;

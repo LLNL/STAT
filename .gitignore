@@ -62,6 +62,14 @@ src/STAT.py
 src/STAT_wrap.C
 src/to_wrap.C
 src/tomod.py
+src/dysect/DysectAPI/.deps/
+src/dysect/DysectAPI/.libs/
+src/dysect/libDysectAPI/.deps/
+src/dysect/libDysectAPI/.libs/
+src/dysect/libDysectAPI/expr-parser.cc
+src/dysect/libDysectAPI/expr-parser.h
+src/dysect/libDysectAPI/expr-scanner.cc
+src/dysect/libDysectAPI/expr-scanner.h
 stamp-h1
 stat_results
 TODO

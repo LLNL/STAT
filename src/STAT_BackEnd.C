@@ -933,7 +933,7 @@ StatError_t STAT_BackEnd::mainLoop()
         } /* if (swNotificationFd != -1) */
 
         /* Receive the packet from the STAT FE */
-        // blocking here breaks Dysect (hangs)
+        /* TODO blocking here breaks Dysect (hangs) */
         //recvShouldBlock = (swNotificationFd == -1);
         recvShouldBlock=false;
         intRet = network_->recv(&tag, packet, &stream, recvShouldBlock);
@@ -1215,7 +1215,7 @@ StatError_t STAT_BackEnd::mainLoop()
             case PROT_LOAD_SESSION_LIB:
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to load session library\n");
 
-                char* libraryPath;
+                char *libraryPath;
                 if (packet->unpack("%s", &libraryPath) == -1)
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_LOAD_SESSION_LIB) failed\n");
@@ -1229,7 +1229,6 @@ StatError_t STAT_BackEnd::mainLoop()
                     return STAT_MRNET_ERROR;
                 }
 
-                // Load library
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Library to load: %s\n", libraryPath);
 
                 dysectBE_ = new DysectAPI::BE(libraryPath, this);
@@ -1262,27 +1261,22 @@ StatError_t STAT_BackEnd::mainLoop()
 
             default:
 #ifdef DYSECTAPI
-                // DysectAPI tags encode additional details
+                /* DysectAPI tags encode additional details */
                 if(DysectAPI::isDysectTag(tag))
                 {
                     if(dysectBE_)
                     {
-                        //// If tag is Dysect related - relay packet to DysecAPI session
                         if(dysectBE_->relayPacket(&packet, tag, stream) == DysectAPI::OK)
                         {
-                            // Packet dealt with by DysectAPI
+                            /* Packet dealt with by DysectAPI */
                         }
                         break;
                     }
                     else
-                    {
                         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Dysect library not loaded yet\n");
-                    }
                 } 
                 else 
-                {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Not Dysect packet\n");
-                }
 #endif
               
                 /* Unknown tag */

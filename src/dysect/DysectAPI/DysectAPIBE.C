@@ -18,7 +18,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include "DysectAPI/DysectAPIBE.h"
 #include "STAT_BackEnd.h"
-#include "libDysectAPI/include/DysectAPI/Backend.h"
+#include "DysectAPI/Backend.h"
 #include <unistd.h>
 
 using namespace std;

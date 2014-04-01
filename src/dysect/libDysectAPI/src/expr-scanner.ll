@@ -1,9 +1,10 @@
 %option noyywrap 
+%option header-file="expr-scanner.h"
 %{
 
 #include <stdio.h>
-#include <DysectAPI.h>
-#include <libDysectAPI/src/expr-parser.tab.hh>
+#include <LibDysectAPI.h>
+#include <expr-parser.h>
 
 extern int yyerror(const char *p, ...);
 
@@ -11,7 +12,7 @@ using namespace DysectAPI;
 
 %}
 
-%option bison-bridge 
+%option bison-bridge
 
 %%
 

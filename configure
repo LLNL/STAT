@@ -807,6 +807,13 @@ ENABLE_STATBENCH_TRUE
 LAUNCHMONPREFIX
 NEWLAUNCHMONBIN
 LAUNCHMONBIN
+LIBDYSECTAPILOC
+LIBDYSECTAPIFD
+LIBDYSECTAPIBE
+LIBDYSECTAPIFE
+LIBDYSECTLOC
+LIBDYSECTBE
+LIBDYSECTFE
 ENABLE_DYSECTAPI_FALSE
 ENABLE_DYSECTAPI_TRUE
 FGFSFILTERPATH
@@ -5144,13 +5151,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:5147: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:5154: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5150: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:5157: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5153: output\"" >&5)
+  (eval echo "\"\$as_me:5160: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -6356,7 +6363,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6359 "configure"' > conftest.$ac_ext
+  echo '#line 6366 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -8917,11 +8924,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8920: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8927: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8924: \$? = $ac_status" >&5
+   echo "$as_me:8931: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9256,11 +9263,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9259: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9266: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:9263: \$? = $ac_status" >&5
+   echo "$as_me:9270: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9361,11 +9368,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9364: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9371: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9368: \$? = $ac_status" >&5
+   echo "$as_me:9375: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -9416,11 +9423,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9419: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9426: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9423: \$? = $ac_status" >&5
+   echo "$as_me:9430: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -12219,7 +12226,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12222 "configure"
+#line 12229 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12315,7 +12322,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12318 "configure"
+#line 12325 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14335,11 +14342,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14338: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14345: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14342: \$? = $ac_status" >&5
+   echo "$as_me:14349: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14434,11 +14441,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14437: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14444: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14441: \$? = $ac_status" >&5
+   echo "$as_me:14448: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14486,11 +14493,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14489: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14496: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14493: \$? = $ac_status" >&5
+   echo "$as_me:14500: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -17137,6 +17144,20 @@ else
   ENABLE_DYSECTAPI_TRUE='#'
   ENABLE_DYSECTAPI_FALSE=
 fi
+
+      LIBDYSECTFE=-lDysectFE
+
+      LIBDYSECTBE=-lDysectBE
+
+      LIBDYSECTLOC=dysect/libDysectAPI/src
+
+      LIBDYSECTAPIFE=-lDysectAPIFE
+
+      LIBDYSECTAPIBE=-lDysectAPIBE
+
+      LIBDYSECTAPIFD=-lDysectAPIFD
+
+      LIBDYSECTAPILOC=dysect/DysectAPI
 
 
 else
@@ -20135,10 +20156,6 @@ done
 
 
 
-#tools/Makefile
-#tools/DysectAPI/Makefile
-#tools/DysectAPI/src/Makefile
-#tools/DysectAPI/include/Makefile
 for ac_prog in flex lex
 do
   # Extract the first word of "$ac_prog", so it can be a program name with args.
@@ -20575,7 +20592,7 @@ $as_echo "$am_cv_python_pyexecdir" >&6; }
 
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile src/dysect/Makefile src/dysect/libDysectAPI/Makefile src/dysect/libDysectAPI/include/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile etc/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile examples/sessions/Makefile scripts/STAT scripts/dysectc scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-script scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile src/dysect/Makefile src/dysect/DysectAPI/Makefile src/dysect/libDysectAPI/Makefile src/dysect/libDysectAPI/include/Makefile src/dysect/libDysectAPI/src/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile etc/Makefile man/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile examples/sessions/Makefile scripts/STAT scripts/dysectc scripts/STATGUI scripts/core_stack_merge scripts/STATview scripts/STATBench scripts/stat-cl scripts/stat-script scripts/stat-gui scripts/stat-view scripts/stat-bench scripts/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -21652,8 +21669,10 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "src/dysect/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/Makefile" ;;
+    "src/dysect/DysectAPI/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/DysectAPI/Makefile" ;;
     "src/dysect/libDysectAPI/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/libDysectAPI/Makefile" ;;
     "src/dysect/libDysectAPI/include/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/libDysectAPI/include/Makefile" ;;
+    "src/dysect/libDysectAPI/src/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/libDysectAPI/src/Makefile" ;;
     "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "doc/userguide/Makefile") CONFIG_FILES="$CONFIG_FILES doc/userguide/Makefile" ;;
     "doc/quickstart/Makefile") CONFIG_FILES="$CONFIG_FILES doc/quickstart/Makefile" ;;

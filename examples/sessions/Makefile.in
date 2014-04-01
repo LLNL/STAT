@@ -35,7 +35,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 subdir = examples/sessions
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = $(dist_examples_DATA) $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_boost.m4 \
@@ -85,7 +86,7 @@ am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
 am__installdirs = "$(DESTDIR)$(examplesdir)"
-DATA = $(examples_DATA)
+DATA = $(dist_examples_DATA)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
@@ -136,6 +137,13 @@ LEXLIB = @LEXLIB@
 LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
 LIBBOOST = @LIBBOOST@
 LIBBOOSTDIR = @LIBBOOSTDIR@
+LIBDYSECTAPIBE = @LIBDYSECTAPIBE@
+LIBDYSECTAPIFD = @LIBDYSECTAPIFD@
+LIBDYSECTAPIFE = @LIBDYSECTAPIFE@
+LIBDYSECTAPILOC = @LIBDYSECTAPILOC@
+LIBDYSECTBE = @LIBDYSECTBE@
+LIBDYSECTFE = @LIBDYSECTFE@
+LIBDYSECTLOC = @LIBDYSECTLOC@
 LIBJAVADIR = @LIBJAVADIR@
 LIBJVM = @LIBJVM@
 LIBOBJS = @LIBOBJS@
@@ -246,7 +254,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 examplesdir = $(pkgdatadir)/examples/sessions
-examples_DATA = sess-01.cpp sess-02.cpp sess-04.cpp demo-sess.cpp
+dist_examples_DATA = sess-01.cpp sess-02.cpp sess-04.cpp sess-05.cpp sess-06.cpp demo-sess.cpp
 all: all-am
 
 .SUFFIXES:
@@ -286,10 +294,10 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
-install-examplesDATA: $(examples_DATA)
+install-dist_examplesDATA: $(dist_examples_DATA)
 	@$(NORMAL_INSTALL)
 	test -z "$(examplesdir)" || $(MKDIR_P) "$(DESTDIR)$(examplesdir)"
-	@list='$(examples_DATA)'; test -n "$(examplesdir)" || list=; \
+	@list='$(dist_examples_DATA)'; test -n "$(examplesdir)" || list=; \
 	for p in $$list; do \
 	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
 	  echo "$$d$$p"; \
@@ -299,9 +307,9 @@ install-examplesDATA: $(examples_DATA)
 	  $(INSTALL_DATA) $$files "$(DESTDIR)$(examplesdir)" || exit $$?; \
 	done
 
-uninstall-examplesDATA:
+uninstall-dist_examplesDATA:
 	@$(NORMAL_UNINSTALL)
-	@list='$(examples_DATA)'; test -n "$(examplesdir)" || list=; \
+	@list='$(dist_examples_DATA)'; test -n "$(examplesdir)" || list=; \
 	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
 	test -n "$$files" || exit 0; \
 	echo " ( cd '$(DESTDIR)$(examplesdir)' && rm -f" $$files ")"; \
@@ -377,7 +385,7 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libtool mostlyclean-am
+clean-am: clean-generic clean-libtool clean-local mostlyclean-am
 
 distclean: distclean-am
 	-rm -f Makefile
@@ -395,7 +403,7 @@ info: info-am
 
 info-am:
 
-install-data-am: install-examplesDATA
+install-data-am: install-dist_examplesDATA
 
 install-dvi: install-dvi-am
 
@@ -439,22 +447,26 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-examplesDATA
+uninstall-am: uninstall-dist_examplesDATA
 
 .MAKE: install-am install-strip
 
 .PHONY: all all-am check check-am clean clean-generic clean-libtool \
-	distclean distclean-generic distclean-libtool distdir dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-data install-data-am install-dvi install-dvi-am \
-	install-examplesDATA install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am install-man \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	uninstall uninstall-am uninstall-examplesDATA
+	clean-local distclean distclean-generic distclean-libtool \
+	distdir dvi dvi-am html html-am info info-am install \
+	install-am install-data install-data-am \
+	install-dist_examplesDATA install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-man install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am uninstall uninstall-am \
+	uninstall-dist_examplesDATA
 
+
+clean-local:
+	-rm -rf *.o *.so
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

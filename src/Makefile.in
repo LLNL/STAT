@@ -42,8 +42,7 @@ bin_PROGRAMS = STATbin$(EXEEXT) STATD$(EXEEXT) $(am__EXEEXT_1)
 @ENABLE_TO_TRUE@am__append_4 = tomod.py
 subdir = src
 DIST_COMMON = $(am__python_PYTHON_DIST) $(include_HEADERS) \
-	$(srcdir)/Makefile.am $(srcdir)/Makefile.in expr-parser.cc \
-	expr-scanner.cc
+	$(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_boost.m4 \
@@ -95,46 +94,26 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(pkglibdir)" \
 	"$(DESTDIR)$(pythondir)" "$(DESTDIR)$(includedir)"
 LTLIBRARIES = $(lib_LTLIBRARIES) $(pkglib_LTLIBRARIES) \
 	$(pyexec_LTLIBRARIES)
-STAT_FilterDefinitions_la_DEPENDENCIES =
+am__DEPENDENCIES_1 =
+STAT_FilterDefinitions_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am__STAT_FilterDefinitions_la_SOURCES_DIST = STAT_FilterDefinitions.C \
-	STAT_GraphRoutines.h STAT_GraphRoutines.C \
-	dysect/DysectAPI/DysectAPIFilter.C \
-	dysect/DysectAPI/Aggregates/Aggregate.C \
-	dysect/DysectAPI/Aggregates/Data.C \
-	dysect/DysectAPI/Aggregates/StrAgg.C \
-	dysect/DysectAPI/Aggregates/Location.C \
-	dysect/DysectAPI/Aggregates/LocationFE.C \
-	dysect/DysectAPI/Aggregates/DescVar.C \
-	dysect/DysectAPI/Aggregates/DescVarCP.C \
-	dysect/DysectAPI/Aggregates/CmpAgg.C \
-	dysect/DysectAPI/Aggregates/CmpAggFE.C
+	STAT_GraphRoutines.h STAT_GraphRoutines.C
 @ENABLE_GRAPHLIB20_TRUE@am__objects_1 = STAT_FilterDefinitions_la-STAT_GraphRoutines.lo
-@ENABLE_DYSECTAPI_TRUE@am__objects_2 = STAT_FilterDefinitions_la-DysectAPIFilter.lo \
-@ENABLE_DYSECTAPI_TRUE@	STAT_FilterDefinitions_la-Aggregate.lo \
-@ENABLE_DYSECTAPI_TRUE@	STAT_FilterDefinitions_la-Data.lo \
-@ENABLE_DYSECTAPI_TRUE@	STAT_FilterDefinitions_la-StrAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@	STAT_FilterDefinitions_la-Location.lo \
-@ENABLE_DYSECTAPI_TRUE@	STAT_FilterDefinitions_la-LocationFE.lo \
-@ENABLE_DYSECTAPI_TRUE@	STAT_FilterDefinitions_la-DescVar.lo \
-@ENABLE_DYSECTAPI_TRUE@	STAT_FilterDefinitions_la-DescVarCP.lo \
-@ENABLE_DYSECTAPI_TRUE@	STAT_FilterDefinitions_la-CmpAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@	STAT_FilterDefinitions_la-CmpAggFE.lo
 am_STAT_FilterDefinitions_la_OBJECTS =  \
 	STAT_FilterDefinitions_la-STAT_FilterDefinitions.lo \
-	$(am__objects_1) $(am__objects_2)
+	$(am__objects_1)
 STAT_FilterDefinitions_la_OBJECTS =  \
 	$(am_STAT_FilterDefinitions_la_OBJECTS)
 STAT_FilterDefinitions_la_LINK = $(LIBTOOL) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
 	$(AM_CXXFLAGS) $(CXXFLAGS) \
 	$(STAT_FilterDefinitions_la_LDFLAGS) $(LDFLAGS) -o $@
-@ENABLE_DYSECTAPI_TRUE@am__DEPENDENCIES_1 = libDysectAPIFE.la
 @ENABLE_GUI_TRUE@_STAT_la_DEPENDENCIES = libstatfe.la \
 @ENABLE_GUI_TRUE@	$(am__DEPENDENCIES_1)
 am___STAT_la_SOURCES_DIST = STAT_wrap.C STAT.i
-am__objects_3 =
+am__objects_2 =
 @ENABLE_GUI_TRUE@am__STAT_la_OBJECTS = _STAT_la-STAT_wrap.lo \
-@ENABLE_GUI_TRUE@	$(am__objects_3)
+@ENABLE_GUI_TRUE@	$(am__objects_2)
 _STAT_la_OBJECTS = $(am__STAT_la_OBJECTS)
 _STAT_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
@@ -150,194 +129,33 @@ _STATmerge_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 _tomod_la_LIBADD =
 am___tomod_la_SOURCES_DIST = to_wrap.C to.C to.h to.i
 @ENABLE_TO_TRUE@am__tomod_la_OBJECTS = _tomod_la-to_wrap.lo \
-@ENABLE_TO_TRUE@	_tomod_la-to.lo $(am__objects_3)
+@ENABLE_TO_TRUE@	_tomod_la-to.lo $(am__objects_2)
 _tomod_la_OBJECTS = $(am__tomod_la_OBJECTS)
 _tomod_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(_tomod_la_LDFLAGS) $(LDFLAGS) -o $@
 @ENABLE_TO_TRUE@am__tomod_la_rpath = -rpath $(pyexecdir)
-libDysectAPIBE_la_LIBADD =
-am__libDysectAPIBE_la_SOURCES_DIST =  \
-	dysect/libDysectAPI/src/action.cpp \
-	dysect/libDysectAPI/src/condition.cpp \
-	dysect/libDysectAPI/src/domain.cpp \
-	dysect/libDysectAPI/src/event.cpp \
-	dysect/libDysectAPI/src/probe.cpp \
-	dysect/libDysectAPI/src/parser.cpp \
-	dysect/libDysectAPI/src/probe_tree.cpp \
-	dysect/libDysectAPI/src/default_probes.cpp \
-	dysect/libDysectAPI/src/group.cpp \
-	dysect/libDysectAPI/src/err.cpp \
-	dysect/libDysectAPI/src/expr.cpp \
-	dysect/libDysectAPI/src/expr-scanner.ll \
-	dysect/libDysectAPI/src/expr-parser.yy \
-	dysect/libDysectAPI/src/location_be.cpp \
-	dysect/libDysectAPI/src/backend.cpp \
-	dysect/libDysectAPI/src/group_be.cpp \
-	dysect/libDysectAPI/src/probe_be.cpp \
-	dysect/libDysectAPI/src/expr_be.cpp \
-	dysect/libDysectAPI/src/symbol.cpp \
-	dysect/libDysectAPI/src/safe_timer.cpp \
-	dysect/libDysectAPI/src/action_be.cpp \
-	dysect/libDysectAPI/src/event_be.cpp \
-	dysect/libDysectAPI/src/domain_be.cpp \
-	dysect/libDysectAPI/src/condition_be.cpp \
-	dysect/libDysectAPI/src/time_be.cpp
-@ENABLE_DYSECTAPI_TRUE@am__objects_4 = libDysectAPIBE_la-action.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-condition.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-domain.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-event.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-probe.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-parser.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-probe_tree.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-default_probes.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-group.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-err.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-expr.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-expr-scanner.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-expr-parser.lo
-@ENABLE_DYSECTAPI_TRUE@am_libDysectAPIBE_la_OBJECTS =  \
-@ENABLE_DYSECTAPI_TRUE@	$(am__objects_4) \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-location_be.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-backend.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-group_be.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-probe_be.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-expr_be.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-symbol.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-safe_timer.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-action_be.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-event_be.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-domain_be.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-condition_be.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIBE_la-time_be.lo
-libDysectAPIBE_la_OBJECTS = $(am_libDysectAPIBE_la_OBJECTS)
-libDysectAPIBE_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
-	$(CXXFLAGS) $(libDysectAPIBE_la_LDFLAGS) $(LDFLAGS) -o $@
-@ENABLE_DYSECTAPI_TRUE@am_libDysectAPIBE_la_rpath = -rpath $(libdir)
-libDysectAPIFE_la_LIBADD =
-am__libDysectAPIFE_la_SOURCES_DIST =  \
-	dysect/libDysectAPI/src/action.cpp \
-	dysect/libDysectAPI/src/condition.cpp \
-	dysect/libDysectAPI/src/domain.cpp \
-	dysect/libDysectAPI/src/event.cpp \
-	dysect/libDysectAPI/src/probe.cpp \
-	dysect/libDysectAPI/src/parser.cpp \
-	dysect/libDysectAPI/src/probe_tree.cpp \
-	dysect/libDysectAPI/src/default_probes.cpp \
-	dysect/libDysectAPI/src/group.cpp \
-	dysect/libDysectAPI/src/err.cpp \
-	dysect/libDysectAPI/src/expr.cpp \
-	dysect/libDysectAPI/src/expr-scanner.ll \
-	dysect/libDysectAPI/src/expr-parser.yy \
-	dysect/libDysectAPI/src/location_fe.cpp \
-	dysect/libDysectAPI/src/frontend.cpp \
-	dysect/libDysectAPI/src/group_fe.cpp \
-	dysect/libDysectAPI/src/probe_fe.cpp \
-	dysect/libDysectAPI/src/expr_fe.cpp \
-	dysect/libDysectAPI/src/action_fe.cpp \
-	dysect/libDysectAPI/src/event_fe.cpp \
-	dysect/libDysectAPI/src/domain_fe.cpp \
-	dysect/libDysectAPI/src/time_fe.cpp
-@ENABLE_DYSECTAPI_TRUE@am__objects_5 = libDysectAPIFE_la-action.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-condition.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-domain.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-event.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-probe.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-parser.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-probe_tree.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-default_probes.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-group.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-err.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-expr.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-expr-scanner.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-expr-parser.lo
-@ENABLE_DYSECTAPI_TRUE@am_libDysectAPIFE_la_OBJECTS =  \
-@ENABLE_DYSECTAPI_TRUE@	$(am__objects_5) \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-location_fe.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-frontend.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-group_fe.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-probe_fe.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-expr_fe.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-action_fe.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-event_fe.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-domain_fe.lo \
-@ENABLE_DYSECTAPI_TRUE@	libDysectAPIFE_la-time_fe.lo
-libDysectAPIFE_la_OBJECTS = $(am_libDysectAPIFE_la_OBJECTS)
-libDysectAPIFE_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
-	$(CXXFLAGS) $(libDysectAPIFE_la_LDFLAGS) $(LDFLAGS) -o $@
-@ENABLE_DYSECTAPI_TRUE@am_libDysectAPIFE_la_rpath = -rpath $(libdir)
 libstatbe_la_LIBADD =
 am__libstatbe_la_SOURCES_DIST = STAT_BackEnd.C STAT_BackEnd.h STAT.h \
 	STAT_timer.h STAT_timer.C STAT_CircularLogs.C \
-	STAT_GraphRoutines.h STAT_GraphRoutines.C \
-	dysect/DysectAPI/DysectAPIBE.C dysect/DysectAPI/DysectAPIBE.h \
-	dysect/DysectAPI/DysectAPI.h dysect/DysectAPI/DysectAPI.C \
-	dysect/DysectAPI/DysectAPIProcessMgr.C \
-	dysect/DysectAPI/Aggregates/Aggregate.C \
-	dysect/DysectAPI/Aggregates/Data.C \
-	dysect/DysectAPI/Aggregates/AggregateBE.C \
-	dysect/DysectAPI/Aggregates/Location.C \
-	dysect/DysectAPI/Aggregates/LocationBE.C \
-	dysect/DysectAPI/Aggregates/StrAgg.C \
-	dysect/DysectAPI/Aggregates/DescVar.C \
-	dysect/DysectAPI/Aggregates/DescVarBE.C \
-	dysect/DysectAPI/Aggregates/CmpAgg.C \
-	dysect/DysectAPI/Aggregates/CmpAggBE.C MRNetSymbolReader.C
-am__objects_6 = libstatbe_la-STAT_BackEnd.lo \
+	STAT_GraphRoutines.h STAT_GraphRoutines.C MRNetSymbolReader.C
+am__objects_3 = libstatbe_la-STAT_BackEnd.lo \
 	libstatbe_la-STAT_timer.lo libstatbe_la-STAT_CircularLogs.lo
-@ENABLE_GRAPHLIB20_TRUE@am__objects_7 =  \
+@ENABLE_GRAPHLIB20_TRUE@am__objects_4 =  \
 @ENABLE_GRAPHLIB20_TRUE@	libstatbe_la-STAT_GraphRoutines.lo
-@ENABLE_DYSECTAPI_TRUE@am__objects_8 = libstatbe_la-DysectAPIBE.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-DysectAPI.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-DysectAPIProcessMgr.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-Aggregate.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-Data.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-AggregateBE.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-Location.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-LocationBE.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-StrAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-DescVar.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-DescVarBE.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-CmpAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatbe_la-CmpAggBE.lo
-@ENABLE_FGFS_TRUE@am__objects_9 = libstatbe_la-MRNetSymbolReader.lo
-am_libstatbe_la_OBJECTS = $(am__objects_6) $(am__objects_7) \
-	$(am__objects_8) $(am__objects_9)
+@ENABLE_FGFS_TRUE@am__objects_5 = libstatbe_la-MRNetSymbolReader.lo
+am_libstatbe_la_OBJECTS = $(am__objects_3) $(am__objects_4) \
+	$(am__objects_5)
 libstatbe_la_OBJECTS = $(am_libstatbe_la_OBJECTS)
 libstatfe_la_LIBADD =
 am__libstatfe_la_SOURCES_DIST = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h \
 	STAT_timer.h STAT_timer.C STAT_GraphRoutines.h \
-	STAT_GraphRoutines.C dysect/DysectAPI/DysectAPIFE.C \
-	dysect/DysectAPI/DysectAPIFE.h dysect/DysectAPI/DysectAPI.h \
-	dysect/DysectAPI/DysectAPI.C \
-	dysect/DysectAPI/Aggregates/Data.C \
-	dysect/DysectAPI/Aggregates/Aggregate.C \
-	dysect/DysectAPI/Aggregates/Location.C \
-	dysect/DysectAPI/Aggregates/LocationFE.C \
-	dysect/DysectAPI/Aggregates/StrAgg.C \
-	dysect/DysectAPI/Aggregates/DescVar.C \
-	dysect/DysectAPI/Aggregates/DescVarFE.C \
-	dysect/DysectAPI/Aggregates/CmpAgg.C \
-	dysect/DysectAPI/Aggregates/CmpAggFE.C
-am__objects_10 = libstatfe_la-STAT_FrontEnd.lo \
+	STAT_GraphRoutines.C
+am__objects_6 = libstatfe_la-STAT_FrontEnd.lo \
 	libstatfe_la-STAT_timer.lo
-@ENABLE_GRAPHLIB20_TRUE@am__objects_11 =  \
+@ENABLE_GRAPHLIB20_TRUE@am__objects_7 =  \
 @ENABLE_GRAPHLIB20_TRUE@	libstatfe_la-STAT_GraphRoutines.lo
-@ENABLE_DYSECTAPI_TRUE@am__objects_12 = libstatfe_la-DysectAPIFE.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-DysectAPI.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-Data.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-Aggregate.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-Location.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-LocationFE.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-StrAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-DescVar.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-DescVarFE.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-CmpAgg.lo \
-@ENABLE_DYSECTAPI_TRUE@	libstatfe_la-CmpAggFE.lo
-am_libstatfe_la_OBJECTS = $(am__objects_10) $(am__objects_11) \
-	$(am__objects_12)
+am_libstatfe_la_OBJECTS = $(am__objects_6) $(am__objects_7)
 libstatfe_la_OBJECTS = $(am_libstatfe_la_OBJECTS)
 @ENABLE_STATBENCH_TRUE@am__EXEEXT_1 = STATBenchbin$(EXEEXT) \
 @ENABLE_STATBENCH_TRUE@	STATBenchD$(EXEEXT)
@@ -348,7 +166,7 @@ am__STATBenchD_SOURCES_DIST = STATBenchD.C STAT.h STAT_BackEnd.h \
 @ENABLE_STATBENCH_TRUE@	STATBenchD-STATBenchD.$(OBJEXT)
 STATBenchD_OBJECTS = $(am_STATBenchD_OBJECTS)
 @ENABLE_STATBENCH_TRUE@STATBenchD_DEPENDENCIES = libstatbe.la \
-@ENABLE_STATBENCH_TRUE@	$(stat_be_ldadd_dysectapi)
+@ENABLE_STATBENCH_TRUE@	$(am__DEPENDENCIES_1)
 STATBenchD_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(STATBenchD_LDFLAGS) $(LDFLAGS) -o $@
@@ -364,7 +182,7 @@ STATBenchbin_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(CXXFLAGS) $(STATBenchbin_LDFLAGS) $(LDFLAGS) -o $@
 am_STATD_OBJECTS = STATD-STATD.$(OBJEXT)
 STATD_OBJECTS = $(am_STATD_OBJECTS)
-STATD_DEPENDENCIES = libstatbe.la $(stat_be_ldadd_dysectapi)
+STATD_DEPENDENCIES = libstatbe.la $(am__DEPENDENCIES_1)
 STATD_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
 	$(STATD_LDFLAGS) $(LDFLAGS) -o $@
@@ -387,13 +205,6 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-LEXCOMPILE = $(LEX) $(LFLAGS) $(AM_LFLAGS)
-LTLEXCOMPILE = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=compile $(LEX) $(LFLAGS) $(AM_LFLAGS)
-YLWRAP = $(top_srcdir)/config/ylwrap
-YACCCOMPILE = $(YACC) $(YFLAGS) $(AM_YFLAGS)
-LTYACCCOMPILE = $(LIBTOOL) $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
-	--mode=compile $(YACC) $(YFLAGS) $(AM_YFLAGS)
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 LTCOMPILE = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
@@ -405,16 +216,12 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(STAT_FilterDefinitions_la_SOURCES) $(_STAT_la_SOURCES) \
 	$(_STATmerge_la_SOURCES) $(_tomod_la_SOURCES) \
-	$(libDysectAPIBE_la_SOURCES) $(libDysectAPIFE_la_SOURCES) \
 	$(libstatbe_la_SOURCES) $(libstatfe_la_SOURCES) \
 	$(STATBenchD_SOURCES) $(STATBenchbin_SOURCES) $(STATD_SOURCES) \
 	$(STATbin_SOURCES)
 DIST_SOURCES = $(am__STAT_FilterDefinitions_la_SOURCES_DIST) \
 	$(am___STAT_la_SOURCES_DIST) $(_STATmerge_la_SOURCES) \
-	$(am___tomod_la_SOURCES_DIST) \
-	$(am__libDysectAPIBE_la_SOURCES_DIST) \
-	$(am__libDysectAPIFE_la_SOURCES_DIST) \
-	$(am__libstatbe_la_SOURCES_DIST) \
+	$(am___tomod_la_SOURCES_DIST) $(am__libstatbe_la_SOURCES_DIST) \
 	$(am__libstatfe_la_SOURCES_DIST) \
 	$(am__STATBenchD_SOURCES_DIST) \
 	$(am__STATBenchbin_SOURCES_DIST) $(STATD_SOURCES) \
@@ -513,6 +320,13 @@ LEXLIB = @LEXLIB@
 LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
 LIBBOOST = @LIBBOOST@
 LIBBOOSTDIR = @LIBBOOSTDIR@
+LIBDYSECTAPIBE = @LIBDYSECTAPIBE@
+LIBDYSECTAPIFD = @LIBDYSECTAPIFD@
+LIBDYSECTAPIFE = @LIBDYSECTAPIFE@
+LIBDYSECTAPILOC = @LIBDYSECTAPILOC@
+LIBDYSECTBE = @LIBDYSECTBE@
+LIBDYSECTFE = @LIBDYSECTFE@
+LIBDYSECTLOC = @LIBDYSECTLOC@
 LIBJAVADIR = @LIBJAVADIR@
 LIBJVM = @LIBJVM@
 LIBOBJS = @LIBOBJS@
@@ -622,71 +436,49 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-@ENABLE_DYSECTAPI_TRUE@SUBDIRS = dysect
+@ENABLE_DYSECTAPI_TRUE@MAYBE_DYSECT = dysect
+SUBDIRS = $(MAYBE_DYSECT)
 
 # what flags you want to pass to the C compiler & linker
 AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
 AM_LDFLAGS = 
 include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h STAT_shared.h
-@ENABLE_DYSECTAPI_TRUE@stat_fe_ldadd_dysectapi = libDysectAPIFE.la @BELIBS@
-@ENABLE_DYSECTAPI_TRUE@stat_be_ldadd_dysectapi = libDysectAPIBE.la
-@ENABLE_DYSECTAPI_TRUE@stat_lib_ltlibraries_dysectapi = libDysectAPIFE.la libDysectAPIBE.la
-@ENABLE_DYSECTAPI_TRUE@stat_be_la_sources_dysectapi = dysect/DysectAPI/DysectAPIBE.C dysect/DysectAPI/DysectAPIBE.h dysect/DysectAPI/DysectAPI.h dysect/DysectAPI/DysectAPI.C dysect/DysectAPI/DysectAPIProcessMgr.C dysect/DysectAPI/Aggregates/Aggregate.C dysect/DysectAPI/Aggregates/Data.C dysect/DysectAPI/Aggregates/AggregateBE.C dysect/DysectAPI/Aggregates/Location.C dysect/DysectAPI/Aggregates/LocationBE.C dysect/DysectAPI/Aggregates/StrAgg.C dysect/DysectAPI/Aggregates/DescVar.C dysect/DysectAPI/Aggregates/DescVarBE.C dysect/DysectAPI/Aggregates/CmpAgg.C dysect/DysectAPI/Aggregates/CmpAggBE.C
-@ENABLE_DYSECTAPI_TRUE@stat_fe_la_sources_dysectapi = dysect/DysectAPI/DysectAPIFE.C dysect/DysectAPI/DysectAPIFE.h dysect/DysectAPI/DysectAPI.h dysect/DysectAPI/DysectAPI.C dysect/DysectAPI/Aggregates/Data.C dysect/DysectAPI/Aggregates/Aggregate.C dysect/DysectAPI/Aggregates/Location.C dysect/DysectAPI/Aggregates/LocationFE.C dysect/DysectAPI/Aggregates/StrAgg.C dysect/DysectAPI/Aggregates/DescVar.C dysect/DysectAPI/Aggregates/DescVarFE.C dysect/DysectAPI/Aggregates/CmpAgg.C dysect/DysectAPI/Aggregates/CmpAggFE.C
-@ENABLE_DYSECTAPI_TRUE@stat_fd_la_sources_dysectapi = dysect/DysectAPI/DysectAPIFilter.C dysect/DysectAPI/Aggregates/Aggregate.C dysect/DysectAPI/Aggregates/Data.C dysect/DysectAPI/Aggregates/StrAgg.C dysect/DysectAPI/Aggregates/Location.C dysect/DysectAPI/Aggregates/LocationFE.C dysect/DysectAPI/Aggregates/DescVar.C dysect/DysectAPI/Aggregates/DescVarCP.C dysect/DysectAPI/Aggregates/CmpAgg.C dysect/DysectAPI/Aggregates/CmpAggFE.C
-@ENABLE_DYSECTAPI_TRUE@stat_la_cppflags_dysectapi = -Idysect -Idysect/libDysectAPI/include -D__DYSECT_IS_FRONTEND
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@STATBenchD_CPPFLAGS = -Idysect/libDysectAPI/include -Idysect
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_STATBENCH_TRUE@STATBenchbin_CPPFLAGS = -Idysect/libDysectAPI/include -Idysect
+@ENABLE_DYSECTAPI_TRUE@stat_cppflags_add_dysectapi = -I$(abs_top_srcdir)/src -I$(abs_top_srcdir)/src/dysect -I$(abs_top_srcdir)/src/dysect/libDysectAPI/include
+@ENABLE_DYSECTAPI_TRUE@stat_fe_ldadd_add_dysectapi = @LIBDYSECTAPIFE@ @LIBDYSECTFE@ @BELIBS@
+@ENABLE_DYSECTAPI_TRUE@stat_be_ldadd_add_dysectapi = @LIBDYSECTAPIBE@ @LIBDYSECTBE@
+@ENABLE_DYSECTAPI_TRUE@stat_fd_ldadd_add_dysectapi = @LIBDYSECTAPIFD@
+@ENABLE_DYSECTAPI_TRUE@stat_ldflags_add_dysectapi = -L@LIBDYSECTAPILOC@ -L@LIBDYSECTLOC@
 @ENABLE_STATBENCH_TRUE@stat_bin_programs_statbench = STATBenchbin STATBenchD
 @ENABLE_STATBENCH_TRUE@STATBenchbin_SOURCES = STATBench.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 @ENABLE_STATBENCH_TRUE@STATBenchD_SOURCES = STATBenchD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
-@ENABLE_STATBENCH_TRUE@STATBenchbin_LDFLAGS = -Wl,-E
-@ENABLE_STATBENCH_TRUE@STATBenchD_LDFLAGS = -Wl,-E
-@ENABLE_STATBENCH_TRUE@STATBenchbin_LDADD = libstatfe.la $(stat_fe_ldadd_dysectapi) @FELIBS@
-@ENABLE_STATBENCH_TRUE@STATBenchD_LDADD = libstatbe.la $(stat_be_ldadd_dysectapi) @BELIBS@
+@ENABLE_STATBENCH_TRUE@STATBenchbin_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
+@ENABLE_STATBENCH_TRUE@STATBenchD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
+@ENABLE_STATBENCH_TRUE@STATBenchbin_LDADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
+@ENABLE_STATBENCH_TRUE@STATBenchD_LDADD = libstatbe.la $(stat_be_ldadd_add_dysectapi) @BELIBS@
+@ENABLE_STATBENCH_TRUE@STATBenchD_CPPFLAGS = $(stat_cppflags_add_dysectapi)
+@ENABLE_STATBENCH_TRUE@STATBenchbin_CPPFLAGS = $(stat_cppflags_add_dysectapi)
 @ENABLE_GRAPHLIB20_TRUE@stat_graphlib_sources = STAT_GraphRoutines.h STAT_GraphRoutines.C
 @ENABLE_FGFS_TRUE@stat_be_la_sources_fgfs = MRNetSymbolReader.C
-lib_LTLIBRARIES = libstatfe.la libstatbe.la $(stat_lib_ltlibraries_dysectapi)
+lib_LTLIBRARIES = libstatfe.la libstatbe.la
 STATbin_SOURCES = STAT.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 STATD_SOURCES = STATD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
-STATbin_LDFLAGS = -Wl,-E
-STATbin_LDADD = libstatfe.la $(stat_fe_ldadd_dysectapi) @FELIBS@
-STATD_LDFLAGS = -Wl,-E
-STATD_LDADD = libstatbe.la $(stat_be_ldadd_dysectapi) @BELIBS@
+STATbin_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
+STATbin_LDADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
+STATD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
+STATD_LDADD = libstatbe.la $(stat_be_ldadd_add_dysectapi) @BELIBS@
 stat_be_la_sources_base = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
 stat_fe_la_sources_base = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C
-libstatbe_la_SOURCES = $(stat_be_la_sources_base) $(stat_graphlib_sources) $(stat_be_la_sources_dysectapi) $(stat_be_la_sources_fgfs)
-libstatfe_la_SOURCES = $(stat_fe_la_sources_base) $(stat_graphlib_sources) $(stat_fe_la_sources_dysectapi)
-@ENABLE_DYSECTAPI_TRUE@libstatbe_la_CPPFLAGS = -Idysect/libDysectAPI/include -Idysect
-@ENABLE_DYSECTAPI_TRUE@libstatfe_la_CPPFLAGS = -Idysect/libDysectAPI/include -Idysect
-@ENABLE_DYSECTAPI_TRUE@STATD_CPPFLAGS = -Idysect/libDysectAPI/include -Idysect
-@ENABLE_DYSECTAPI_TRUE@STATbin_CPPFLAGS = -Idysect/libDysectAPI/include -Idysect
-@ENABLE_DYSECTAPI_TRUE@dysect_sources = dysect/libDysectAPI/src/action.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/condition.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/domain.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/event.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/probe.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/parser.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/probe_tree.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/default_probes.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/group.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/err.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/expr.cpp \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/expr-scanner.ll \
-@ENABLE_DYSECTAPI_TRUE@									dysect/libDysectAPI/src/expr-parser.yy
-
-@ENABLE_DYSECTAPI_TRUE@dysect_includes = -Idysect -Idysect/libDysectAPI/include 
-@ENABLE_DYSECTAPI_TRUE@libDysectAPIFE_la_SOURCES = $(dysect_sources) dysect/libDysectAPI/src/location_fe.cpp dysect/libDysectAPI/src/frontend.cpp dysect/libDysectAPI/src/group_fe.cpp dysect/libDysectAPI/src/probe_fe.cpp dysect/libDysectAPI/src/expr_fe.cpp dysect/libDysectAPI/src/action_fe.cpp dysect/libDysectAPI/src/event_fe.cpp dysect/libDysectAPI/src/domain_fe.cpp dysect/libDysectAPI/src/time_fe.cpp 
-@ENABLE_DYSECTAPI_TRUE@libDysectAPIFE_la_CPPFLAGS = -g -O2 -fPIC $(dysect_includes) -D__DYSECT_IS_FRONTEND
-@ENABLE_DYSECTAPI_TRUE@libDysectAPIFE_la_LDFLAGS = --export-dynamic 
-@ENABLE_DYSECTAPI_TRUE@libDysectAPIBE_la_SOURCES = $(dysect_sources) dysect/libDysectAPI/src/location_be.cpp dysect/libDysectAPI/src/backend.cpp dysect/libDysectAPI/src/group_be.cpp dysect/libDysectAPI/src/probe_be.cpp dysect/libDysectAPI/src/expr_be.cpp dysect/libDysectAPI/src/symbol.cpp dysect/libDysectAPI/src/safe_timer.cpp dysect/libDysectAPI/src/action_be.cpp dysect/libDysectAPI/src/event_be.cpp dysect/libDysectAPI/src/domain_be.cpp dysect/libDysectAPI/src/condition_be.cpp dysect/libDysectAPI/src/time_be.cpp
-@ENABLE_DYSECTAPI_TRUE@libDysectAPIBE_la_CPPFLAGS = -g -O2 -fPIC $(dysect_includes) -D__DYSECT_IS_BACKEND 
-@ENABLE_DYSECTAPI_TRUE@libDysectAPIBE_la_LDFLAGS = --export-dynamic -lrt
+libstatbe_la_SOURCES = $(stat_be_la_sources_base) $(stat_graphlib_sources) $(stat_be_la_source_add_dysectapi) $(stat_be_la_sources_fgfs)
+libstatfe_la_SOURCES = $(stat_fe_la_sources_base) $(stat_graphlib_sources) $(stat_fe_la_source_add_dysectapi)
+libstatbe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
+libstatfe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
+STATD_CPPFLAGS = $(stat_cppflags_add_dysectapi)
+STATbin_CPPFLAGS = $(stat_cppflags_add_dysectapi)
 pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
-STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C $(stat_graphlib_sources) $(stat_fd_la_sources_dysectapi)
-STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version
-STAT_FilterDefinitions_la_LIBADD = @MWLIBS@
-STAT_FilterDefinitions_la_CPPFLAGS = $(dysect_includes)
+STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C $(stat_graphlib_sources) $(stat_fd_la_sources_add_dysectapi)
+STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi)
+STAT_FilterDefinitions_la_LIBADD = @MWLIBS@ $(stat_fd_ldadd_add_dysectapi)
+STAT_FilterDefinitions_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
 pyexec_LTLIBRARIES = _STATmerge.la $(am__append_1) $(am__append_3)
 _STATmerge_la_SOURCES = STAT_merge.C STAT_GraphRoutines.C
 _STATmerge_la_CPPFLAGS = -I./
@@ -695,9 +487,9 @@ _STATmerge_la_LIBADD = -llnlgraph
 python_PYTHON = $(am__append_2) $(am__append_4)
 @ENABLE_GUI_TRUE@GUI_SWIG_SOURCES = STAT.i
 @ENABLE_GUI_TRUE@_STAT_la_SOURCES = STAT_wrap.C $(GUI_SWIG_SOURCES)
-@ENABLE_GUI_TRUE@_STAT_la_CPPFLAGS = -I./ $(dysect_includes) -D__DYSECT_IS_FRONTEND
-@ENABLE_GUI_TRUE@_STAT_la_LDFLAGS = -module -avoid-version
-@ENABLE_GUI_TRUE@_STAT_la_LIBADD = libstatfe.la $(stat_fe_ldadd_dysectapi) @FELIBS@
+@ENABLE_GUI_TRUE@_STAT_la_CPPFLAGS = -I./ $(stat_cppflags_add_dysectapi) -D__DYSECT_IS_FRONTEND
+@ENABLE_GUI_TRUE@_STAT_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi)
+@ENABLE_GUI_TRUE@_STAT_la_LIBADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
 @ENABLE_TO_TRUE@TO_SWIG_SOURCES = to.i
 @ENABLE_TO_TRUE@_tomod_la_SOURCES = to_wrap.C to.C to.h $(TO_SWIG_SOURCES)
 @ENABLE_TO_TRUE@_tomod_la_CPPFLAGS = -I./ $(BOOST_INCLUDE) $(ROSE_INCLUDE) $(TOAPI_INCLUDE)
@@ -705,7 +497,7 @@ python_PYTHON = $(am__append_2) $(am__append_4)
 all: all-recursive
 
 .SUFFIXES:
-.SUFFIXES: .C .cc .cpp .ll .lo .o .obj .yy
+.SUFFIXES: .C .lo .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -837,10 +629,6 @@ _STATmerge.la: $(_STATmerge_la_OBJECTS) $(_STATmerge_la_DEPENDENCIES)
 	$(_STATmerge_la_LINK) -rpath $(pyexecdir) $(_STATmerge_la_OBJECTS) $(_STATmerge_la_LIBADD) $(LIBS)
 _tomod.la: $(_tomod_la_OBJECTS) $(_tomod_la_DEPENDENCIES) 
 	$(_tomod_la_LINK) $(am__tomod_la_rpath) $(_tomod_la_OBJECTS) $(_tomod_la_LIBADD) $(LIBS)
-libDysectAPIBE.la: $(libDysectAPIBE_la_OBJECTS) $(libDysectAPIBE_la_DEPENDENCIES) 
-	$(libDysectAPIBE_la_LINK) $(am_libDysectAPIBE_la_rpath) $(libDysectAPIBE_la_OBJECTS) $(libDysectAPIBE_la_LIBADD) $(LIBS)
-libDysectAPIFE.la: $(libDysectAPIFE_la_OBJECTS) $(libDysectAPIFE_la_DEPENDENCIES) 
-	$(libDysectAPIFE_la_LINK) $(am_libDysectAPIFE_la_rpath) $(libDysectAPIFE_la_OBJECTS) $(libDysectAPIFE_la_LIBADD) $(LIBS)
 libstatbe.la: $(libstatbe_la_OBJECTS) $(libstatbe_la_DEPENDENCIES) 
 	$(CXXLINK) -rpath $(libdir) $(libstatbe_la_OBJECTS) $(libstatbe_la_LIBADD) $(LIBS)
 libstatfe.la: $(libstatfe_la_OBJECTS) $(libstatfe_la_DEPENDENCIES) 
@@ -910,103 +698,22 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STATBenchD-STATBenchD.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STATBenchbin-STATBench.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STATD-STATD.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-Aggregate.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-CmpAgg.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-CmpAggFE.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-Data.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-DescVar.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-DescVarCP.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-DysectAPIFilter.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-Location.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-LocationFE.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-STAT_FilterDefinitions.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-STAT_GraphRoutines.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STAT_FilterDefinitions_la-StrAgg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STATbin-STAT.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STAT_la-STAT_wrap.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STATmerge_la-STAT_GraphRoutines.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_STATmerge_la-STAT_merge.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_tomod_la-to.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/_tomod_la-to_wrap.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-action.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-action_be.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-backend.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-condition.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-condition_be.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-default_probes.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-domain.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-domain_be.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-err.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-event.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-event_be.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-expr-parser.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-expr-scanner.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-expr.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-expr_be.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-group.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-group_be.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-location_be.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-parser.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-probe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-probe_be.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-probe_tree.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-safe_timer.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-symbol.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-time_be.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-action.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-action_fe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-condition.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-default_probes.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-domain.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-domain_fe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-err.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-event.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-event_fe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-expr-parser.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-expr-scanner.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-expr.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-expr_fe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-frontend.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-group.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-group_fe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-location_fe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-parser.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-probe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-probe_fe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-probe_tree.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-time_fe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-Aggregate.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-AggregateBE.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-CmpAgg.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-CmpAggBE.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-Data.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-DescVar.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-DescVarBE.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-DysectAPI.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-DysectAPIBE.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-DysectAPIProcessMgr.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-Location.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-LocationBE.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-MRNetSymbolReader.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-STAT_BackEnd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-STAT_CircularLogs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-STAT_GraphRoutines.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-STAT_timer.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatbe_la-StrAgg.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-Aggregate.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-CmpAgg.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-CmpAggFE.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-Data.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-DescVar.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-DescVarFE.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-DysectAPI.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-DysectAPIFE.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-Location.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-LocationFE.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-STAT_FrontEnd.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-STAT_GraphRoutines.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-STAT_timer.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libstatfe_la-StrAgg.Plo@am__quote@
 
 .C.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -1043,76 +750,6 @@ STAT_FilterDefinitions_la-STAT_GraphRoutines.lo: STAT_GraphRoutines.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-STAT_GraphRoutines.lo `test -f 'STAT_GraphRoutines.C' || echo '$(srcdir)/'`STAT_GraphRoutines.C
 
-STAT_FilterDefinitions_la-DysectAPIFilter.lo: dysect/DysectAPI/DysectAPIFilter.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STAT_FilterDefinitions_la-DysectAPIFilter.lo -MD -MP -MF $(DEPDIR)/STAT_FilterDefinitions_la-DysectAPIFilter.Tpo -c -o STAT_FilterDefinitions_la-DysectAPIFilter.lo `test -f 'dysect/DysectAPI/DysectAPIFilter.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPIFilter.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/STAT_FilterDefinitions_la-DysectAPIFilter.Tpo $(DEPDIR)/STAT_FilterDefinitions_la-DysectAPIFilter.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/DysectAPIFilter.C' object='STAT_FilterDefinitions_la-DysectAPIFilter.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-DysectAPIFilter.lo `test -f 'dysect/DysectAPI/DysectAPIFilter.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPIFilter.C
-
-STAT_FilterDefinitions_la-Aggregate.lo: dysect/DysectAPI/Aggregates/Aggregate.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STAT_FilterDefinitions_la-Aggregate.lo -MD -MP -MF $(DEPDIR)/STAT_FilterDefinitions_la-Aggregate.Tpo -c -o STAT_FilterDefinitions_la-Aggregate.lo `test -f 'dysect/DysectAPI/Aggregates/Aggregate.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Aggregate.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/STAT_FilterDefinitions_la-Aggregate.Tpo $(DEPDIR)/STAT_FilterDefinitions_la-Aggregate.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/Aggregate.C' object='STAT_FilterDefinitions_la-Aggregate.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-Aggregate.lo `test -f 'dysect/DysectAPI/Aggregates/Aggregate.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Aggregate.C
-
-STAT_FilterDefinitions_la-Data.lo: dysect/DysectAPI/Aggregates/Data.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STAT_FilterDefinitions_la-Data.lo -MD -MP -MF $(DEPDIR)/STAT_FilterDefinitions_la-Data.Tpo -c -o STAT_FilterDefinitions_la-Data.lo `test -f 'dysect/DysectAPI/Aggregates/Data.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Data.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/STAT_FilterDefinitions_la-Data.Tpo $(DEPDIR)/STAT_FilterDefinitions_la-Data.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/Data.C' object='STAT_FilterDefinitions_la-Data.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-Data.lo `test -f 'dysect/DysectAPI/Aggregates/Data.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Data.C
-
-STAT_FilterDefinitions_la-StrAgg.lo: dysect/DysectAPI/Aggregates/StrAgg.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STAT_FilterDefinitions_la-StrAgg.lo -MD -MP -MF $(DEPDIR)/STAT_FilterDefinitions_la-StrAgg.Tpo -c -o STAT_FilterDefinitions_la-StrAgg.lo `test -f 'dysect/DysectAPI/Aggregates/StrAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/StrAgg.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/STAT_FilterDefinitions_la-StrAgg.Tpo $(DEPDIR)/STAT_FilterDefinitions_la-StrAgg.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/StrAgg.C' object='STAT_FilterDefinitions_la-StrAgg.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-StrAgg.lo `test -f 'dysect/DysectAPI/Aggregates/StrAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/StrAgg.C
-
-STAT_FilterDefinitions_la-Location.lo: dysect/DysectAPI/Aggregates/Location.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STAT_FilterDefinitions_la-Location.lo -MD -MP -MF $(DEPDIR)/STAT_FilterDefinitions_la-Location.Tpo -c -o STAT_FilterDefinitions_la-Location.lo `test -f 'dysect/DysectAPI/Aggregates/Location.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Location.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/STAT_FilterDefinitions_la-Location.Tpo $(DEPDIR)/STAT_FilterDefinitions_la-Location.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/Location.C' object='STAT_FilterDefinitions_la-Location.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-Location.lo `test -f 'dysect/DysectAPI/Aggregates/Location.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Location.C
-
-STAT_FilterDefinitions_la-LocationFE.lo: dysect/DysectAPI/Aggregates/LocationFE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STAT_FilterDefinitions_la-LocationFE.lo -MD -MP -MF $(DEPDIR)/STAT_FilterDefinitions_la-LocationFE.Tpo -c -o STAT_FilterDefinitions_la-LocationFE.lo `test -f 'dysect/DysectAPI/Aggregates/LocationFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/LocationFE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/STAT_FilterDefinitions_la-LocationFE.Tpo $(DEPDIR)/STAT_FilterDefinitions_la-LocationFE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/LocationFE.C' object='STAT_FilterDefinitions_la-LocationFE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-LocationFE.lo `test -f 'dysect/DysectAPI/Aggregates/LocationFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/LocationFE.C
-
-STAT_FilterDefinitions_la-DescVar.lo: dysect/DysectAPI/Aggregates/DescVar.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STAT_FilterDefinitions_la-DescVar.lo -MD -MP -MF $(DEPDIR)/STAT_FilterDefinitions_la-DescVar.Tpo -c -o STAT_FilterDefinitions_la-DescVar.lo `test -f 'dysect/DysectAPI/Aggregates/DescVar.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVar.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/STAT_FilterDefinitions_la-DescVar.Tpo $(DEPDIR)/STAT_FilterDefinitions_la-DescVar.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/DescVar.C' object='STAT_FilterDefinitions_la-DescVar.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-DescVar.lo `test -f 'dysect/DysectAPI/Aggregates/DescVar.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVar.C
-
-STAT_FilterDefinitions_la-DescVarCP.lo: dysect/DysectAPI/Aggregates/DescVarCP.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STAT_FilterDefinitions_la-DescVarCP.lo -MD -MP -MF $(DEPDIR)/STAT_FilterDefinitions_la-DescVarCP.Tpo -c -o STAT_FilterDefinitions_la-DescVarCP.lo `test -f 'dysect/DysectAPI/Aggregates/DescVarCP.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVarCP.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/STAT_FilterDefinitions_la-DescVarCP.Tpo $(DEPDIR)/STAT_FilterDefinitions_la-DescVarCP.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/DescVarCP.C' object='STAT_FilterDefinitions_la-DescVarCP.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-DescVarCP.lo `test -f 'dysect/DysectAPI/Aggregates/DescVarCP.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVarCP.C
-
-STAT_FilterDefinitions_la-CmpAgg.lo: dysect/DysectAPI/Aggregates/CmpAgg.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STAT_FilterDefinitions_la-CmpAgg.lo -MD -MP -MF $(DEPDIR)/STAT_FilterDefinitions_la-CmpAgg.Tpo -c -o STAT_FilterDefinitions_la-CmpAgg.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAgg.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/STAT_FilterDefinitions_la-CmpAgg.Tpo $(DEPDIR)/STAT_FilterDefinitions_la-CmpAgg.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/CmpAgg.C' object='STAT_FilterDefinitions_la-CmpAgg.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-CmpAgg.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAgg.C
-
-STAT_FilterDefinitions_la-CmpAggFE.lo: dysect/DysectAPI/Aggregates/CmpAggFE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STAT_FilterDefinitions_la-CmpAggFE.lo -MD -MP -MF $(DEPDIR)/STAT_FilterDefinitions_la-CmpAggFE.Tpo -c -o STAT_FilterDefinitions_la-CmpAggFE.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAggFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAggFE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/STAT_FilterDefinitions_la-CmpAggFE.Tpo $(DEPDIR)/STAT_FilterDefinitions_la-CmpAggFE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/CmpAggFE.C' object='STAT_FilterDefinitions_la-CmpAggFE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STAT_FilterDefinitions_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STAT_FilterDefinitions_la-CmpAggFE.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAggFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAggFE.C
-
 _STAT_la-STAT_wrap.lo: STAT_wrap.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_STAT_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT _STAT_la-STAT_wrap.lo -MD -MP -MF $(DEPDIR)/_STAT_la-STAT_wrap.Tpo -c -o _STAT_la-STAT_wrap.lo `test -f 'STAT_wrap.C' || echo '$(srcdir)/'`STAT_wrap.C
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/_STAT_la-STAT_wrap.Tpo $(DEPDIR)/_STAT_la-STAT_wrap.Plo
@@ -1148,335 +785,6 @@ _tomod_la-to.lo: to.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(_tomod_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o _tomod_la-to.lo `test -f 'to.C' || echo '$(srcdir)/'`to.C
 
-libDysectAPIBE_la-action.lo: dysect/libDysectAPI/src/action.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-action.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-action.Tpo -c -o libDysectAPIBE_la-action.lo `test -f 'dysect/libDysectAPI/src/action.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/action.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-action.Tpo $(DEPDIR)/libDysectAPIBE_la-action.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/action.cpp' object='libDysectAPIBE_la-action.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-action.lo `test -f 'dysect/libDysectAPI/src/action.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/action.cpp
-
-libDysectAPIBE_la-condition.lo: dysect/libDysectAPI/src/condition.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-condition.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-condition.Tpo -c -o libDysectAPIBE_la-condition.lo `test -f 'dysect/libDysectAPI/src/condition.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/condition.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-condition.Tpo $(DEPDIR)/libDysectAPIBE_la-condition.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/condition.cpp' object='libDysectAPIBE_la-condition.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-condition.lo `test -f 'dysect/libDysectAPI/src/condition.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/condition.cpp
-
-libDysectAPIBE_la-domain.lo: dysect/libDysectAPI/src/domain.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-domain.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-domain.Tpo -c -o libDysectAPIBE_la-domain.lo `test -f 'dysect/libDysectAPI/src/domain.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/domain.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-domain.Tpo $(DEPDIR)/libDysectAPIBE_la-domain.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/domain.cpp' object='libDysectAPIBE_la-domain.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-domain.lo `test -f 'dysect/libDysectAPI/src/domain.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/domain.cpp
-
-libDysectAPIBE_la-event.lo: dysect/libDysectAPI/src/event.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-event.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-event.Tpo -c -o libDysectAPIBE_la-event.lo `test -f 'dysect/libDysectAPI/src/event.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/event.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-event.Tpo $(DEPDIR)/libDysectAPIBE_la-event.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/event.cpp' object='libDysectAPIBE_la-event.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-event.lo `test -f 'dysect/libDysectAPI/src/event.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/event.cpp
-
-libDysectAPIBE_la-probe.lo: dysect/libDysectAPI/src/probe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-probe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-probe.Tpo -c -o libDysectAPIBE_la-probe.lo `test -f 'dysect/libDysectAPI/src/probe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-probe.Tpo $(DEPDIR)/libDysectAPIBE_la-probe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/probe.cpp' object='libDysectAPIBE_la-probe.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-probe.lo `test -f 'dysect/libDysectAPI/src/probe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe.cpp
-
-libDysectAPIBE_la-parser.lo: dysect/libDysectAPI/src/parser.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-parser.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-parser.Tpo -c -o libDysectAPIBE_la-parser.lo `test -f 'dysect/libDysectAPI/src/parser.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/parser.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-parser.Tpo $(DEPDIR)/libDysectAPIBE_la-parser.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/parser.cpp' object='libDysectAPIBE_la-parser.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-parser.lo `test -f 'dysect/libDysectAPI/src/parser.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/parser.cpp
-
-libDysectAPIBE_la-probe_tree.lo: dysect/libDysectAPI/src/probe_tree.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-probe_tree.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-probe_tree.Tpo -c -o libDysectAPIBE_la-probe_tree.lo `test -f 'dysect/libDysectAPI/src/probe_tree.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe_tree.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-probe_tree.Tpo $(DEPDIR)/libDysectAPIBE_la-probe_tree.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/probe_tree.cpp' object='libDysectAPIBE_la-probe_tree.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-probe_tree.lo `test -f 'dysect/libDysectAPI/src/probe_tree.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe_tree.cpp
-
-libDysectAPIBE_la-default_probes.lo: dysect/libDysectAPI/src/default_probes.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-default_probes.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-default_probes.Tpo -c -o libDysectAPIBE_la-default_probes.lo `test -f 'dysect/libDysectAPI/src/default_probes.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/default_probes.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-default_probes.Tpo $(DEPDIR)/libDysectAPIBE_la-default_probes.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/default_probes.cpp' object='libDysectAPIBE_la-default_probes.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-default_probes.lo `test -f 'dysect/libDysectAPI/src/default_probes.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/default_probes.cpp
-
-libDysectAPIBE_la-group.lo: dysect/libDysectAPI/src/group.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-group.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-group.Tpo -c -o libDysectAPIBE_la-group.lo `test -f 'dysect/libDysectAPI/src/group.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/group.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-group.Tpo $(DEPDIR)/libDysectAPIBE_la-group.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/group.cpp' object='libDysectAPIBE_la-group.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-group.lo `test -f 'dysect/libDysectAPI/src/group.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/group.cpp
-
-libDysectAPIBE_la-err.lo: dysect/libDysectAPI/src/err.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-err.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-err.Tpo -c -o libDysectAPIBE_la-err.lo `test -f 'dysect/libDysectAPI/src/err.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/err.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-err.Tpo $(DEPDIR)/libDysectAPIBE_la-err.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/err.cpp' object='libDysectAPIBE_la-err.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-err.lo `test -f 'dysect/libDysectAPI/src/err.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/err.cpp
-
-libDysectAPIBE_la-expr.lo: dysect/libDysectAPI/src/expr.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-expr.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-expr.Tpo -c -o libDysectAPIBE_la-expr.lo `test -f 'dysect/libDysectAPI/src/expr.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/expr.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-expr.Tpo $(DEPDIR)/libDysectAPIBE_la-expr.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/expr.cpp' object='libDysectAPIBE_la-expr.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-expr.lo `test -f 'dysect/libDysectAPI/src/expr.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/expr.cpp
-
-libDysectAPIBE_la-expr-scanner.lo: expr-scanner.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-expr-scanner.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-expr-scanner.Tpo -c -o libDysectAPIBE_la-expr-scanner.lo `test -f 'expr-scanner.cc' || echo '$(srcdir)/'`expr-scanner.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-expr-scanner.Tpo $(DEPDIR)/libDysectAPIBE_la-expr-scanner.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='expr-scanner.cc' object='libDysectAPIBE_la-expr-scanner.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-expr-scanner.lo `test -f 'expr-scanner.cc' || echo '$(srcdir)/'`expr-scanner.cc
-
-libDysectAPIBE_la-expr-parser.lo: expr-parser.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-expr-parser.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-expr-parser.Tpo -c -o libDysectAPIBE_la-expr-parser.lo `test -f 'expr-parser.cc' || echo '$(srcdir)/'`expr-parser.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-expr-parser.Tpo $(DEPDIR)/libDysectAPIBE_la-expr-parser.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='expr-parser.cc' object='libDysectAPIBE_la-expr-parser.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-expr-parser.lo `test -f 'expr-parser.cc' || echo '$(srcdir)/'`expr-parser.cc
-
-libDysectAPIBE_la-location_be.lo: dysect/libDysectAPI/src/location_be.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-location_be.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-location_be.Tpo -c -o libDysectAPIBE_la-location_be.lo `test -f 'dysect/libDysectAPI/src/location_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/location_be.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-location_be.Tpo $(DEPDIR)/libDysectAPIBE_la-location_be.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/location_be.cpp' object='libDysectAPIBE_la-location_be.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-location_be.lo `test -f 'dysect/libDysectAPI/src/location_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/location_be.cpp
-
-libDysectAPIBE_la-backend.lo: dysect/libDysectAPI/src/backend.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-backend.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-backend.Tpo -c -o libDysectAPIBE_la-backend.lo `test -f 'dysect/libDysectAPI/src/backend.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/backend.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-backend.Tpo $(DEPDIR)/libDysectAPIBE_la-backend.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/backend.cpp' object='libDysectAPIBE_la-backend.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-backend.lo `test -f 'dysect/libDysectAPI/src/backend.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/backend.cpp
-
-libDysectAPIBE_la-group_be.lo: dysect/libDysectAPI/src/group_be.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-group_be.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-group_be.Tpo -c -o libDysectAPIBE_la-group_be.lo `test -f 'dysect/libDysectAPI/src/group_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/group_be.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-group_be.Tpo $(DEPDIR)/libDysectAPIBE_la-group_be.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/group_be.cpp' object='libDysectAPIBE_la-group_be.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-group_be.lo `test -f 'dysect/libDysectAPI/src/group_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/group_be.cpp
-
-libDysectAPIBE_la-probe_be.lo: dysect/libDysectAPI/src/probe_be.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-probe_be.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-probe_be.Tpo -c -o libDysectAPIBE_la-probe_be.lo `test -f 'dysect/libDysectAPI/src/probe_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe_be.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-probe_be.Tpo $(DEPDIR)/libDysectAPIBE_la-probe_be.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/probe_be.cpp' object='libDysectAPIBE_la-probe_be.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-probe_be.lo `test -f 'dysect/libDysectAPI/src/probe_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe_be.cpp
-
-libDysectAPIBE_la-expr_be.lo: dysect/libDysectAPI/src/expr_be.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-expr_be.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-expr_be.Tpo -c -o libDysectAPIBE_la-expr_be.lo `test -f 'dysect/libDysectAPI/src/expr_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/expr_be.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-expr_be.Tpo $(DEPDIR)/libDysectAPIBE_la-expr_be.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/expr_be.cpp' object='libDysectAPIBE_la-expr_be.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-expr_be.lo `test -f 'dysect/libDysectAPI/src/expr_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/expr_be.cpp
-
-libDysectAPIBE_la-symbol.lo: dysect/libDysectAPI/src/symbol.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-symbol.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-symbol.Tpo -c -o libDysectAPIBE_la-symbol.lo `test -f 'dysect/libDysectAPI/src/symbol.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/symbol.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-symbol.Tpo $(DEPDIR)/libDysectAPIBE_la-symbol.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/symbol.cpp' object='libDysectAPIBE_la-symbol.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-symbol.lo `test -f 'dysect/libDysectAPI/src/symbol.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/symbol.cpp
-
-libDysectAPIBE_la-safe_timer.lo: dysect/libDysectAPI/src/safe_timer.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-safe_timer.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-safe_timer.Tpo -c -o libDysectAPIBE_la-safe_timer.lo `test -f 'dysect/libDysectAPI/src/safe_timer.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/safe_timer.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-safe_timer.Tpo $(DEPDIR)/libDysectAPIBE_la-safe_timer.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/safe_timer.cpp' object='libDysectAPIBE_la-safe_timer.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-safe_timer.lo `test -f 'dysect/libDysectAPI/src/safe_timer.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/safe_timer.cpp
-
-libDysectAPIBE_la-action_be.lo: dysect/libDysectAPI/src/action_be.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-action_be.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-action_be.Tpo -c -o libDysectAPIBE_la-action_be.lo `test -f 'dysect/libDysectAPI/src/action_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/action_be.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-action_be.Tpo $(DEPDIR)/libDysectAPIBE_la-action_be.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/action_be.cpp' object='libDysectAPIBE_la-action_be.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-action_be.lo `test -f 'dysect/libDysectAPI/src/action_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/action_be.cpp
-
-libDysectAPIBE_la-event_be.lo: dysect/libDysectAPI/src/event_be.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-event_be.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-event_be.Tpo -c -o libDysectAPIBE_la-event_be.lo `test -f 'dysect/libDysectAPI/src/event_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/event_be.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-event_be.Tpo $(DEPDIR)/libDysectAPIBE_la-event_be.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/event_be.cpp' object='libDysectAPIBE_la-event_be.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-event_be.lo `test -f 'dysect/libDysectAPI/src/event_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/event_be.cpp
-
-libDysectAPIBE_la-domain_be.lo: dysect/libDysectAPI/src/domain_be.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-domain_be.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-domain_be.Tpo -c -o libDysectAPIBE_la-domain_be.lo `test -f 'dysect/libDysectAPI/src/domain_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/domain_be.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-domain_be.Tpo $(DEPDIR)/libDysectAPIBE_la-domain_be.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/domain_be.cpp' object='libDysectAPIBE_la-domain_be.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-domain_be.lo `test -f 'dysect/libDysectAPI/src/domain_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/domain_be.cpp
-
-libDysectAPIBE_la-condition_be.lo: dysect/libDysectAPI/src/condition_be.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-condition_be.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-condition_be.Tpo -c -o libDysectAPIBE_la-condition_be.lo `test -f 'dysect/libDysectAPI/src/condition_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/condition_be.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-condition_be.Tpo $(DEPDIR)/libDysectAPIBE_la-condition_be.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/condition_be.cpp' object='libDysectAPIBE_la-condition_be.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-condition_be.lo `test -f 'dysect/libDysectAPI/src/condition_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/condition_be.cpp
-
-libDysectAPIBE_la-time_be.lo: dysect/libDysectAPI/src/time_be.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-time_be.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-time_be.Tpo -c -o libDysectAPIBE_la-time_be.lo `test -f 'dysect/libDysectAPI/src/time_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/time_be.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-time_be.Tpo $(DEPDIR)/libDysectAPIBE_la-time_be.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/time_be.cpp' object='libDysectAPIBE_la-time_be.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-time_be.lo `test -f 'dysect/libDysectAPI/src/time_be.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/time_be.cpp
-
-libDysectAPIFE_la-action.lo: dysect/libDysectAPI/src/action.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-action.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-action.Tpo -c -o libDysectAPIFE_la-action.lo `test -f 'dysect/libDysectAPI/src/action.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/action.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-action.Tpo $(DEPDIR)/libDysectAPIFE_la-action.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/action.cpp' object='libDysectAPIFE_la-action.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-action.lo `test -f 'dysect/libDysectAPI/src/action.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/action.cpp
-
-libDysectAPIFE_la-condition.lo: dysect/libDysectAPI/src/condition.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-condition.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-condition.Tpo -c -o libDysectAPIFE_la-condition.lo `test -f 'dysect/libDysectAPI/src/condition.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/condition.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-condition.Tpo $(DEPDIR)/libDysectAPIFE_la-condition.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/condition.cpp' object='libDysectAPIFE_la-condition.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-condition.lo `test -f 'dysect/libDysectAPI/src/condition.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/condition.cpp
-
-libDysectAPIFE_la-domain.lo: dysect/libDysectAPI/src/domain.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-domain.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-domain.Tpo -c -o libDysectAPIFE_la-domain.lo `test -f 'dysect/libDysectAPI/src/domain.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/domain.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-domain.Tpo $(DEPDIR)/libDysectAPIFE_la-domain.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/domain.cpp' object='libDysectAPIFE_la-domain.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-domain.lo `test -f 'dysect/libDysectAPI/src/domain.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/domain.cpp
-
-libDysectAPIFE_la-event.lo: dysect/libDysectAPI/src/event.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-event.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-event.Tpo -c -o libDysectAPIFE_la-event.lo `test -f 'dysect/libDysectAPI/src/event.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/event.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-event.Tpo $(DEPDIR)/libDysectAPIFE_la-event.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/event.cpp' object='libDysectAPIFE_la-event.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-event.lo `test -f 'dysect/libDysectAPI/src/event.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/event.cpp
-
-libDysectAPIFE_la-probe.lo: dysect/libDysectAPI/src/probe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-probe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-probe.Tpo -c -o libDysectAPIFE_la-probe.lo `test -f 'dysect/libDysectAPI/src/probe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-probe.Tpo $(DEPDIR)/libDysectAPIFE_la-probe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/probe.cpp' object='libDysectAPIFE_la-probe.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-probe.lo `test -f 'dysect/libDysectAPI/src/probe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe.cpp
-
-libDysectAPIFE_la-parser.lo: dysect/libDysectAPI/src/parser.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-parser.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-parser.Tpo -c -o libDysectAPIFE_la-parser.lo `test -f 'dysect/libDysectAPI/src/parser.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/parser.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-parser.Tpo $(DEPDIR)/libDysectAPIFE_la-parser.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/parser.cpp' object='libDysectAPIFE_la-parser.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-parser.lo `test -f 'dysect/libDysectAPI/src/parser.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/parser.cpp
-
-libDysectAPIFE_la-probe_tree.lo: dysect/libDysectAPI/src/probe_tree.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-probe_tree.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-probe_tree.Tpo -c -o libDysectAPIFE_la-probe_tree.lo `test -f 'dysect/libDysectAPI/src/probe_tree.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe_tree.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-probe_tree.Tpo $(DEPDIR)/libDysectAPIFE_la-probe_tree.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/probe_tree.cpp' object='libDysectAPIFE_la-probe_tree.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-probe_tree.lo `test -f 'dysect/libDysectAPI/src/probe_tree.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe_tree.cpp
-
-libDysectAPIFE_la-default_probes.lo: dysect/libDysectAPI/src/default_probes.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-default_probes.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-default_probes.Tpo -c -o libDysectAPIFE_la-default_probes.lo `test -f 'dysect/libDysectAPI/src/default_probes.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/default_probes.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-default_probes.Tpo $(DEPDIR)/libDysectAPIFE_la-default_probes.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/default_probes.cpp' object='libDysectAPIFE_la-default_probes.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-default_probes.lo `test -f 'dysect/libDysectAPI/src/default_probes.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/default_probes.cpp
-
-libDysectAPIFE_la-group.lo: dysect/libDysectAPI/src/group.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-group.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-group.Tpo -c -o libDysectAPIFE_la-group.lo `test -f 'dysect/libDysectAPI/src/group.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/group.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-group.Tpo $(DEPDIR)/libDysectAPIFE_la-group.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/group.cpp' object='libDysectAPIFE_la-group.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-group.lo `test -f 'dysect/libDysectAPI/src/group.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/group.cpp
-
-libDysectAPIFE_la-err.lo: dysect/libDysectAPI/src/err.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-err.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-err.Tpo -c -o libDysectAPIFE_la-err.lo `test -f 'dysect/libDysectAPI/src/err.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/err.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-err.Tpo $(DEPDIR)/libDysectAPIFE_la-err.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/err.cpp' object='libDysectAPIFE_la-err.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-err.lo `test -f 'dysect/libDysectAPI/src/err.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/err.cpp
-
-libDysectAPIFE_la-expr.lo: dysect/libDysectAPI/src/expr.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-expr.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-expr.Tpo -c -o libDysectAPIFE_la-expr.lo `test -f 'dysect/libDysectAPI/src/expr.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/expr.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-expr.Tpo $(DEPDIR)/libDysectAPIFE_la-expr.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/expr.cpp' object='libDysectAPIFE_la-expr.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-expr.lo `test -f 'dysect/libDysectAPI/src/expr.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/expr.cpp
-
-libDysectAPIFE_la-expr-scanner.lo: expr-scanner.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-expr-scanner.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-expr-scanner.Tpo -c -o libDysectAPIFE_la-expr-scanner.lo `test -f 'expr-scanner.cc' || echo '$(srcdir)/'`expr-scanner.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-expr-scanner.Tpo $(DEPDIR)/libDysectAPIFE_la-expr-scanner.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='expr-scanner.cc' object='libDysectAPIFE_la-expr-scanner.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-expr-scanner.lo `test -f 'expr-scanner.cc' || echo '$(srcdir)/'`expr-scanner.cc
-
-libDysectAPIFE_la-expr-parser.lo: expr-parser.cc
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-expr-parser.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-expr-parser.Tpo -c -o libDysectAPIFE_la-expr-parser.lo `test -f 'expr-parser.cc' || echo '$(srcdir)/'`expr-parser.cc
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-expr-parser.Tpo $(DEPDIR)/libDysectAPIFE_la-expr-parser.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='expr-parser.cc' object='libDysectAPIFE_la-expr-parser.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-expr-parser.lo `test -f 'expr-parser.cc' || echo '$(srcdir)/'`expr-parser.cc
-
-libDysectAPIFE_la-location_fe.lo: dysect/libDysectAPI/src/location_fe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-location_fe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-location_fe.Tpo -c -o libDysectAPIFE_la-location_fe.lo `test -f 'dysect/libDysectAPI/src/location_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/location_fe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-location_fe.Tpo $(DEPDIR)/libDysectAPIFE_la-location_fe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/location_fe.cpp' object='libDysectAPIFE_la-location_fe.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-location_fe.lo `test -f 'dysect/libDysectAPI/src/location_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/location_fe.cpp
-
-libDysectAPIFE_la-frontend.lo: dysect/libDysectAPI/src/frontend.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-frontend.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-frontend.Tpo -c -o libDysectAPIFE_la-frontend.lo `test -f 'dysect/libDysectAPI/src/frontend.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/frontend.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-frontend.Tpo $(DEPDIR)/libDysectAPIFE_la-frontend.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/frontend.cpp' object='libDysectAPIFE_la-frontend.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-frontend.lo `test -f 'dysect/libDysectAPI/src/frontend.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/frontend.cpp
-
-libDysectAPIFE_la-group_fe.lo: dysect/libDysectAPI/src/group_fe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-group_fe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-group_fe.Tpo -c -o libDysectAPIFE_la-group_fe.lo `test -f 'dysect/libDysectAPI/src/group_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/group_fe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-group_fe.Tpo $(DEPDIR)/libDysectAPIFE_la-group_fe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/group_fe.cpp' object='libDysectAPIFE_la-group_fe.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-group_fe.lo `test -f 'dysect/libDysectAPI/src/group_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/group_fe.cpp
-
-libDysectAPIFE_la-probe_fe.lo: dysect/libDysectAPI/src/probe_fe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-probe_fe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-probe_fe.Tpo -c -o libDysectAPIFE_la-probe_fe.lo `test -f 'dysect/libDysectAPI/src/probe_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe_fe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-probe_fe.Tpo $(DEPDIR)/libDysectAPIFE_la-probe_fe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/probe_fe.cpp' object='libDysectAPIFE_la-probe_fe.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-probe_fe.lo `test -f 'dysect/libDysectAPI/src/probe_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/probe_fe.cpp
-
-libDysectAPIFE_la-expr_fe.lo: dysect/libDysectAPI/src/expr_fe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-expr_fe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-expr_fe.Tpo -c -o libDysectAPIFE_la-expr_fe.lo `test -f 'dysect/libDysectAPI/src/expr_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/expr_fe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-expr_fe.Tpo $(DEPDIR)/libDysectAPIFE_la-expr_fe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/expr_fe.cpp' object='libDysectAPIFE_la-expr_fe.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-expr_fe.lo `test -f 'dysect/libDysectAPI/src/expr_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/expr_fe.cpp
-
-libDysectAPIFE_la-action_fe.lo: dysect/libDysectAPI/src/action_fe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-action_fe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-action_fe.Tpo -c -o libDysectAPIFE_la-action_fe.lo `test -f 'dysect/libDysectAPI/src/action_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/action_fe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-action_fe.Tpo $(DEPDIR)/libDysectAPIFE_la-action_fe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/action_fe.cpp' object='libDysectAPIFE_la-action_fe.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-action_fe.lo `test -f 'dysect/libDysectAPI/src/action_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/action_fe.cpp
-
-libDysectAPIFE_la-event_fe.lo: dysect/libDysectAPI/src/event_fe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-event_fe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-event_fe.Tpo -c -o libDysectAPIFE_la-event_fe.lo `test -f 'dysect/libDysectAPI/src/event_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/event_fe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-event_fe.Tpo $(DEPDIR)/libDysectAPIFE_la-event_fe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/event_fe.cpp' object='libDysectAPIFE_la-event_fe.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-event_fe.lo `test -f 'dysect/libDysectAPI/src/event_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/event_fe.cpp
-
-libDysectAPIFE_la-domain_fe.lo: dysect/libDysectAPI/src/domain_fe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-domain_fe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-domain_fe.Tpo -c -o libDysectAPIFE_la-domain_fe.lo `test -f 'dysect/libDysectAPI/src/domain_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/domain_fe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-domain_fe.Tpo $(DEPDIR)/libDysectAPIFE_la-domain_fe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/domain_fe.cpp' object='libDysectAPIFE_la-domain_fe.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-domain_fe.lo `test -f 'dysect/libDysectAPI/src/domain_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/domain_fe.cpp
-
-libDysectAPIFE_la-time_fe.lo: dysect/libDysectAPI/src/time_fe.cpp
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-time_fe.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-time_fe.Tpo -c -o libDysectAPIFE_la-time_fe.lo `test -f 'dysect/libDysectAPI/src/time_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/time_fe.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-time_fe.Tpo $(DEPDIR)/libDysectAPIFE_la-time_fe.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/libDysectAPI/src/time_fe.cpp' object='libDysectAPIFE_la-time_fe.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-time_fe.lo `test -f 'dysect/libDysectAPI/src/time_fe.cpp' || echo '$(srcdir)/'`dysect/libDysectAPI/src/time_fe.cpp
-
 libstatbe_la-STAT_BackEnd.lo: STAT_BackEnd.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-STAT_BackEnd.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-STAT_BackEnd.Tpo -c -o libstatbe_la-STAT_BackEnd.lo `test -f 'STAT_BackEnd.C' || echo '$(srcdir)/'`STAT_BackEnd.C
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-STAT_BackEnd.Tpo $(DEPDIR)/libstatbe_la-STAT_BackEnd.Plo
@@ -1505,97 +813,6 @@ libstatbe_la-STAT_GraphRoutines.lo: STAT_GraphRoutines.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-STAT_GraphRoutines.lo `test -f 'STAT_GraphRoutines.C' || echo '$(srcdir)/'`STAT_GraphRoutines.C
 
-libstatbe_la-DysectAPIBE.lo: dysect/DysectAPI/DysectAPIBE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-DysectAPIBE.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-DysectAPIBE.Tpo -c -o libstatbe_la-DysectAPIBE.lo `test -f 'dysect/DysectAPI/DysectAPIBE.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPIBE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-DysectAPIBE.Tpo $(DEPDIR)/libstatbe_la-DysectAPIBE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/DysectAPIBE.C' object='libstatbe_la-DysectAPIBE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-DysectAPIBE.lo `test -f 'dysect/DysectAPI/DysectAPIBE.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPIBE.C
-
-libstatbe_la-DysectAPI.lo: dysect/DysectAPI/DysectAPI.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-DysectAPI.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-DysectAPI.Tpo -c -o libstatbe_la-DysectAPI.lo `test -f 'dysect/DysectAPI/DysectAPI.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPI.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-DysectAPI.Tpo $(DEPDIR)/libstatbe_la-DysectAPI.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/DysectAPI.C' object='libstatbe_la-DysectAPI.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-DysectAPI.lo `test -f 'dysect/DysectAPI/DysectAPI.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPI.C
-
-libstatbe_la-DysectAPIProcessMgr.lo: dysect/DysectAPI/DysectAPIProcessMgr.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-DysectAPIProcessMgr.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-DysectAPIProcessMgr.Tpo -c -o libstatbe_la-DysectAPIProcessMgr.lo `test -f 'dysect/DysectAPI/DysectAPIProcessMgr.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPIProcessMgr.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-DysectAPIProcessMgr.Tpo $(DEPDIR)/libstatbe_la-DysectAPIProcessMgr.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/DysectAPIProcessMgr.C' object='libstatbe_la-DysectAPIProcessMgr.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-DysectAPIProcessMgr.lo `test -f 'dysect/DysectAPI/DysectAPIProcessMgr.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPIProcessMgr.C
-
-libstatbe_la-Aggregate.lo: dysect/DysectAPI/Aggregates/Aggregate.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-Aggregate.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-Aggregate.Tpo -c -o libstatbe_la-Aggregate.lo `test -f 'dysect/DysectAPI/Aggregates/Aggregate.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Aggregate.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-Aggregate.Tpo $(DEPDIR)/libstatbe_la-Aggregate.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/Aggregate.C' object='libstatbe_la-Aggregate.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-Aggregate.lo `test -f 'dysect/DysectAPI/Aggregates/Aggregate.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Aggregate.C
-
-libstatbe_la-Data.lo: dysect/DysectAPI/Aggregates/Data.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-Data.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-Data.Tpo -c -o libstatbe_la-Data.lo `test -f 'dysect/DysectAPI/Aggregates/Data.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Data.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-Data.Tpo $(DEPDIR)/libstatbe_la-Data.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/Data.C' object='libstatbe_la-Data.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-Data.lo `test -f 'dysect/DysectAPI/Aggregates/Data.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Data.C
-
-libstatbe_la-AggregateBE.lo: dysect/DysectAPI/Aggregates/AggregateBE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-AggregateBE.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-AggregateBE.Tpo -c -o libstatbe_la-AggregateBE.lo `test -f 'dysect/DysectAPI/Aggregates/AggregateBE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/AggregateBE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-AggregateBE.Tpo $(DEPDIR)/libstatbe_la-AggregateBE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/AggregateBE.C' object='libstatbe_la-AggregateBE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-AggregateBE.lo `test -f 'dysect/DysectAPI/Aggregates/AggregateBE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/AggregateBE.C
-
-libstatbe_la-Location.lo: dysect/DysectAPI/Aggregates/Location.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-Location.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-Location.Tpo -c -o libstatbe_la-Location.lo `test -f 'dysect/DysectAPI/Aggregates/Location.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Location.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-Location.Tpo $(DEPDIR)/libstatbe_la-Location.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/Location.C' object='libstatbe_la-Location.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-Location.lo `test -f 'dysect/DysectAPI/Aggregates/Location.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Location.C
-
-libstatbe_la-LocationBE.lo: dysect/DysectAPI/Aggregates/LocationBE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-LocationBE.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-LocationBE.Tpo -c -o libstatbe_la-LocationBE.lo `test -f 'dysect/DysectAPI/Aggregates/LocationBE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/LocationBE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-LocationBE.Tpo $(DEPDIR)/libstatbe_la-LocationBE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/LocationBE.C' object='libstatbe_la-LocationBE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-LocationBE.lo `test -f 'dysect/DysectAPI/Aggregates/LocationBE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/LocationBE.C
-
-libstatbe_la-StrAgg.lo: dysect/DysectAPI/Aggregates/StrAgg.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-StrAgg.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-StrAgg.Tpo -c -o libstatbe_la-StrAgg.lo `test -f 'dysect/DysectAPI/Aggregates/StrAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/StrAgg.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-StrAgg.Tpo $(DEPDIR)/libstatbe_la-StrAgg.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/StrAgg.C' object='libstatbe_la-StrAgg.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-StrAgg.lo `test -f 'dysect/DysectAPI/Aggregates/StrAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/StrAgg.C
-
-libstatbe_la-DescVar.lo: dysect/DysectAPI/Aggregates/DescVar.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-DescVar.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-DescVar.Tpo -c -o libstatbe_la-DescVar.lo `test -f 'dysect/DysectAPI/Aggregates/DescVar.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVar.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-DescVar.Tpo $(DEPDIR)/libstatbe_la-DescVar.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/DescVar.C' object='libstatbe_la-DescVar.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-DescVar.lo `test -f 'dysect/DysectAPI/Aggregates/DescVar.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVar.C
-
-libstatbe_la-DescVarBE.lo: dysect/DysectAPI/Aggregates/DescVarBE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-DescVarBE.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-DescVarBE.Tpo -c -o libstatbe_la-DescVarBE.lo `test -f 'dysect/DysectAPI/Aggregates/DescVarBE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVarBE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-DescVarBE.Tpo $(DEPDIR)/libstatbe_la-DescVarBE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/DescVarBE.C' object='libstatbe_la-DescVarBE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-DescVarBE.lo `test -f 'dysect/DysectAPI/Aggregates/DescVarBE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVarBE.C
-
-libstatbe_la-CmpAgg.lo: dysect/DysectAPI/Aggregates/CmpAgg.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-CmpAgg.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-CmpAgg.Tpo -c -o libstatbe_la-CmpAgg.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAgg.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-CmpAgg.Tpo $(DEPDIR)/libstatbe_la-CmpAgg.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/CmpAgg.C' object='libstatbe_la-CmpAgg.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-CmpAgg.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAgg.C
-
-libstatbe_la-CmpAggBE.lo: dysect/DysectAPI/Aggregates/CmpAggBE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-CmpAggBE.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-CmpAggBE.Tpo -c -o libstatbe_la-CmpAggBE.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAggBE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAggBE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-CmpAggBE.Tpo $(DEPDIR)/libstatbe_la-CmpAggBE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/CmpAggBE.C' object='libstatbe_la-CmpAggBE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatbe_la-CmpAggBE.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAggBE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAggBE.C
-
 libstatbe_la-MRNetSymbolReader.lo: MRNetSymbolReader.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatbe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatbe_la-MRNetSymbolReader.lo -MD -MP -MF $(DEPDIR)/libstatbe_la-MRNetSymbolReader.Tpo -c -o libstatbe_la-MRNetSymbolReader.lo `test -f 'MRNetSymbolReader.C' || echo '$(srcdir)/'`MRNetSymbolReader.C
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatbe_la-MRNetSymbolReader.Tpo $(DEPDIR)/libstatbe_la-MRNetSymbolReader.Plo
@@ -1623,83 +840,6 @@ libstatfe_la-STAT_GraphRoutines.lo: STAT_GraphRoutines.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STAT_GraphRoutines.C' object='libstatfe_la-STAT_GraphRoutines.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-STAT_GraphRoutines.lo `test -f 'STAT_GraphRoutines.C' || echo '$(srcdir)/'`STAT_GraphRoutines.C
-
-libstatfe_la-DysectAPIFE.lo: dysect/DysectAPI/DysectAPIFE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-DysectAPIFE.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-DysectAPIFE.Tpo -c -o libstatfe_la-DysectAPIFE.lo `test -f 'dysect/DysectAPI/DysectAPIFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPIFE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-DysectAPIFE.Tpo $(DEPDIR)/libstatfe_la-DysectAPIFE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/DysectAPIFE.C' object='libstatfe_la-DysectAPIFE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-DysectAPIFE.lo `test -f 'dysect/DysectAPI/DysectAPIFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPIFE.C
-
-libstatfe_la-DysectAPI.lo: dysect/DysectAPI/DysectAPI.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-DysectAPI.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-DysectAPI.Tpo -c -o libstatfe_la-DysectAPI.lo `test -f 'dysect/DysectAPI/DysectAPI.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPI.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-DysectAPI.Tpo $(DEPDIR)/libstatfe_la-DysectAPI.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/DysectAPI.C' object='libstatfe_la-DysectAPI.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-DysectAPI.lo `test -f 'dysect/DysectAPI/DysectAPI.C' || echo '$(srcdir)/'`dysect/DysectAPI/DysectAPI.C
-
-libstatfe_la-Data.lo: dysect/DysectAPI/Aggregates/Data.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-Data.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-Data.Tpo -c -o libstatfe_la-Data.lo `test -f 'dysect/DysectAPI/Aggregates/Data.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Data.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-Data.Tpo $(DEPDIR)/libstatfe_la-Data.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/Data.C' object='libstatfe_la-Data.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-Data.lo `test -f 'dysect/DysectAPI/Aggregates/Data.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Data.C
-
-libstatfe_la-Aggregate.lo: dysect/DysectAPI/Aggregates/Aggregate.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-Aggregate.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-Aggregate.Tpo -c -o libstatfe_la-Aggregate.lo `test -f 'dysect/DysectAPI/Aggregates/Aggregate.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Aggregate.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-Aggregate.Tpo $(DEPDIR)/libstatfe_la-Aggregate.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/Aggregate.C' object='libstatfe_la-Aggregate.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-Aggregate.lo `test -f 'dysect/DysectAPI/Aggregates/Aggregate.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Aggregate.C
-
-libstatfe_la-Location.lo: dysect/DysectAPI/Aggregates/Location.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-Location.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-Location.Tpo -c -o libstatfe_la-Location.lo `test -f 'dysect/DysectAPI/Aggregates/Location.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Location.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-Location.Tpo $(DEPDIR)/libstatfe_la-Location.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/Location.C' object='libstatfe_la-Location.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-Location.lo `test -f 'dysect/DysectAPI/Aggregates/Location.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/Location.C
-
-libstatfe_la-LocationFE.lo: dysect/DysectAPI/Aggregates/LocationFE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-LocationFE.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-LocationFE.Tpo -c -o libstatfe_la-LocationFE.lo `test -f 'dysect/DysectAPI/Aggregates/LocationFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/LocationFE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-LocationFE.Tpo $(DEPDIR)/libstatfe_la-LocationFE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/LocationFE.C' object='libstatfe_la-LocationFE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-LocationFE.lo `test -f 'dysect/DysectAPI/Aggregates/LocationFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/LocationFE.C
-
-libstatfe_la-StrAgg.lo: dysect/DysectAPI/Aggregates/StrAgg.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-StrAgg.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-StrAgg.Tpo -c -o libstatfe_la-StrAgg.lo `test -f 'dysect/DysectAPI/Aggregates/StrAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/StrAgg.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-StrAgg.Tpo $(DEPDIR)/libstatfe_la-StrAgg.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/StrAgg.C' object='libstatfe_la-StrAgg.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-StrAgg.lo `test -f 'dysect/DysectAPI/Aggregates/StrAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/StrAgg.C
-
-libstatfe_la-DescVar.lo: dysect/DysectAPI/Aggregates/DescVar.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-DescVar.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-DescVar.Tpo -c -o libstatfe_la-DescVar.lo `test -f 'dysect/DysectAPI/Aggregates/DescVar.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVar.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-DescVar.Tpo $(DEPDIR)/libstatfe_la-DescVar.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/DescVar.C' object='libstatfe_la-DescVar.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-DescVar.lo `test -f 'dysect/DysectAPI/Aggregates/DescVar.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVar.C
-
-libstatfe_la-DescVarFE.lo: dysect/DysectAPI/Aggregates/DescVarFE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-DescVarFE.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-DescVarFE.Tpo -c -o libstatfe_la-DescVarFE.lo `test -f 'dysect/DysectAPI/Aggregates/DescVarFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVarFE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-DescVarFE.Tpo $(DEPDIR)/libstatfe_la-DescVarFE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/DescVarFE.C' object='libstatfe_la-DescVarFE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-DescVarFE.lo `test -f 'dysect/DysectAPI/Aggregates/DescVarFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/DescVarFE.C
-
-libstatfe_la-CmpAgg.lo: dysect/DysectAPI/Aggregates/CmpAgg.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-CmpAgg.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-CmpAgg.Tpo -c -o libstatfe_la-CmpAgg.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAgg.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-CmpAgg.Tpo $(DEPDIR)/libstatfe_la-CmpAgg.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/CmpAgg.C' object='libstatfe_la-CmpAgg.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-CmpAgg.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAgg.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAgg.C
-
-libstatfe_la-CmpAggFE.lo: dysect/DysectAPI/Aggregates/CmpAggFE.C
-@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libstatfe_la-CmpAggFE.lo -MD -MP -MF $(DEPDIR)/libstatfe_la-CmpAggFE.Tpo -c -o libstatfe_la-CmpAggFE.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAggFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAggFE.C
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libstatfe_la-CmpAggFE.Tpo $(DEPDIR)/libstatfe_la-CmpAggFE.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dysect/DysectAPI/Aggregates/CmpAggFE.C' object='libstatfe_la-CmpAggFE.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libstatfe_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libstatfe_la-CmpAggFE.lo `test -f 'dysect/DysectAPI/Aggregates/CmpAggFE.C' || echo '$(srcdir)/'`dysect/DysectAPI/Aggregates/CmpAggFE.C
 
 STATBenchD-STATBenchD.o: STATBenchD.C
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STATBenchD_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STATBenchD-STATBenchD.o -MD -MP -MF $(DEPDIR)/STATBenchD-STATBenchD.Tpo -c -o STATBenchD-STATBenchD.o `test -f 'STATBenchD.C' || echo '$(srcdir)/'`STATBenchD.C
@@ -1756,64 +896,6 @@ STATbin-STAT.obj: STAT.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STAT.C' object='STATbin-STAT.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STATbin_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STATbin-STAT.obj `if test -f 'STAT.C'; then $(CYGPATH_W) 'STAT.C'; else $(CYGPATH_W) '$(srcdir)/STAT.C'; fi`
-
-.cc.o:
-@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ $<
-
-.cc.obj:
-@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
-
-.cc.lo:
-@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
-
-.cpp.o:
-@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ $<
-
-.cpp.obj:
-@am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
-
-.cpp.lo:
-@am__fastdepCXX_TRUE@	$(LTCXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Plo
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(LTCXXCOMPILE) -c -o $@ $<
-
-.ll.cc:
-	$(am__skiplex) $(SHELL) $(YLWRAP) $< $(LEX_OUTPUT_ROOT).c $@ -- $(LEXCOMPILE)
-
-expr-scanner.cc: dysect/libDysectAPI/src/expr-scanner.ll
-	 \
-	$(am__skiplex) \
-	$(SHELL) $(YLWRAP) `test -f 'dysect/libDysectAPI/src/expr-scanner.ll' || echo '$(srcdir)/'`dysect/libDysectAPI/src/expr-scanner.ll $(LEX_OUTPUT_ROOT).c expr-scanner.cc -- $(LEX) $(LFLAGS) $(AM_LFLAGS)
-
-.yy.cc:
-	$(am__skipyacc) $(SHELL) $(YLWRAP) $< y.tab.c $@ y.tab.h $*.h y.output $*.output -- $(YACCCOMPILE)
-
-expr-parser.cc: dysect/libDysectAPI/src/expr-parser.yy
-	 \
-	$(am__skipyacc) \
-	$(SHELL) $(YLWRAP) `test -f 'dysect/libDysectAPI/src/expr-parser.yy' || echo '$(srcdir)/'`dysect/libDysectAPI/src/expr-parser.yy y.tab.c expr-parser.cc y.tab.h expr-parser.h y.output expr-parser.output -- $(YACC) $(YFLAGS) $(AM_YFLAGS)
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -2107,8 +1189,6 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-	-rm -f expr-parser.cc
-	-rm -f expr-scanner.cc
 clean: clean-recursive
 
 clean-am: clean-binPROGRAMS clean-generic clean-libLTLIBRARIES \
