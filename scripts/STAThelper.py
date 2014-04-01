@@ -267,7 +267,7 @@ def get_task_list(label):
 
 
 ## \param executable - the executable to search for
-#  \return the executable file path"""
+#  \return the executable file path
 #
 #  \n
 def which(executable):
@@ -322,6 +322,7 @@ def has_source_and_not_collapsed(label):
 
 
 ## \param label - the stack frame text
+## \param item - [optional] the item index
 #  \return - a tuple of (function name, line number, variable info)
 #
 #  \n

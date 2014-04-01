@@ -64,12 +64,12 @@ src/to_wrap.C
 src/tomod.py
 src/dysect/DysectAPI/.deps/
 src/dysect/DysectAPI/.libs/
-src/dysect/libDysectAPI/.deps/
-src/dysect/libDysectAPI/.libs/
-src/dysect/libDysectAPI/expr-parser.cc
-src/dysect/libDysectAPI/expr-parser.h
-src/dysect/libDysectAPI/expr-scanner.cc
-src/dysect/libDysectAPI/expr-scanner.h
+src/dysect/libDysectAPI/src/.deps/
+src/dysect/libDysectAPI/src/.libs/
+src/dysect/libDysectAPI/src/expr-parser.cc
+src/dysect/libDysectAPI/src/expr-parser.h
+src/dysect/libDysectAPI/src/expr-scanner.cc
+src/dysect/libDysectAPI/src/expr-scanner.h
 stamp-h1
 stat_results
 TODO
@@ -82,5 +82,3 @@ tags
 test.msub
 test.pdf
 to_test
-src/expr-parser.cc
-src/expr-scanner.cc

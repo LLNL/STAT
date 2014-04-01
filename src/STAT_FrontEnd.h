@@ -232,8 +232,8 @@ class STAT_FrontEnd
                    processes
             \param blocking - [optional] set to true if blocking on all
                    connections set
-            \param shareAppNodes - [optional] set to true if we can launch
-                   communication processes on the application nodes
+            \param cpPolicy - [optional] the communication process locating
+                   policy
             \return STAT_OK on success
 
             Creates the topology file, calls the Network constructor, and sends
@@ -760,8 +760,7 @@ class STAT_FrontEnd
             \param topologyType - the topology specification type
             \param topologySpecification - the topology specification
             \param nodeList - the list of nodes for CPs
-            \param shareAppNodes - whether to use application nodes for
-                   communication processes
+            \param cpPolicy - the communication process locating policy
             \return STAT_OK on success
 
             Topologies can be based on max fanout, depth, or user defined. User
