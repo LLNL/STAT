@@ -1,0 +1,145 @@
+#!/bin/bash
+set -ex
+
+# Note, cmake must be in your $PATH
+
+# This is the installation directory for Stat and all the underlying libraries. Please change!
+#export INSTALLDIR=/usr/local/tools/stat
+export INSTALLDIR=/nfs/tmp2/lee218/deleteme/delete/install
+
+
+echo "This will download, compile and install the following softwares: "
+echo "Libdwarf, Launchmon, ThreadWalker, MRNet, Graphlib and STAT."
+echo "Each of those six will report tersely."
+echo "The whole process takes around 15 minutes." 
+echo 
+echo "IF THE SCRIPT STOPS BEFORE THE END OF STEP 6, SOMETHING WENT WRONG!"
+
+echo "Configuring envionment and creating the directory structure under $INSTALLDIR"
+# For Dyninst build
+export PLATFORM=ppc64_bgq_ion
+
+#The following environment variables may be needed during execution of STAT.
+#They must point to the I/O node network interface of the FEN
+# For LaunchMON
+#export LMON_FE_HOSTNAME_TO_CONN=juqueen1c1
+# For STAT
+#export STAT_FE_HOSTNAME=juqueen1c1
+
+export STAT_BUILD_LOG=$PWD/log.txt
+
+#cmake is not on path by default on some systems
+#echo "Loading cmake module"
+#module load cmake >> $STAT_BUILD_LOG 2>&1
+
+#Some of the install scripts fail to create the underlying directories
+mkdir -p $INSTALLDIR/share/man/man1
+mkdir -p $INSTALLDIR/include
+mkdir -p $INSTALLDIR/lib
+mkdir -p $INSTALLDIR/bin
+mkdir -p $INSTALLDIR/etc/STAT
+echo "Done."
+echo 
+
+
+echo "Step 1 of 6: Downloading libdwarf..."
+git clone git://git.code.sf.net/p/libdwarf/code libdwarf-code
+#wget -q http://reality.sgiweb.org/davea/libdwarf-20130207.tar.gz
+#tar -xzf libdwarf-20130207.tar.gz 
+mv libdwarf-code 1-libdwarf >>$STAT_BUILD_LOG 2>&1
+cd 1-libdwarf/libdwarf 
+echo "Configuring... "
+./configure -prefix=$INSTALLDIR --enable-shared --disable-nonshared >> $STAT_BUILD_LOG  2>&1
+echo "Compiling libdwarf.."
+make -j >> $STAT_BUILD_LOG 2>&1
+echo "Installing libdwarf.so"
+cp libdwarf.so $INSTALLDIR/lib 
+cp libdwarf.h  $INSTALLDIR/include
+cp dwarf.h $INSTALLDIR/include
+cd ../..
+echo "Done."
+echo
+
+echo "Step 2 of 6: Downloading Launchmon 1.0-release..."
+svn co https://svn.code.sf.net/p/launchmon/code/branches/launchmon-1.0-release >> $STAT_BUILD_LOG 2>&1
+mv launchmon-1.0-release 2-launchmon-1.0-release
+cd 2-launchmon-1.0-release/
+echo "Configuring Launchmon..."
+./bootstrap >> $STAT_BUILD_LOG 2>&1
+./configure --prefix=$INSTALLDIR --with-test-rm=bgqrm >> $STAT_BUILD_LOG 2>&1
+echo "Compiling..."
+make >> $STAT_BUILD_LOG 2>&1
+echo "Installing..."
+make install >> $STAT_BUILD_LOG 2>&1
+cd ..
+echo "Done."
+echo
+
+echo "Step 3 of 6: Downloading StackWalker"
+wget -q http://www.dyninst.org/sites/default/files/downloads/dyninst/8.1.2/StackwalkerAPI-8.1.2.tgz
+tar xzf StackwalkerAPI-8.1.2.tgz
+mv StackwalkerAPI-8.1.2 3-StackwalkerAPI
+cd 3-StackwalkerAPI
+echo "Configuring..."
+./configure CC=gcc CXX=g++ -prefix=$INSTALLDIR --with-libdwarf=$INSTALLDIR --with-libelf=/usr --with-launchmon=$INSTALLDIR --with-default-component=StackwalkerAPI --disable-testsuite >> $STAT_BUILD_LOG 2>&1
+echo "Compiling... "
+make >> $STAT_BUILD_LOG 2>&1
+#make test-full
+echo "Installing..."
+make install >> $STAT_BUILD_LOG 2>&1
+cd ..
+echo "Done."
+echo
+
+echo "Step 4 of 6: Downloading MRNet"
+wget -q ftp://ftp.cs.wisc.edu/paradyn/mrnet/mrnet_4.1.0.tar.gz
+tar xzf mrnet_4.1.0.tar.gz >> $STAT_BUILD_LOG 2>&1
+mv mrnet_4.1.0 4-mrnet
+cd 4-mrnet
+echo "Configuring..."
+./configure --enable-shared -prefix=$INSTALLDIR CC=gcc CXX=g++ >> $STAT_BUILD_LOG 2>&1
+echo "Compiling..."
+make >> $STAT_BUILD_LOG 2>&1
+echo "Installing"
+make install >> $STAT_BUILD_LOG 2>&1
+cd ..
+echo "Done."
+echo
+
+echo "Step 5 of 6: Downloading Graphlib 2.0"
+git clone git://github.com/lee218llnl/graphlib.git >> $STAT_BUILD_LOG 2>&1
+mv graphlib 5-graphlib
+cd 5-graphlib
+mkdir build
+cd build
+echo "Cmake configure"
+cmake -D CMAKE_INSTALL_PREFIX=$INSTALLDIR .. >> $STAT_BUILD_LOG 2>&1
+echo "Compiling..."
+make >> $STAT_BUILD_LOG 2>&1
+echo "Installing..."
+make install >> $STAT_BUILD_LOG 2>&1
+cd ../..
+echo "Done."
+echo
+
+echo "Step 6 of 6: Downloading STAT 2.1.0"
+wget -q --no-check-certificate https://github.com/lee218llnl/STAT/archive/v2.1.0.tar.gz
+tar xzf v2.1.0 >> $STAT_BUILD_LOG 2>&1
+mv STAT-2.1.0 6-STAT
+cd 6-STAT/
+echo "Configuring..."
+./configure --with-launchmon=$INSTALLDIR --with-mrnet=$INSTALLDIR --with-graphlib=$INSTALLDIR --enable-gui --with-bluegene --prefix=$INSTALLDIR --with-libdwarf=$INSTALLDIR --with-stackwalker=$INSTALLDIR >> $STAT_BUILD_LOG 2>&1
+echo "Compiling..."
+make >> $STAT_BUILD_LOG 2>&1
+echo "Installing..."
+make install >> $STAT_BUILD_LOG 2>&1
+cd ..
+
+echo
+echo "All done. Don't forget to set the variables:"
+echo "export LMON_FE_HOSTNAME_TO_CONN"
+echo "and"
+echo "export STAT_FE_HOSTNAME"
+echo "to point to the I/O node interface"
+echo
+

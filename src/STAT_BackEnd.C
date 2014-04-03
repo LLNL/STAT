@@ -1338,7 +1338,10 @@ StatError_t STAT_BackEnd::attach()
     ProcessSet::AttachInfo pAttach;
     Process::ptr pcProc;
   #ifdef BGL
+    #ifdef SW_VERSION_8_1_3 
+    /* TODO: version 8.1.3 (or 8.2) doesn't exist with this feature yet */
     BGQData::setStartupTimeout(600);
+    #endif
   #endif
 #endif
 
