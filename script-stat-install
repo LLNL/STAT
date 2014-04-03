@@ -4,8 +4,7 @@ set -ex
 # Note, cmake must be in your $PATH
 
 # This is the installation directory for Stat and all the underlying libraries. Please change!
-#export INSTALLDIR=/usr/local/tools/stat
-export INSTALLDIR=/nfs/tmp2/lee218/deleteme/delete/install
+export INSTALLDIR=/usr/local/tools/stat
 
 
 echo "This will download, compile and install the following softwares: "
