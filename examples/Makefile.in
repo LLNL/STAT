@@ -39,6 +39,7 @@ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_boost.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
+	$(top_srcdir)/config/x_ac_dysectapi.m4 \
 	$(top_srcdir)/config/x_ac_enable_debug.m4 \
 	$(top_srcdir)/config/x_ac_fgfs.m4 \
 	$(top_srcdir)/config/x_ac_graphlib.m4 \
@@ -75,7 +76,7 @@ AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
 	distdir
 ETAGS = etags
 CTAGS = ctags
-DIST_SUBDIRS = $(SUBDIRS)
+DIST_SUBDIRS = src scripts sessions
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -146,8 +147,18 @@ LAUNCHMONBIN = @LAUNCHMONBIN@
 LAUNCHMONPREFIX = @LAUNCHMONPREFIX@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LEX = @LEX@
+LEXLIB = @LEXLIB@
+LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
 LIBBOOST = @LIBBOOST@
 LIBBOOSTDIR = @LIBBOOSTDIR@
+LIBDYSECTAPIBE = @LIBDYSECTAPIBE@
+LIBDYSECTAPIFD = @LIBDYSECTAPIFD@
+LIBDYSECTAPIFE = @LIBDYSECTAPIFE@
+LIBDYSECTAPILOC = @LIBDYSECTAPILOC@
+LIBDYSECTBE = @LIBDYSECTBE@
+LIBDYSECTFE = @LIBDYSECTFE@
+LIBDYSECTLOC = @LIBDYSECTLOC@
 LIBJAVADIR = @LIBJAVADIR@
 LIBJVM = @LIBJVM@
 LIBOBJS = @LIBOBJS@
@@ -197,6 +208,8 @@ STRIP = @STRIP@
 SWIG = @SWIG@
 TOAPI_INCLUDE = @TOAPI_INCLUDE@
 VERSION = @VERSION@
+YACC = @YACC@
+YFLAGS = @YFLAGS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -255,7 +268,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-SUBDIRS = src scripts
+@ENABLE_DYSECTAPI_FALSE@SUBDIRS = src scripts
+@ENABLE_DYSECTAPI_TRUE@SUBDIRS = src scripts sessions
 all: all-recursive
 
 .SUFFIXES:

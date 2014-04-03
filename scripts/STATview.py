@@ -2823,7 +2823,7 @@ class STATDotWindow(xdot.DotWindow):
     It adds STAT specific operations to manipulate the graph.
     """
 
-    ## A notebook tab within the window, contains the STAT widget."""
+    ## A notebook tab within the window, contains the STAT widget.
     class Tab(object):
         """A notebook tab within the window, contains the STAT widget."""
 

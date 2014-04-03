@@ -5,7 +5,7 @@ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong 
 LLNL-CODE-624152.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAt.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -213,6 +213,11 @@ int main(int argc, char **argv)
         fprintf(stderr, "Failed to finalize STAT\n");
         return statError;
     }
+
+#ifdef DYSECTAPI
+    sleep(2);
+#endif
+
 
     return 0;
 }

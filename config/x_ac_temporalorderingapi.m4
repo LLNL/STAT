@@ -1,5 +1,5 @@
 AC_DEFUN([X_AC_TEMPORALORDERINGAPI], [
-  AC_ARG_WITH(to_api, 
+  AC_ARG_WITH(to_api,
     [AS_HELP_STRING([--with-to_api=prefix],
       [Add the compile and link search paths for temporal ordering api]
     )],
@@ -33,7 +33,7 @@ AC_DEFUN([X_AC_TEMPORALORDERINGAPI], [
       AC_MSG_RESULT([no])
       AC_ERROR([TO_std.h is required for temporal ordering.  Specify Temporal Ordering API prefix with --with-to_api])
     fi
-  
+
     AC_MSG_CHECKING(for libTemporalOrderAPI)
     if test -f "$to_prefix"/lib/libTemporalOrderAPI.so ; then
       AC_MSG_RESULT([yes])

@@ -5,7 +5,7 @@ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong 
 LLNL-CODE-624152.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAt.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -68,6 +68,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #include "Comm/MRNetCommFabric.h"
   #include "AsyncFastGlobalFileStat.h"
   #include "MRNetSymbolReader.h"
+#endif
+
+#ifdef DYSECTAPI
+  #include "DysectAPI/DysectAPIProcessMgr.h"
+  #include "DysectAPI/DysectAPIBE.h"
 #endif
 
 //! An enum type to determine who launched the daemon
@@ -169,6 +174,9 @@ int statRelativeRankToAbsoluteRank(int rank);
 //! The STAT daemon object used to gather and send stack traces
 class STAT_BackEnd
 {
+#ifdef DYSECTAPI
+    friend class DysectAPI::BE;
+#endif
     public:
         //! Default constructor
         STAT_BackEnd(StatDaemonLaunch_t launchType);
@@ -296,6 +304,10 @@ class STAT_BackEnd
             passed to the MRNet Network constructor.
         */
         StatError_t statBenchConnect();
+
+#ifdef DYSECTAPI
+        DysectAPI::BE *getDysectBe();
+#endif
 
     private:
         //! Attach to all application processes
@@ -573,10 +585,17 @@ class STAT_BackEnd
         Dyninst::ProcControlAPI::ProcessSet::ptr procSet_;  /*< the set of process objects */
         Dyninst::Stackwalker::WalkerSet *walkerSet_;        /*< the set of walker objects */
         std::map<std::string, std::set<int> > exitedProcesses_;
+  #ifdef DYSECTAPI
+        std::map<int, Dyninst::ProcControlAPI::Process::ptr> mpiRankToProcessMap_;
+  #endif
 #endif
 
 #ifdef STAT_FGFS
         FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_; /*< the FGFS communication fabric handle */
+#endif
+        
+#ifdef DYSECTAPI
+        DysectAPI::BE* dysectBE_;
 #endif
 
 };

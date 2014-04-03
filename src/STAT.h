@@ -5,7 +5,7 @@ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong 
 LLNL-CODE-624152.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAt.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -86,7 +86,14 @@ typedef enum {
     PROT_SEND_FGFS_STREAM,
     PROT_FGFS_REQUEST,
     PROT_SEND_NODE_IN_EDGE,
+#ifdef DYSECTAPI
+    PROT_SEND_NODE_IN_EDGE_RESP,
+    PROT_LOAD_SESSION_LIB,
+    PROT_LOAD_SESSION_LIB_RESP,
+    PROT_NOTIFY_FINISH_BINDING,
+#else 
     PROT_SEND_NODE_IN_EDGE_RESP
+#endif
 } StatProt_t;
 
 //! An enum for STAT error codes
@@ -119,7 +126,8 @@ typedef enum {
     STAT_RESUME_ERROR,
     STAT_DAEMON_ERROR,
     STAT_APPLICATION_EXITED,
-    STAT_PENDING_ACK
+    STAT_PENDING_ACK,
+    STAT_DYSECT_ERROR
 } StatError_t;
 
 //! An enum for STAT verbosity type
@@ -220,6 +228,9 @@ typedef enum {
             break; \
         case STAT_PENDING_ACK: \
             fprintf(outFp, "STAT_PENDING_ACK"); \
+            break; \
+        case STAT_DYSECT_ERROR: \
+            fprintf(outFp, "STAT_DYSECT_ERROR"); \
             break; \
         default: \
             fprintf(outFp, "Unknown Error"); \

@@ -1,3 +1,21 @@
+2014-04-03 Gregory L. Lee <lee218@llnl.gov>
+	* : tag version 2.1.0
+
+2014-03-31 Gregory L. Lee <lee218@llnl.gov>
+	* : fixed dysectapi build system for make distcheck
+
+2014-03-27 Gregory L. Lee <lee218@llnl.gov>
+	* : updated dysectapi build system
+	* : restructuring of dysectapi source
+
+2014-03-27 Gregory L. Lee <lee218@llnl.gov>
+	* : updated license info
+	* : moved DysectAPI and libDysectAPI subdirs into dysect dir
+
+2014-03-26 Gregory L. Lee <lee218@llnl.gov>
+	* : merge with dysect-integration
+	* src/DysectAPI/DysectAPIFE.C : fixed hang when combined with FGFS
+
 2014-03-24 Gregory L. Lee <lee218@llnl.gov>
 	* : code cleanup + updated copyright date
 
@@ -56,6 +74,13 @@
 2013-10-08 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STAT[helper,view].py : use newlines for joined node labels
 
+2013-10-04 Gregory L. Lee <lee218@llnl.gov>
+	* : code clean up
+
+2013-10-03 Gregory L. Lee <lee218@llnl.gov>
+	* DysectAPIFE.[C,h], frontend.[cpp,h] : allow non-blocking event handling
+	* src/STAT_FrontEnd.C, src/STAT.C : moved Dysect setup and listen to STAT_FrontEnd class
+
 2013-10-02 Gregory L. Lee <lee218@llnl.gov>
 	* src/STAT_FrontEnd.[C,h] : added ability to specify dot filename on gather
 	* src/STAT_FrontEnd.[C,h] : modified dot file naming convention
@@ -63,6 +88,23 @@
 2013-10-02 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/*.py : PEP8 conformance (except line length)
 	* scripts/*.py : pylint suggested fixes
+	
+2013-09-25 Gregory L. Lee <lee218@llnl.gov>
+	* : Dysect probe notifications sent to FE
+	* : Dysect STAT action triggered by FE during collect phase
+	* : Dysect STAT action can be invoked by subset
+	* : Dysect detach action detaches from single process
+	* : Dysect added detachAll action to detach from all processes
+	* : Dysect use temoraryDetach so STAT traces indicate detached
+	* : Dysect added handleAll to manage queued operations, events, BPs, etc.
+	* : Dysect added notion of passing control back to tool before operations
+	* : Dysect implemented Time probe, but only with 0 timeout
+	* : Dysect pause processes before gathering traces for Trace and StackTrace actions
+	* : Dysect BE keep track of # of pending actions
+	* : Dysect removed process hold (2003-06-27 modification)
+	* src/libDysectAPI/src/frontend.cpp : check for app/daemon exit
+	* src/libDysectAPI/src/action_fe.cpp : increment aggIter in Trace action to fix Trace w/ multiple aggregates (was repeating first aggregate string)
+	* src/STAT_BackEnd.C : track detached, exited, and terminated tasks under group_ops
 
 2013-09-05 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : need to pick up decompose_node for TO
@@ -90,6 +132,16 @@
 2013-07-17 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : new filter/searchable ptab dialog
 	* scripts/STATview.py : new cut/hide programming models interface
+
+2013-06-27 Gregory L. Lee <lee218@llnl.gov>
+	* : Dysect hold target processes on STAT action
+
+2013-06-24 Gregory L. Lee <lee218@llnl.gov>
+	* src/STAT.C : set STAT_GROUP_OPS=1 when using Dysect API
+
+2013-06-21 Gregory L. Lee <lee218@llnl.gov>
+	* : fixes to build system
+	* src/STAT.C : need to issue a resume after Dysect setup complete
 
 2013-06-07 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/STATGUI.py : fixed bug in TV attach when STAT not attached

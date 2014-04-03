@@ -5,7 +5,7 @@ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong 
 LLNL-CODE-624152.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAt.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -206,6 +206,10 @@ STAT_FrontEnd::STAT_FrontEnd()
     }
 #endif
 
+#ifdef DYSECTAPI
+    daemonsKilled_ = false;
+#endif
+
     graphlibError = graphlib_Init();
     if (GRL_IS_FATALERROR(graphlibError))
     {
@@ -253,6 +257,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     snprintf(outDir_, BUFSIZE, "NULL");
     snprintf(logOutDir_, BUFSIZE, "NULL");
     snprintf(filePrefix_, BUFSIZE, "NULL");
+    snprintf(lastDotFileName_, BUFSIZE, "NULL");
     isStatBench_ = false;
     isLaunched_ = false;
     isConnected_ = false;
@@ -720,9 +725,16 @@ void nodeRemovedCb(Event *event, void *statObject)
     if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_REMOVE_NODE))
     {
         pthread_mutex_lock(&gMrnetCallbackMutex);
+#ifndef DYSECTAPI
         ((STAT_FrontEnd *)statObject)->printMsg(STAT_WARNING, __FILE__, __LINE__, "MRNet detected a tool process exit.  Recovering with available resources.\n");
+#endif
         statError = ((STAT_FrontEnd *)statObject)->setRanksList();
+
+#ifdef DYSECTAPI
+        if (statError != STAT_APPLICATION_EXITED && statError != STAT_OK)
+#else
         if (statError != STAT_OK)
+#endif
         {
             ((STAT_FrontEnd *)statObject)->printMsg(statError, __FILE__, __LINE__, "An error occurred when trying to recover from node removal\n");
             ((STAT_FrontEnd *)statObject)->setHasFatalError(true);
@@ -1674,8 +1686,13 @@ StatError_t STAT_FrontEnd::setDaemonNodes()
     leafInfo_.networkTopology->get_BackEndNodes(nodes);
     if (nodes.size() <= 0)
     {
+#ifdef DYSECTAPI
+        daemonsKilled_ = true;
+        return STAT_APPLICATION_EXITED;
+#else
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "No daemons are connected\n");
         return STAT_DAEMON_ERROR;
+#endif
     }
     leafInfo_.daemons.clear();
     for (nodeIter = nodes.begin(); nodeIter != nodes.end(); nodeIter++)
@@ -2422,6 +2439,15 @@ StatError_t STAT_FrontEnd::checkVersion()
     return STAT_OK;
 }
 
+bool checkAppExit()
+{
+    return WIFKILLED(gsLmonState);
+}
+
+bool checkDaemonExit()
+{
+    return !WIFBESPAWNED(gsLmonState);
+}
 
 StatError_t STAT_FrontEnd::attachApplication(bool blocking)
 {
@@ -3423,7 +3449,7 @@ StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bo
     if (isAttached_ == false)
     {
         printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT not attached to the application... ignoring request to detach\n");
-        return STAT_NOT_ATTACHED_ERROR;
+        return STAT_OK;
     }
     if (isConnected_ == false)
     {
@@ -3432,12 +3458,16 @@ StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bo
     }
     if (WIFKILLED(gsLmonState))
     {
+#ifndef DYSECTAPI
         printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
         return STAT_APPLICATION_EXITED;
+#endif
     }
     if (!WIFBESPAWNED(gsLmonState))
     {
+#ifndef DYSECTAPI
         printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
+#endif
         return STAT_DAEMON_ERROR;
     }
 
@@ -3449,6 +3479,11 @@ StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bo
     }
 
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Detaching from application...\n");
+
+#ifdef DYSECTAPI
+    if (daemonsKilled_)
+        return STAT_OK;
+#endif
 
     if (broadcastStream_->send(PROT_DETACH_APPLICATION, "%aud", stopList, stopListSize) == -1)
     {
@@ -4047,6 +4082,10 @@ StatError_t STAT_FrontEnd::setRanksList()
 
     /* First we need to generate the list of STAT BE daemons */
     statError = setDaemonNodes();
+#ifdef DYSECTAPI
+    if (statError == STAT_APPLICATION_EXITED) 
+        return statError;
+#endif
     if (statError != STAT_OK)
     {
         printMsg(statError, __FILE__, __LINE__, "Failed to set daemon nodes\n");
@@ -4699,3 +4738,56 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
     return STAT_OK;
 }
 
+#ifdef DYSECTAPI
+StatError_t STAT_FrontEnd::dysectSetup(const char *dysectApiSessionPath, int dysectTimeout)
+{
+    StatError_t statError;
+
+    /* TODO: Refactoring work: Move sequence to Dysect::FE class */
+    /* TODO: GUI will need to setenv("STAT_GROUP_OPS", "1", 1); prior to attach*/
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Setting up frontend session '%s'...\n", dysectApiSessionPath);
+    dysectFrontEnd_ = new DysectAPI::FE((const char*)dysectApiSessionPath, this, dysectTimeout);
+    if (dysectFrontEnd_->isLoaded() == false)
+    {
+        printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Failed to load Dysect session %s\n", dysectApiSessionPath);
+        return STAT_DYSECT_ERROR;
+    }
+
+    if (dysectFrontEnd_->requestBackendSetup((const char*)dysectApiSessionPath) != DysectAPI::OK)
+    {
+        printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Failed to setup backends with session %s\n", dysectApiSessionPath);
+        return STAT_DYSECT_ERROR;
+    }
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Dysect session setup complete\n");
+
+    statError = resume();
+    if (statError != STAT_OK)
+    {
+        printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
+        return statError;
+    }
+}
+
+StatError_t STAT_FrontEnd::dysectListen(bool blocking)
+{
+    DysectAPI::DysectErrorCode dysectError;
+
+    if (dysectFrontEnd_ == NULL)
+    {
+        printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Dysect not setup\n");
+        return STAT_DYSECT_ERROR;
+    }
+    do 
+    {
+        dysectError = dysectFrontEnd_->handleEvents(blocking);
+    } while (dysectError == DysectAPI::SessionCont && blocking == true);
+    if (dysectError == DysectAPI::OK)
+        return STAT_OK;
+    if (blocking == false)
+    {
+        if (dysectError == DysectAPI::SessionCont)
+            return STAT_PENDING_ACK;
+    }
+    return STAT_DYSECT_ERROR;
+}
+#endif

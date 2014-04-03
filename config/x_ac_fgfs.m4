@@ -1,4 +1,5 @@
 AC_DEFUN([X_AC_FGFS], [
+  AM_CONDITIONAL([ENABLE_FGFS], false)
   AC_ARG_WITH(fgfs, 
     [AS_HELP_STRING([--with-fgfs=prefix],
       [Add the compile and link search paths for fgfs]
@@ -8,6 +9,7 @@ AC_DEFUN([X_AC_FGFS], [
       WITH_FGFS=yes
       LDFLAGS="$LDFLAGS -L${withval}/lib"
       RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"
+      AM_CONDITIONAL([ENABLE_FGFS], true)
     ],
     [CXXFLAGS="$CXXFLAGS"
       WITH_FGFS=no

@@ -26,6 +26,7 @@ X_AC_ARCH
 X_AC_DEBUGLIBS
 X_AC_GRAPHLIB
 X_AC_FGFS
+X_AC_DYSECTAPI
 X_AC_LAUNCHMON
 X_AC_RM_COMM
 X_AC_MRNET
@@ -45,7 +46,7 @@ AC_ARG_ENABLE(rpath,
   [AS_HELP_STRING([--enable-rpath],[Enable the use of rpaths, default=yes])],
   [WITH_RPATH=$enableval],
   [WITH_RPATH=yes]
-)  
+)
 if test "$WITH_RPATH" = "yes"
 then
   LDFLAGS="$LDFLAGS $RPATH_FLAGS"
@@ -56,13 +57,13 @@ AC_ARG_ENABLE(statbench,
   [AS_HELP_STRING([--enable-statbench],[Enable the compilation of STATBench, the STAT performance emulator])],
   [WITH_STATBENCH=$enableval],
   [WITH_STATBENCH=no]
-)  
+)
 AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
 AC_ARG_ENABLE(python-debug,
   [AS_HELP_STRING([--enable-python-debug],[Enable the ability to gather python script debugging])],
   [CXXFLAGS="-DPROTOTYPE_PY $CXXFLAGS"],
   [CXXFLAGS="$CXXFLAGS"]
-)  
+)
 AC_ARG_WITH(procspernode,
   [AS_HELP_STRING([--with-procspernode=num],[Set the maximum number of communication processes per node equal to num, defaults to 1 if not specified])],
   [AC_DEFINE_UNQUOTED([STAT_PROCS_PER_NODE], [$withval], [The max number of CPs per node])],
@@ -95,8 +96,17 @@ AC_SUBST(LAUNCHMONPREFIX)
 AC_SUBST(GRAPHLIBPREFIX)
 AC_SUBST(STATPYTHON)
 
+AM_PROG_LEX
+AC_PROG_YACC
+AM_PATH_PYTHON
+
 AC_CONFIG_FILES([Makefile
                  src/Makefile
+                 src/dysect/Makefile
+                 src/dysect/DysectAPI/Makefile
+                 src/dysect/libDysectAPI/Makefile
+                 src/dysect/libDysectAPI/include/Makefile
+                 src/dysect/libDysectAPI/src/Makefile
                  doc/Makefile
                  doc/userguide/Makefile
                  doc/quickstart/Makefile
@@ -105,7 +115,9 @@ AC_CONFIG_FILES([Makefile
                  examples/Makefile
                  examples/src/Makefile
                  examples/scripts/Makefile
+                 examples/sessions/Makefile
                  scripts/STAT
+                 scripts/dysectc
                  scripts/STATGUI
                  scripts/core_stack_merge
                  scripts/STATview

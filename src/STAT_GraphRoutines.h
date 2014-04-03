@@ -5,7 +5,7 @@ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong 
 LLNL-CODE-624152.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAt.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -145,7 +145,7 @@ char *statNodeToText(const void *node);
 
 //! Merge two STAT node objects
 /*!
-    \param[inout] node1 - the node to merge into
+    \param[in,out] node1 - the node to merge into
     \param node2 - the node to merge with
 */
 void *statMergeNode(void *node1, const void *node2);
@@ -194,7 +194,7 @@ char *statEdgeToText(const void *edge);
 
 //! Merge two STAT edge objects
 /*!
-    \param[inout] edge1 - the edge to merge into
+    \param[in,out] edge1 - the edge to merge into
     \param edge2 - the edge to merge in
 */
 void *statMergeEdge(void *edge1, const void *edge2);
@@ -242,7 +242,7 @@ void *statCopyEdgeInitializeEmpty(const void *edge);
 
 //! Merge the unordered input vector bits into the reorder graph.
 /*!
-    \param[inout] edge1 - the edge to merge into
+    \param[in,out] edge1 - the edge to merge into
     \param edge2 - the edge to merge in
 
     Merge the unordered input vector bits into the appropriate in-order bits of
@@ -285,7 +285,7 @@ char *statCountRepEdgeToText(const void *edge);
 
 //! Merge a pair of STAT count + rep edges
 /*!
-    \param[inout] edge1 - the edge to merge into
+    \param[in,out] edge1 - the edge to merge into
     \param edge2 - the edge to merge in
 */
 void *statMergeCountRepEdge(void *edge1, const void *edge2);
