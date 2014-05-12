@@ -316,9 +316,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign examples/src/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu examples/src/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign examples/src/Makefile
+	  $(AUTOMAKE) --gnu examples/src/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -661,7 +661,7 @@ hw: hw.F Makefile
 mpi_ringtopo: mpi_ringtopo.c Makefile
 	$(MPICC) -g -o $@ $<
 rank_test: rank_test.c Makefile
-	$(MPICXX) -g -gdwarf-2 -o $@ $<
+	$(MPICC) -g -gdwarf-2 -o $@ $<
 mpi_ringtopo_defunct: mpi_ringtopo_defunct.c Makefile
 	$(MPICC) -g -gdwarf-2  -o $@ $<
 to_test: to_test.c Makefile

@@ -27,9 +27,14 @@ DysectStatus DysectAPI::onProcStart() {
                            Domain::world(5000, true),
                            Act::stat());
 
+  Probe* p4    = new Probe(Async::signal(SIGUSR1), 
+                           Domain::world(500), 
+                           Act::stat());
+
   ProbeTree::addRoot(p1);
   ProbeTree::addRoot(p2);
   ProbeTree::addRoot(p3);
+  ProbeTree::addRoot(p4);
 
   return DysectOK;
 }

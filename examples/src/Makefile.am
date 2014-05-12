@@ -17,7 +17,7 @@ hw: hw.F Makefile
 mpi_ringtopo: mpi_ringtopo.c Makefile
 	$(MPICC) -g -o $@ $<
 rank_test: rank_test.c Makefile
-	$(MPICXX) -g -gdwarf-2 -o $@ $<
+	$(MPICC) -g -gdwarf-2 -o $@ $<
 mpi_ringtopo_defunct: mpi_ringtopo_defunct.c Makefile
 	$(MPICC) -g -gdwarf-2  -o $@ $<
 to_test: to_test.c Makefile
