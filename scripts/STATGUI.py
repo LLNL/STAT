@@ -29,7 +29,7 @@ from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_
 import sys
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
 import commands
 import subprocess
 import time
@@ -81,7 +81,7 @@ class STATGUI(STATDotWindow):
         self.attach_task_list += self.sample_task_list
         types = {'Topology Type':     ['automatic', 'depth', 'max fanout', 'custom'],
                  'Verbosity Type':    ['error', 'stdout', 'full'],
-                 'Sample Type':       ['function only', 'function and pc', 'function and line'],
+                 'Sample Type':       ['function only', 'function and pc', 'module offset', 'function and line'],
                  'Edge Type':         ['full list', 'count and representative'],
                  'Remote Host Shell': ['rsh', 'ssh'],
                  'CP Policy':         ['none', 'share app nodes', 'exclusive']}
@@ -1248,6 +1248,8 @@ host[1-10,12,15-20];otherhost[30]
         sample_type = 0
         if self.options['Sample Type'] == 'function and pc':
             sample_type += STAT_SAMPLE_PC
+        if self.options['Sample Type'] == 'module offset':
+            sample_type += STAT_SAMPLE_MODULE_OFFSET
         if self.options['Sample Type'] == 'function and line':
             sample_type += STAT_SAMPLE_LINE
         if self.options['Edge Type'] != 'full list':
@@ -1335,6 +1337,8 @@ host[1-10,12,15-20];otherhost[30]
             sample_type = 0
             if self.options['Sample Type'] == 'function and pc':
                 sample_type += STAT_SAMPLE_PC
+            if self.options['Sample Type'] == 'module offset':
+                sample_type += STAT_SAMPLE_MODULE_OFFSET
             if self.options['Sample Type'] == 'function and line':
                 sample_type += STAT_SAMPLE_LINE
             if self.options['Edge Type'] != 'full list':

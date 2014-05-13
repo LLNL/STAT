@@ -53,7 +53,8 @@ enum StatSampleOptions_t {
     STAT_SAMPLE_COUNT_REP = 0x04,
     STAT_SAMPLE_THREADS = 0x08,
     STAT_SAMPLE_CLEAR_ON_SAMPLE = 0x10,
-    STAT_SAMPLE_PYTHON = 0x20
+    STAT_SAMPLE_PYTHON = 0x20,
+    STAT_SAMPLE_MODULE_OFFSET = 0x40
 } ;
 
 typedef enum {

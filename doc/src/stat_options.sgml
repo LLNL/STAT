@@ -96,6 +96,14 @@
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>-m, --withmoduleoffset</term>
+    <listitem>
+        <para>
+        Sample module offset only.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>-i, --withline</term>
     <listitem>
         <para>
@@ -107,7 +115,7 @@
     <term>-c, --comprehensive</term>
     <listitem>
         <para>
-        Gather 4 traces: function only; function + line; function + PC; and 3D function only.
+        Gather 5 traces: function only; module offset; function + PC; function + line; and 3D function only.
         </para>
     </listitem>
 </varlistentry>

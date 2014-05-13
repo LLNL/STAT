@@ -30,7 +30,7 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term><GUIbutton>function only</GUIbutton> | <GUIbutton>function and pc</GUIbutton> | <GUIbutton>function and line</GUIbutton></term>
+    <term><GUIbutton>function only</GUIbutton> | <GUIbutton>module offset</GUIbutton> | <GUIbutton>function and pc</GUIbutton> | <GUIbutton>function and line</GUIbutton></term>
     <listitem>
         <para>
         Sample traces with function name only, or function name with the CPU program counter, or function name with the source file and line number.
