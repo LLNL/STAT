@@ -640,9 +640,9 @@ host[1-10,12,15-20];otherhost[30]
         for node in self.get_current_graph().nodes:
             if node.lex_string is not None:
                 if node.lex_string.find('$') != -1 and node.lex_string.find('=') == -1:
-                    function_name, source_line, iter_string = decompose_node(node.label)
-                    source = source_line[:source_line.find(':')]
-                    line = int(source_line[source_line.find(':') + 1:])
+                    decomposed_node = decompose_node(node.label)
+                    source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
+                    line = int(decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:])
                     temp = node.lex_string[node.lex_string.find('$') + 1:]
                     while 1:
                         var = temp[:temp.find('(')]

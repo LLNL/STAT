@@ -1899,7 +1899,7 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
 
         boolRet = frame.getLibOffset(modName, offset, symtab);
         name = modName;
-        snprintf(buf, BUFSIZE, "@0x%lx", offset);
+        snprintf(buf, BUFSIZE, "+0x%lx", offset);
         name += buf;
     }
     else if (sampleType_ & STAT_SAMPLE_LINE)
