@@ -63,7 +63,7 @@ except Exception as e:
 
 try:
     import STAThelper
-    from STAThelper import which, color_to_string, DecomposedNode, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, has_module_offset_and_not_collapsed, label_has_source, label_has_module_offset, label_collapsed
+    from STAThelper import which, color_to_string, DecomposedNode, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, has_module_offset_and_not_collapsed, label_has_source, label_has_module_offset, label_collapsed, translate, expr
 except Exception as e:
     sys.stderr.write('%s\n' % repr(e))
     sys.stderr.write('There was a problem loading the STAThelper module.\n')
@@ -247,6 +247,13 @@ def create_temp(dot_filename, truncate, max_node_name):
                                     if iter_string != '':
                                         iter_string = '$' + iter_string
                                     label = "%s@%s:%d%s" % (decomposed_node.function_name, source, cur_line_num, iter_string)
+                            elif has_module_offset_and_not_collapsed(label):
+                                # if the source file information is full path, reduce to the basename
+                                decomposed_node = decompose_node(label)
+                                module = decomposed_node.module
+                                if os.path.isabs(module):
+                                    module = os.path.basename(module)
+                                label = "%s+%s" % (module, decomposed_node.offset)
 
                             if len(label) > max_node_name and truncate == "front":
                                 # clip long node names at the front (preserve most significant characters)
@@ -1848,7 +1855,7 @@ class STATGraph(xdot.Graph):
     #  \param full_node_label - [optional] whether to save full node labels, defaults to True
     #
     #  \n
-    def save_dot(self, filename, full_edge_label=True, full_node_label=True):
+    def save_dot(self, filename, full_edge_label=True, full_node_label=True, translate_module_offset=False):
         """Save the current graph as a dot file."""
         try:
             with open(filename, 'w') as f:
@@ -1863,7 +1870,9 @@ class STATGraph(xdot.Graph):
                             node_text = shape.t
                         else:
                             fill_color = shape.pen.fillcolor
-                    if full_node_label is True:
+                    if translate_module_offset is True and label_has_module_offset(node.label):
+                        node_text = re.sub(expr, translate, node.label)
+                    elif full_node_label is True:
                         if (hasattr(node, 'eq_collapsed_label')):
                             node_text = node.eq_collapsed_label
                         else:
@@ -3522,6 +3531,29 @@ entered as a regular expression"""
         os.remove(temp_dot_filename)
         return True
 
+    def on_translate(self):
+        if hasattr(self, "my_dialog"):
+            self.my_dialog.destroy()
+        temp_dot_filename = 'translated.dot'
+        try:
+            temp_dot_file = open(temp_dot_filename, 'w')
+        except:
+            home_dir = os.environ.get("HOME")
+            temp_dot_filename = '%s/redraw.dot' % home_dir
+            try:
+                temp_dot_file = open(temp_dot_filename, 'w')
+            except:
+                show_error_dialog('Failed to open temp dot file %s for writing' % temp_dot_filename, exception=e)
+                return False
+        temp_dot_file.close()
+        self.get_current_graph().save_dot(temp_dot_filename, True, True, True)
+        page = self.notebook.get_current_page()
+        self.create_new_tab(page + 1)
+        self.notebook.set_current_page(page + 1)
+        self.open_file(temp_dot_filename)
+        os.remove(temp_dot_filename)
+        return True
+
     def on_modify_search_paths(self, action):
         """Callback to generate dialog to modify search paths."""
         search_dialog = gtk.Dialog('add file search path', self)
@@ -4155,7 +4187,7 @@ enterered as a regular expression.
         tasks = node.edge_label
         if node.hide is True:
             return True
-        options = ['Join Equivalence Class', 'Collapse', 'Collapse Depth', 'Hide', 'Expand', 'Expand All', 'Focus', 'View Source']
+        options = ['Join Equivalence Class', 'Collapse', 'Collapse Depth', 'Hide', 'Expand', 'Expand All', 'Focus', 'View Source', 'Translate']
 
         if HAVE_TOMOD is True:
             options.append('Temporally Order Children')
@@ -4262,7 +4294,7 @@ enterered as a regular expression.
             box2 = gtk.HButtonBox()
             for option in options:
                 button = gtk.Button(option.replace(' ', '\n'))
-                if option != 'View Source' and option != 'Get Full Edge Label':
+                if option != 'View Source' and option != 'Get Full Edge Label' and option != 'Translate':
                     button.connect("clicked", self.manipulate_cb, option, node)
                 if option == 'View Source':
                     if not label_has_source(node.label):
@@ -4271,6 +4303,11 @@ enterered as a regular expression.
                         button.connect("clicked", lambda w, n: self.select_source(n), node)
                     else:
                         button.connect("clicked", self.manipulate_cb, option, node)
+                elif option == 'Translate':
+                    if not label_has_module_offset(node.label):
+                        button.set_sensitive(False)
+                    else:
+                        button.connect("clicked", lambda x:self.on_translate())
                 elif option == 'Join Equivalence Class':
                     if not node.can_join_eq_c():
                         button.set_sensitive(False)
@@ -4287,7 +4324,7 @@ enterered as a regular expression.
             for option in options:
                 menu_item = gtk.MenuItem(option)
                 menu.append(menu_item)
-                if option != 'View Source' and option != 'Get Full Edge Label':
+                if option != 'View Source' and option != 'Get Full Edge Label' and option != 'Translate':
                     menu_item.connect('activate', self.manipulate_cb, option, node)
                 if option == 'View Source':
                     if label_has_source(node.label):
@@ -4304,6 +4341,11 @@ enterered as a regular expression.
                                 sub_menu_item.show()
 
                             menu_item.set_submenu(sub_menu)
+                    else:
+                        menu_item.set_sensitive(False)
+                elif option == 'Translate':
+                    if label_has_module_offset(node.label):
+                        menu_item.connect('activate', lambda w: self.on_translate())
                     else:
                         menu_item.set_sensitive(False)
                 elif option == 'Join Equivalence Class':

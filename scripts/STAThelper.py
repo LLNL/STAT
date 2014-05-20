@@ -22,6 +22,8 @@ __version__ = "2.1.0"
 
 import os.path
 from collections import namedtuple
+import re
+import subprocess
 
 ## A variable to determine whther we have the pygments module for syntax hilighting
 HAVE_PYGMENTS = True
@@ -340,6 +342,7 @@ def has_module_offset_and_not_collapsed(label):
     return label_has_module_offset(label) and not label_collapsed(label)
 
 
+## A named tuple to store the node label components
 DecomposedNode = namedtuple("DecomposedNode", "function_name, source_line, iter_string, module, offset")
 
 
@@ -418,6 +421,57 @@ def escaped_label(label):
         ret += character
         prev = character
     return ret
+
+# This is what a path to a library followed by an offset looks like.
+#expr = r'([^\s]+)\((0x[a-fA-F0-9]+)\)'
+expr = r'([^\s]+)\+(0x[a-fA-F0-9]+)'
+
+# Map from module name -> translator.  Each translator is a wrapper
+# around an open pipe to an addr2line process, to which we send offsets
+translators = {}
+
+addr2line = "/collab/usr/global/tools/dyninst/symt_addr2line/chaos_5_x86_64_ib/symt_addr2line"
+addr2line = "addr2line"
+
+class Translator:
+    """A translator is a read/write pipe to an addr2line process.
+       If you write an address to it, it will read the file/line info
+       from the process's output.
+
+       You can use this like any other object.
+    """
+    def __init__(self, filename):
+        self.filename = filename
+        try:
+            args = [addr2line]
+            args.append('-C')
+            args += ["-f", "-e", filename]
+            self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        except:
+            self.proc = None
+
+    def kill(self):
+        self.proc.terminate()
+
+    def translate(self, addr):
+        if self.proc:
+            self.proc.stdin.write("%s\n" % addr)
+            function = self.proc.stdout.readline().rstrip("\n")
+            line = self.proc.stdout.readline().rstrip("\n")
+            return "%s@%s" % (function, line)
+        else:
+            return "??"
+
+
+def translate(match):
+    """Takes a match with groups representing module and offset.
+       Returns file/line info from a translator.
+    """
+    module, offset = match.groups()
+    if not module in translators:
+        translators[module] = Translator(module)
+    trans = translators[module]
+    return trans.translate(offset)
 
 #global DEBUG
 #DEBUG = False
