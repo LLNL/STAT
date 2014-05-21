@@ -1,3 +1,6 @@
+2014-05-21 Gregory L. Lee <lee218@llnl.gov>
+	scripts/script_test.py : added module offset sample test
+
 2014-05-15 Gregory L. Lee <lee218@llnl.gov>
 	* : add translate feature for module offset
 
