@@ -70,8 +70,8 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
-CONFIG_CLEAN_FILES = STAT dysectc STATGUI core_stack_merge STATview \
-	STATBench stat-cl stat-script stat-gui stat-view stat-bench
+CONFIG_CLEAN_FILES = STAT stat-cl core_stack_merge STATGUI STATview \
+	stat-script stat-gui stat-view STATBench stat-bench dysectc
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -313,17 +313,13 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 $(am__aclocal_m4_deps):
 STAT: $(top_builddir)/config.status $(srcdir)/STAT.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-dysectc: $(top_builddir)/config.status $(srcdir)/dysectc.in
-	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-STATGUI: $(top_builddir)/config.status $(srcdir)/STATGUI.in
+stat-cl: $(top_builddir)/config.status $(srcdir)/stat-cl.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 core_stack_merge: $(top_builddir)/config.status $(srcdir)/core_stack_merge.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+STATGUI: $(top_builddir)/config.status $(srcdir)/STATGUI.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 STATview: $(top_builddir)/config.status $(srcdir)/STATview.in
-	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-STATBench: $(top_builddir)/config.status $(srcdir)/STATBench.in
-	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-stat-cl: $(top_builddir)/config.status $(srcdir)/stat-cl.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 stat-script: $(top_builddir)/config.status $(srcdir)/stat-script.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
@@ -331,7 +327,11 @@ stat-gui: $(top_builddir)/config.status $(srcdir)/stat-gui.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 stat-view: $(top_builddir)/config.status $(srcdir)/stat-view.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+STATBench: $(top_builddir)/config.status $(srcdir)/STATBench.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 stat-bench: $(top_builddir)/config.status $(srcdir)/stat-bench.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+dysectc: $(top_builddir)/config.status $(srcdir)/dysectc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 install-binSCRIPTS: $(bin_SCRIPTS)
 	@$(NORMAL_INSTALL)

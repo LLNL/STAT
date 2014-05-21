@@ -2,8 +2,10 @@ CC = @CC@
 MPICC = @MPICC@
 F77 = @F77@
 MPIF77 = @MPIF77@
+if ENABLE_EXAMPLES
 examplesdir = $(pkgdatadir)/examples/bin
 examples_PROGRAMS = hw mpi_ringtopo mpi_ringtopo_defunct to_test rank_test template_test mpi_ringtopo2
+endif
 hw_SOURCES = hw.F
 mpi_ringtopo_SOURCES = mpi_ringtopo.c
 rank_test_SOURCES = rank_test.c

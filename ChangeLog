@@ -1,3 +1,7 @@
+2014-05-21 Gregory L. Lee <lee218@llnl.gov>
+	* : add ability to disable build of examples
+	* : build system clean up
+
 2014-04-03 Gregory L. Lee <lee218@llnl.gov>
 	* : tag version 2.1.0
 

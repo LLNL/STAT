@@ -4,7 +4,8 @@ AC_DEFUN([X_AC_DYSECTAPI], [
     [AS_HELP_STRING([--enable-dysectapi],
       [Enable to include DysectAPI prototype]
     )],
-    [CXXFLAGS="$CXXFLAGS -DDYSECTAPI -DGROUP_OPS"
+    [ENABLE_DYSECT="yes"
+      CXXFLAGS="$CXXFLAGS -DDYSECTAPI -DGROUP_OPS"
       AM_CONDITIONAL([ENABLE_DYSECTAPI], true)
       AC_SUBST(LIBDYSECTFE, [-lDysectFE])
       AC_SUBST(LIBDYSECTBE, [-lDysectBE])

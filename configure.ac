@@ -16,7 +16,6 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
-X_AC_MPICC
 X_AC_RSH
 
 # Checks for libraries.
@@ -53,27 +52,43 @@ then
 else
   LDFLAGS="$LDFLAGS"
 fi
+
 AC_ARG_ENABLE(statbench,
   [AS_HELP_STRING([--enable-statbench],[Enable the compilation of STATBench, the STAT performance emulator])],
   [WITH_STATBENCH=$enableval],
   [WITH_STATBENCH=no]
 )
+
 AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
 AC_ARG_ENABLE(python-debug,
   [AS_HELP_STRING([--enable-python-debug],[Enable the ability to gather python script debugging])],
   [CXXFLAGS="-DPROTOTYPE_PY $CXXFLAGS"],
   [CXXFLAGS="$CXXFLAGS"]
 )
+
 AC_ARG_WITH(procspernode,
   [AS_HELP_STRING([--with-procspernode=num],[Set the maximum number of communication processes per node equal to num, defaults to 1 if not specified])],
   [AC_DEFINE_UNQUOTED([STAT_PROCS_PER_NODE], [$withval], [The max number of CPs per node])],
   [AC_DEFINE([STAT_PROCS_PER_NODE], [1], [The max number of CPs per node])]
 )
+
 AC_ARG_WITH(usagelog,
   [AS_HELP_STRING([--with-usagelog=path],[Enable usage logging and write log file to path])],
   [CXXFLAGS="$CXXFLAGS -DSTAT_USAGELOG=\\\"${withval}\\\""],
   [CXXFLAGS="$CXXFLAGS"]
 )
+
+AC_ARG_ENABLE(examples,
+  [AS_HELP_STRING([--enable-examples],[Enable the compilation of example test codes])],
+  [WITH_EXAMPLES=$enableval],
+  [WITH_EXAMPLES=yes]
+)
+AM_CONDITIONAL([ENABLE_EXAMPLES], false)
+if test "$WITH_EXAMPLES" = "yes"
+then
+  AM_CONDITIONAL([ENABLE_EXAMPLES], true)
+  X_AC_MPICC
+fi
 
 # Checks for library functions.
 AC_FUNC_MALLOC
@@ -96,8 +111,12 @@ AC_SUBST(LAUNCHMONPREFIX)
 AC_SUBST(GRAPHLIBPREFIX)
 AC_SUBST(STATPYTHON)
 
-AM_PROG_LEX
-AC_PROG_YACC
+if test "$ENABLE_DYSECT" = "yes"
+then
+  AM_PROG_LEX
+  AC_PROG_YACC
+fi
+
 AM_PATH_PYTHON
 
 AC_CONFIG_FILES([Makefile
@@ -107,25 +126,42 @@ AC_CONFIG_FILES([Makefile
                  src/dysect/libDysectAPI/Makefile
                  src/dysect/libDysectAPI/include/Makefile
                  src/dysect/libDysectAPI/src/Makefile
+                 examples/Makefile
+                 examples/src/Makefile
+                 examples/scripts/Makefile
+                 examples/sessions/Makefile
                  doc/Makefile
                  doc/userguide/Makefile
                  doc/quickstart/Makefile
                  etc/Makefile
                  man/Makefile
-                 examples/Makefile
-                 examples/src/Makefile
-                 examples/scripts/Makefile
-                 examples/sessions/Makefile
                  scripts/STAT
-                 scripts/dysectc
-                 scripts/STATGUI
-                 scripts/core_stack_merge
-                 scripts/STATview
-                 scripts/STATBench
                  scripts/stat-cl
-                 scripts/stat-script
-                 scripts/stat-gui
-                 scripts/stat-view
-                 scripts/stat-bench
                  scripts/Makefile])
+
+if test "$ENABLE_BGL" = "yes"
+then
+  AC_CONFIG_FILES([scripts/core_stack_merge])
+fi
+
+if test "$WITH_GUI" = "yes"
+then
+  AC_CONFIG_FILES([scripts/STATGUI
+                   scripts/STATview
+                   scripts/stat-script
+                   scripts/stat-gui
+                   scripts/stat-view])
+fi
+
+if test "$WITH_STATBENCH" = "yes"
+then
+  AC_CONFIG_FILES([scripts/STATBench
+                   scripts/stat-bench])
+fi
+
+if test "$ENABLE_DYSECT" = "yes"
+then
+  AC_CONFIG_FILES([scripts/dysectc])
+fi
+
 AC_OUTPUT
