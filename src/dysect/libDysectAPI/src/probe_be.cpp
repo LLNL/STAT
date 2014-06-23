@@ -218,6 +218,12 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedNotifications() {
 bool Probe::releaseWaitingProcs() {
   if(waitingProcs && waitingProcs->size() > 0) {
     waitingProcs = ProcessMgr::filterDetached(waitingProcs);
+
+    if(waitingProcs->size() > 0) {
+      awaitingActions -= processCount;
+      processCount = 0;
+    }
+
     waitingProcs->clear();
 
     Err::verbose(true, "Processes for %x released", dom->getId());
@@ -315,7 +321,7 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
       
       act->finishBE(np, len);
       act->actionPending = false;
-      actionsHandled -= 1;
+      actionsHandled += 1;
 
       Err::verbose(true, "Aggregate packet length: %d", len);
     }
@@ -358,8 +364,6 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
     }
   }
 
-  awaitingActions -= actionsHandled;
-  processCount = 0;
   return OK;
 }
 
@@ -480,8 +484,6 @@ bool Probe::processRequests() {
     return true;
   }
 
-  Err::verbose(true, "Handling process requests");
-  
   pthread_mutex_lock(&requestQueueMutex); 
   vector<ProbeRequest*> queue = requestQueue;
   requestQueue.clear();
@@ -508,6 +510,11 @@ bool Probe::processRequests() {
     }
   }
 
+  if (sortedQueue.size() == 0)
+    return true;
+
+  Err::verbose(true, "Handling %d process requests", sortedQueue.size());
+
   deque<ProbeRequest*>::iterator sortedRequestIter = sortedQueue.begin();
   for(int i = 0; sortedRequestIter != sortedQueue.end(); sortedRequestIter++) {
     ProbeRequest* request = *sortedRequestIter;
@@ -525,9 +532,9 @@ bool Probe::processRequests() {
       break;
     }
 
-    ProcessSet::ptr waitingProcs = probe->getWaitingProcs();
+    ProcessSet::ptr waitingProcs = request->scope;
     if(waitingProcs && waitingProcs->size() > 0) {
-      Err::verbose(true, "Adding %d waiting processes to %d continue set...", waitingProcs->size(), continueSet->size());
+      Err::verbose(true, "Adding %d request processes to %d continue set...", waitingProcs->size(), continueSet->size());
       continueSet = continueSet->set_union(waitingProcs);
     }
 

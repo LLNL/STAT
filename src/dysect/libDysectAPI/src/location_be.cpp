@@ -92,8 +92,10 @@ bool Location::disable(ProcessSet::ptr lprocset) {
         Dyninst::Address addr = addrs[i];
         
         if(!procPtr->rmBreakpoint(addr, bp)) {
-          Err::verbose(false, "Breakpoint not removed! %s", ProcControlAPI::getLastErrorMsg());
+          Err::verbose(false, "Breakpoint at %lx not removed! %s", addr, ProcControlAPI::getLastErrorMsg());
         }
+        else
+          Err::verbose(false, "Breakpoint at %lx removed for %d!", addr, procPtr->getPid());
       }
     }
   }
@@ -168,9 +170,9 @@ bool Location::enable(ProcessSet::ptr lprocset) {
         Dyninst::Address addr = addrs[i];
         
         if(!procPtr->addBreakpoint(addr, bp)) {
-          return Err::verbose(false, "Breakpoint not installed: %s", ProcControlAPI::getLastErrorMsg());
+          return Err::verbose(false, "Breakpoint not installed at %lx: %s", addr, ProcControlAPI::getLastErrorMsg());
         } else {
-          Err::verbose(true, "Breakpoint installed at %lx", addr);
+          Err::verbose(true, "Breakpoint installed at %lx for %d", addr, procPtr->getPid());
         }
 
         //addrset->insert(addr, procPtr);

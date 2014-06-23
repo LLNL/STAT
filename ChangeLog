@@ -1,6 +1,22 @@
+2014-06-23 Gregory L. Lee <lee218@llnl.gov>
+	* : process control fixes for DysectAPI
+	* : complete probe actions before enabling children and disabling self
+
 2014-05-21 Gregory L. Lee <lee218@llnl.gov>
 	* : add ability to disable build of examples
 	* : build system clean up
+
+2014-05-21 Gregory L. Lee <lee218@llnl.gov>
+	scripts/script_test.py : added module offset sample test
+
+2014-05-15 Gregory L. Lee <lee218@llnl.gov>
+	* : add translate feature for module offset
+
+2014-05-14 Gregory L. Lee <lee218@llnl.gov>
+	* : enhanced node label decomposition in GUI
+
+2014-05-13 Gregory L. Lee <lee218@llnl.gov>
+	* : added module offset sample granularity
 
 2014-04-03 Gregory L. Lee <lee218@llnl.gov>
 	* : tag version 2.1.0

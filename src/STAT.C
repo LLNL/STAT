@@ -243,7 +243,7 @@ int main(int argc, char **argv)
         traces = statArgs->nTraces;
 
     if (statArgs->comprehensive)
-        samples = 4;
+        samples = 5;
     for (i = 0; i < samples; i++)
     {
         if (statArgs->comprehensive)
@@ -259,10 +259,12 @@ int main(int argc, char **argv)
 
             traces = 1;
             if (i == 1)
-                statArgs->sampleType |= STAT_SAMPLE_LINE;
+                statArgs->sampleType |= STAT_SAMPLE_MODULE_OFFSET;
             else if (i == 2)
                 statArgs->sampleType |= STAT_SAMPLE_PC;
             else if (i == 3)
+                statArgs->sampleType |= STAT_SAMPLE_LINE;
+            else if (i == 4)
                 traces = statArgs->nTraces;
         }
         for (j = 0; j < traces; j++)
@@ -376,8 +378,9 @@ void printUsage()
     fprintf(stderr, "  -r, --retries <count>\t\tretry attempts per sample to get a complete\n\t\t\t\ttrace\n");
     fprintf(stderr, "  -R, --retryfreq <frequency>\ttime between sample retries in micro-seconds\n");
     fprintf(stderr, "  -P, --withpc\t\t\tsample program counter in addition to\n\t\t\t\tfunction name\n");
+    fprintf(stderr, "  -m, --withmoduleoffset\tsample module offset only\n");
     fprintf(stderr, "  -i, --withline\t\tsample source line number in addition\n\t\t\t\tto function name\n");
-    fprintf(stderr, "  -c, --comprehensive\t\tgather 4 traces: function only; function + line;\n\t\t\t\tfunction + pc; and 3D function only\n");
+    fprintf(stderr, "  -c, --comprehensive\t\tgather 5 traces: function only; module offset;\n\t\t\t\tfunction + pc; function + line; and 3D function\n\t\t\t\tonly\n");
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
     fprintf(stderr, "  -y, --pythontrace\t\tgather Python script level stack traces\n");
@@ -433,6 +436,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"version",             no_argument,        0, 'V'},
         {"verbose",             no_argument,        0, 'v'},
         {"withpc",              no_argument,        0, 'P'},
+        {"withmoduleoffset",    no_argument,        0, 'P'},
         {"withline",            no_argument,        0, 'i'},
         {"comprehensive",       no_argument,        0, 'c'},
         {"withthreads",         no_argument,        0, 'w'},
@@ -481,9 +485,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     while (1)
     {
 #ifdef DYSECTAPI
-        opt = getopt_long(argc, argv,"hVvPicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPmicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:", longOptions, &optionIndex);
 #else
-        opt = getopt_long(argc, argv,"hVvPicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPmicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
 #endif
         if (opt == -1)
             break;
@@ -520,6 +524,10 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             break;
         case 'P':
             statArgs->sampleType |= STAT_SAMPLE_PC;
+            statArgs->comprehensive = false;
+            break;
+        case 'm':
+            statArgs->sampleType |= STAT_SAMPLE_MODULE_OFFSET;
             statArgs->comprehensive = false;
             break;
         case 'i':

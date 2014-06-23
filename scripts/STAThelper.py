@@ -21,6 +21,9 @@ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendr
 __version__ = "2.1.0"
 
 import os.path
+from collections import namedtuple
+import re
+import subprocess
 
 ## A variable to determine whther we have the pygments module for syntax hilighting
 HAVE_PYGMENTS = True
@@ -304,6 +307,15 @@ def label_has_source(label):
 
 
 ## \param label - the stack frame text
+#  \return True if the label includes module and offset representation
+#
+#  \n
+def label_has_module_offset(label):
+    """return True if the label includes source file and line number info"""
+    return label.find('+0x') != -1
+
+
+## \param label - the stack frame text
 #  \return True if the label includes source file and line number info and the node is not eq class collapsed
 #
 #  \n
@@ -322,6 +334,19 @@ def has_source_and_not_collapsed(label):
 
 
 ## \param label - the stack frame text
+#  \return True if the label includes module offset representation and the node is not eq class collapsed
+#
+#  \n
+def has_module_offset_and_not_collapsed(label):
+    """return True if the label includes source file and line number info and the node is not eq class collapsed"""
+    return label_has_module_offset(label) and not label_collapsed(label)
+
+
+## A named tuple to store the node label components
+DecomposedNode = namedtuple("DecomposedNode", "function_name, source_line, iter_string, module, offset")
+
+
+## \param label - the stack frame text
 ## \param item - [optional] the item index
 #  \return - a tuple of (function name, line number, variable info)
 #
@@ -331,6 +356,8 @@ def decompose_node(label, item=None):
     function_name = ''
     source_line = ''
     iter_string = ''
+    module = ''
+    offset = ''
     if has_source_and_not_collapsed(label):
         function_name = label[:label.find('@')]
         if label.find('$') != -1 and label.find('$$') == -1:  # and clause for name mangling of C++ on BG/Q example
@@ -339,19 +366,28 @@ def decompose_node(label, item=None):
         else:
             source_line = label[label.find('@') + 1:]
             iter_string = ''
+    elif has_module_offset_and_not_collapsed(label):
+        module = label[:label.find('+0x')]
+        offset = label[label.find('+0x') + 1:]
     elif label_collapsed(label) and item is not None:
         if item == -1:
             return_list = []
             frames = label.split('\\n')
             for frame in frames:
-                function_name, source_line, iter_string = decompose_node(frame)
-                return_list.append((function_name, source_line, iter_string))
+                decomposed_node = decompose_node(frame)
+                return_list.append(decomposed_node)
             return return_list
         else:
-            function_name, source_line, iter_string = decompose_node(label.split('\\n')[item])
+            decomposed_node = decompose_node(label.split('\\n')[item])
+            function_name = decomposed_node.function_name
+            source_line = decomposed_node.source_line
+            iter_string = decomposed_node.iter_string
+            module = decomposed_node.module
+            offset = decomposed_node.offset
     else:
         function_name = label
-    return function_name, source_line, iter_string
+    decomposed_node = DecomposedNode(function_name, source_line, iter_string, module, offset)
+    return decomposed_node
 
 
 ## \param var_spec - the variable specificaiton (location and name)
@@ -385,6 +421,57 @@ def escaped_label(label):
         ret += character
         prev = character
     return ret
+
+# This is what a path to a library followed by an offset looks like.
+#expr = r'([^\s]+)\((0x[a-fA-F0-9]+)\)'
+expr = r'([^\s]+)\+(0x[a-fA-F0-9]+)'
+
+# Map from module name -> translator.  Each translator is a wrapper
+# around an open pipe to an addr2line process, to which we send offsets
+translators = {}
+
+addr2line = "/collab/usr/global/tools/dyninst/symt_addr2line/chaos_5_x86_64_ib/symt_addr2line"
+addr2line = "addr2line"
+
+class Translator:
+    """A translator is a read/write pipe to an addr2line process.
+       If you write an address to it, it will read the file/line info
+       from the process's output.
+
+       You can use this like any other object.
+    """
+    def __init__(self, filename):
+        self.filename = filename
+        try:
+            args = [addr2line]
+            args.append('-C')
+            args += ["-f", "-e", filename]
+            self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        except:
+            self.proc = None
+
+    def kill(self):
+        self.proc.terminate()
+
+    def translate(self, addr):
+        if self.proc:
+            self.proc.stdin.write("%s\n" % addr)
+            function = self.proc.stdout.readline().rstrip("\n")
+            line = self.proc.stdout.readline().rstrip("\n")
+            return "%s@%s" % (function, line)
+        else:
+            return "??"
+
+
+def translate(match):
+    """Takes a match with groups representing module and offset.
+       Returns file/line info from a translator.
+    """
+    module, offset = match.groups()
+    if not module in translators:
+        translators[module] = Translator(module)
+    trans = translators[module]
+    return trans.translate(offset)
 
 #global DEBUG
 #DEBUG = False

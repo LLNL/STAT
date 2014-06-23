@@ -70,11 +70,14 @@ Wait \fIfrequency\fR microseconds between sample retries. To be used with the \f
 \fB-P, --withpc\fR
 Sample program counter values in addition to function names.
 .TP
+\fB-m, --withmoduleoffset\fR
+Sample module offset only.
+.TP
 \fB-i, --withline\fR
 Sample source line number in addition to function names.
 .TP
 \fB-c, --comprehensive\fR
-Gather 4 traces: function only; function + line; function + PC; and 3D function only.
+Gather 5 traces: function only; module offset; function + PC; function + line; and 3D function only.
 .TP
 \fB-U, --countrep\fR
 Only gather edge labels with the task count and a single representative. This will improve performance at extreme (i.e., over 1 million tasks) scales.

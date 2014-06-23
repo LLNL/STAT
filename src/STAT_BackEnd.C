@@ -1891,6 +1891,21 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
             snprintf(buf, BUFSIZE, "@0x%lx", frame.getRA() - 1);
         name += buf;
     }
+    else if (sampleType_ & STAT_SAMPLE_MODULE_OFFSET)
+    {
+        Dyninst::Offset offset;
+        string modName;
+        void *symtab = NULL;
+
+        boolRet = frame.getLibOffset(modName, offset, symtab);
+#ifdef SW_VERSION_8_0_0
+        if (frame.isTopFrame() == false)
+            offset = offset - 1;
+#endif
+        name = modName;
+        snprintf(buf, BUFSIZE, "+0x%lx", offset);
+        name += buf;
+    }
     else if (sampleType_ & STAT_SAMPLE_LINE)
     {
 #ifdef SW_VERSION_8_0_0

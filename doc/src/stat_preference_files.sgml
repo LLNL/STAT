@@ -148,7 +148,7 @@ Here is a list of options:
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term>Sample Type = <replaceable class="parameter">function only|function and pc|function and line</replaceable></term>
+    <term>Sample Type = <replaceable class="parameter">function only|module offset|function and pc|function and line</replaceable></term>
     <listitem>
         <para>
         Controls the granularity of the nodes in the gathered stack traces.
