@@ -58,6 +58,7 @@ Probe::Probe( Event* event,
                                procSetInitialized(false),
                                awaitingNotifications(0),
                                awaitingActions(0),
+                               processCount(0),
                                parent(0) {
 
   if(dom == 0) {

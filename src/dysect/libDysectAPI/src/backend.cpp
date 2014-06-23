@@ -156,7 +156,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
         // Evaluate conditions
         ConditionResult result;
         
-        Err::verbose(true, "Evaluate condition!");
+        Err::verbose(true, "Evaluate condition for %d!", curProcess->getPid());
         if(probe->evaluateConditions(result, curProcess, curThread) == DysectAPI::OK) {
 
           if(result == ResolvedTrue) { 
@@ -202,12 +202,12 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
 
               if((dom->getWaitTime() == Wait::inf) && (probe->staticGroupWaiting())) {
                 Err::verbose(true, "Sending enqueued notifications");
-                
+
                 if(probe->doNotify()) {
                   probe->sendEnqueuedNotifications();
                   probesPendingAction.push_back(probe);
                 }
-  
+
                 if (Backend::getPendingExternalAction == 0)
                     probe->sendEnqueuedActions();
               }
@@ -218,20 +218,14 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               Err::verbose(true, "Enable children for probe %x", dom->getId());
               probe->enqueueEnable(curProcess);
 
-              //Err::verbose(true, "Stopping thread in process %d", curProcess->getPid());
               probe->addWaitingProc(curProcess);
-              //retState = Process::cbThreadStop;
               retState = Process::cbProcStop;
-            }
 
-            if(probe->getLifeSpan() == fireOnce) {
-              Err::verbose(true, "Requesting disablement of probe");
-              probe->enqueueDisable(curProcess);
-
-              //Err::verbose(true, "Stopping thread in process %d", curProcess->getPid());
-              probe->addWaitingProc(curProcess);
-              //retState = Process::cbThreadStop;
-              retState = Process::cbProcStop;
+              if(probe->getLifeSpan() == fireOnce) {
+                Err::verbose(true, "Requesting disablement of probe");
+                probe->enqueueDisable(curProcess);
+                retState = Process::cbProcStop;
+              }
             }
 #if 0 
           } else if(result == CollectiveResolvable) {
@@ -247,7 +241,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
 #endif
           } else if(result == ResolvedFalse) {
               if(probe->getLifeSpan() == fireOnce) {
-                Err::verbose(true, "Requesting disablement of probe");
+                Err::verbose(true, "Requesting disablement of unresolved probe");
                 // Get out of the way
                 probe->enqueueDisable(curProcess);
                 retState = Process::cbProcStop;
@@ -255,10 +249,8 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               } else {
 
                 retState = Process::cbProcContinue;
-                //probe->addWaitingProc(curProcess);
               }
 
-              // probe->addWaitingProc(curProcess);
           }
 
         } else {
@@ -380,6 +372,13 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
               
               // OK to call - we are not in callback
               probe->enableChildren(lprocset);
+
+              if(probe->getLifeSpan() == fireOnce)
+                probe->disable(lprocset);
+
+              Err::verbose(true, "TODO REMOVEME resume %d procs", lprocset->size());
+              if(lprocset->size() > 0)
+                lprocset->continueProcs();
               
               probe->releaseWaitingProcs();
             }

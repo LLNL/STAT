@@ -1,3 +1,7 @@
+2014-06-23 Gregory L. Lee <lee218@llnl.gov>
+	* : process control fixes for DysectAPI
+	* : complete probe actions before enabling children and disabling self
+
 2014-05-21 Gregory L. Lee <lee218@llnl.gov>
 	scripts/script_test.py : added module offset sample test
 
