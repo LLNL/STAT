@@ -373,6 +373,7 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
               Err::warn(false, "Probe for tag %x could not be found", tag);
             } else {
               pthread_mutex_lock(&probesPendingActionMutex);
+              SafeTimer::clearSyncTimer(probe);
               vector<Probe*>::iterator probeIter = find(probesPendingAction.begin(), probesPendingAction.end(), probe); 
               if (probeIter != probesPendingAction.end()) {
                 probe->sendEnqueuedActions();

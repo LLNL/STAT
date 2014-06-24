@@ -1,4 +1,7 @@
 2014-06-24 Gregory L. Lee <lee218@llnl.gov>
+	* backend.cpp, safe_timer.cpp, SafeTimer.h, Timer.h : clear timer for handled probe
+
+2014-06-24 Gregory L. Lee <lee218@llnl.gov>
 	* Backend.h, backend.cpp : protect probesPendingAction with a mutex
 
 2014-06-23 Gregory L. Lee <lee218@llnl.gov>

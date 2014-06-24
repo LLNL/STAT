@@ -52,6 +52,20 @@ bool SafeTimer::startSyncTimer(Probe* probe) {
   return true;
 }
 
+bool SafeTimer::clearSyncTimer(Probe* probe) {
+  if(!probe)
+    return false;
+
+  if(!syncTimerRunning(probe))
+    return true;
+
+  set<Probe*>::iterator probeIter = waitingProbes.find(probe);
+  if(probeIter != waitingProbes.end())
+    waitingProbes.erase(probeIter);
+
+  return true;
+}
+
 bool SafeTimer::anySyncReady() {
   long ts = getTimeStamp();
 
