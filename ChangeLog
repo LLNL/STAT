@@ -1,3 +1,6 @@
+2014-06-24 Gregory L. Lee <lee218@llnl.gov>
+	* Backend.h, backend.cpp : protect probesPendingAction with a mutex
+
 2014-06-23 Gregory L. Lee <lee218@llnl.gov>
 	* probe_be.cpp, backend.cpp : disable/enable children only for processes that have triggered action
 

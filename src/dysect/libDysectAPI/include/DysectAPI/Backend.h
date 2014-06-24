@@ -35,6 +35,7 @@ namespace DysectAPI {
     static bool streamBindAckSent;
     static int pendingExternalAction;
     static std::vector<DysectAPI::Probe *> probesPendingAction;
+    static pthread_mutex_t probesPendingActionMutex; 
 
     static MRN::Stream* controlStream;
     static std::set<tag_t> missingBindings; //!< Set of tags needed to be bound by incoming front-end packets

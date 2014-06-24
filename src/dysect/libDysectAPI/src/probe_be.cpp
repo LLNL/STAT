@@ -312,7 +312,7 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
   struct packet* p = 0; 
   int len = 0, actionsHandled = 0;
   
-  Err::verbose(true, "Sending %d enqueued actions", awaitingActions);
+  Err::verbose(true, "Sending %d enqueued actions for %x", awaitingActions, dom->getId());
 
   if(actions.empty()) {
     Err::verbose(true, "No enqueued actions", len);

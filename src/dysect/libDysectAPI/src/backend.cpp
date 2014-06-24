@@ -37,6 +37,7 @@ Stream*         Backend::controlStream = 0;
 set<tag_t>      Backend::missingBindings;
 WalkerSet*      Backend::walkerSet;
 vector<Probe *> Backend::probesPendingAction;
+pthread_mutex_t Backend::probesPendingActionMutex;
 ProcessSet::ptr Backend::enqueuedDetach;
 
 DysectAPI::DysectErrorCode Backend::bindStream(int tag, Stream* stream) {
@@ -95,6 +96,7 @@ DysectAPI::DysectErrorCode Backend::ackBindings() {
 }
 
 DysectAPI::DysectErrorCode Backend::enableProbeRoots() {
+  pthread_mutex_init(&probesPendingActionMutex, NULL);
   if(Backend::pauseApplication() != OK) {
     return Err::warn(Error, "Could not pause application!");
   }
@@ -205,7 +207,9 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
 
                 if(probe->doNotify()) {
                   probe->sendEnqueuedNotifications();
+                  pthread_mutex_lock(&probesPendingActionMutex);
                   probesPendingAction.push_back(probe);
+                  pthread_mutex_unlock(&probesPendingActionMutex);
                 }
 
                 if (Backend::getPendingExternalAction == 0)
@@ -368,11 +372,13 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
             if(!probe) {
               Err::warn(false, "Probe for tag %x could not be found", tag);
             } else {
+              pthread_mutex_lock(&probesPendingActionMutex);
               vector<Probe*>::iterator probeIter = find(probesPendingAction.begin(), probesPendingAction.end(), probe); 
               if (probeIter != probesPendingAction.end()) {
                 probe->sendEnqueuedActions();
                 probesPendingAction.erase(probeIter);
               }
+              pthread_mutex_unlock(&probesPendingActionMutex);
               ProcessSet::ptr lprocset = probe->getWaitingProcs();
               if(lprocset->size() > 0) {
 
@@ -641,7 +647,9 @@ DysectAPI::DysectErrorCode Backend::handleTimerEvents() {
       Err::verbose(true, "Sending enqueued notifications for timed probe: %x", dom->getId());
 
       probe->sendEnqueuedNotifications();
+      pthread_mutex_lock(&probesPendingActionMutex);
       probesPendingAction.push_back(probe);
+      pthread_mutex_unlock(&probesPendingActionMutex);
     }
   }
 
@@ -650,6 +658,7 @@ DysectAPI::DysectErrorCode Backend::handleTimerEvents() {
 
 
 DysectAPI::DysectErrorCode Backend::handleTimerActions() {
+  pthread_mutex_lock(&probesPendingActionMutex);
   if (probesPendingAction.size() > 0) {
     Err::verbose(true, "Handle timer actions");
     vector<Probe*>::iterator probeIter = probesPendingAction.begin();
@@ -673,8 +682,9 @@ DysectAPI::DysectErrorCode Backend::handleTimerActions() {
          probe->releaseWaitingProcs();
       }
     }
+    probesPendingAction.clear();
   }
-  probesPendingAction.clear();
+  pthread_mutex_unlock(&probesPendingActionMutex);
   return OK;
 }
 
