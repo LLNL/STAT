@@ -184,6 +184,17 @@ bool Probe::addWaitingProc(Process::const_ptr process) {
   return true;
 }
 
+bool Probe::addWaitingProc(ProcessSet::ptr procset) {
+  if(!procSetInitialized) {
+    procSetInitialized = true;
+    waitingProcs = ProcessSet::newProcessSet(procset);
+  } else {
+    waitingProcs = waitingProcs->set_union(procset);
+  }
+
+  return true;
+}
+
 DysectAPI::DysectErrorCode Probe::enqueueNotifyPacket() {
   awaitingNotifications++;
 }
@@ -216,6 +227,7 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedNotifications() {
 }
 
 bool Probe::releaseWaitingProcs() {
+  int count = waitingProcs->size();
   if(waitingProcs && waitingProcs->size() > 0) {
     waitingProcs = ProcessMgr::filterDetached(waitingProcs);
 
@@ -226,7 +238,7 @@ bool Probe::releaseWaitingProcs() {
 
     waitingProcs->clear();
 
-    Err::verbose(true, "Processes for %x released", dom->getId());
+    Err::verbose(true, "%d processes for %x released", count, dom->getId());
   } else {
     //Err::warn(true, "No processes waiting to be released");  
   }
@@ -291,7 +303,7 @@ DysectAPI::DysectErrorCode Probe::enqueueAction(Process::const_ptr process, Thre
   }
 
   processCount++;
-  Err::verbose(true, "Awaiting actions %d, process count %d", awaitingActions, processCount);
+  Err::verbose(true, "Probe %lx waiting actions %d, process count %d", dom->getId(), awaitingActions, processCount);
 
   return OK;
 }

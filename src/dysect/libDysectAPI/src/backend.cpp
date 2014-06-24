@@ -368,19 +368,25 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
             if(!probe) {
               Err::warn(false, "Probe for tag %x could not be found", tag);
             } else {
+              vector<Probe*>::iterator probeIter = find(probesPendingAction.begin(), probesPendingAction.end(), probe); 
+              if (probeIter != probesPendingAction.end()) {
+                probe->sendEnqueuedActions();
+                probesPendingAction.erase(probeIter);
+              }
               ProcessSet::ptr lprocset = probe->getWaitingProcs();
-              
-              // OK to call - we are not in callback
-              probe->enableChildren(lprocset);
+              if(lprocset->size() > 0) {
 
-              if(probe->getLifeSpan() == fireOnce)
-                probe->disable(lprocset);
+                // OK to call - we are not in callback
+                probe->enableChildren(lprocset);
 
-              Err::verbose(true, "TODO REMOVEME resume %d procs", lprocset->size());
-              if(lprocset->size() > 0)
+                if(probe->getLifeSpan() == fireOnce)
+                  probe->disable(lprocset);
+
+                Err::verbose(true, "TODO REMOVEME resume %d procs", lprocset->size());
                 lprocset->continueProcs();
-              
-              probe->releaseWaitingProcs();
+
+                probe->releaseWaitingProcs();
+              }
             }
           }
         }
@@ -653,6 +659,19 @@ DysectAPI::DysectErrorCode Backend::handleTimerActions() {
 
       Err::verbose(true, "Sending enqueued actions for timed probe: %x", dom->getId());
       probe->sendEnqueuedActions();
+
+     ProcessSet::ptr lprocset = probe->getWaitingProcs();
+     if(lprocset->size() > 0) {
+         probe->enableChildren(lprocset);
+
+         if(probe->getLifeSpan() == fireOnce)
+           probe->disable(lprocset);
+
+         Err::verbose(true, "TODO REMOVEME resume %d procs", lprocset->size());
+         lprocset->continueProcs();
+
+         probe->releaseWaitingProcs();
+      }
     }
   }
   probesPendingAction.clear();

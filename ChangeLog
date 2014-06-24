@@ -1,4 +1,7 @@
 2014-06-23 Gregory L. Lee <lee218@llnl.gov>
+	* probe_be.cpp, backend.cpp : disable/enable children only for processes that have triggered action
+
+2014-06-23 Gregory L. Lee <lee218@llnl.gov>
 	* : process control fixes for DysectAPI
 	* : complete probe actions before enabling children and disabling self
 
