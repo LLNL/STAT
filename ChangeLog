@@ -1,4 +1,5 @@
 2014-06-25 Gregory L. Lee <lee218@llnl.gov>
+	* safe_timer.cpp : avoid overlapping probes in probesTimeoutMap with same timeout
 	* : code cleanup
 	* backend.cpp : send enqueued notifications when handling action
 

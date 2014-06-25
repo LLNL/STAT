@@ -39,13 +39,18 @@ bool SafeTimer::startSyncTimer(Probe* probe) {
     return false;
 
   long timeout = dom->getWaitTime();
+  long expectedTimeout;
 
-  long expectedTimeout = getTimeStamp() + timeout;
+  while(1)
+  {
+    expectedTimeout = getTimeStamp() + timeout;
 
-  if(expectedTimeout <= nextTimeout) {
-    nextTimeout = expectedTimeout;
+    if(expectedTimeout <= nextTimeout) {
+      nextTimeout = expectedTimeout;
+    }
+    if(probesTimeoutMap.find(expectedTimeout) == probesTimeoutMap.end())
+      break;
   }
-
   waitingProbes.insert(probe);
   probesTimeoutMap.insert(pair<long, Probe*>(expectedTimeout, probe));
 
@@ -59,9 +64,14 @@ bool SafeTimer::clearSyncTimer(Probe* probe) {
   if(!syncTimerRunning(probe))
     return true;
 
-  set<Probe*>::iterator probeIter = waitingProbes.find(probe);
-  if(probeIter != waitingProbes.end())
-    waitingProbes.erase(probeIter);
+  map<long, Probe*>::iterator probeIter = probesTimeoutMap.begin();
+  for(;probeIter != probesTimeoutMap.end(); probeIter++) {
+    if(probeIter->second == probe) {
+      waitingProbes.erase(probeIter->second);
+      probesTimeoutMap.erase(probeIter);
+      break;
+    }
+  }
 
   return true;
 }
