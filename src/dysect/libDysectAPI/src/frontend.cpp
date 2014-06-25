@@ -97,8 +97,6 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
       }
 
     } else {
-      printf("\n");
-      fflush(stdout);
     }
 
     for(int i = 0; i < doms.size(); i++) {
