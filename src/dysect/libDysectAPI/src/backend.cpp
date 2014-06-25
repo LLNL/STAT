@@ -374,6 +374,7 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
             } else {
               pthread_mutex_lock(&probesPendingActionMutex);
               SafeTimer::clearSyncTimer(probe);
+              probe->sendEnqueuedNotifications();
               vector<Probe*>::iterator probeIter = find(probesPendingAction.begin(), probesPendingAction.end(), probe); 
               if (probeIter != probesPendingAction.end()) {
                 probe->sendEnqueuedActions();

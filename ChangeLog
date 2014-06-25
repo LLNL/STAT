@@ -1,3 +1,6 @@
+2014-06-25 Gregory L. Lee <lee218@llnl.gov>
+	* backend.cpp : send enqueued notifications when handling action
+
 2014-06-24 Gregory L. Lee <lee218@llnl.gov>
 	* backend.cpp, safe_timer.cpp, SafeTimer.h, Timer.h : clear timer for handled probe
 
