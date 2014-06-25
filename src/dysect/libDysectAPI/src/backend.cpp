@@ -381,18 +381,13 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
                 probesPendingAction.erase(probeIter);
               }
               pthread_mutex_unlock(&probesPendingActionMutex);
-              ProcessSet::ptr lprocset = probe->getWaitingProcs();
-              if(lprocset->size() > 0) {
-
-                // OK to call - we are not in callback
+              if(probe->numWaitingProcs() > 0) {
+                ProcessSet::ptr lprocset = probe->getWaitingProcs();
                 probe->enableChildren(lprocset);
-
                 if(probe->getLifeSpan() == fireOnce)
                   probe->disable(lprocset);
-
                 Err::verbose(true, "TODO REMOVEME resume %d procs", lprocset->size());
                 lprocset->continueProcs();
-
                 probe->releaseWaitingProcs();
               }
             }
@@ -671,17 +666,14 @@ DysectAPI::DysectErrorCode Backend::handleTimerActions() {
       Err::verbose(true, "Sending enqueued actions for timed probe: %x", dom->getId());
       probe->sendEnqueuedActions();
 
-     ProcessSet::ptr lprocset = probe->getWaitingProcs();
-     if(lprocset->size() > 0) {
-         probe->enableChildren(lprocset);
-
-         if(probe->getLifeSpan() == fireOnce)
-           probe->disable(lprocset);
-
-         Err::verbose(true, "TODO REMOVEME resume %d procs", lprocset->size());
-         lprocset->continueProcs();
-
-         probe->releaseWaitingProcs();
+      if(probe->numWaitingProcs() > 0) {
+        ProcessSet::ptr lprocset = probe->getWaitingProcs();
+        probe->enableChildren(lprocset);
+        if(probe->getLifeSpan() == fireOnce)
+          probe->disable(lprocset);
+        Err::verbose(true, "TODO REMOVEME resume %d procs", lprocset->size());
+        lprocset->continueProcs();
+        probe->releaseWaitingProcs();
       }
     }
     probesPendingAction.clear();

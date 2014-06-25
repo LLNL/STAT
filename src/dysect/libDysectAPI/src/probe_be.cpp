@@ -247,6 +247,8 @@ bool Probe::releaseWaitingProcs() {
 }
 
 int Probe::numWaitingProcs() {
+  if(!procSetInitialized)
+    return -1;
   return waitingProcs->size();
 }
 
