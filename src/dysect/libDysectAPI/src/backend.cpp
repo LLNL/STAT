@@ -372,24 +372,7 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
             if(!probe) {
               Err::warn(false, "Probe for tag %x could not be found", tag);
             } else {
-              pthread_mutex_lock(&probesPendingActionMutex);
-              SafeTimer::clearSyncTimer(probe);
-              probe->sendEnqueuedNotifications();
-              vector<Probe*>::iterator probeIter = find(probesPendingAction.begin(), probesPendingAction.end(), probe); 
-              if (probeIter != probesPendingAction.end()) {
-                probe->sendEnqueuedActions();
-                probesPendingAction.erase(probeIter);
-              }
-              pthread_mutex_unlock(&probesPendingActionMutex);
-              if(probe->numWaitingProcs() > 0) {
-                ProcessSet::ptr lprocset = probe->getWaitingProcs();
-                probe->enableChildren(lprocset);
-                if(probe->getLifeSpan() == fireOnce)
-                  probe->disable(lprocset);
-                Err::verbose(true, "TODO REMOVEME resume %d procs", lprocset->size());
-                lprocset->continueProcs();
-                probe->releaseWaitingProcs();
-              }
+              Err::verbose(true, "Handling packet for probe %x", probe->getId());
             }
           }
         }
@@ -671,7 +654,6 @@ DysectAPI::DysectErrorCode Backend::handleTimerActions() {
         probe->enableChildren(lprocset);
         if(probe->getLifeSpan() == fireOnce)
           probe->disable(lprocset);
-        Err::verbose(true, "TODO REMOVEME resume %d procs", lprocset->size());
         lprocset->continueProcs();
         probe->releaseWaitingProcs();
       }
@@ -734,6 +716,9 @@ Process::cb_ret_t Backend::handleTimeEvent() {
     Event* event = *eventIter;
     ProcessSet::ptr procset = ((Time *)event)->getProcset();
     ProcessSet::iterator procIter = procset->begin();
+    if(procset->size() == 0)
+      continue;
+    Err::verbose(true, "Event detected on %d processes", procset->size());
     for(;procIter != procset->end(); procIter++) {
       Process::ptr procPtr = *procIter;
       if(event && event->isEnabled(procPtr)) {
@@ -742,6 +727,8 @@ Process::cb_ret_t Backend::handleTimeEvent() {
        Backend::handleEventPub(procPtr, threadPtr, event);
       }
     }
+    if(event->getOwner()->getLifeSpan() == fireOnce)
+      event->disable();
   }
 
   return Process::cbDefault;

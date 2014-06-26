@@ -1,3 +1,8 @@
+2014-06-26 Gregory L. Lee <lee218@llnl.gov>
+	* backend.cpp : disable fireonce timed probes after handling
+	* backend.cpp : no need to operate on relayed packet
+	* STAT_BackEnd.C : look for MRNet messages before handling Dysect operations
+
 2014-06-25 Gregory L. Lee <lee218@llnl.gov>
 	* frontend.cpp : remove errant printf!
 	* safe_timer.cpp : avoid overlapping probes in probesTimeoutMap with same timeout

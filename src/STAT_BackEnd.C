@@ -854,18 +854,6 @@ StatError_t STAT_BackEnd::mainLoop()
 
     do
     {
-#ifdef DYSECTAPI
-        if (dysectBE_)
-        {
-            DysectAPI::DysectErrorCode dysectRet = dysectBE_->handleAll();
-            if (dysectRet != DysectAPI::OK)
-            {
-                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "failure on call to dysectBE_ hanldeAll\n");
-                return STAT_STACKWALKER_ERROR;
-            }
-        }
-#endif
-
         /* Set the stackwalker notification file descriptor */
         if (processMap_.size() > 0 and processMapNonNull_ > 0)
             swNotificationFd = ProcDebug::getNotificationFD();
@@ -938,7 +926,20 @@ StatError_t STAT_BackEnd::mainLoop()
         recvShouldBlock=false;
         intRet = network_->recv(&tag, packet, &stream, recvShouldBlock);
         if (intRet == 0)
+        {
+#ifdef DYSECTAPI
+            if (dysectBE_)
+            {
+                DysectAPI::DysectErrorCode dysectRet = dysectBE_->handleAll();
+                if (dysectRet != DysectAPI::OK)
+                {
+                    printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "failure on call to dysectBE_ hanldeAll\n");
+                    return STAT_STACKWALKER_ERROR;
+                }
+            }
+#endif
             continue;
+        }
         else if (intRet != 1)
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::recv() failure %d\n", intRet);
