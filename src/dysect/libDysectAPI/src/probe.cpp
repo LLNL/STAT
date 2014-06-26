@@ -86,6 +86,7 @@ Probe::Probe( Event* event,
                                timerId(0),
                                procSetInitialized(false),
                                awaitingActions(0),
+                               processCount(0),
                                awaitingNotifications(0) {
   if(dom == 0) {
     dom = Domain::inherit();
@@ -110,6 +111,7 @@ Probe::Probe( Event* event,
                                procSetInitialized(false),
                                awaitingNotifications(0),
                                awaitingActions(0),
+                               processCount(0),
                                cond(0){
   if(dom == 0) {
     dom = Domain::inherit();
@@ -136,6 +138,7 @@ Probe::Probe( Event* event,
                                procSetInitialized(false),
                                awaitingNotifications(0),
                                awaitingActions(0),
+                               processCount(0),
                                cond(0){
   if(dom == 0) {
     dom = Domain::inherit();
@@ -158,6 +161,7 @@ Probe::Probe( Event* event,
                                timerId(0),
                                procSetInitialized(false),
                                awaitingActions(0),
+                               processCount(0),
                                awaitingNotifications(0) {
   dom = Domain::inherit();
  
