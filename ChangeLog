@@ -1,3 +1,7 @@
+2014-07-08 Gregory L. Lee <lee218@llnl.gov>
+	* frontend.cpp : check for EINTR on select failure
+	* frontend.cpp, default_probes.cpp : modified handling of process exit
+
 2014-06-26 Gregory L. Lee <lee218@llnl.gov>
 	* probe.cpp : initialize processCount to zero for all Probe constructors
 	* backend.cpp : disable fireonce timed probes after handling

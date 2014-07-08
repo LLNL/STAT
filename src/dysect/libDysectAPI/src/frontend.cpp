@@ -38,6 +38,7 @@ extern bool checkDaemonExit();
 DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
   int ret;
   static int count = 0;
+  static int exit = 0;
 
   // Install handler for (ctrl-c) abort
   // signal(SIGINT, Frontend::interrupt);
@@ -65,8 +66,10 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
     ret = select(Domain::getMaxFd() + 1, &fdRead, NULL, NULL, &timeout);
 
     if(ret < 0) {
-      //return Err::warn(DysectAPI::Error, "select() failed to listen on file descriptor set.");
-      return DysectAPI::Error;
+      if(errno == EINTR)
+        return DysectAPI::OK;
+      return Err::warn(DysectAPI::Error, "select() failed to listen on file descriptor set: %s", strerror(errno));
+      //return DysectAPI::Error;
     } 
 
     if(FD_ISSET(0, &fdRead) && breakOnEnter) {
@@ -74,8 +77,11 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
       return DysectAPI::OK;
     }
     if (checkAppExit()) {
-      Err::info(true, "Stopping session - application has exited");
-      return DysectAPI::OK;
+      if (exit * Frontend::selectTimeout >= 5) {
+        Err::info(true, "Stopping session - application has exited");
+        return DysectAPI::OK;
+      }
+      exit++;
     }
     if (checkDaemonExit()) {
       Err::info(true, "Stopping session - daemons have exited");
