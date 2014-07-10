@@ -45,6 +45,7 @@ namespace DysectAPI {
     }
 
     static bool startSyncTimer(Probe* probe);
+    static bool resetSyncTimer(Probe* probe);
     static bool clearSyncTimer(Probe* probe);
     static bool syncTimerRunning(Probe* probe);
     static bool anySyncReady();

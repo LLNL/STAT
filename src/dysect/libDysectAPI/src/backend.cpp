@@ -199,7 +199,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
             }
             
             if(probe->waitForOthers()) {
-              Err::verbose(true, "Wait (%ld) for group members", dom->getWaitTime());
+              Err::verbose(true, "Wait (%ld) for group members %d/%d", dom->getWaitTime(), probe->getProcessCount(), probe->getDomain()->getTotalNumProcs());
               probe->addWaitingProc(curProcess);
 
               if((dom->getWaitTime() == Wait::inf) && (probe->staticGroupWaiting())) {
@@ -229,6 +229,13 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                 Err::verbose(true, "Requesting disablement of probe");
                 probe->enqueueDisable(curProcess);
                 retState = Process::cbProcStop;
+              }
+            }
+
+            if(probe->waitForOthers() && (probe->getProcessCount() >= probe->getDomain()->getTotalNumProcs())) {
+              Err::verbose(true, "%d/%d group members reported, triggering action", probe->getProcessCount(), probe->getDomain()->getTotalNumProcs());
+              if (!DysectAPI::SafeTimer::resetSyncTimer(probe)) {
+                Err::warn(false, "Failed to reset timer (%ld) and invoke: %x", dom->getWaitTime(), dom->getId());
               }
             }
 #if 0 

@@ -45,15 +45,49 @@ bool SafeTimer::startSyncTimer(Probe* probe) {
   {
     expectedTimeout = getTimeStamp() + timeout;
 
-    if(expectedTimeout <= nextTimeout) {
-      nextTimeout = expectedTimeout;
-    }
     if(probesTimeoutMap.find(expectedTimeout) == probesTimeoutMap.end())
       break;
+  }
+
+  if(expectedTimeout <= nextTimeout) {
+    nextTimeout = expectedTimeout;
   }
   waitingProbes.insert(probe);
   probesTimeoutMap.insert(pair<long, Probe*>(expectedTimeout, probe));
 
+  return true;
+}
+
+bool SafeTimer::resetSyncTimer(Probe* probe) {
+  if(!probe)
+    return false;
+
+  if(!syncTimerRunning(probe))
+    return true;
+
+  long expectedTimeout = -1;
+
+  map<long, Probe*>::iterator probeIter = probesTimeoutMap.begin();
+  for(;probeIter != probesTimeoutMap.end(); probeIter++) {
+    if(probeIter->second == probe) {
+      probesTimeoutMap.erase(probeIter);
+      expectedTimeout = probeIter->first;
+      break;
+    }
+  }
+
+  if(expectedTimeout == -1)
+    return false;
+
+  while (1)
+  {
+    expectedTimeout = getTimeStamp();
+    if(probesTimeoutMap.find(expectedTimeout) == probesTimeoutMap.end())
+      break;
+  }
+  nextTimeout = expectedTimeout;
+
+  probesTimeoutMap.insert(pair<long, Probe*>(expectedTimeout, probe));
   return true;
 }
 

@@ -1,3 +1,7 @@
+2014-07-10 Gregory L. Lee <lee218@llnl.gov>
+	* SafeTimer.h, safe_timer.cpp : added resetSyncTimer function
+	* backend.cpp : reset timer when all target procs satisfy a probe condition to trigger action immediately
+
 2014-07-08 Gregory L. Lee <lee218@llnl.gov>
 	* frontend.cpp : check for EINTR on select failure
 	* frontend.cpp, default_probes.cpp : modified handling of process exit
