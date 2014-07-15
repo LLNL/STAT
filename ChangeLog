@@ -1,3 +1,6 @@
+2014-07-15 Gregory L. Lee <lee218@llnl.gov>
+	* backend.cpp : only wait for attached processes, not full domain
+
 2014-07-10 Gregory L. Lee <lee218@llnl.gov>
 	* SafeTimer.h, safe_timer.cpp : added resetSyncTimer function
 	* backend.cpp : reset timer when all target procs satisfy a probe condition to trigger action immediately

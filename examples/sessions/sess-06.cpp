@@ -2,7 +2,7 @@
 
 DysectStatus DysectAPI::onProcStart() {
 
-  Probe* p1    = new Probe(Code::location("mpi_ringtopo2.cpp#94"),
+  Probe* p1    = new Probe(Code::location("mpi_ringtopo2.cpp#97"),
                            //Domain::world(2000, true),
                            Domain::group("1,4,5", 2000),
                            //Domain::group("4,5"),
@@ -17,7 +17,7 @@ DysectStatus DysectAPI::onProcStart() {
                            Acts(Act::trace("Location is @location()'"),
                                 Act::detach()));
   p1->link(p1b);
-  Probe* p2    = new Probe(Code::location("mpi_ringtopo2.cpp#73"),
+  Probe* p2    = new Probe(Code::location("mpi_ringtopo2.cpp#76"),
                            Domain::world(),
                            Acts(Act::stackTrace(), 
                                 Act::trace("Location is '@location()'"),
@@ -25,7 +25,8 @@ DysectStatus DysectAPI::onProcStart() {
   
   Probe* p3    = new Probe(Code::location("mpi_ringtopo2.cpp#60"),
                            Domain::world(5000, true),
-                           Act::stat());
+                           Acts(Act::trace("Location is '@location()'"),
+                                Act::stat()));
 
   Probe* p4    = new Probe(Async::signal(SIGUSR1), 
                            Domain::world(500), 

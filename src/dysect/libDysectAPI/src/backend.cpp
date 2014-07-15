@@ -197,9 +197,11 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               probe->triggerAction(curProcess, curThread);
 
             }
+            ProcessSet::ptr lprocset;
+            probe->getDomain()->getAttached(lprocset);
             
             if(probe->waitForOthers()) {
-              Err::verbose(true, "Wait (%ld) for group members %d/%d", dom->getWaitTime(), probe->getProcessCount(), probe->getDomain()->getTotalNumProcs());
+              Err::verbose(true, "Wait (%ld) for group members %d/%d", dom->getWaitTime(), probe->getProcessCount(), lprocset->size());
               probe->addWaitingProc(curProcess);
 
               if((dom->getWaitTime() == Wait::inf) && (probe->staticGroupWaiting())) {
@@ -232,8 +234,8 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               }
             }
 
-            if(probe->waitForOthers() && (probe->getProcessCount() >= probe->getDomain()->getTotalNumProcs())) {
-              Err::verbose(true, "%d/%d group members reported, triggering action", probe->getProcessCount(), probe->getDomain()->getTotalNumProcs());
+            if(probe->waitForOthers() && (probe->getProcessCount() >= lprocset->size())) {
+              Err::verbose(true, "%d/%d group members reported, triggering action", probe->getProcessCount(), lprocset->size());
               if (!DysectAPI::SafeTimer::resetSyncTimer(probe)) {
                 Err::warn(false, "Failed to reset timer (%ld) and invoke: %x", dom->getWaitTime(), dom->getId());
               }

@@ -57,7 +57,10 @@ int main (int argc, char *argv[])
     MPI_Waitall(2, reqs, stats);
 
     MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Finalize(); sleep(5); if (rank == 0) printf("mpi_ringtopo Done\n");
+    MPI_Finalize();
+    sleep(5);
+    if (rank == 0)
+      printf("mpi_ringtopo Done\n");
     return 0;
 }
 
