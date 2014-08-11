@@ -174,6 +174,13 @@ namespace DysectAPI {
     Dyninst::ProcControlAPI::ProcessSet::ptr getProcset();
     void setOwner(Probe* probe) { owner = probe; }
 
+
+    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+                      Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    
+    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process);
+
+
     };
 
   typedef enum AsyncType {

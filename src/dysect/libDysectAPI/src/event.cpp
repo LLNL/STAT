@@ -190,6 +190,31 @@ bool Time::prepare() {
   return true;
 }
 
+
+bool Time::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+                      Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  return wasTriggered(process);
+}
+
+bool Time::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process) {
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  long timestamp_now = ((now.tv_sec) * 1000) + ((now.tv_usec) / 1000);
+  return timestamp_now < timeout;
+}
+
+Time::Time(TimeType type_, int timeout_) : type(type_), Event() {
+  struct timeval start;
+  gettimeofday(&start, NULL);
+  timeout = ((start.tv_sec) * 1000) + ((start.tv_usec) / 1000) + timeout_;
+}
+
+DysectAPI::Event* Time::within(int timeout) {
+  return new Time(WithinType, timeout);
+}
+
+
+
 Location* Code::location(string locationExpr) {
   Location* location = new Location(locationExpr);
 
