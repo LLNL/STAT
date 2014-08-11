@@ -236,24 +236,14 @@ CombinedEvent::CombinedEvent(DysectAPI::Event* first, DysectAPI::Event* second, 
 
 bool CombinedEvent::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
                       Dyninst::ProcControlAPI::Thread::const_ptr thread) {
-  bool firstEval = false;
-  bool secondEval = false;
   switch(relation)
   {
     case AndRel:
-      firstEval = first->wasTriggered(process, thread);
-      secondEval = second->wasTriggered(process, thread);
-      Err::verbose(true, "wasTriggered event : %d %d", firstEval, secondEval);
-      return  firstEval && secondEval;
+      return  first->wasTriggered(process, thread) && second->wasTriggered(process, thread);
     case OrRel:
-      firstEval = first->wasTriggered(process, thread);
-      secondEval = second->wasTriggered(process, thread);
-      Err::verbose(true, "wasTriggered event : %d %d", firstEval, secondEval);
-      return  firstEval || secondEval;
+      return  first->wasTriggered(process, thread) || second->wasTriggered(process, thread);
     case NotRel:
-      firstEval = first->wasTriggered(process, thread);
-      Err::verbose(true, "wasTriggered event not: %d", !firstEval);
-      return !(firstEval);
+      return !(first->wasTriggered(process, thread));
     default:
       assert(0);
       return 0;

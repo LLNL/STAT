@@ -269,6 +269,8 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
         } else {
           Err::warn(false, "Could not evaluate conditions for probe");
         }
+      } else {
+        retState = Process::cbProcContinue;
       }
 
     }
