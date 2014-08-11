@@ -162,7 +162,7 @@ bool FileLocation::collect(void* process, void *thread) {
       return Err::warn(false, "Failed to pause process");
   }
 
-  Err::info(true, "Read PC as: 0x%08lx", (unsigned long)pcVal);
+  Err::verbose(true, "Read PC as: 0x%08lx", (unsigned long)pcVal);
 
   string fileName = "?";
   int line = 0;

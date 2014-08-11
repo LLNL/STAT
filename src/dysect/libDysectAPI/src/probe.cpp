@@ -30,8 +30,8 @@ void Probe::linkComponents() {
 
   dom->owner = this;
 
-  event->owner = this;
-
+  event->setOwner(this);
+  
   if(cond) {
     cond->owner = this;
   }
