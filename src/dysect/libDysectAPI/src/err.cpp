@@ -26,10 +26,10 @@ FILE* Err::outStream;
 extern FILE *gStatOutFp;
 bool Err::useStatOutFp_ = false;
 
-#define DYSECT_LOG
+//#define DYSECT_LOG
 #define DYSECT_INFO
 #define DYSECT_WARN
-#define DYSECT_VERBOSE
+//#define DYSECT_VERBOSE
 
 void Err::init(FILE* estream, FILE* ostream, bool useStatOutFp) {
     errStream = estream;

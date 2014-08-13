@@ -56,15 +56,17 @@ namespace DysectAPI {
 
     virtual bool isEnabled(Dyninst::ProcControlAPI::Process::const_ptr process) = 0;
 
+    virtual void setOwner(Probe* probe) = 0;
 
     Probe* getOwner();
-    void triggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+    virtual void triggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
                    Dyninst::ProcControlAPI::Thread::const_ptr thread);
 
-    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
-                      Dyninst::ProcControlAPI::Thread::const_ptr thread);
-    
-    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process);
+    virtual bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+                              Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+
+    virtual bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process);
 
     };
 
@@ -93,9 +95,18 @@ namespace DysectAPI {
 
     bool isProcessWide() { return true; }
 
-    CombinedEvent(Event* first, Event* second, EventRelation relation);
+    void setOwner(Probe* probe) { owner = probe; first->setOwner(probe); if(relation != NotRel) {second->setOwner(probe); } }
 
-    // XXX: Overwrite wasTriggered to support composability
+    CombinedEvent(Event* first, Event* second, EventRelation relation);
+    
+    void triggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+                      Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    
+    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process);
+
   };
 
   class Location: public Event {
@@ -120,6 +131,7 @@ namespace DysectAPI {
 
     bool prepare();
     bool isProcessWide() { return false; }
+    void setOwner(Probe* probe) { owner = probe; }
   };
 
     class Function : public Location {
@@ -139,7 +151,7 @@ namespace DysectAPI {
 
     class Time : public Event {
     TimeType type;
-    int timeout;
+    long timeout;
 
     Dyninst::ProcControlAPI::ProcessSet::ptr procset;
 
@@ -160,6 +172,15 @@ namespace DysectAPI {
     bool isEnabled(Dyninst::ProcControlAPI::Process::const_ptr process);
     static std::set<Event*>& getTimeSubscribers();
     Dyninst::ProcControlAPI::ProcessSet::ptr getProcset();
+    void setOwner(Probe* probe) { owner = probe; }
+
+
+    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+                      Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    
+    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process);
+
+
     };
 
   typedef enum AsyncType {
@@ -198,7 +219,7 @@ namespace DysectAPI {
     bool disable();
     bool disable(Dyninst::ProcControlAPI::ProcessSet::ptr lprocset);
     bool prepare();
-
+    void setOwner(Probe* probe) { owner = probe; }
     bool isProcessWide() { return true; }
     };
 

@@ -36,7 +36,7 @@ set<DysectAPI::Event*>& Time::getTimeSubscribers() {
 }
 
 bool Time::enable() {
-  Err::info(true, "Enable Time Event");
+  Err::verbose(true, "Enable Time Event");
   assert(owner != 0);
 
   //if(codeLocations.empty()) {
@@ -62,7 +62,7 @@ bool Time::enable(ProcessSet::ptr lprocset) {
   //TODO: time probe not fully functional, only works with timeout of 0
   if (timeout != 0)
     Err::warn(true, "Warning, time probe not fully functional, only works with timeout of 0");
-  Err::info(true, "Enable time event for procset size %d with timeout %d", lprocset->size(), timeout);
+  Err::verbose(true, "Enable time event for procset size %d with timeout %ld", lprocset->size(), timeout);
   if(!lprocset) {
     return Err::warn(false, "Process set not present");
   }
@@ -81,7 +81,7 @@ bool Time::enable(ProcessSet::ptr lprocset) {
 }
 
 bool Time::disable() {
-  Err::info(true, "Disable Time Event");
+  Err::verbose(true, "Disable Time Event");
   if(procset && !procset->empty()) {
     procset->clear();
   }
@@ -90,7 +90,7 @@ bool Time::disable() {
 }
 
 bool Time::disable(ProcessSet::ptr lprocset) {
-  Err::info(true, "Disable time event for procset size %d with timeout %d", lprocset->size(), timeout);
+  Err::verbose(true, "Disable time event for procset size %d with timeout %ld", lprocset->size(), timeout);
 
   set<Event*>::iterator evIter = timeSubscribers.find(this);
   if(evIter != timeSubscribers.end()) {
