@@ -1,3 +1,9 @@
+2014-08-15 Gregory L. Lee <lee218@llnl.gov>
+	* LocationBE.C : use getInitialFrame instead of walking full stack
+
+2014-08-11 Nicklas Jensen <nboa@dtu.dk>
+	* : added Event composition
+
 2014-07-15 Gregory L. Lee <lee218@llnl.gov>
 	* backend.cpp : only wait for attached processes, not full domain
 

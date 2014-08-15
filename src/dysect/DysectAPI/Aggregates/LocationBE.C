@@ -52,25 +52,24 @@ bool FuncLocation::collect(void* process, void *thread) {
       return Err::warn(false, "Failed to pause process");
   }
 
-  vector<Stackwalker::Frame> stackWalk;
-  if(!proc->walkStack(stackWalk)) {
+  Stackwalker::Frame curFrame(proc);
+  if(!proc->getInitialFrame(curFrame)) {
     if (wasRunning == true) {
       boolRet = pDebug->resume();
       if (boolRet == false)
         Err::warn(false, "Failed to resume process");
     }
-    return Err::warn(false, "Func Location could not walk stack: %s", Stackwalker::getLastErrorMsg());
+    return Err::warn(false, "Func Location could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
   }
+  string frameName;
+  if(!curFrame.getName(frameName))
+    Err::warn(false, "Failed to get frame name: %s", Stackwalker::getLastErrorMsg());
 
   if (wasRunning == true) {
     boolRet = pDebug->resume();
     if (boolRet == false)
       return Err::warn(false, "Failed to resume process");
   }
-
-  Stackwalker::Frame& curFrame = stackWalk[0];
-  string frameName;
-  curFrame.getName(frameName);
 
   if(countMap.empty()) {
     Err::verbose(true, "Countmap empty - add framename");
@@ -126,19 +125,18 @@ bool FileLocation::collect(void* process, void *thread) {
       return Err::warn(false, "Failed to pause process");
   }
 
-  vector<Stackwalker::Frame> stackWalk;
-  if(!proc->walkStack(stackWalk)) {
+  Stackwalker::Frame curFrame(proc);
+  if(!proc->getInitialFrame(curFrame)) {
     if (wasRunning == true) {
       boolRet = pDebug->resume();
       if (boolRet == false)
         Err::warn(false, "Failed to resume process");
     }
-    return Err::warn(false, "File Location could not walk stack: %s", Stackwalker::getLastErrorMsg());
+    return Err::warn(false, "File Location could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
   }
-
-  Stackwalker::Frame& curFrame = stackWalk[0];
   string frameName;
-  curFrame.getName(frameName);
+  if(!curFrame.getName(frameName))
+    Err::warn(false, "Failed to get frame name: %s", Stackwalker::getLastErrorMsg());
 
   
   vector<LineNoTuple *> lines;
@@ -212,14 +210,13 @@ bool FuncParamNames::collect(void* process, void* thread) {
     return Err::verbose(false, "Could not get walker from process");
   }
 
-  vector<Stackwalker::Frame> stackWalk;
-  if(!proc->walkStack(stackWalk)) {
-    return Err::warn(false, "Could not walk stack");
+  Stackwalker::Frame curFrame(proc);
+  if(!proc->getInitialFrame(curFrame)) {
+    return Err::warn(false, "FuncParamNames could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
   }
-
-  Stackwalker::Frame& curFrame = stackWalk[0];
   string frameName;
-  curFrame.getName(frameName);
+  if(!curFrame.getName(frameName))
+    Err::warn(false, "Failed to get frame name: %s", Stackwalker::getLastErrorMsg());
 
   vector<string> params;
   if(!DataLocation::getParams(params, proc)) {
