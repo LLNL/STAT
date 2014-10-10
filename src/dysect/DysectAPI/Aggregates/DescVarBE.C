@@ -29,19 +29,19 @@ bool DescribeVariable::collect(void* process, void *thread) {
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
 
   if(!process_ptr) {
-    return Err::verbose(false, "Process object not available");
+    return DYSECTVERBOSE(false, "Process object not available");
   }
 
   Walker* proc = (Walker*)process_ptr->getData();
 
   if(!proc) {
-    return Err::verbose(false, "Could not get walker from process");
+    return DYSECTVERBOSE(false, "Could not get walker from process");
   }
   
   DataLocation* varLocation;
 
   if(!DataLocation::findVariable(process_ptr, proc, varName, varLocation)) {
-    return Err::warn(false, "Could not locate variable '%s'", varName.c_str());
+    return DYSECTWARN(false, "Could not locate variable '%s'", varName.c_str());
   }
 
   string varSpec = "";
@@ -59,7 +59,7 @@ bool DescribeVariable::collect(void* process, void *thread) {
         Max* maxagg = new Max("%d", varName.c_str());
 
         if(!minagg) {
-          return Err::verbose(false, "Minimum aggregate could not be created");
+          return DYSECTVERBOSE(false, "Minimum aggregate could not be created");
         }
 
         minagg->collect(process, thread);
@@ -81,7 +81,7 @@ bool DescribeVariable::collect(void* process, void *thread) {
   
         varSpecs.push_back(varSpec);
 
-        Err::verbose(true, "Var spec: %s", varSpec.c_str());
+        DYSECTVERBOSE(true, "Var spec: %s", varSpec.c_str());
       } else {
         // Collect existing
         if(!aggregates.empty()) {
@@ -95,7 +95,7 @@ bool DescribeVariable::collect(void* process, void *thread) {
         }
       }
     } else {
-      Err::verbose(true, "DescribeVariable(%s) collected: isStructure(%s)", varName.c_str(), varLocation->isStructure() ? "yes" : "no");
+      DYSECTVERBOSE(true, "DescribeVariable(%s) collected: isStructure(%s)", varName.c_str(), varLocation->isStructure() ? "yes" : "no");
       Type* symType = varLocation->getType();
       typeStruct *stType = symType->getStructType();
       if(stType) {
@@ -107,7 +107,7 @@ bool DescribeVariable::collect(void* process, void *thread) {
             Field* field = *fieldIter;
 
             if(field) {
-              Err::verbose(true, "Member: '%s'", field->getName().c_str());
+              DYSECTVERBOSE(true, "Member: '%s'", field->getName().c_str());
             }
           }
         }

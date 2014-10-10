@@ -42,7 +42,7 @@ DysectAPI::DysectErrorCode ExprTree::evaluate(ConditionResult& conditionResult, 
   }
 
 
-  Err::verbose(true, "Starting evaluation");
+  DYSECTVERBOSE(true, "Starting evaluation");
   code = root->evaluate(conditionResult, constant, process, tid);
   if(code != OK) {
     return code;
@@ -59,7 +59,7 @@ DysectAPI::DysectErrorCode TargetVar::getValue(ConditionResult& result, Value& c
 
   Walker* proc = (Walker*)process->getData();
   if(!proc) {
-    return Err::warn(Error, "Walker not found for process: %d", process->getPid());
+    return DYSECTWARN(Error, "Walker not found for process: %d", process->getPid());
   }
 
   DataLocation* dataLoc;
@@ -67,14 +67,14 @@ DysectAPI::DysectErrorCode TargetVar::getValue(ConditionResult& result, Value& c
 
   if(!DataLocation::findVariable(process, proc, name, dataLoc)) {
     // Variable not found
-    return Err::warn(Error, "Variable '%s' not found", name.c_str());
+    return DYSECTWARN(Error, "Variable '%s' not found", name.c_str());
   }
 
   Value nc;
   DysectAPI::DysectErrorCode code = dataLoc->getValue(nc);
 
-  Err::verbose(true, "Read long value: %ld", nc.getValue<long>());
-  Err::verbose(true, "Read int value: %d", nc.getValue<int>());
+  DYSECTVERBOSE(true, "Read long value: %ld", nc.getValue<long>());
+  DYSECTVERBOSE(true, "Read int value: %d", nc.getValue<int>());
 
   if(code != OK)
     return code;

@@ -28,7 +28,7 @@ using namespace MRN;
 bool Stat::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   Backend::setPendingExternalAction(Backend::getPendingExternalAction() + 1);
-  Err::verbose(true, "Stat::collect %d %d", owner->getProcessCount(), Backend::getPendingExternalAction());
+  DYSECTVERBOSE(true, "Stat::collect %d %d", owner->getProcessCount(), Backend::getPendingExternalAction());
   return true;
 }
 
@@ -38,7 +38,7 @@ bool Stat::finishFE(int count) {
 }
 
 bool Stat::finishBE(struct packet*& p, int& len) {
-  Err::verbose(true, "Stat::finishBE %d %d", owner->getProcessCount(), Backend::getPendingExternalAction());
+  DYSECTVERBOSE(true, "Stat::finishBE %d %d", owner->getProcessCount(), Backend::getPendingExternalAction());
 
   Backend::setPendingExternalAction(Backend::getPendingExternalAction() - owner->getProcessCount());
 
@@ -48,7 +48,7 @@ bool Stat::finishBE(struct packet*& p, int& len) {
 bool StackTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
 
-  Err::verbose(true, "StackTrace::collect");
+  DYSECTVERBOSE(true, "StackTrace::collect");
   if(traces) {
     traces->collect((void*)&process, (void*)&thread);
   }
@@ -62,14 +62,14 @@ bool StackTrace::finishFE(int count) {
 }
 
 bool StackTrace::finishBE(struct packet*& p, int& len) {
-  Err::verbose(true, "StackTrace::finishBE");
+  DYSECTVERBOSE(true, "StackTrace::finishBE");
   vector<AggregateFunction*> aggregates;
 
   if(traces) {
     aggregates.push_back(traces);
 
     if(!AggregateFunction::getPacket(aggregates, len, p)) {
-      return Err::warn(false, "Packet could not be constructed from aggregates!");
+      return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
     }
 
     traces->clear();
@@ -81,7 +81,7 @@ bool StackTrace::finishBE(struct packet*& p, int& len) {
 bool Trace::collect(Process::const_ptr process,
                     Thread::const_ptr thread) {
 
-  Err::verbose(true, "Trace::collect");
+  DYSECTVERBOSE(true, "Trace::collect");
   if(aggregates.empty())
     return true;
 
@@ -89,7 +89,7 @@ bool Trace::collect(Process::const_ptr process,
   for(;aggIter != aggregates.end(); aggIter++) {
     AggregateFunction* aggregate = *aggIter;
     if(aggregate) {
-      Err::verbose(true, "Collect data for trace message");
+      DYSECTVERBOSE(true, "Collect data for trace message");
       aggregate->collect((void*)&process, (void*)&thread); // Ugly, but aggregation headers cannot know about Dyninst
     }
   }
@@ -98,7 +98,7 @@ bool Trace::collect(Process::const_ptr process,
 }
 
 bool Trace::finishBE(struct packet*& p, int& len) {
-  Err::verbose(true, "Trace::finishBE");
+  DYSECTVERBOSE(true, "Trace::finishBE");
   if(aggregates.empty())
     return true;
 
@@ -121,7 +121,7 @@ bool Trace::finishBE(struct packet*& p, int& len) {
   }
 
   if(!AggregateFunction::getPacket(realAggregates, len, p)) {
-    return Err::warn(false, "Packet could not be constructed from aggregates!");
+    return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
   }
 
   aggIter = realAggregates.begin();
@@ -146,12 +146,12 @@ bool DetachAll::prepare() {
 
 bool DetachAll::collect(Process::const_ptr process,
                      Thread::const_ptr thread) {
-  Err::verbose(true, "Collect for detachAll");
+  DYSECTVERBOSE(true, "Collect for detachAll");
   return true;
 }
 
 bool DetachAll::finishBE(struct packet*& p, int& len) {
-  Err::verbose(true, "finish for detachAll");
+  DYSECTVERBOSE(true, "finish for detachAll");
   return true;
 }
 
@@ -167,18 +167,18 @@ bool Detach::prepare() {
 
 bool Detach::collect(Process::const_ptr process,
                      Thread::const_ptr thread) {
-  Err::verbose(true, "Collect for detach");
+  DYSECTVERBOSE(true, "Collect for detach");
   detachProcs->insert(process);
   return true;
 }
 
 bool Detach::finishBE(struct packet*& p, int& len) {
-  Err::verbose(true, "finish for detach");
+  DYSECTVERBOSE(true, "finish for detach");
   detachProcs = ProcessMgr::filterExited(detachProcs);
   if(detachProcs && !detachProcs->empty()) {
     bool ret = ProcessMgr::detach(detachProcs);
     if (ret == false)
-      Err::warn(true, "finishBE for detach failed");
+      DYSECTWARN(true, "finishBE for detach failed");
     detachProcs->clear();
     return ret;
   }

@@ -54,7 +54,7 @@ bool Group::resolveExpr() {
       // Single rank
       mpi_rank_t rank = atoi(ranks[0].c_str());
       if(rank < 0) {
-        return Err::verbose(false, "rank negative");
+        return DYSECTVERBOSE(false, "rank negative");
       }
       mpiRankIntervals.insert(pair<mpi_rank_t, mpi_rank_t>(rank, rank));
     } else if(ranks.size() == 2) {
@@ -63,12 +63,12 @@ bool Group::resolveExpr() {
       mpi_rank_t end =   atoi(ranks[1].c_str());
 
       if((start < 0) || (end < 0) || (start > end)) {
-        return Err::verbose(false, "Start and end interval not valid: %d -> %d", start, end);
+        return DYSECTVERBOSE(false, "Start and end interval not valid: %d -> %d", start, end);
       }
 
       mpiRankIntervals.insert(pair<mpi_rank_t, mpi_rank_t>(start, end));
     } else {
-      return Err::verbose(false, "Ill-formed interval");
+      return DYSECTVERBOSE(false, "Ill-formed interval");
     }
   }
 

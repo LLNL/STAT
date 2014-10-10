@@ -31,25 +31,25 @@ bool FuncLocation::collect(void* process, void *thread) {
   ProcDebug *pDebug;
 
   if(!process_ptr) {
-    return Err::verbose(false, "Process object not available");
+    return DYSECTVERBOSE(false, "Process object not available");
   }
 
   Walker* proc = (Walker*)process_ptr->getData();
 
   if(!proc) {
-    return Err::verbose(false, "Could not get walker from process");
+    return DYSECTVERBOSE(false, "Could not get walker from process");
   }
 
   if (process_ptr->allThreadsRunning()) {
     wasRunning = true;
     pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
     if (pDebug == NULL)
-      return Err::warn(false, "Failed to dynamic_cast ProcDebug pointer");
+      return DYSECTWARN(false, "Failed to dynamic_cast ProcDebug pointer");
     if (pDebug->isTerminated())
-      return Err::warn(false, "Process is terminated");
+      return DYSECTWARN(false, "Process is terminated");
     boolRet = pDebug->pause();
     if (boolRet == false)
-      return Err::warn(false, "Failed to pause process");
+      return DYSECTWARN(false, "Failed to pause process");
   }
 
   Stackwalker::Frame curFrame(proc);
@@ -57,9 +57,9 @@ bool FuncLocation::collect(void* process, void *thread) {
     if (wasRunning == true) {
       boolRet = pDebug->resume();
       if (boolRet == false)
-        Err::warn(false, "Failed to resume process");
+        DYSECTWARN(false, "Failed to resume process");
     }
-    return Err::warn(false, "Func Location could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
+    return DYSECTWARN(false, "Func Location could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
   }
   string frameName;
   if(!curFrame.getName(frameName))
@@ -68,24 +68,24 @@ bool FuncLocation::collect(void* process, void *thread) {
   if (wasRunning == true) {
     boolRet = pDebug->resume();
     if (boolRet == false)
-      return Err::warn(false, "Failed to resume process");
+      return DYSECTWARN(false, "Failed to resume process");
   }
 
   if(countMap.empty()) {
-    Err::verbose(true, "Countmap empty - add framename");
+    DYSECTVERBOSE(true, "Countmap empty - add framename");
     countMap.insert(pair<string, int>(frameName, 1));
   } else {
-    Err::verbose(true, "Countmap not empty - look for frame");
+    DYSECTVERBOSE(true, "Countmap not empty - look for frame");
     map<string, int>::iterator mapIter = countMap.find(frameName);
     int count = 1;
     if(mapIter != countMap.end()) {
       count = mapIter->second;
-      Err::verbose(true, "Frame found - remove, increment(%d) and add item", count);
+      DYSECTVERBOSE(true, "Frame found - remove, increment(%d) and add item", count);
       countMap.erase(mapIter);
       count++;
     }
 
-    Err::verbose(true, "Adding frame %s(%d)", frameName.c_str(), count);
+    DYSECTVERBOSE(true, "Adding frame %s(%d)", frameName.c_str(), count);
 
     countMap.insert(pair<string, int>(frameName, count));
   }
@@ -100,29 +100,29 @@ bool FileLocation::collect(void* process, void *thread) {
   ProcDebug *pDebug;
 
   if(!process_ptr) {
-    return Err::verbose(false, "Process object not available");
+    return DYSECTVERBOSE(false, "Process object not available");
   }
 
   if(!thread_ptr) {
-    return Err::verbose(false, "Cannot get program counter without thread object");
+    return DYSECTVERBOSE(false, "Cannot get program counter without thread object");
   }
 
   Walker* proc = (Walker*)process_ptr->getData();
 
   if(!proc) {
-    return Err::verbose(false, "Could not get walker from process");
+    return DYSECTVERBOSE(false, "Could not get walker from process");
   }
 
   if (process_ptr->allThreadsRunning()) {
     wasRunning = true;
     pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
     if (pDebug == NULL)
-      return Err::warn(false, "Failed to dynamic_cast ProcDebug pointer");
+      return DYSECTWARN(false, "Failed to dynamic_cast ProcDebug pointer");
     if (pDebug->isTerminated())
-      return Err::warn(false, "Process is terminated");
+      return DYSECTWARN(false, "Process is terminated");
     boolRet = pDebug->pause();
     if (boolRet == false)
-      return Err::warn(false, "Failed to pause process");
+      return DYSECTWARN(false, "Failed to pause process");
   }
 
   Stackwalker::Frame curFrame(proc);
@@ -130,9 +130,9 @@ bool FileLocation::collect(void* process, void *thread) {
     if (wasRunning == true) {
       boolRet = pDebug->resume();
       if (boolRet == false)
-        Err::warn(false, "Failed to resume process");
+        DYSECTWARN(false, "Failed to resume process");
     }
-    return Err::warn(false, "File Location could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
+    return DYSECTWARN(false, "File Location could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
   }
   string frameName;
   if(!curFrame.getName(frameName))
@@ -149,24 +149,24 @@ bool FileLocation::collect(void* process, void *thread) {
     if (wasRunning == true) {
       boolRet = pDebug->resume();
       if (boolRet == false)
-        Err::warn(false, "Failed to resume process");
+        DYSECTWARN(false, "Failed to resume process");
     }
-    return Err::verbose(false, "Could not read value of program counter: %s", Stackwalker::getLastErrorMsg());
+    return DYSECTVERBOSE(false, "Could not read value of program counter: %s", Stackwalker::getLastErrorMsg());
   }
 
   if (wasRunning == true) {
     boolRet = pDebug->resume();
     if (boolRet == false)
-      return Err::warn(false, "Failed to pause process");
+      return DYSECTWARN(false, "Failed to pause process");
   }
 
-  Err::verbose(true, "Read PC as: 0x%08lx", (unsigned long)pcVal);
+  DYSECTINFO(true, "Read PC as: 0x%08lx", (unsigned long)pcVal);
 
   string fileName = "?";
   int line = 0;
 
   if(SymbolTable::getFileLineByAddr(fileName, line, pcVal, proc) != OK) {
-    return Err::verbose(false, "Could not get file & line for pc(0x%08lx)", pcVal);
+    return DYSECTVERBOSE(false, "Could not get file & line for pc(0x%08lx)", pcVal);
   }
 
   const int bufSize = 512;
@@ -197,22 +197,22 @@ bool FuncParamNames::collect(void* process, void* thread) {
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
 
   if(!process_ptr) {
-    return Err::verbose(false, "Process object not available");
+    return DYSECTVERBOSE(false, "Process object not available");
   }
 
   if(!thread_ptr) {
-    return Err::verbose(false, "Cannot get program counter without thread object");
+    return DYSECTVERBOSE(false, "Cannot get program counter without thread object");
   }
 
   Walker* proc = (Walker*)process_ptr->getData();
 
   if(!proc) {
-    return Err::verbose(false, "Could not get walker from process");
+    return DYSECTVERBOSE(false, "Could not get walker from process");
   }
 
   Stackwalker::Frame curFrame(proc);
   if(!proc->getInitialFrame(curFrame)) {
-    return Err::warn(false, "FuncParamNames could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
+    return DYSECTWARN(false, "FuncParamNames could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
   }
   string frameName;
   if(!curFrame.getName(frameName))
@@ -220,7 +220,7 @@ bool FuncParamNames::collect(void* process, void* thread) {
 
   vector<string> params;
   if(!DataLocation::getParams(params, proc)) {
-    return Err::verbose(false, "Could not get parameters for function");
+    return DYSECTVERBOSE(false, "Could not get parameters for function");
   }
 
   // Build parameter string
@@ -271,22 +271,22 @@ bool StackTraces::collect(void* process, void* thread) {
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
 
   if(!process_ptr) {
-    return Err::verbose(false, "Process object not available");
+    return DYSECTVERBOSE(false, "Process object not available");
   }
 
   if(!thread_ptr) {
-    return Err::verbose(false, "Cannot get program counter without thread object");
+    return DYSECTVERBOSE(false, "Cannot get program counter without thread object");
   }
 
   Walker* proc = (Walker*)process_ptr->getData();
 
   if(!proc) {
-    return Err::verbose(false, "Could not get walker from process");
+    return DYSECTVERBOSE(false, "Could not get walker from process");
   }
 
   vector<Stackwalker::Frame> stackWalk;
   if(!proc->walkStack(stackWalk)) {
-    return Err::warn(false, "Could not walk stack");
+    return DYSECTWARN(false, "Could not walk stack");
   }
   
   string trace = "";

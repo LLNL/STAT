@@ -53,13 +53,13 @@ bool Async::isEnabled(Dyninst::ProcControlAPI::Process::const_ptr process) {
 }
 
 bool Async::enable() {
-  Err::verbose(true, "Enabling async event");
+  DYSECTVERBOSE(true, "Enabling async event");
   if(type == CrashType) {
     crashSubscribers.insert(this);
   } else if(type == ExitType) {
     exitSubscribers.insert(this);
   } else if(type == SignalType) {
-    Err::verbose(true, "Signal: %d", signum);
+    DYSECTVERBOSE(true, "Signal: %d", signum);
     
     map<int, set<DysectAPI::Event*> >::iterator sigIter = signalSubscribers.find(signum);
     if(sigIter != signalSubscribers.end()) {
@@ -108,7 +108,7 @@ bool Async::disable() {
       events.erase(this);
     }
   } else {
-    return Err::warn(false, "Unknown async event type");
+    return DYSECTWARN(false, "Unknown async event type");
   }
 
   return true;

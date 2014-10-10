@@ -45,11 +45,11 @@ bool Location::disable() {
   ProcessSet::ptr procset;
   
   if(!dom->getAttached(procset)) {
-    return Err::warn(false, "Could not get procset from domain");
+    return DYSECTWARN(false, "Could not get procset from domain");
   }
 
   if(!procset) {
-    return Err::warn(false, "Process set not present");
+    return DYSECTWARN(false, "Process set not present");
   }
 
   return disable(procset);
@@ -59,12 +59,12 @@ bool Location::disable(ProcessSet::ptr lprocset) {
   assert(owner != 0);
  
   if(codeLocations.empty()) {
-    return Err::verbose(true, "No code locations");
+    return DYSECTVERBOSE(true, "No code locations");
 
   }
 
   if(!lprocset) {
-    return Err::warn(false, "Process set not present");
+    return DYSECTWARN(false, "Process set not present");
   }
 
   ProcessSet::iterator procIter = lprocset->begin();
@@ -78,13 +78,13 @@ bool Location::disable(ProcessSet::ptr lprocset) {
       DysectAPI::CodeLocation* location = *locationIter;
 
       if(!location->addProcLib(proc)) {
-        return Err::warn(false, "Symbol not found in process");
+        return DYSECTWARN(false, "Symbol not found in process");
       }
 
       vector<Dyninst::Address> addrs;
       
       if(!location->getAddrs(proc, addrs) || addrs.empty()) {
-        return Err::warn(false, "Addresses for symbol could not be determined");
+        return DYSECTWARN(false, "Addresses for symbol could not be determined");
       }
 
       // Breakpoint locations at hand
@@ -92,10 +92,10 @@ bool Location::disable(ProcessSet::ptr lprocset) {
         Dyninst::Address addr = addrs[i];
         
         if(!procPtr->rmBreakpoint(addr, bp)) {
-          Err::verbose(false, "Breakpoint at %lx not removed! %s", addr, ProcControlAPI::getLastErrorMsg());
+          DYSECTVERBOSE(false, "Breakpoint at %lx not removed! %s", addr, ProcControlAPI::getLastErrorMsg());
         }
         else
-          Err::verbose(false, "Breakpoint at %lx removed for %d!", addr, procPtr->getPid());
+          DYSECTVERBOSE(false, "Breakpoint at %lx removed for %d!", addr, procPtr->getPid());
       }
     }
   }
@@ -115,11 +115,11 @@ bool Location::enable() {
   ProcessSet::ptr procset;
   
   if(!dom->getAttached(procset)) {
-    return Err::warn(false, "Could not get procset from domain");
+    return DYSECTWARN(false, "Could not get procset from domain");
   }
 
   if(!procset) {
-    return Err::warn(false, "Process set not present");
+    return DYSECTWARN(false, "Process set not present");
   }
 
   return enable(procset);
@@ -129,12 +129,12 @@ bool Location::enable(ProcessSet::ptr lprocset) {
   assert(owner != 0);
  
   if(codeLocations.empty()) {
-    return Err::verbose(true, "No code locations");
+    return DYSECTVERBOSE(true, "No code locations");
 
   }
 
   if(!lprocset) {
-    return Err::warn(false, "Process set not present");
+    return DYSECTWARN(false, "Process set not present");
   }
   
   ProcessSet::iterator procIter = lprocset->begin();
@@ -142,7 +142,7 @@ bool Location::enable(ProcessSet::ptr lprocset) {
   AddressSet::ptr addrset = AddressSet::newAddressSet();
 
   if(lprocset->size() <= 0) {
-    return Err::info(true, "Process set empty!");
+    return DYSECTINFO(true, "Process set empty!");
   }
 
   // Find library location for target processes
@@ -156,13 +156,13 @@ bool Location::enable(ProcessSet::ptr lprocset) {
       DysectAPI::CodeLocation* location = *locationIter;
 
       if(!location->addProcLib(proc)) {
-        return Err::warn(false, "Symbol not found in process");
+        return DYSECTWARN(false, "Symbol not found in process");
       }
 
       vector<Dyninst::Address> addrs;
       
       if(!location->getAddrs(proc, addrs) || addrs.empty()) {
-        return Err::warn(false, "Addresses for symbol could not be determined");
+        return DYSECTWARN(false, "Addresses for symbol could not be determined");
       }
 
       // Breakpoint locations at hand
@@ -170,9 +170,9 @@ bool Location::enable(ProcessSet::ptr lprocset) {
         Dyninst::Address addr = addrs[i];
         
         if(!procPtr->addBreakpoint(addr, bp)) {
-          return Err::verbose(false, "Breakpoint not installed at %lx: %s", addr, ProcControlAPI::getLastErrorMsg());
+          return DYSECTVERBOSE(false, "Breakpoint not installed at %lx: %s", addr, ProcControlAPI::getLastErrorMsg());
         } else {
-          Err::verbose(true, "Breakpoint installed at %lx for %d", addr, procPtr->getPid());
+          DYSECTVERBOSE(true, "Breakpoint installed at %lx for %d", addr, procPtr->getPid());
         }
 
         //addrset->insert(addr, procPtr);
@@ -200,19 +200,19 @@ bool Location::enable(ProcessSet::ptr lprocset) {
 }
 
 bool Location::prepare() {
-  Err::verbose(true, "Preparing location");
+  DYSECTVERBOSE(true, "Preparing location");
 
   if(codeLocations.empty()) {
     if(!resolveExpression()) {
-      return Err::warn(false, "Expression '%s' could not be resolved", locationExpr.c_str());
+      return DYSECTWARN(false, "Expression '%s' could not be resolved", locationExpr.c_str());
     }
 
     if(codeLocations.empty()) {
-      return Err::warn(false, "No symbols found for expression '%s'", locationExpr.c_str());
+      return DYSECTWARN(false, "No symbols found for expression '%s'", locationExpr.c_str());
     }
   }
 
-  return Err::verbose(true, "%d symbols found for expression '%s'", codeLocations.size(), locationExpr.c_str());
+  return DYSECTVERBOSE(true, "%d symbols found for expression '%s'", codeLocations.size(), locationExpr.c_str());
 }
 
 bool Location::isEnabled(Dyninst::ProcControlAPI::Process::const_ptr process) {
@@ -236,7 +236,7 @@ bool Location::resolveExpression() {
     WalkerSet* walkerSet = Backend::getWalkerset();
 
     if(!walkerSet) {
-      return Err::warn(false, "Walkerset not present");
+      return DYSECTWARN(false, "Walkerset not present");
     }
 
     WalkerSet::iterator procIter = walkerSet->begin();
@@ -247,11 +247,11 @@ bool Location::resolveExpression() {
     string &symbol = tokens[0];
 
     if(!proc) {
-      return Err::warn(false, "Walker could not be retrieved from walkerSet");
+      return DYSECTWARN(false, "Walker could not be retrieved from walkerSet");
     }
 
     if(!DysectAPI::CodeLocation::findSymbol(proc, symbol, codeLocations)) {
-      return Err::warn(false, "No symbols found for symbol %s", symbol.c_str());
+      return DYSECTWARN(false, "No symbols found for symbol %s", symbol.c_str());
     }
 
   } else if(numTokens == 2) { // file '#' line 
@@ -262,7 +262,7 @@ bool Location::resolveExpression() {
       string& file = tokens[0];
 
       if(!DysectAPI::CodeLocation::findFileLine(proc, file, line, codeLocations)) {
-        return Err::warn(false, "Location for '%s#%d' not found", file.c_str(), line);
+        return DYSECTWARN(false, "Location for '%s#%d' not found", file.c_str(), line);
       }
     } else { // Image '#' symbol
       Symtab* symtab;
@@ -278,11 +278,11 @@ bool Location::resolveExpression() {
       }
 
       if(SymbolTable::findSymtabByName(image, proc, symtab, libName) != OK) {
-        return Err::warn(false, "Could not find image '%s'", image.c_str());
+        return DYSECTWARN(false, "Could not find image '%s'", image.c_str());
       }
 
       if(!CodeLocation::findSymbol(symtab, symbol, libName, codeLocations, isRegex)) {
-        return Err::warn(false, "Location for symbol '%s' in image '%s' not found", symbol.c_str(), image.c_str());
+        return DYSECTWARN(false, "Location for symbol '%s' in image '%s' not found", symbol.c_str(), image.c_str());
       }
     }
   } else if(numTokens == 3) { // image '#' file '#' line
@@ -293,19 +293,19 @@ bool Location::resolveExpression() {
     int line = atoi(tokens[2].c_str());
 
     if(line <= 0) {
-      return Err::warn(false, "Line number for format image#file#line must be an integer");
+      return DYSECTWARN(false, "Line number for format image#file#line must be an integer");
     }
 
     if(SymbolTable::findSymtabByName(image, proc, symtab, libName) != OK) {
-      return Err::warn(false, "Could not find image '%s'", image.c_str());
+      return DYSECTWARN(false, "Could not find image '%s'", image.c_str());
     }
 
     if(!CodeLocation::findFileLine(symtab, file, line, libName, codeLocations)) {
-      return Err::warn(false, "Location for '%s:%d' in image '%s' not found", file.c_str(), line, image.c_str());
+      return DYSECTWARN(false, "Location for '%s:%d' in image '%s' not found", file.c_str(), line, image.c_str());
     }
 
   } else {
-    return Err::warn(false, "Cannot resolve location '%s' - unknown format", locationExpr.c_str());
+    return DYSECTWARN(false, "Cannot resolve location '%s' - unknown format", locationExpr.c_str());
   }
 
   return true;

@@ -19,6 +19,12 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __ERR_H
 #define __ERR_H
 
+#define DYSECTVERBOSE(...) Err::verbose(__LINE__, __FILE__, __VA_ARGS__)
+#define DYSECTLOG(...) Err::log(__LINE__, __FILE__, __VA_ARGS__)
+#define DYSECTINFO(...) Err::info(__LINE__, __FILE__, __VA_ARGS__)
+#define DYSECTWARN(...) Err::warn(__LINE__, __FILE__, __VA_ARGS__)
+#define DYSECTFATAL(...) Err::fatal(__LINE__, __FILE__, __VA_ARGS__)
+
 namespace DysectAPI {
   class Err {
     enum msgType {
@@ -34,31 +40,30 @@ namespace DysectAPI {
     static bool useStatOutFp_;
 
     static void write(const std::string fmt, va_list ap, enum msgType type);
-    //TODO: it may be beneficial to have source + line info for log, warn, and fatal messages
-//    static void write(const char *filename, int line, const std::string fmt, va_list ap, enum msgType type);
+    static void write(enum msgType type, const std::string fmt, ...);
 
   public:
-    static void init(FILE* estream, FILE* ostream, bool useMRNet = false);
+    static void init(FILE* estream, FILE* ostream, bool useStatOutFp = false);
     
-    static void verbose(const std::string fmt, ...);
-    static DysectErrorCode verbose(DysectErrorCode code, const std::string fmt, ...);
-    static bool verbose(bool result, const std::string fmt, ...);
+    static void verbose(int line, const char *file, const std::string fmt, ...);
+    static DysectErrorCode verbose(int line, const char *file, DysectErrorCode code, const std::string fmt, ...);
+    static bool verbose(int line, const char *file, bool result, const std::string fmt, ...);
 
-    static void log(const std::string fmt, ...);
-    static DysectErrorCode log(DysectErrorCode code, const std::string fmt, ...);
-    static bool log(bool result, const std::string fmt, ...);
+    static void log(int line, const char *file, const std::string fmt, ...);
+    static DysectErrorCode log(int line, const char *file, DysectErrorCode code, const std::string fmt, ...);
+    static bool log(int line, const char *file, bool result, const std::string fmt, ...);
 
-    static void info(const std::string fmt, ...);
-    static DysectErrorCode info(DysectErrorCode code, const std::string fmt, ...);
-    static bool info(bool result, const std::string fmt, ...);
+    static void info(int line, const char *file, const std::string fmt, ...);
+    static DysectErrorCode info(int line, const char *file, DysectErrorCode code, const std::string fmt, ...);
+    static bool info(int line, const char *file, bool result, const std::string fmt, ...);
 
-    static void warn(const std::string fmt, ...);
-    static DysectErrorCode warn(DysectErrorCode code, const std::string fmt, ...);
-    static bool warn(bool result, const std::string fmt, ...);
+    static void warn(int line, const char *file, const std::string fmt, ...);
+    static DysectErrorCode warn(int line, const char *file, DysectErrorCode code, const std::string fmt, ...);
+    static bool warn(int line, const char *file, bool result, const std::string fmt, ...);
 
-    static void fatal(const std::string fmt, ...);
-    static DysectErrorCode fatal(DysectErrorCode code, const std::string fmt, ...);
-    static bool fatal(bool result, const std::string fmt, ...);
+    static void fatal(int line, const char *file, const std::string fmt, ...);
+    static DysectErrorCode fatal(int line, const char *file, DysectErrorCode code, const std::string fmt, ...);
+    static bool fatal(int line, const char *file, bool result, const std::string fmt, ...);
     };
   }
 

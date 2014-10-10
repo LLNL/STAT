@@ -68,23 +68,23 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
     if(ret < 0) {
       if(errno == EINTR)
         return DysectAPI::OK;
-      return Err::warn(DysectAPI::Error, "select() failed to listen on file descriptor set: %s", strerror(errno));
+      return DYSECTWARN(DysectAPI::Error, "select() failed to listen on file descriptor set: %s", strerror(errno));
       //return DysectAPI::Error;
     } 
 
     if(FD_ISSET(0, &fdRead) && breakOnEnter) {
-      Err::info(true, "Stopping session - enter key was hit");
+      DYSECTINFO(true, "Stopping session - enter key was hit");
       return DysectAPI::OK;
     }
     if (checkAppExit()) {
       if (exit * Frontend::selectTimeout >= 5) {
-        Err::info(true, "Stopping session - application has exited");
+        DYSECTINFO(true, "Stopping session - application has exited");
         return DysectAPI::OK;
       }
       exit++;
     }
     if (checkDaemonExit()) {
-      Err::info(true, "Stopping session - daemons have exited");
+      DYSECTINFO(true, "Stopping session - daemons have exited");
       return DysectAPI::Error;
     }
     
@@ -94,11 +94,11 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
 
     // Look for owners
     vector<Domain*> doms = Domain::getFdsFromSet(fdRead);
-    Err::log(true, "Listening over %d domains", doms.size());
+    DYSECTLOG(true, "Listening over %d domains", doms.size());
 
     if(doms.size() == 0) {
       if(Frontend::breakOnTimeout && (--Frontend::numEvents < 0)) {
-        Err::info(true, "Stopping session - increase numEvents for longer sessions");
+        DYSECTINFO(true, "Stopping session - increase numEvents for longer sessions");
         break;
       }
 
@@ -112,13 +112,13 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
       int tag;
 
       if(!dom->getStream()) {
-        return Err::warn(Error, "Stream not available for domain %x", dom->getId());
+        return DYSECTWARN(Error, "Stream not available for domain %x", dom->getId());
       }
 
       do {
         ret = dom->getStream()->recv(&tag, packet, false);
         if(ret == -1) {
-          return Err::warn(Error, "Receive error");
+          return DYSECTWARN(Error, "Receive error");
 
         } else if(ret == 0) {
           break;
@@ -129,14 +129,14 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
         int len;
 
         if(packet->unpack("%d %auc", &count, &payload, &len) == -1) {
-          return Err::warn(Error, "Unpack error");
+          return DYSECTWARN(Error, "Unpack error");
         }
 
         if(Domain::isProbeEnabledTag(tag) || Domain::isProbeNotifyTag(tag)) {
           Domain* dom = 0;
 
           if(!Domain::getDomainFromTag(dom, tag)) {
-            Err::warn(false, "Could not get domain from tag %x", tag);
+            DYSECTWARN(false, "Could not get domain from tag %x", tag);
           } else {
             //Err::info(true, "[%d] Probe %x enabled (payload size %d)", count, dom->getId(), len);
             //Err::info(true, "[%d] Probe %x enabled", count, dom->getId());
@@ -144,7 +144,7 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
 
           Probe* probe = dom->owner;
           if(!probe) {
-            Err::warn(false, "Probe object not found for %x", dom->getId());
+            DYSECTWARN(false, "Probe object not found for %x", dom->getId());
           } else {
             if(Domain::isProbeEnabledTag(tag))
               probe->handleActions(count, payload, len);
@@ -185,7 +185,7 @@ DysectAPI::DysectErrorCode Frontend::broadcastStreamInits() {
 
 DysectAPI::DysectErrorCode Frontend::createStreams(struct DysectFEContext_t* context) {
   if(!context) {
-    return Err::warn(Error, "Context not set");
+    return DYSECTWARN(Error, "Context not set");
   }
 
   statFE = context->statFE;
@@ -217,7 +217,7 @@ DysectAPI::DysectErrorCode Frontend::createStreams(struct DysectFEContext_t* con
     Probe* probe = roots[i];
 
     if(probe->prepareAction(recursive) != OK) {
-      Err::warn(Error, "Error occured while preparing actions");
+      DYSECTWARN(Error, "Error occured while preparing actions");
     }
   }
 
@@ -239,8 +239,8 @@ STAT_FrontEnd* Frontend::getStatFE() {
 }
 
 void Frontend::setStopCondition(bool breakOnEnter, bool breakOnTimeout, int timeout) {
-  Err::verbose(true, "Break on enter key: %s", breakOnEnter ? "yes" : "no");
-  Err::verbose(true, "Break on timeout: %s", breakOnTimeout ? "yes" : "no");
+  DYSECTVERBOSE(true, "Break on enter key: %s", breakOnEnter ? "yes" : "no");
+  DYSECTVERBOSE(true, "Break on timeout: %s", breakOnTimeout ? "yes" : "no");
 
   Frontend::breakOnEnter = breakOnEnter;
   Frontend::breakOnTimeout = breakOnTimeout;

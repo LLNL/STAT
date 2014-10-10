@@ -32,7 +32,7 @@ bool Stat::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
   StatError_t statError;
   STAT_FrontEnd* statFE;;
 
-  Err::verbose(true, "Stat::collect");
+  DYSECTVERBOSE(true, "Stat::collect");
   statFE = Frontend::getStatFE();
 
   statError = statFE->sampleStackTraces(STAT_SAMPLE_FUNCTION_ONLY | STAT_SAMPLE_LINE, 1, 100, 0, 100);
@@ -55,7 +55,7 @@ bool Stat::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
 }
 
 bool Stat::finishFE(int count) {
-  Err::verbose(true, "Stat::finishFE %d %d", count, lscope);
+  DYSECTVERBOSE(true, "Stat::finishFE %d %d", count, lscope);
   return true;
 }
 
@@ -68,15 +68,15 @@ bool Stat::finishBE(struct packet*& p, int& len) {
 bool StackTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
 
-  Err::verbose(true, "StackTrace::collect");
+  DYSECTVERBOSE(true, "StackTrace::collect");
   return true;
 }
 
 bool StackTrace::finishFE(int count) {
   Probe* probe = owner;
-  Err::verbose(true, "StackTrace::finishFE %d %d", count, lscope);
+  DYSECTVERBOSE(true, "StackTrace::finishFE %d %d", count, lscope);
   if(!owner) {
-    return Err::verbose(false, "No owner probe for action!");
+    return DYSECTVERBOSE(false, "No owner probe for action!");
   }
 
   if(!traces)
@@ -89,7 +89,7 @@ bool StackTrace::finishFE(int count) {
     return false;
 
   if(aggFunc->getType() != tracesAgg) {
-    return Err::warn(false, "Aggregate mismatch for stack trace");
+    return DYSECTWARN(false, "Aggregate mismatch for stack trace");
   }
 
   StackTraces* ltraces = dynamic_cast<StackTraces*>(aggFunc);
@@ -98,7 +98,7 @@ bool StackTrace::finishFE(int count) {
   ltraces->getCountMap(countMap);
 
   if(!countMap.empty()) {
-    Err::info(true, "[%d] Stack trace%s:", count, countMap.size() > 1 ? "s" : "");
+    DYSECTINFO(true, "[%d] Stack trace%s:", count, countMap.size() > 1 ? "s" : "");
   }
   
   map<string, int>::iterator mapIter = countMap.begin();
@@ -106,7 +106,7 @@ bool StackTrace::finishFE(int count) {
     int countMapCount = mapIter->second;
     string str = mapIter->first;
 
-    Err::info(true, " |-> [%d] %s", countMapCount, str.c_str());
+    DYSECTINFO(true, " |-> [%d] %s", countMapCount, str.c_str());
   }
   
   return true;
@@ -119,7 +119,7 @@ bool StackTrace::finishBE(struct packet*& p, int& len) {
 
 bool Trace::collect(Process::const_ptr process,
                     Thread::const_ptr thread) {
-  Err::verbose(true, "Trace::collect");
+  DYSECTVERBOSE(true, "Trace::collect");
   return true;
 }
 
@@ -129,7 +129,7 @@ bool Trace::finishBE(struct packet*& p, int& len) {
 }
 
 bool Trace::finishFE(int count) {
-  Err::verbose(true, "Trace::finishFE %d %d", count, lscope);
+  DYSECTVERBOSE(true, "Trace::finishFE %d %d", count, lscope);
   if(!aggregates.empty()) {
     // Resolve needed aggregates
     vector<AggregateFunction*> resolvedAggregates;
@@ -142,14 +142,14 @@ bool Trace::finishFE(int count) {
 
         Probe* probe = owner;
         if(!owner) {
-          return Err::verbose(false, "No owner probe for action!");
+          return DYSECTVERBOSE(false, "No owner probe for action!");
         }
 
         AggregateFunction* aggFunc;
         if(!skeletonAggFunc->isSynthetic()) {
           aggFunc = probe->getAggregate(id);
           if(!aggFunc) {
-            return Err::verbose(false, "Aggregate not resolved (%d)", id);
+            return DYSECTVERBOSE(false, "Aggregate not resolved (%d)", id);
           }
         } else {
           aggFunc = skeletonAggFunc;
@@ -172,13 +172,13 @@ bool Trace::finishFE(int count) {
         traceMessage.append(str);
       } else {
         if(aggIter == resolvedAggregates.end()) {
-          return Err::verbose(false, "Aggregates missing for trace message");
+          return DYSECTVERBOSE(false, "Aggregates missing for trace message");
         }
 
         AggregateFunction* aggFunc = *aggIter;
         
         if(!aggFunc) {
-          return Err::verbose(false, "Resolved aggregate function not found");
+          return DYSECTVERBOSE(false, "Resolved aggregate function not found");
         }
 
         string aggStr;
@@ -189,10 +189,10 @@ bool Trace::finishFE(int count) {
       }
     }
 
-    Err::info(true, "[%d] Trace: %s", count, traceMessage.c_str());
+    DYSECTINFO(true, "[%d] Trace: %s", count, traceMessage.c_str());
 
   } else {
-    Err::info(true, "[%d] Trace: %s", count, str.c_str());
+    DYSECTINFO(true, "[%d] Trace: %s", count, str.c_str());
   }
   return true;
 }
@@ -203,7 +203,7 @@ bool DetachAll::prepare() {
 
 bool DetachAll::collect(Process::const_ptr process,
                      Thread::const_ptr thread) {
-  Err::verbose(true, "DetachAll::collect");
+  DYSECTVERBOSE(true, "DetachAll::collect");
   return true;
 }
 
@@ -213,17 +213,17 @@ bool DetachAll::finishBE(struct packet*& p, int& len) {
 }
 
 bool DetachAll::finishFE(int count) {
-  Err::verbose(true, "DetachAll::finishFE %d", count);
+  DYSECTVERBOSE(true, "DetachAll::finishFE %d", count);
  
   if(lscope == AllProcs) {
   
-    Err::info(true, "DetachAll action: Ending Dysect session");
+    DYSECTINFO(true, "DetachAll action: Ending Dysect session");
     Frontend::stop();
 
   } else if(lscope == SatisfyingProcs) {
-    return Err::warn(false, "DetachAll not supported on set");
+    return DYSECTWARN(false, "DetachAll not supported on set");
   } else {
-    return Err::warn(false, "DetachAll not supported on set");
+    return DYSECTWARN(false, "DetachAll not supported on set");
   }  
 
   return true;
@@ -243,6 +243,6 @@ bool Detach::finishBE(struct packet*& p, int& len) {
 }
 
 bool Detach::finishFE(int count) {
-  Err::verbose(true, "Detach::finishFE %d", count);
+  DYSECTVERBOSE(true, "Detach::finishFE %d", count);
   return true;
 }

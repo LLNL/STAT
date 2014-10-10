@@ -34,7 +34,7 @@ map<seq_t, mrnet_rank_t>      Group::sequenceToMrnetRankMap;
 
 bool Group::generateSequenceMap() {
   if((!processTable) || (processTableSize <= 0) || (!mrnetRankToMpiRanksMap)) {
-    return Err::warn(false, "Process table not available for group expression lookup");
+    return DYSECTWARN(false, "Process table not available for group expression lookup");
   }
 
   sequenceToMrnetRankMap.clear();
@@ -91,7 +91,7 @@ bool Group::generateSequenceMap() {
 bool Group::addMpiRank(mpi_rank_t rank) {
   // Rank present?
   if(mpiRankToMrnetRankMap.find(rank) == mpiRankToMrnetRankMap.end()) {
-    return Err::warn(false, "MPI Rank '%d' not present in current session", rank); 
+    return DYSECTWARN(false, "MPI Rank '%d' not present in current session", rank); 
   }
 
   mrnet_rank_t mrnetRank = mpiRankToMrnetRankMap[rank]; 
@@ -105,7 +105,7 @@ bool Group::addMpiRankRange(mpi_rank_t start, mpi_rank_t end) {
   if((mpiRankToMrnetRankMap.find(start) == mpiRankToMrnetRankMap.end()) ||
      (mpiRankToMrnetRankMap.find(end)   == mpiRankToMrnetRankMap.end())) {
        
-    return Err::warn(false, "MPI start or end rank of interval '%d -> %d' not present in current session", start, end); 
+    return DYSECTWARN(false, "MPI start or end rank of interval '%d -> %d' not present in current session", start, end); 
   }
 
   seq_t startSeq = mpiRankToSequenceMap[start];
@@ -132,12 +132,12 @@ bool Group::getMRNetRanksFromIntervals() {
 
     if(start == end) {
       if(!addMpiRank(start)) {
-        return Err::verbose(false, "addMpiRank failed");
+        return DYSECTVERBOSE(false, "addMpiRank failed");
       }
 
     } else {
       if(!addMpiRankRange(start, end)) {
-        return Err::verbose(false, "addMpiRange failed");
+        return DYSECTVERBOSE(false, "addMpiRange failed");
       }
 
     }
@@ -146,7 +146,7 @@ bool Group::getMRNetRanksFromIntervals() {
   string daemonRanks;
   daemonRanksStr(daemonRanks);
 
-  Err::info(true, "Expression: '%s' has been resolved to daemon ranks: %s", groupExpr.c_str(), daemonRanks.c_str());
+  DYSECTINFO(true, "Expression: '%s' has been resolved to daemon ranks: %s", groupExpr.c_str(), daemonRanks.c_str());
 
   return true;
 }
@@ -188,18 +188,18 @@ DysectErrorCode Group::createStream() {
   }
 
   if(!resolveExpr()) {
-    return Err::warn(DomainExpressionError, "Failed resolving group expression: \"%s\"", groupExpr.c_str());
+    return DYSECTWARN(DomainExpressionError, "Failed resolving group expression: \"%s\"", groupExpr.c_str());
   }
 
   if(!getMRNetRanksFromIntervals()) {
-    return Err::warn(DomainExpressionError, "Failed to retrieve MRNet ranks from expression: \"%s\"", groupExpr.c_str());
+    return DYSECTWARN(DomainExpressionError, "Failed to retrieve MRNet ranks from expression: \"%s\"", groupExpr.c_str());
   }
 
   // Create stream with daemons and specified synchronization
   comm = network->new_Communicator(mrnetRanks);
 
   if(!comm) {
-    return Err::warn(Error, "MRNet Communicator could not be created from expression");
+    return DYSECTWARN(Error, "MRNet Communicator could not be created from expression");
   }
 
   return createStreamGeneric();
