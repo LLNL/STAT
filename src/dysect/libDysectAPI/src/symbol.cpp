@@ -751,17 +751,16 @@ bool DataLocation::getParams( vector<string>& params,
   assert(proc != 0);
   bool found = false;
   
-  vector<Stackwalker::Frame> stackWalk;
   vector<localVar *> vars;
   vector<localVar *>::iterator varIter;
 
-  if(!proc->walkStack(stackWalk)) {
-    return DYSECTWARN(false, "Could not walk stack");
+  Stackwalker::Frame curFrame(proc);
+  if(!proc->getInitialFrame(curFrame)) {
+    return DYSECTWARN(false, "FuncParamNames could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
   }
-
-  Stackwalker::Frame& curFrame = stackWalk[0];
   string frameName;
-  curFrame.getName(frameName);
+  if(!curFrame.getName(frameName))
+    DYSECTWARN(false, "Failed to get frame name: %s", Stackwalker::getLastErrorMsg());
 
   SymtabAPI::Function* func = getFunctionForFrame(curFrame);
 
