@@ -43,7 +43,7 @@ bool CmpAgg::collect(void *process, void *thread) {
 
   string str;
   val.getStr(str);
-  Err::verbose(true, "Read value is %s", str.c_str());
+  DYSECTVERBOSE(true, "Read value is %s", str.c_str());
   
   if(curVal.getType() == Value::noType) {
     curVal = val;

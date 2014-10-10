@@ -36,7 +36,7 @@ set<DysectAPI::Event*>& Time::getTimeSubscribers() {
 }
 
 bool Time::enable() {
-  Err::info(true, "Enable Time Event");
+  DYSECTINFO(true, "Enable Time Event");
   assert(owner != 0);
 
   //if(codeLocations.empty()) {
@@ -48,11 +48,11 @@ bool Time::enable() {
   ProcessSet::ptr procset;
 
   if(!dom->getAttached(procset)) {
-    return Err::warn(false, "Could not get procset from domain");
+    return DYSECTWARN(false, "Could not get procset from domain");
   }
 
   if(!procset) {
-    return Err::warn(false, "Process set not present");
+    return DYSECTWARN(false, "Process set not present");
   }
 
   return enable(procset);
@@ -61,10 +61,10 @@ bool Time::enable() {
 bool Time::enable(ProcessSet::ptr lprocset) {
   //TODO: time probe not fully functional, only works with timeout of 0
   if (timeout != 0)
-    Err::warn(true, "Warning, time probe not fully functional, only works with timeout of 0");
-  Err::info(true, "Enable time event for procset size %d with timeout %d", lprocset->size(), timeout);
+    DYSECTWARN(true, "Warning, time probe not fully functional, only works with timeout of 0");
+  DYSECTINFO(true, "Enable time event for procset size %d with timeout %d", lprocset->size(), timeout);
   if(!lprocset) {
-    return Err::warn(false, "Process set not present");
+    return DYSECTWARN(false, "Process set not present");
   }
 
   if(procset && !procset->empty()) {
@@ -81,7 +81,7 @@ bool Time::enable(ProcessSet::ptr lprocset) {
 }
 
 bool Time::disable() {
-  Err::info(true, "Disable Time Event");
+  DYSECTINFO(true, "Disable Time Event");
   if(procset && !procset->empty()) {
     procset->clear();
   }
@@ -90,7 +90,7 @@ bool Time::disable() {
 }
 
 bool Time::disable(ProcessSet::ptr lprocset) {
-  Err::info(true, "Disable time event for procset size %d with timeout %d", lprocset->size(), timeout);
+  DYSECTINFO(true, "Disable time event for procset size %d with timeout %d", lprocset->size(), timeout);
 
   set<Event*>::iterator evIter = timeSubscribers.find(this);
   if(evIter != timeSubscribers.end()) {

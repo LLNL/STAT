@@ -1,3 +1,6 @@
+2014-08-18 Gregory L. Lee <lee218@llnl.gov>
+	* dysect* : modified logging to use macros with optional line info
+
 2014-07-15 Gregory L. Lee <lee218@llnl.gov>
 	* backend.cpp : only wait for attached processes, not full domain
 

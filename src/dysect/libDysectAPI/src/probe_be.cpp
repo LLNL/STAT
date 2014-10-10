@@ -62,16 +62,16 @@ bool Probe::enable(ProcessSet::ptr procset) {
 
   ProcessSet::ptr staticProcs;
   if(!dom->getAttached(staticProcs)) {
-    return Err::warn(false, "Could not get static process set");
+    return DYSECTWARN(false, "Could not get static process set");
   }
 
   ProcessSet::ptr affectedProcs = staticProcs->set_intersection(procset);
 
   if(affectedProcs->size() <= 0) {
-    return Err::verbose(true, "No processes from incoming set attached for probe %lx, staticProcs %d procset %d", dom->getId(), staticProcs->size(), procset->size());
+    return DYSECTVERBOSE(true, "No processes from incoming set attached for probe %lx, staticProcs %d procset %d", dom->getId(), staticProcs->size(), procset->size());
   }
 
-  Err::verbose(true, "Enabling probe %lx with dynamic set with %d processes", dom->getId(), affectedProcs->size());
+  DYSECTVERBOSE(true, "Enabling probe %lx with dynamic set with %d processes", dom->getId(), affectedProcs->size());
 
   bool result = event->enable(affectedProcs);
 
@@ -94,7 +94,7 @@ DysectAPI::DysectErrorCode Probe::evaluateConditions(ConditionResult& result,
 
   // For now, create a process set with a single process
   if(cond->evaluate(result, process, thread->getTID()) != DysectAPI::OK) {
-    return Err::warn(Error, "Could not evaluate condition");
+    return DYSECTWARN(Error, "Could not evaluate condition");
   }
 
   return OK;
@@ -107,7 +107,7 @@ DysectAPI::DysectErrorCode Probe::notifyTriggered() {
 
   assert(stream != 0);
 
-  Err::verbose(true, "Sending on stream id: %x", stream->get_Id());
+  DYSECTVERBOSE(true, "Sending on stream id: %x", stream->get_Id());
 
   if(stream->send(dom->getProbeEnabledTag(), "%d %auc", 1, "", 1) == -1) {
     return StreamError;
@@ -210,7 +210,7 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedNotifications() {
 
   assert(stream != 0);
 
-  Err::verbose(true, "Sending %d notifications on stream id: %x", awaitingNotifications, stream->get_Id());
+  DYSECTVERBOSE(true, "Sending %d notifications on stream id: %x", awaitingNotifications, stream->get_Id());
 
   if(stream->send(dom->getProbeNotifyTag(), "%d %auc", awaitingNotifications, "", 1) == -1) {
     return StreamError;
@@ -238,7 +238,7 @@ bool Probe::releaseWaitingProcs() {
 
     waitingProcs->clear();
 
-    Err::verbose(true, "%d processes for %x released", count, dom->getId());
+    DYSECTVERBOSE(true, "%d processes for %x released", count, dom->getId());
   } else {
     //Err::warn(true, "No processes waiting to be released");  
   }
@@ -258,7 +258,7 @@ bool Probe::staticGroupWaiting() {
   ProcessSet::ptr procset;
   dom->getAttached(procset);
 
-  Err::verbose(true, "staticGroupWaiting %d %d", procset->size(), waitingProcs->size());
+  DYSECTVERBOSE(true, "staticGroupWaiting %d %d", procset->size(), waitingProcs->size());
   return (procset->size() <= waitingProcs->size());
 }
 
@@ -290,7 +290,7 @@ DysectAPI::DysectErrorCode Probe::triggerAction(Process::const_ptr process, Thre
 
 DysectAPI::DysectErrorCode Probe::enqueueAction(Process::const_ptr process, Thread::const_ptr thread) {
   if(actions.empty()) {
-    Err::verbose(true, "No actions to enqueue");
+    DYSECTVERBOSE(true, "No actions to enqueue");
     return OK;
   }
 
@@ -305,7 +305,7 @@ DysectAPI::DysectErrorCode Probe::enqueueAction(Process::const_ptr process, Thre
   }
 
   processCount++;
-  Err::verbose(true, "Probe %lx waiting actions %d, process count %d", dom->getId(), awaitingActions, processCount);
+  DYSECTVERBOSE(true, "Probe %lx waiting actions %d, process count %d", dom->getId(), awaitingActions, processCount);
 
   return OK;
 }
@@ -314,10 +314,10 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
   struct packet* p = 0; 
   int len = 0, actionsHandled = 0;
   
-  Err::verbose(true, "Sending %d enqueued actions for %x", awaitingActions, dom->getId());
+  DYSECTVERBOSE(true, "Sending %d enqueued actions for %x", awaitingActions, dom->getId());
 
   if(actions.empty()) {
-    Err::verbose(true, "No enqueued actions", len);
+    DYSECTVERBOSE(true, "No enqueued actions", len);
     return OK;
   }
 
@@ -331,13 +331,13 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
     struct packet* np = 0;
 
     if(act) {
-      Err::verbose(true, "Getting packet from action");
+      DYSECTVERBOSE(true, "Getting packet from action");
       
       act->finishBE(np, len);
       act->actionPending = false;
       actionsHandled += 1;
 
-      Err::verbose(true, "Aggregate packet length: %d", len);
+      DYSECTVERBOSE(true, "Aggregate packet length: %d", len);
     }
 
     if(!p) {
@@ -351,7 +351,7 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
   }
 
   if((len > 0) && (p == 0)) {
-    return Err::verbose(Error, "Packet is not set, even tough len != 0 (%d)", len);
+    return DYSECTVERBOSE(Error, "Packet is not set, even tough len != 0 (%d)", len);
   }
 
   assert(dom != 0);
@@ -359,7 +359,7 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
   assert(stream != 0);
 
   if(len > 0) {
-    Err::verbose(true, "Sending %d byte aggregate packet", len);
+    DYSECTVERBOSE(true, "Sending %d byte aggregate packet", len);
 
     if(stream->send(dom->getProbeEnabledTag(), "%d %auc", processCount, (char*)p, len) == -1) {
       return StreamError;
@@ -391,7 +391,7 @@ bool Probe::disable() {
 
   ProcessSet::ptr procset;
   if(!dom->getAttached(procset)) {
-    return Err::warn(false, "Could not get process set - instrumentation not removed");
+    return DYSECTWARN(false, "Could not get process set - instrumentation not removed");
   }
 
   return disable(procset);
@@ -402,7 +402,7 @@ bool Probe::disable(Dyninst::ProcControlAPI::Process::const_ptr process) {
   assert(dom != 0);
 
   if(!process) {
-    return Err::warn(false, "Process object not valid - instrumentation not removed");
+    return DYSECTWARN(false, "Process object not valid - instrumentation not removed");
   }
 
   ProcessSet::ptr procset = ProcessSet::newProcessSet(process);
@@ -415,7 +415,7 @@ bool Probe::disable(Dyninst::ProcControlAPI::ProcessSet::ptr procset) {
   assert(dom != 0);
 
   if(!procset) {
-    return Err::warn(false, "Could not get process set - instrumentation not removed");
+    return DYSECTWARN(false, "Could not get process set - instrumentation not removed");
   }
 
   return(event->disable(procset));
@@ -436,7 +436,7 @@ bool Probe::enqueueDisable(ProcessSet::ptr procset) {
   request->type = DisableType;
   request->probe = this;
 
-  Err::verbose(true, "Adding disable request for probe %lx", (long)this);
+  DYSECTVERBOSE(true, "Adding disable request for probe %lx", (long)this);
 
   request->scope = procset;
 
@@ -476,12 +476,12 @@ bool Probe::enqueueEnable(ProcessSet::ptr procset) {
 
   ProbeRequest* request = new ProbeRequest();
   if(!request) {
-    return Err::warn(false, "Request could not be allocated");
+    return DYSECTWARN(false, "Request could not be allocated");
   }
   request->type = EnableType;
   request->probe = this;
   
-  Err::verbose(true, "Adding enable request for probe %lx", (long)this);
+  DYSECTVERBOSE(true, "Adding enable request for probe %lx", (long)this);
 
   request->scope = procset;
 
@@ -513,7 +513,7 @@ bool Probe::processRequests() {
     ProbeRequest* request = *requestIter;
 
     if(!request) {
-      Err::warn(true, "Invalid request in request queue");
+      DYSECTWARN(true, "Invalid request in request queue");
       break;
     }
 
@@ -527,28 +527,28 @@ bool Probe::processRequests() {
   if (sortedQueue.size() == 0)
     return true;
 
-  Err::verbose(true, "Handling %d process requests", sortedQueue.size());
+  DYSECTVERBOSE(true, "Handling %d process requests", sortedQueue.size());
 
   deque<ProbeRequest*>::iterator sortedRequestIter = sortedQueue.begin();
   for(int i = 0; sortedRequestIter != sortedQueue.end(); sortedRequestIter++) {
     ProbeRequest* request = *sortedRequestIter;
 
     if(!request) {
-      Err::warn(true, "Invalid request in request queue");
+      DYSECTWARN(true, "Invalid request in request queue");
       break;
     }
 
-    Err::verbose(true, "processRequests() %d", i++);
+    DYSECTVERBOSE(true, "processRequests() %d", i++);
 
     Probe* probe = request->probe;
     if(!probe) {
-      Err::warn(false, "Probe not found for disable request!");
+      DYSECTWARN(false, "Probe not found for disable request!");
       break;
     }
 
     ProcessSet::ptr waitingProcs = request->scope;
     if(waitingProcs && waitingProcs->size() > 0) {
-      Err::verbose(true, "Adding %d request processes to %d continue set...", waitingProcs->size(), continueSet->size());
+      DYSECTVERBOSE(true, "Adding %d request processes to %d continue set...", waitingProcs->size(), continueSet->size());
       continueSet = continueSet->set_union(waitingProcs);
     }
 
@@ -557,7 +557,7 @@ bool Probe::processRequests() {
 
     ProcessSet::ptr scope = request->scope;
     if(scope && scope->size() > 0) {
-      Err::verbose(true, "Adding processes from scope set (%d) to affected procs (%d)", scope->size(), operationSet->size());
+      DYSECTVERBOSE(true, "Adding processes from scope set (%d) to affected procs (%d)", scope->size(), operationSet->size());
       operationSet = operationSet->set_union(scope);
     }
 
@@ -566,7 +566,7 @@ bool Probe::processRequests() {
     //
     operationSet = ProcessMgr::filterDetached(operationSet);
     stopSet = ProcessMgr::filterDetached(stopSet);
-    Err::verbose(true, "%d procs in op set, %d procs in stop set", operationSet->size(), stopSet->size());
+    DYSECTVERBOSE(true, "%d procs in op set, %d procs in stop set", operationSet->size(), stopSet->size());
 
     //
     // Stop processes
@@ -574,7 +574,7 @@ bool Probe::processRequests() {
   
     stopSet = operationSet->getAnyThreadRunningSubset();
     if(stopSet && stopSet->size() > 0) {
-      Err::verbose(true, "Stopping %d processes", stopSet->size());
+      DYSECTVERBOSE(true, "Stopping %d processes", stopSet->size());
       
       stopSet->stopProcs();
     }
@@ -585,10 +585,10 @@ bool Probe::processRequests() {
 
     if(operationSet && operationSet->size() > 0) {
       if(request->type == DisableType) {
-        Err::verbose(true, "Disabling %d processes", operationSet->size());
+        DYSECTVERBOSE(true, "Disabling %d processes", operationSet->size());
         probe->disable(operationSet);
       } else {
-        Err::verbose(true, "Enabling %d processes", operationSet->size());
+        DYSECTVERBOSE(true, "Enabling %d processes", operationSet->size());
         probe->enableChildren(operationSet);
       }
     }
@@ -606,17 +606,17 @@ bool Probe::processRequests() {
   continueSet = ProcessMgr::filterDetached(continueSet);
 
   if(continueSet && continueSet->size() > 0) {
-    Err::verbose(true, "Continuing %d processes", continueSet->size());
+    DYSECTVERBOSE(true, "Continuing %d processes", continueSet->size());
     if(continueSet->size() == 1) {
       ProcessSet::iterator procIter = continueSet->begin();
       Process::ptr process = *procIter;
-      Err::verbose(true, "Continuing process %d", process->getPid());
+      DYSECTVERBOSE(true, "Continuing process %d", process->getPid());
     }
     
     continueSet->continueProcs();
   }
 
-  Err::verbose(true, "Done handling requests");
+  DYSECTVERBOSE(true, "Done handling requests");
 
   return true;
 }

@@ -83,7 +83,7 @@ Trace::Trace(string str) : str(str) {
 
 bool Trace::prepare() {
   
-  Err::verbose(true, "Preparing trace message: '%s'", str.c_str());
+  DYSECTVERBOSE(true, "Preparing trace message: '%s'", str.c_str());
 
   findAggregates();
 
@@ -112,7 +112,7 @@ bool Trace::findAggregates() {
 
     if(c == '@') {
       if(parser_state != text) {
-        return Err::warn(false, "Trace string parser error: '@' denotes aggregate function");
+        return DYSECTWARN(false, "Trace string parser error: '@' denotes aggregate function");
       }
       
       strParts.push_back(pair<bool, string>(true, string(nonAggStr)));
@@ -125,7 +125,7 @@ bool Trace::findAggregates() {
 
     if((parser_state == aggName) && (c == '(')) {
       if(aggNameStr.size() <= 0) {
-        return Err::warn(false, "Aggregate function name cannot be empty");
+        return DYSECTWARN(false, "Aggregate function name cannot be empty");
       }
       
       dataExprStr = "";
@@ -139,7 +139,7 @@ bool Trace::findAggregates() {
     if((parser_state == dataExpr) && (c == ')')) {
       
       if(aggNameStr.size() <= 0) {
-        return Err::warn(false, "Aggregate function name cannot be empty");
+        return DYSECTWARN(false, "Aggregate function name cannot be empty");
       }
 
       strParts.push_back(pair<bool, string>(false, "")); 
@@ -164,17 +164,17 @@ bool Trace::findAggregates() {
   }
 
   // Create aggregate function instances 
-  Err::verbose(true, "Found aggregates: ");
+  DYSECTVERBOSE(true, "Found aggregates: ");
   vector< pair<string, string> >::iterator aggIter = foundAggregates.begin();
   for(int i = 0; aggIter != foundAggregates.end(); aggIter++, i++) {
     string& curAggName = aggIter->first;
     string& curDataExpr = aggIter->second;
 
-    Err::verbose(true, "%d: %s(%s)", i, curAggName.c_str(), curDataExpr.c_str());
+    DYSECTVERBOSE(true, "%d: %s(%s)", i, curAggName.c_str(), curDataExpr.c_str());
 
     int type;
     if(!Agg::aggregateIdFromName(curAggName, type)) {
-      return Err::warn(false, "Unknown aggregate function '%s'", curAggName.c_str());
+      return DYSECTWARN(false, "Unknown aggregate function '%s'", curAggName.c_str());
     }
 
     AggregateFunction* aggFunc = 0;
@@ -200,12 +200,12 @@ bool Trace::findAggregates() {
         aggFunc = new DescribeVariable(curDataExpr);
       break;
       default:
-        Err::warn(false, "Unsupported aggregate function '%s'", curAggName.c_str());
+        DYSECTWARN(false, "Unsupported aggregate function '%s'", curAggName.c_str());
       break;
     }
 
     aggregates.push_back(aggFunc);
-    Err::verbose(true, "Aggregate id: %d", aggFunc->getId());
+    DYSECTVERBOSE(true, "Aggregate id: %d", aggFunc->getId());
   }
 
   return true;

@@ -107,8 +107,8 @@ bool StrAgg::deserialize(void* payload) {
   //printf(">>> num %d\n", num);
 
   // Compute offsets
-  int *counts = (int*)(payload + sizeof(int));
-  char* strs = (char*)(payload + sizeof(int) + (num * sizeof(int)));
+  int *counts = (int*)((int *)payload + sizeof(int));
+  char* strs = (char*)((char *)payload + sizeof(int) + (num * sizeof(int)));
 
   char *ptr = strs;
   char *curStr = ptr;
