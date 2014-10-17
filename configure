@@ -20651,12 +20651,6 @@ $as_echo "$am_cv_python_pyexecdir" >&6; }
 ac_config_files="$ac_config_files Makefile src/Makefile src/dysect/Makefile src/dysect/DysectAPI/Makefile src/dysect/libDysectAPI/Makefile src/dysect/libDysectAPI/include/Makefile src/dysect/libDysectAPI/src/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile examples/sessions/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile etc/Makefile man/Makefile scripts/STAT scripts/stat-cl scripts/Makefile"
 
 
-if test "$ENABLE_BGL" = "yes"
-then
-  ac_config_files="$ac_config_files scripts/core_stack_merge"
-
-fi
-
 if test "$WITH_GUI" = "yes"
 then
   ac_config_files="$ac_config_files scripts/STATGUI scripts/STATview scripts/stat-script scripts/stat-gui scripts/stat-view"
@@ -20674,6 +20668,9 @@ then
   ac_config_files="$ac_config_files scripts/dysectc"
 
 fi
+
+ac_config_files="$ac_config_files scripts/stat-core-merger"
+
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -21780,7 +21777,6 @@ do
     "scripts/STAT") CONFIG_FILES="$CONFIG_FILES scripts/STAT" ;;
     "scripts/stat-cl") CONFIG_FILES="$CONFIG_FILES scripts/stat-cl" ;;
     "scripts/Makefile") CONFIG_FILES="$CONFIG_FILES scripts/Makefile" ;;
-    "scripts/core_stack_merge") CONFIG_FILES="$CONFIG_FILES scripts/core_stack_merge" ;;
     "scripts/STATGUI") CONFIG_FILES="$CONFIG_FILES scripts/STATGUI" ;;
     "scripts/STATview") CONFIG_FILES="$CONFIG_FILES scripts/STATview" ;;
     "scripts/stat-script") CONFIG_FILES="$CONFIG_FILES scripts/stat-script" ;;
@@ -21789,6 +21785,7 @@ do
     "scripts/STATBench") CONFIG_FILES="$CONFIG_FILES scripts/STATBench" ;;
     "scripts/stat-bench") CONFIG_FILES="$CONFIG_FILES scripts/stat-bench" ;;
     "scripts/dysectc") CONFIG_FILES="$CONFIG_FILES scripts/dysectc" ;;
+    "scripts/stat-core-merger") CONFIG_FILES="$CONFIG_FILES scripts/stat-core-merger" ;;
 
   *) { { $as_echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5
 $as_echo "$as_me: error: invalid argument: $ac_config_target" >&2;}

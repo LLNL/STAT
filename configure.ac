@@ -139,11 +139,6 @@ AC_CONFIG_FILES([Makefile
                  scripts/stat-cl
                  scripts/Makefile])
 
-if test "$ENABLE_BGL" = "yes"
-then
-  AC_CONFIG_FILES([scripts/core_stack_merge])
-fi
-
 if test "$WITH_GUI" = "yes"
 then
   AC_CONFIG_FILES([scripts/STATGUI
@@ -163,5 +158,7 @@ if test "$ENABLE_DYSECT" = "yes"
 then
   AC_CONFIG_FILES([scripts/dysectc])
 fi
+  
+AC_CONFIG_FILES([scripts/stat-core-merger])
 
 AC_OUTPUT

@@ -110,7 +110,7 @@ class BgCoreMergerArgs(StatMergerArgs):
         self.arg_map["addr2line"] = StatMergerArgs.StatMergerArgElement("a", True, str, "NULL", "the path to addr2line")
 
         # override the usage messages:
-        self.usage_msg_synopsis = '\nThis tool will merge the stack traces from the user specified lightweight core files and output 2 .dot files, one with just function names, the other with function names + line number information\n'
+        self.usage_msg_synopsis = '\nThis tool will merge the stack traces from the user-specified lightweight core files and output 2 .dot files, one with just function names, the other with function names + line number information\n'
         self.usage_msg_command = '\nUSAGE:\n\tpython %s [options] -x <exe_path> -c <corefile>*\n\tpython tracer_merge.py [options] -x <exe_path> -c <core_files_dir>\n' % (sys.argv[0])
         self.usage_msg_examples = '\nEXAMPLES:\n\tpython %s -x a.out -c core.0 core.1\n\tpython %s -x a.out -c core.*\n\tpython %s -x a.out -c ./\n\tpython %s -x a.out -c core_dir\n' % (sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0])
 

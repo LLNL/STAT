@@ -8,4 +8,4 @@ if test -n "$STAT_PREFIX" ; then
 fi
 
 export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
-exec @STATPYTHON@ @pythondir@/bg_core_backtrace.py $@
+exec @STATPYTHON@ @pythondir@/core_file_merger.py $@
