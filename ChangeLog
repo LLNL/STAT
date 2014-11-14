@@ -1,4 +1,7 @@
 2014-10-17 Gregory L. Lee <lee218@llnl.gov>
+	* dysect* : added Totalview and DepositCore actions
+
+2014-10-17 Gregory L. Lee <lee218@llnl.gov>
 	* scripts/* : added full-core-file merging script
 
 2014-08-18 Gregory L. Lee <lee218@llnl.gov>

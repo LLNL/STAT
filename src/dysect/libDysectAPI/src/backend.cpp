@@ -25,12 +25,13 @@ using namespace DysectAPI;
 using namespace Dyninst;
 using namespace ProcControlAPI;
 using namespace Stackwalker;
+using namespace SymtabAPI;
 
 //
 // Backend class statics
 //
 
-enum            Backend::BackendState Backend::state = start; 
+enum            Backend::BackendState Backend::state = start;
 bool            Backend::streamBindAckSent = false;
 int             Backend::pendingExternalAction = 0;
 Stream*         Backend::controlStream = 0;
@@ -39,6 +40,7 @@ WalkerSet*      Backend::walkerSet;
 vector<Probe *> Backend::probesPendingAction;
 pthread_mutex_t Backend::probesPendingActionMutex;
 ProcessSet::ptr Backend::enqueuedDetach;
+map<string, SymtabAPI::Symtab *> Backend::symtabs;
 
 DysectAPI::DysectErrorCode Backend::bindStream(int tag, Stream* stream) {
   int index = Domain::tagToId(tag);
@@ -55,7 +57,7 @@ DysectAPI::DysectErrorCode Backend::bindStream(int tag, Stream* stream) {
   }
 
   dom->setStream(stream);
-  
+
   missingBindings.erase(index);
 
   DYSECTVERBOSE(true, "Domain %x bound to stream %lx", dom->getId(), (long)stream);
@@ -67,13 +69,13 @@ DysectAPI::DysectErrorCode Backend::bindStream(int tag, Stream* stream) {
       DYSECTVERBOSE("All domains bound to streams - send ack");
       ackBindings();
     } else {
-      streamBindAckSent = false;  
+      streamBindAckSent = false;
     }
 
     state = ready;
   }
 
-  return OK; 
+  return OK;
 }
 
 DysectAPI::DysectErrorCode Backend::ackBindings() {
@@ -157,13 +159,13 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
         // Required events indeed triggered
         // Evaluate conditions
         ConditionResult result;
-        
+
         DYSECTVERBOSE(true, "Evaluate condition for %d!", curProcess->getPid());
         if(probe->evaluateConditions(result, curProcess, curThread) == DysectAPI::OK) {
 
-          if(result == ResolvedTrue) { 
+          if(result == ResolvedTrue) {
             DYSECTVERBOSE(true, "Condition satisfied");
-            
+
             Domain* dom = probe->getDomain();
             assert(dom != 0);
 
@@ -181,7 +183,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               } else {
                 DYSECTVERBOSE(true, "Timer already running - just enqueue");
               }
-              
+
               if(probe->doNotify()) {
                 probe->enqueueNotifyPacket();
               }
@@ -199,7 +201,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
             }
             ProcessSet::ptr lprocset;
             probe->getDomain()->getAttached(lprocset);
-            
+
             if(probe->waitForOthers()) {
               DYSECTVERBOSE(true, "Wait (%ld) for group members %d/%d", dom->getWaitTime(), probe->getProcessCount(), lprocset->size());
               probe->addWaitingProc(curProcess);
@@ -217,9 +219,9 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                 if (Backend::getPendingExternalAction == 0)
                     probe->sendEnqueuedActions();
               }
-            
+
               retState = Process::cbThreadStop;
-            
+
             } else {
               DYSECTVERBOSE(true, "Enable children for probe %x", dom->getId());
               probe->enqueueEnable(curProcess);
@@ -240,13 +242,13 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                 DYSECTWARN(false, "Failed to reset timer (%ld) and invoke: %x", dom->getWaitTime(), dom->getId());
               }
             }
-#if 0 
+#if 0
           } else if(result == CollectiveResolvable) {
             // Block process and await resolution of collective operations
-            
+
             //probe->addWaitingCond(curProcess, curThread);
             Err::warn(false, "Condition stalls not yet supported");
-            
+
             Err::verbose(true, "Stopping thread in process %d", curProcess->getPid());
             retState = Process::cbProcStop;
 
@@ -291,7 +293,7 @@ DysectAPI::DysectErrorCode Backend::pauseApplication() {
   // Processes might have exited before setup
   allProcs = ProcessMgr::filterExited(allProcs);
 
-  if(!allProcs) 
+  if(!allProcs)
     return OK;
 
   if(allProcs->empty())
@@ -315,7 +317,7 @@ DysectAPI::DysectErrorCode Backend::resumeApplication() {
   // Processes might have exited before setup
   allProcs = ProcessMgr::filterExited(allProcs);
 
-  if(!allProcs) 
+  if(!allProcs)
     return OK;
 
   if(allProcs->empty())
@@ -340,21 +342,21 @@ void  Backend::setPendingExternalAction(int pending) {
 }
 
 DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stream* stream) {
-  
+
   if(tag == DysectGlobalReadyTag){
     // Stream to respond when all streams have been bound
     if(controlStream != 0) {
       return DYSECTWARN(Error, "Control stream already set");
     }
 
-    controlStream = stream; 
-    
+    controlStream = stream;
+
     if((state == ready) && (!streamBindAckSent)) {
       ackBindings();
     }
 
     return OK;
-  } 
+  }
 
   switch(state) {
     case bindingStreams:
@@ -364,7 +366,7 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
           return DYSECTWARN(StreamError, "Failed to bind stream!");
         }
       } else {
-        assert(!"Save packet until all streams have been bound to domains - not yet supported"); 
+        assert(!"Save packet until all streams have been bound to domains - not yet supported");
       }
     }
     break;
@@ -374,7 +376,7 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
         enableProbeRoots();
       } else {
         if(Domain::isContinueTag(tag)) {
-          
+
           Domain* dom = 0;
           if(!Domain::getDomainFromTag(dom, tag)) {
             DYSECTWARN(false, "Domain for tag %x could not be found", tag);
@@ -425,7 +427,7 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
     }
 
     DYSECTVERBOSE(true, "Starting preparation of conditions");
-    
+
     if(probe->prepareCondition(recursive) != OK) {
       DYSECTWARN(Error, "Error occured while preparing conditions");
     }
@@ -448,12 +450,12 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
       missingBindings.insert(domainId);
     }
   }
-  
+
   // List generated - wait for incoming frontend init packages
 
   if(missingBindings.empty()) {
     state = ready;
-    
+
     if(controlStream != 0) {
       DYSECTVERBOSE(true, "No domains need to be bound - send ack");
       ackBindings();
@@ -489,9 +491,9 @@ Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev)
   Process::cb_ret_t retState = Process::cbThreadContinue;
 
   EventBreakpoint::const_ptr bpEvent = ev->getEventBreakpoint();
-  
+
   DYSECTVERBOSE(true, "Breakpoint hit");
-  
+
   if(!bpEvent) {
     DYSECTWARN(Error, "Breakpoint event could not be retrieved from generic event");
   } else {
@@ -501,7 +503,7 @@ Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev)
 
     vector<Breakpoint::const_ptr> bps;
     vector<Breakpoint::const_ptr>::iterator it;
-      
+
     bpEvent->getBreakpoints(bps);
 
     if(bps.empty()) {
@@ -517,7 +519,7 @@ Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev)
         DYSECTWARN(true, "Event not found in breakpoint payload");
         continue;
       }
-      
+
       // XXX: What to do with different ret states?
       retState = handleEvent(curProcess, curThread, dysectEvent);
     }
@@ -613,10 +615,182 @@ Process::cb_ret_t Backend::handleProcessExit(ProcControlAPI::Event::const_ptr ev
       DYSECTVERBOSE(true, "Not enabled");
     }
   }
-  
+
   Backend::enqueueDetach(curProcess);
 
   return Process::cbProcStop;
+}
+
+DysectErrorCode Backend::loadLibrary(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath) {
+  bool result;
+
+  result = process->addLibrary(libraryPath);
+  if (!result) {
+    DYSECTWARN(false, "Failed to add library %s", libraryPath.c_str());
+    return LibraryNotLoaded;
+  }
+
+  return OK;
+}
+
+DysectErrorCode Backend::writeLibraryVariable(Dyninst::ProcControlAPI::Process::ptr process, std::string varName, std::string libraryPath, void *value, int size) {
+  bool result, found = false;
+  string libraryName;
+  Symtab *symtab = NULL;
+  Offset varOffset;
+  Address loadAddress;
+  vector<SymtabAPI::Variable *> variables;
+  LibraryPool::iterator libsIter;
+
+  if (symtabs.find(libraryPath) == symtabs.end()) {
+    result = Symtab::openFile(symtab, libraryPath.c_str());
+    if (result == false) {
+      DYSECTWARN(false, "Failed to find file %s for symtab", libraryPath.c_str());
+      return Error;
+    }
+  }
+  else {
+    symtab = symtabs[libraryPath];
+  }
+
+  result = symtab->findVariablesByName(variables, varName);
+  if (result == false || variables.size() < 1) {
+    DYSECTWARN(false, "Failed to find %s variable", varName.c_str());
+    return Error;
+  }
+  varOffset = variables[0]->getOffset();
+  DYSECTLOG(true, "found %s at offset 0x%lx", varName.c_str(), varOffset);
+
+  libraryName = basename(libraryPath.c_str());
+  LibraryPool &libs = process->libraries();
+  for (libsIter = libs.begin(); libsIter != libs.end(); libsIter++)
+  {
+      Library::ptr libraryPtr = *libsIter;
+      if (libraryPtr->getName().find(libraryName) == string::npos)
+          continue;
+
+      loadAddress = (*libsIter)->getLoadAddress();
+      found = true;
+      DYSECTLOG(true, "found library %s at 0x%lx", libraryName.c_str(), loadAddress);
+      break;
+  }
+  if (found == false) {
+    DYSECTWARN(false, "Failed to find library %s", libraryName.c_str());
+    return Error;
+  }
+
+  process->writeMemory(loadAddress + varOffset, value, size);
+
+  return OK;
+}
+
+
+extern unsigned char call_snippet_begin[];
+extern unsigned char call_snippet_end[];
+
+void x86_block() {
+__asm__("call_snippet_begin:\n"
+         "nop\n"
+         "nop\n"
+         "nop\n"
+         "nop\n"
+         "nop\n"
+         "movq $0x1122334455667788, %rax\n"
+         "movq $0xaabbccddeeffaabb, %rdi\n"
+         "callq *%rax\n"
+         "int3\n"
+         "call_snippet_end:\n");
+}
+
+
+DysectErrorCode Backend::irpc(Process::ptr process, string libraryPath, string funcName, unsigned long arg) {
+  int funcAddrOffset = -1, argOffset = -1;
+  bool result, found = false;
+  unsigned char *begin, *end, *c, *buffer;
+  unsigned long size, *valuePtr, *ptr, value;
+  string libraryName;
+  Symtab *symtab = NULL;
+  Address loadAddress;
+  Offset funcOffset;
+  vector<SymtabAPI::Function *> functions;
+
+  if (symtabs.find(libraryPath) == symtabs.end()) {
+    result = Symtab::openFile(symtab, libraryPath.c_str());
+    if (result == false) {
+      DYSECTWARN(false, "Failed to find file %s for symtab", libraryPath.c_str());
+      return Error;
+    }
+  }
+  else {
+    symtab = symtabs[libraryPath];
+  }
+
+  libraryName = basename(libraryPath.c_str());
+  LibraryPool &libs = process->libraries();
+  LibraryPool::iterator libsIter;
+  for (libsIter = libs.begin(); libsIter != libs.end(); libsIter++)
+  {
+      Library::ptr libraryPtr = *libsIter;
+      if (libraryPtr->getName().find(libraryName) == string::npos)
+          continue;
+
+      loadAddress = (*libsIter)->getLoadAddress();
+      found = true;
+      DYSECTLOG(true, "found library %s at 0x%lx", libraryName.c_str(), loadAddress);
+      break;
+  }
+  if (found == false) {
+    DYSECTWARN(false, "Failed to find library %s", libraryName.c_str());
+    return Error;
+  }
+
+  begin = call_snippet_begin;
+  end = call_snippet_end;
+  size = (unsigned long)*end - (unsigned long)*begin;
+  for (c = begin; c != end; c++) {
+    valuePtr = (unsigned long *)c;
+    if (*valuePtr == 0x1122334455667788) {
+      funcAddrOffset =  (long)(c - begin);
+    }
+    if (*valuePtr == 0xaabbccddeeffaabb) {
+      argOffset =  (long)(c - begin);
+    }
+  }
+
+  result = symtab->findFunctionsByName(functions, funcName);
+  if (result == false || functions.size() < 1) {
+    DYSECTWARN(false, "Failed to find %s function", funcName.c_str());
+    return Error;
+  }
+  funcOffset = functions[0]->getOffset();
+  DYSECTLOG(true, "found %s at offset 0x%lx", funcName.c_str(), funcOffset);
+
+  buffer = (unsigned char *)malloc(size);
+  if (!buffer) {
+    DYSECTWARN(false, "Failed to allocate %d bytes for target %d", size);
+    return Error;
+  }
+  memcpy(buffer, begin, size);
+  c = buffer + funcAddrOffset;
+  value = loadAddress + funcOffset;
+  memcpy(c, &value, sizeof(unsigned long));
+  c = buffer + argOffset;
+  memcpy(c, &arg, sizeof(unsigned long));
+
+  IRPC::ptr irpc;
+  irpc = IRPC::createIRPC((void *)buffer, size, false);
+  if (!irpc) {
+    DYSECTWARN(false, "Failed to create IRPC in target");
+    return Error;
+  }
+  result = process->postIRPC(irpc);
+  if (!result) {
+    DYSECTWARN(false, "Failed to post IRPC in target");
+    return Error;
+  }
+
+  DYSECTLOG(true, "irpc successful for target");
+  return OK;
 }
 
 Process::cb_ret_t Backend::handleGenericEvent(ProcControlAPI::Event::const_ptr ev) {
@@ -634,7 +808,7 @@ DysectAPI::DysectErrorCode Backend::handleTimerEvents() {
     for(;probeIter != readyProbes.end(); probeIter++) {
       Probe* probe = *probeIter;
       Domain* dom = probe->getDomain();
-      
+
       DYSECTVERBOSE(true, "Sending enqueued notifications for timed probe: %x", dom->getId());
 
       probe->sendEnqueuedNotifications();
@@ -689,7 +863,7 @@ DysectAPI::DysectErrorCode Backend::handleQueuedOperations() {
 }
 
 DysectAPI::DysectErrorCode Backend::enqueueDetach(Process::const_ptr process) {
-  if(!enqueuedDetach) { 
+  if(!enqueuedDetach) {
     enqueuedDetach = ProcessSet::newProcessSet(process);
   } else {
     enqueuedDetach->insert(process);
@@ -702,7 +876,7 @@ DysectAPI::DysectErrorCode Backend::detachEnqueued() {
   if(!enqueuedDetach) {
     return OK;
   }
-  
+
   if(!enqueuedDetach->empty()) {
     enqueuedDetach = ProcessMgr::filterExited(enqueuedDetach);
     if(enqueuedDetach && !enqueuedDetach->empty()) {

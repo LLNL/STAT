@@ -235,6 +235,10 @@ fd_set Domain::getFdSet() { return fdSet; }
 
 int Domain::getMaxFd()    { return maxFd; }
 
+std::map<int, Dyninst::ProcControlAPI::Process::ptr>* Domain::getMpiRankToProcessMap() {
+  return mpiRankToProcessMap;
+}
+
 bool Domain::setFEContext(struct DysectFEContext_t* context) {
   assert(context != 0);
 

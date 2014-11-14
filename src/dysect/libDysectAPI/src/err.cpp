@@ -26,7 +26,7 @@ FILE* Err::outStream;
 extern FILE *gStatOutFp;
 bool Err::useStatOutFp_ = false;
 
-//#define DYSECT_LOG
+#define DYSECT_LOG
 #define DYSECT_INFO
 #define DYSECT_WARN
 #define DYSECT_VERBOSE

@@ -51,7 +51,9 @@ namespace DysectAPI {
       statType = 2,
       detachAllType = 3,
       stackTraceType = 4,
-      detachType = 5
+      detachType = 5,
+      totalviewType = 6,
+      depositCoreType = 7
     } aggType;
 
     aggType type;
@@ -68,6 +70,8 @@ namespace DysectAPI {
 
   public:
     static Act* trace(std::string str);
+    static Act* totalview();
+    static Act* depositCore();
     static Act* stat(AggScope scope = SatisfyingProcs, int traces = 5, int frequency = 300, bool threads = false);
     static Act* detachAll(AggScope scope = AllProcs);
     static Act* detach();
@@ -86,6 +90,39 @@ namespace DysectAPI {
 
 
   std::vector<Act*> Acts(Act* act1, Act* act2 = 0, Act* act3 = 0, Act* act4 = 0, Act* act5 = 0, Act* act6 = 0, Act* act7 = 0, Act* act8 = 0);
+
+  class DepositCore : public Act {
+    std::vector<AggregateFunction*> aggregates;
+    bool findAggregates();
+    std::map<int, Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+
+    public:
+    DepositCore();
+
+    bool prepare();
+
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+  class Totalview : public Act {
+    std::vector<AggregateFunction*> aggregates;
+    bool findAggregates();
+
+    public:
+    Totalview();
+
+    bool prepare();
+
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
 
   class Stat : public Act {
     int traces;

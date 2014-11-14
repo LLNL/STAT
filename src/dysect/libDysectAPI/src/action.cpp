@@ -29,6 +29,14 @@ int DysectAPI::Act::aggregateIdCounter = 0;
 //map<int, DysectAPI::Act*> DysectAPI::Act::aggregateMap;
 
 
+DysectAPI::Act* Act::depositCore() {
+  return new DepositCore();
+}
+
+DysectAPI::Act* Act::totalview() {
+  return new Totalview();
+}
+
 DysectAPI::Act* Act::stat(AggScope scope, int traces, int frequency, bool threads) {
   return new Stat(scope, traces, frequency, threads);
 }
@@ -54,6 +62,43 @@ DysectAPI::Act::Act() : category(unknownCategory),
 
   id = aggregateIdCounter++;
   //aggregateMap.insert(pair<int, Act*>(id, this));
+}
+
+DepositCore::DepositCore() {
+  type = depositCoreType;
+}
+
+bool DepositCore::prepare() {
+  findAggregates();
+  return true;
+}
+
+bool DepositCore::findAggregates() {
+  AggregateFunction* aggFunc = 0;
+  aggFunc = new RankListAgg(owner);
+  aggregates.push_back(aggFunc);
+  DYSECTVERBOSE(true, "Aggregate id: %d", aggFunc->getId());
+
+  return true;
+}
+
+
+Totalview::Totalview() {
+  type = totalviewType;
+}
+
+bool Totalview::prepare() {
+  findAggregates();
+  return true;
+}
+
+bool Totalview::findAggregates() {
+  AggregateFunction* aggFunc = 0;
+  aggFunc = new RankListAgg(owner);
+  aggregates.push_back(aggFunc);
+  DYSECTVERBOSE(true, "Aggregate id: %d", aggFunc->getId());
+
+  return true;
 }
 
 Stat::Stat(AggScope scope, int traces, int frequency, bool threads) : traces(traces), frequency(frequency), threads(threads) {
@@ -198,6 +243,9 @@ bool Trace::findAggregates() {
       break;
       case descAgg:
         aggFunc = new DescribeVariable(curDataExpr);
+      break;
+      case rankListAgg:
+        aggFunc = new RankListAgg(owner);
       break;
       default:
         DYSECTWARN(false, "Unsupported aggregate function '%s'", curAggName.c_str());

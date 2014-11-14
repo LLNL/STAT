@@ -41,6 +41,8 @@ namespace DysectAPI {
     static std::set<tag_t> missingBindings; //!< Set of tags needed to be bound by incoming front-end packets
     static Dyninst::Stackwalker::WalkerSet *walkerSet;
 
+    static std::map<std::string, Dyninst::SymtabAPI::Symtab *> symtabs;
+
     static Dyninst::ProcControlAPI::ProcessSet::ptr enqueuedDetach;
 
     static DysectErrorCode bindStream(int tag, MRN::Stream* stream);
@@ -72,6 +74,10 @@ namespace DysectAPI {
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleSignal(Dyninst::ProcControlAPI::Event::const_ptr ev); //!< Called upon signal raised
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleProcessExit(ProcControlAPI::Event::const_ptr ev);
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleGenericEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
+
+    static DysectErrorCode loadLibrary(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath);
+    static DysectErrorCode writeLibraryVariable(Dyninst::ProcControlAPI::Process::ptr process, std::string varName, std::string libraryPath, void *value, int size);
+    static DysectErrorCode irpc(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath, std::string funcName, unsigned long arg);
 
     static DysectErrorCode handleTimerEvents();
     static DysectErrorCode handleTimerActions();

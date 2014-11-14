@@ -113,6 +113,7 @@ namespace DysectAPI {
     static fd_set getFdSet();
     static int getMaxFd();
 
+    static std::map<int, Dyninst::ProcControlAPI::Process::ptr> *getMpiRankToProcessMap();
     static int getTotalNumProcs();
 
     static bool setFEContext(struct DysectFEContext_t* context);
