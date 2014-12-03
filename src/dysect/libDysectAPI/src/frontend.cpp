@@ -85,7 +85,7 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
     }
     if (checkDaemonExit() == true) {
       DYSECTINFO(true, "Stopping session - daemons have exited");
-      return DysectAPI::Error;
+      return DysectAPI::OK;
     }
 
     if(ret == 0 && !blocking) {

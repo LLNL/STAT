@@ -152,6 +152,7 @@ bool Totalview::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
 bool Totalview::finishFE(int count) {
   int *stopList = NULL, stopListSize = 0, i, launcherPid;
   char buf[512];
+  char *envValue;
   const char **launcherArgv;
   string launchCommand;
   vector<int> ranks;
@@ -213,7 +214,12 @@ bool Totalview::finishFE(int count) {
   statFE->shutDown();
 
   // totalview -parallel_attach yes -pid XXX -default_parallel_attach_subset="X Y Z" srun
-  launchCommand += "totalview -parallel_attach yes -pid ";
+  envValue = getenv("DYSECTAPI_TOTALVIEW_PATH");
+  if (envValue != NULL)
+    launchCommand += envValue;
+  else
+    launchCommand += "totalview";
+  launchCommand += " -parallel_attach yes -pid ";
   launcherPid = statFE->getLauncherPid();
   snprintf(buf, 512, "%d ", launcherPid);
   launchCommand += buf;
