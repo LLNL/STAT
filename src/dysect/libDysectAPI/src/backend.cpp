@@ -633,7 +633,7 @@ DysectErrorCode Backend::loadLibrary(Dyninst::ProcControlAPI::Process::ptr proce
   return OK;
 }
 
-DysectErrorCode Backend::writeLibraryVariable(Dyninst::ProcControlAPI::Process::ptr process, std::string varName, std::string libraryPath, void *value, int size) {
+DysectErrorCode Backend::writeModuleVariable(Dyninst::ProcControlAPI::Process::ptr process, std::string variableName, std::string libraryPath, void *value, int size) {
   bool result, found = false;
   string libraryName;
   Symtab *symtab = NULL;
@@ -653,13 +653,13 @@ DysectErrorCode Backend::writeLibraryVariable(Dyninst::ProcControlAPI::Process::
     symtab = symtabs[libraryPath];
   }
 
-  result = symtab->findVariablesByName(variables, varName);
+  result = symtab->findVariablesByName(variables, variableName);
   if (result == false || variables.size() < 1) {
-    DYSECTWARN(false, "Failed to find %s variable", varName.c_str());
+    DYSECTWARN(false, "Failed to find %s variable", variableName.c_str());
     return Error;
   }
   varOffset = variables[0]->getOffset();
-  DYSECTLOG(true, "found %s at offset 0x%lx", varName.c_str(), varOffset);
+  DYSECTLOG(true, "found %s at offset 0x%lx", variableName.c_str(), varOffset);
 
   libraryName = basename(libraryPath.c_str());
   LibraryPool &libs = process->libraries();
@@ -703,7 +703,7 @@ __asm__("call_snippet_begin:\n"
 }
 
 
-DysectErrorCode Backend::irpc(Process::ptr process, string libraryPath, string funcName, unsigned long arg) {
+DysectErrorCode Backend::irpc(Process::ptr process, string libraryPath, string funcName, void *arg, int argLength) {
   int funcAddrOffset = -1, argOffset = -1;
   bool result, found = false;
   unsigned char *begin, *end, *c, *buffer;
@@ -775,7 +775,7 @@ DysectErrorCode Backend::irpc(Process::ptr process, string libraryPath, string f
   value = loadAddress + funcOffset;
   memcpy(c, &value, sizeof(unsigned long));
   c = buffer + argOffset;
-  memcpy(c, &arg, sizeof(unsigned long));
+  memcpy(c, arg, argLength);
 
   IRPC::ptr irpc;
   irpc = IRPC::createIRPC((void *)buffer, size, false);

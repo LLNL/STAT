@@ -1,4 +1,7 @@
 2014-12-03 Gregory L. Lee <lee218@llnl.gov>
+	* : added irpc action
+	* : renamed writeVariable to writeModuleVariable
+	* frontend.cpp : specify TotalView path via DYSECTAPI_TOTALVIEW_PATH
 	* StrAgg.C : fixed deserialize of counts
 
 2014-12-02 Gregory L. Lee <lee218@llnl.gov>

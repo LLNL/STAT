@@ -57,29 +57,59 @@ bool LoadLibrary::finishBE(struct packet*& p, int& len) {
 }
 
 
-bool WriteVariable::collect(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+bool WriteModuleVariable::collect(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   Process::ptr *proc = (Process::ptr *)&process;
 
-  DYSECTVERBOSE(true, "WriteVariable::collect %d", owner->getProcessCount());
+  DYSECTVERBOSE(true, "WriteModuleVariable::collect %d", owner->getProcessCount());
 
   triggeredProcs.push_back(*proc);
 
   return true;
 }
 
-bool WriteVariable::finishFE(int count) {
+bool WriteModuleVariable::finishFE(int count) {
   assert(!"Finish Front-end should not be run on backend-end!");
   return false;
 }
 
-bool WriteVariable::finishBE(struct packet*& p, int& len) {
+bool WriteModuleVariable::finishBE(struct packet*& p, int& len) {
   vector<Process::ptr>::iterator procIter;
 
-  DYSECTVERBOSE(true, "WriteVariable::finishBE %d %s %s %x %d", owner->getProcessCount(), libraryPath.c_str(), varName.c_str(), value, size);
+  DYSECTVERBOSE(true, "WriteModuleVariable::finishBE %d %s %s %x %d", owner->getProcessCount(), libraryPath.c_str(), variableName.c_str(), value, size);
 
   for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
-    if (Backend::writeLibraryVariable(*procIter, varName, libraryPath, value, size) != OK)
-      return DYSECTWARN(false, "Failed to write variable %d bytes for %s in %s", size, varName.c_str(), libraryPath.c_str());
+    if (Backend::writeModuleVariable(*procIter, variableName, libraryPath, value, size) != OK)
+      return DYSECTWARN(false, "Failed to write variable %d bytes for %s in %s", size, variableName.c_str(), libraryPath.c_str());
+  }
+  triggeredProcs.clear();
+
+  return true;
+}
+
+
+bool Irpc::collect(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  Process::ptr *proc = (Process::ptr *)&process;
+
+  DYSECTVERBOSE(true, "Irpc::collect %d", owner->getProcessCount());
+
+  triggeredProcs.push_back(*proc);
+
+  return true;
+}
+
+bool Irpc::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool Irpc::finishBE(struct packet*& p, int& len) {
+  vector<Process::ptr>::iterator procIter;
+
+  DYSECTVERBOSE(true, "Irpc::finishBE %d %s %s %x %d", owner->getProcessCount(), libraryPath.c_str(), functionName.c_str(), value, size);
+
+  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
+    if (Backend::irpc(*procIter, libraryPath, functionName, value, size) != OK)
+      return DYSECTWARN(false, "Failed to irpc %s for %s with arg %s length %d", functionName.c_str(), libraryPath.c_str(), value, size);
   }
   triggeredProcs.clear();
 
@@ -157,7 +187,7 @@ bool DepositCore::finishFE(int count) {
 bool DepositCore::finishBE(struct packet*& p, int& len) {
 #ifdef DYSECTAPI_DEPCORE
   int rank, iRet;
-  string libName, varName;
+  string libraryPath, variableName;
   vector<AggregateFunction*>::iterator aggIter;
   vector<AggregateFunction*> realAggregates;
   map<int, Process::ptr>::iterator procIter;
@@ -199,26 +229,26 @@ bool DepositCore::finishBE(struct packet*& p, int& len) {
   char *envValue;
   envValue = getenv("STAT_PREFIX");
   if (envValue != NULL)
-    libName = envValue;
+    libraryPath = envValue;
   else
-    libName = STAT_PREFIX;
-  libName += "/lib/libdepositcorewrap.so";
+    libraryPath = STAT_PREFIX;
+  libraryPath += "/lib/libdepositcorewrap.so";
   for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
     rank = procIter->first;
     proc = &(procIter->second);
 
-    DYSECTVERBOSE(true, "loading library %s into rank %d", libName.c_str(), rank);
-    if (Backend::loadLibrary(*proc, libName) != OK) {
-      return DYSECTWARN(false, "Failed to add library %s", libName.c_str());
+    DYSECTVERBOSE(true, "loading library %s into rank %d", libraryPath.c_str(), rank);
+    if (Backend::loadLibrary(*proc, libraryPath) != OK) {
+      return DYSECTWARN(false, "Failed to add library %s", libraryPath.c_str());
     }
-    varName = "globalMpiRank";
-    if (Backend::writeLibraryVariable(*proc, varName, libName, &rank, sizeof(int)) != OK) {
-      return DYSECTWARN(false, "Failed to write variable %s in %s", varName.c_str(), libName.c_str());
+    variableName = "globalMpiRank";
+    if (Backend::writeModuleVariable(*proc, variableName, libraryPath, &rank, sizeof(int)) != OK) {
+      return DYSECTWARN(false, "Failed to write variable %s in %s", variableName.c_str(), libraryPath.c_str());
     }
 
 //    string funcName = "depositcorewrap_init";
-//    if (Backend::irpc(*proc, libName, funcName, rank) != OK) {
-//      return DYSECTWARN(false, "Failed to irpc func %s in %s with %ld", funcName.c_str(), libName.c_str(), rank);
+//    if (Backend::irpc(*proc, libraryPath, funcName, &rank, sizeof(unsigned long)) != OK) {
+//      return DYSECTWARN(false, "Failed to irpc func %s in %s with %ld", funcName.c_str(), libraryPath.c_str(), rank);
 //    }
 
     pid = (*proc)->getPid();

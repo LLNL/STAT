@@ -76,8 +76,8 @@ namespace DysectAPI {
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleGenericEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
 
     static DysectErrorCode loadLibrary(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath);
-    static DysectErrorCode writeLibraryVariable(Dyninst::ProcControlAPI::Process::ptr process, std::string varName, std::string libraryPath, void *value, int size);
-    static DysectErrorCode irpc(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath, std::string funcName, unsigned long arg);
+    static DysectErrorCode writeModuleVariable(Dyninst::ProcControlAPI::Process::ptr process, std::string variableName, std::string libraryPath, void *value, int size);
+    static DysectErrorCode irpc(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath, std::string funcName, void *arg, int argLength);
 
     static DysectErrorCode handleTimerEvents();
     static DysectErrorCode handleTimerActions();

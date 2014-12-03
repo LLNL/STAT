@@ -45,18 +45,35 @@ bool LoadLibrary::finishBE(struct packet*& p, int& len) {
 }
 
 
-bool WriteVariable::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+bool WriteModuleVariable::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
-  DYSECTVERBOSE(true, "WriteVariable::collect");
+  DYSECTVERBOSE(true, "WriteModuleVariable::collect");
 
   return true;
 }
 
-bool WriteVariable::finishFE(int count) {
-  DYSECTVERBOSE(true, "WriteVariable::finishFE %d", count);
+bool WriteModuleVariable::finishFE(int count) {
+  DYSECTVERBOSE(true, "WriteModuleVariable::finishFE %d", count);
 }
 
-bool WriteVariable::finishBE(struct packet*& p, int& len) {
+bool WriteModuleVariable::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+
+bool Irpc::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "Irpc::collect");
+
+  return true;
+}
+
+bool Irpc::finishFE(int count) {
+  DYSECTVERBOSE(true, "Irpc::finishFE %d", count);
+}
+
+bool Irpc::finishBE(struct packet*& p, int& len) {
   assert(!"Finish Backend-end should not be run on front-end!");
   return false;
 }

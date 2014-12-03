@@ -33,16 +33,28 @@ DysectAPI::Act* Act::loadLibrary(string library) {
   return new LoadLibrary(library);
 }
 
-DysectAPI::Act* Act::writeVariable(string varName, string libraryPath, void *value, int size) {
+DysectAPI::Act* Act::irpc(string functionName, string libraryPath, void *value, int size) {
   void *val;
 
   val = malloc(size);
   if (val == NULL) {
-    DYSECTVERBOSE(true, "writeVariable failed to malloc %d bytes", size);
+    DYSECTVERBOSE(true, "irpc failed to malloc %d bytes", size);
     return NULL;
   }
   memcpy(val, value, size);
-  return new WriteVariable(varName, libraryPath, val, size);
+  return new Irpc(functionName, libraryPath, val, size);
+}
+
+DysectAPI::Act* Act::writeModuleVariable(string libraryPath, string variableName, void *value, int size) {
+  void *val;
+
+  val = malloc(size);
+  if (val == NULL) {
+    DYSECTVERBOSE(true, "writeModuleVariable failed to malloc %d bytes", size);
+    return NULL;
+  }
+  memcpy(val, value, size);
+  return new WriteModuleVariable(libraryPath, variableName, val, size);
 }
 
 DysectAPI::Act* Act::signal(int sigNum) {
@@ -92,11 +104,20 @@ bool LoadLibrary::prepare() {
   return true;
 }
 
-WriteVariable::WriteVariable(string varName, string libraryPath, void *value, int size) : varName(varName), libraryPath(libraryPath), value(value), size(size) {
-  type = writeVariableType;
+WriteModuleVariable::WriteModuleVariable(string libraryPath, string variableName, void *value, int size) : variableName(variableName), libraryPath(libraryPath), value(value), size(size) {
+  type = writeModuleVariableType;
 }
 
-bool WriteVariable::prepare() {
+bool WriteModuleVariable::prepare() {
+  return true;
+}
+
+
+Irpc::Irpc(string libraryPath, string functionName, void *value, int size) : functionName(functionName), libraryPath(libraryPath), value(value), size(size) {
+  type = irpcType;
+}
+
+bool Irpc::prepare() {
   return true;
 }
 

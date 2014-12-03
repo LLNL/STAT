@@ -55,8 +55,9 @@ namespace DysectAPI {
       totalviewType = 6,
       depositCoreType = 7,
       loadLibraryType = 8,
-      writeVariableType = 9,
-      signalType = 10
+      writeModuleVariableType = 9,
+      signalType = 10,
+      irpcType = 11,
     } aggType;
 
     aggType type;
@@ -77,7 +78,8 @@ namespace DysectAPI {
     static Act* depositCore();
     static Act* signal(int sigNum);
     static Act* loadLibrary(std::string library);
-    static Act* writeVariable(std::string varName, std::string libraryPath, void *value, int size);
+    static Act* irpc(std::string libraryPath, std::string functionNAme, void *value, int size);
+    static Act* writeModuleVariable(std::string libraryPath, std::string variableName, void *value, int size);
     static Act* stat(AggScope scope = SatisfyingProcs, int traces = 5, int frequency = 300, bool threads = false);
     static Act* detachAll(AggScope scope = AllProcs);
     static Act* detach();
@@ -108,15 +110,32 @@ namespace DysectAPI {
   };
 
 
-  class WriteVariable : public Act {
+  class WriteModuleVariable : public Act {
     std::vector<Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
-    std::string varName;
+    std::string variableName;
     std::string libraryPath;
     void *value;
     int size;
 
     public:
-    WriteVariable(std::string varName, std::string libraryPath, void *value, int size);
+    WriteModuleVariable(std::string libraryPath, std::string variableName, void *value, int size);
+    bool prepare();
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
+  class Irpc : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+    std::string functionName;
+    std::string libraryPath;
+    void *value;
+    int size;
+
+    public:
+    Irpc(std::string libraryPath, std::string functionName, void *value, int size);
     bool prepare();
     bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
                   Dyninst::ProcControlAPI::Thread::const_ptr thread);
