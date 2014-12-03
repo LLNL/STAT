@@ -151,7 +151,8 @@ namespace DysectAPI {
 
     class Time : public Event {
     TimeType type;
-    long timeout;
+    int timeout;
+    long triggerTime;
 
     Dyninst::ProcControlAPI::ProcessSet::ptr procset;
 

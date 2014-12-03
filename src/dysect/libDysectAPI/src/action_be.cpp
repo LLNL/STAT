@@ -27,6 +27,100 @@ using namespace ProcControlAPI;
 using namespace MRN;
 
 
+bool LoadLibrary::collect(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  Process::ptr *proc = (Process::ptr *)&process;
+
+  DYSECTVERBOSE(true, "LoadLibrary::collect %d %s", owner->getProcessCount(), library.c_str());
+
+  triggeredProcs.push_back(*proc);
+
+  return true;
+}
+
+bool LoadLibrary::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool LoadLibrary::finishBE(struct packet*& p, int& len) {
+  vector<Process::ptr>::iterator procIter;
+
+  DYSECTVERBOSE(true, "LoadLibrary::finishBE %d %s", owner->getProcessCount(), library.c_str());
+
+  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
+    if (Backend::loadLibrary(*procIter, library) != OK)
+      return DYSECTWARN(false, "Failed to add library %s", library.c_str());
+  }
+  triggeredProcs.clear();
+
+  return true;
+}
+
+
+bool WriteVariable::collect(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  Process::ptr *proc = (Process::ptr *)&process;
+
+  DYSECTVERBOSE(true, "WriteVariable::collect %d", owner->getProcessCount());
+
+  triggeredProcs.push_back(*proc);
+
+  return true;
+}
+
+bool WriteVariable::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool WriteVariable::finishBE(struct packet*& p, int& len) {
+  vector<Process::ptr>::iterator procIter;
+
+  DYSECTVERBOSE(true, "WriteVariable::finishBE %d %s %s %x %d", owner->getProcessCount(), libraryPath.c_str(), varName.c_str(), value, size);
+
+  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
+    if (Backend::writeLibraryVariable(*procIter, varName, libraryPath, value, size) != OK)
+      return DYSECTWARN(false, "Failed to write variable %d bytes for %s in %s", size, varName.c_str(), libraryPath.c_str());
+  }
+  triggeredProcs.clear();
+
+  return true;
+}
+
+
+bool Signal::collect(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  Process::ptr *proc = (Process::ptr *)&process;
+
+  DYSECTVERBOSE(true, "Signal::collect %d", owner->getProcessCount());
+
+  triggeredProcs.push_back(*proc);
+
+  return true;
+}
+
+bool Signal::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool Signal::finishBE(struct packet*& p, int& len) {
+  int iRet;
+  PID pid;
+  vector<Process::ptr>::iterator procIter;
+
+  DYSECTVERBOSE(true, "Signal::finishBE %d %d", owner->getProcessCount(), sigNum);
+
+  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
+    pid = (*procIter)->getPid();
+    DYSECTLOG(true, "sending %d to pid %d", sigNum, pid);
+    iRet = kill(pid, sigNum);
+    if (iRet == -1)
+      return DYSECTWARN(false, "Failed to send %d to pid %d: %s", sigNum, pid, strerror(errno));
+  }
+  triggeredProcs.clear();
+
+  return true;
+}
+
 bool DepositCore::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
 #ifdef DYSECTAPI_DEPCORE

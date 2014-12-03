@@ -62,7 +62,7 @@ bool Time::enable(ProcessSet::ptr lprocset) {
   //TODO: time probe not fully functional, only works with timeout of 0
   if (timeout != 0)
     DYSECTWARN(true, "Warning, time probe not fully functional, only works with timeout of 0");
-  DYSECTINFO(true, "Enable time event for procset size %d with timeout %ld", lprocset->size(), timeout);
+  DYSECTINFO(true, "Enable time event for procset size %d with timeout %d", lprocset->size(), timeout);
   if(!lprocset) {
     return DYSECTWARN(false, "Process set not present");
   }
@@ -90,7 +90,7 @@ bool Time::disable() {
 }
 
 bool Time::disable(ProcessSet::ptr lprocset) {
-  DYSECTINFO(true, "Disable time event for procset size %d with timeout %ld", lprocset->size(), timeout);
+  DYSECTINFO(true, "Disable time event for procset size %d with timeout %d", lprocset->size(), timeout);
 
   set<Event*>::iterator evIter = timeSubscribers.find(this);
   if(evIter != timeSubscribers.end()) {

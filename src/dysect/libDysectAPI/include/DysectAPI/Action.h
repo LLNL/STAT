@@ -53,7 +53,10 @@ namespace DysectAPI {
       stackTraceType = 4,
       detachType = 5,
       totalviewType = 6,
-      depositCoreType = 7
+      depositCoreType = 7,
+      loadLibraryType = 8,
+      writeVariableType = 9,
+      signalType = 10
     } aggType;
 
     aggType type;
@@ -72,24 +75,69 @@ namespace DysectAPI {
     static Act* trace(std::string str);
     static Act* totalview();
     static Act* depositCore();
+    static Act* signal(int sigNum);
+    static Act* loadLibrary(std::string library);
+    static Act* writeVariable(std::string varName, std::string libraryPath, void *value, int size);
     static Act* stat(AggScope scope = SatisfyingProcs, int traces = 5, int frequency = 300, bool threads = false);
     static Act* detachAll(AggScope scope = AllProcs);
     static Act* detach();
     static Act* stackTrace();
 
     int getId() { return id; }
-
     virtual bool prepare() = 0;
-
     virtual bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
                           Dyninst::ProcControlAPI::Thread::const_ptr thread) = 0;
-
     virtual bool finishBE(struct packet*& p, int& len) = 0;
     virtual bool finishFE(int count) = 0;
   };
 
-
   std::vector<Act*> Acts(Act* act1, Act* act2 = 0, Act* act3 = 0, Act* act4 = 0, Act* act5 = 0, Act* act6 = 0, Act* act7 = 0, Act* act8 = 0);
+
+
+  class LoadLibrary : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+    std::string library;
+
+    public:
+    LoadLibrary(std::string library);
+    bool prepare();
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
+  class WriteVariable : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+    std::string varName;
+    std::string libraryPath;
+    void *value;
+    int size;
+
+    public:
+    WriteVariable(std::string varName, std::string libraryPath, void *value, int size);
+    bool prepare();
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
+  class Signal : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+    int sigNum;
+
+    public:
+    Signal(int sigNum);
+    bool prepare();
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
 
   class DepositCore : public Act {
     std::vector<AggregateFunction*> aggregates;
@@ -107,6 +155,7 @@ namespace DysectAPI {
     bool finishBE(struct packet*& p, int& len);
     bool finishFE(int count);
   };
+
 
   class Totalview : public Act {
     std::vector<AggregateFunction*> aggregates;

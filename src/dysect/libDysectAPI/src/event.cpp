@@ -200,13 +200,13 @@ bool Time::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process) {
   struct timeval now;
   gettimeofday(&now, NULL);
   long timestamp_now = ((now.tv_sec) * 1000) + ((now.tv_usec) / 1000);
-  return timestamp_now < timeout;
+  return timestamp_now > triggerTime;
 }
 
-Time::Time(TimeType type_, int timeout_) : type(type_), Event() {
+Time::Time(TimeType type_, int timeout_) : type(type_), timeout(timeout_), Event() {
   struct timeval start;
   gettimeofday(&start, NULL);
-  timeout = ((start.tv_sec) * 1000) + ((start.tv_usec) / 1000) + timeout_;
+  triggerTime = ((start.tv_sec) * 1000) + ((start.tv_usec) / 1000) + timeout;
 }
 
 DysectAPI::Event* Time::within(int timeout) {

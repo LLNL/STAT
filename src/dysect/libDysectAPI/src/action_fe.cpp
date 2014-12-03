@@ -28,6 +28,57 @@ using namespace ProcControlAPI;
 using namespace MRN;
 
 
+bool LoadLibrary::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "LoadLibrary::collect");
+
+  return true;
+}
+
+bool LoadLibrary::finishFE(int count) {
+  DYSECTVERBOSE(true, "LoadLibrary::finishFE %d", count);
+}
+
+bool LoadLibrary::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+
+bool WriteVariable::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "WriteVariable::collect");
+
+  return true;
+}
+
+bool WriteVariable::finishFE(int count) {
+  DYSECTVERBOSE(true, "WriteVariable::finishFE %d", count);
+}
+
+bool WriteVariable::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+
+bool Signal::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "Signal::collect");
+
+  return true;
+}
+
+bool Signal::finishFE(int count) {
+  DYSECTVERBOSE(true, "Signal::finishFE %d", count);
+}
+
+bool Signal::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+
 bool DepositCore::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
 #ifdef DYSECTAPI_DEPCORE

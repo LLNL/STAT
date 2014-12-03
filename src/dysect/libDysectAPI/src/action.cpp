@@ -29,6 +29,26 @@ int DysectAPI::Act::aggregateIdCounter = 0;
 //map<int, DysectAPI::Act*> DysectAPI::Act::aggregateMap;
 
 
+DysectAPI::Act* Act::loadLibrary(string library) {
+  return new LoadLibrary(library);
+}
+
+DysectAPI::Act* Act::writeVariable(string varName, string libraryPath, void *value, int size) {
+  void *val;
+
+  val = malloc(size);
+  if (val == NULL) {
+    DYSECTVERBOSE(true, "writeVariable failed to malloc %d bytes", size);
+    return NULL;
+  }
+  memcpy(val, value, size);
+  return new WriteVariable(varName, libraryPath, val, size);
+}
+
+DysectAPI::Act* Act::signal(int sigNum) {
+  return new Signal(sigNum);
+}
+
 DysectAPI::Act* Act::depositCore() {
   return new DepositCore();
 }
@@ -62,6 +82,30 @@ DysectAPI::Act::Act() : category(unknownCategory),
 
   id = aggregateIdCounter++;
   //aggregateMap.insert(pair<int, Act*>(id, this));
+}
+
+LoadLibrary::LoadLibrary(string library) : library(library) {
+  type = loadLibraryType;
+}
+
+bool LoadLibrary::prepare() {
+  return true;
+}
+
+WriteVariable::WriteVariable(string varName, string libraryPath, void *value, int size) : varName(varName), libraryPath(libraryPath), value(value), size(size) {
+  type = writeVariableType;
+}
+
+bool WriteVariable::prepare() {
+  return true;
+}
+
+Signal::Signal(int sigNum) : sigNum(sigNum) {
+  type = signalType;
+}
+
+bool Signal::prepare() {
+  return true;
 }
 
 DepositCore::DepositCore() {

@@ -1,3 +1,10 @@
+2014-12-03 Gregory L. Lee <lee218@llnl.gov>
+	* StrAgg.C : fixed deserialize of counts
+
+2014-12-02 Gregory L. Lee <lee218@llnl.gov>
+	* dysect* : added LoadLibrary, WriteVariable, and Signal actions
+	* event.cpp, Event.h : fixed Time probe (false warning and incorrect comparison in wasTriggered)
+
 2014-10-17 Gregory L. Lee <lee218@llnl.gov>
 	* dysect* : added Totalview and DepositCore actions
 
