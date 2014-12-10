@@ -202,6 +202,9 @@ bool Agg::aggregateIdFromName(std::string name, int& id) {
   if(name.compare("min") == 0) {
     id = minAgg;
     found = true;
+  } else if(name.compare("max") == 0) {
+    id = maxAgg;
+    found = true;
   } else if(name.compare("function") == 0) {
     id = funcLocAgg;
     found = true;

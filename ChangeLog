@@ -1,3 +1,6 @@
+2014-12-10 Gregory L. Lee <lee218@llnl.gov>
+	* : implemented max aggregate
+
 2014-12-03 Gregory L. Lee <lee218@llnl.gov>
 	* : added irpc action
 	* : renamed writeVariable to writeModuleVariable

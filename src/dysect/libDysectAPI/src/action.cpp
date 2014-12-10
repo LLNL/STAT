@@ -294,6 +294,9 @@ bool Trace::findAggregates() {
         // XXX: %d should be replaced with type specialization
         aggFunc = new Min("%d", curDataExpr.c_str());
       break;
+      case maxAgg:
+        aggFunc = new Max("%d", curDataExpr.c_str());
+      break;
       case funcLocAgg:
         aggFunc = new FuncLocation();
       break;

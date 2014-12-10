@@ -104,7 +104,7 @@ bool DescribeVariable::fetchAggregates(Probe* probe) {
         }
 
         if(aggFunc->getType() != maxAgg) {
-          return DYSECTWARN(false, "Expected Min aggregate for id %d", maxid);
+          return DYSECTWARN(false, "Expected Max aggregate for id %d", maxid);
         }
 
         Max* maxInstance = dynamic_cast<Max*>(aggFunc);

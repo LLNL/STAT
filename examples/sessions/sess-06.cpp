@@ -11,6 +11,8 @@ DysectStatus DysectAPI::onProcStart() {
                                 Act::trace("Function is '@function()'"),
                                 Act::trace("Location is '@location()'"),
                                 Act::trace("Rank is '@desc(rank)'"),
+                                Act::trace("Min rank is '@min(rank)'"),
+                                Act::trace("Max rank is '@max(rank)'"),
                                 Act::stat()));
   Probe* p1b   = new Probe(Time::within(0),
                            Domain::group("4,5", 1000),
