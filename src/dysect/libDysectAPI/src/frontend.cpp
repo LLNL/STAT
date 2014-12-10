@@ -70,7 +70,7 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
         return DysectAPI::OK;
       return DYSECTWARN(DysectAPI::Error, "select() failed to listen on file descriptor set: %s", strerror(errno));
       //return DysectAPI::Error;
-    } 
+    }
 
     if(FD_ISSET(0, &fdRead) && breakOnEnter) {
       DYSECTINFO(true, "Stopping session - enter key was hit");
@@ -83,11 +83,11 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
       }
       exit++;
     }
-    if (checkDaemonExit()) {
+    if (checkDaemonExit() == true) {
       DYSECTINFO(true, "Stopping session - daemons have exited");
-      return DysectAPI::Error;
+      return DysectAPI::OK;
     }
-    
+
     if(ret == 0 && !blocking) {
       return DysectAPI::SessionCont;
     }

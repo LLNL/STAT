@@ -3430,6 +3430,8 @@ void STAT_FrontEnd::shutDown()
                 printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Launchmon failed to detach from launcher... have the daemons exited?\n");
         }
     }
+    isLaunched_ = false;
+    gsLmonState = gsLmonState &(~0x00000002);
 }
 
 

@@ -29,6 +29,7 @@ bool FuncLocation::collect(void* process, void *thread) {
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
   bool wasRunning = false, boolRet;
   ProcDebug *pDebug;
+  int count;
 
   if(!process_ptr) {
     return DYSECTVERBOSE(false, "Process object not available");
@@ -72,12 +73,12 @@ bool FuncLocation::collect(void* process, void *thread) {
   }
 
   if(countMap.empty()) {
-    DYSECTVERBOSE(true, "Countmap empty - add framename");
+    DYSECTVERBOSE(true, "Countmap empty - add framename %s", frameName.c_str());
     countMap.insert(pair<string, int>(frameName, 1));
   } else {
     DYSECTVERBOSE(true, "Countmap not empty - look for frame");
     map<string, int>::iterator mapIter = countMap.find(frameName);
-    int count = 1;
+    count = 1;
     if(mapIter != countMap.end()) {
       count = mapIter->second;
       DYSECTVERBOSE(true, "Frame found - remove, increment(%d) and add item", count);
@@ -98,6 +99,7 @@ bool FileLocation::collect(void* process, void *thread) {
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
   bool wasRunning = false, boolRet;
   ProcDebug *pDebug;
+  int count;
 
   if(!process_ptr) {
     return DYSECTVERBOSE(false, "Process object not available");
@@ -179,7 +181,7 @@ bool FileLocation::collect(void* process, void *thread) {
     countMap.insert(pair<string, int>(location, 1));
   } else {
     map<string, int>::iterator mapIter = countMap.find(location);
-    int count = 1;
+    count = 1;
     if(mapIter != countMap.end()) {
       count = mapIter->second;
       countMap.erase(mapIter);
@@ -193,6 +195,7 @@ bool FileLocation::collect(void* process, void *thread) {
 }
 
 bool FuncParamNames::collect(void* process, void* thread) {
+  int count;
   Process::const_ptr process_ptr = *(Process::const_ptr*)process;
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
 
@@ -253,7 +256,7 @@ bool FuncParamNames::collect(void* process, void* thread) {
     countMap.insert(pair<string, int>(paramList, 1));
   } else {
     map<string, int>::iterator mapIter = countMap.find(paramList);
-    int count = 1;
+    count = 1;
     if(mapIter != countMap.end()) {
       count = mapIter->second;
       countMap.erase(mapIter);
@@ -267,6 +270,7 @@ bool FuncParamNames::collect(void* process, void* thread) {
 }
 
 bool StackTraces::collect(void* process, void* thread) {
+  int count;
   Process::const_ptr process_ptr = *(Process::const_ptr*)process;
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
 
@@ -309,7 +313,7 @@ bool StackTraces::collect(void* process, void* thread) {
     countMap.insert(pair<string, int>(trace, 1));
   } else {
     map<string, int>::iterator mapIter = countMap.find(trace);
-    int count = 1;
+    count = 1;
     if(mapIter != countMap.end()) {
       count = mapIter->second;
       countMap.erase(mapIter);

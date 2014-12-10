@@ -37,6 +37,8 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include "frame.h"
 #include "swk_errors.h"
 #include "Type.h"
+#include "dyntypes.h"
+#include "PCProcess.h"
 
 #include "lmon_api/lmon_fe.h"
 #include "STAT_shared.h"

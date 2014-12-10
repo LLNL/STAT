@@ -16,50 +16,12 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef __DYSECTAPI_AGGREGATE_h
-#define __DYSECTAPI_AGGREGATE_h
+#include "DysectAPI/Aggregates/Aggregate.h"
 
-enum agg_type {
-  minAgg = 1,
-  maxAgg = 2,
-  // String aggregates
-  funcLocAgg = 3,
-  fileLocAgg = 4,
-  paramNamesAgg = 5,
-  tracesAgg = 6,
-  staticStrAgg = 7,
+using namespace std;
+using namespace DysectAPI;
 
-  // Folds to aggregates
-  descAgg = 8,
-
-  rankListAgg = 9
-};
-
-#include <typeinfo>
-#include <vector>
-#include <string>
-#include <map>
-#include <iostream>
-#include <string.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdio.h>
-
-#include "DysectAPI/Aggregates/Data.h"
-#include "DysectAPI/Aggregates/AggregateFunction.h"
-#include "DysectAPI/Aggregates/CmpAgg.h"
-//#include "DysectAPI/Aggregates/Min.h"
-#include "DysectAPI/Aggregates/StrAgg.h"
-#include "DysectAPI/Aggregates/RankListAgg.h"
-#include "DysectAPI/Aggregates/Location.h"
-#include "DysectAPI/Aggregates/DescVar.h"
-#include "DysectAPI/Aggregates/Packet.h"
-
-namespace DysectAPI {
-  class Agg {
-  public:
-    static bool aggregateIdFromName(std::string name, int& id);
-  };
+bool RankListAgg::collect(void* process, void *thread) {
+  return false;
 }
 
-#endif

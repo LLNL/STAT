@@ -2541,7 +2541,7 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
 
 #if defined(GROUP_OPS)
-    if (doGroupOps_)
+    if (doGroupOps_ && stopArrayLen == 0)
   #ifdef DYSECTAPI
     {
         if(DysectAPI::ProcessMgr::isActive())

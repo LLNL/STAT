@@ -17,4 +17,37 @@ AC_DEFUN([X_AC_DYSECTAPI], [
     ],
     [CXXFLAGS="$CXXFLAGS"]
   )
+
+  AM_CONDITIONAL([ENABLE_DEPCORE], false)
+  AC_ARG_WITH(depcore,
+    [AS_HELP_STRING([--with-depcore=prefix],
+      [Add the compile and link search paths for libdepositcore]
+    )],
+    [ CXXFLAGS="$CXXFLAGS -DDYSECTAPI_DEPCORE"
+      DEPCOREPREFIX="${withval}"
+      WITH_DEPCORE=yes
+      AM_CONDITIONAL([ENABLE_DEPCORE], true)
+    ],
+    [CXXFLAGS="$CXXFLAGS"
+      WITH_DEPCORE=no
+      DEPCOREPREFIX=""
+    ]
+  )
+  if test "$WITH_DEPCORE" = yes
+  then
+    AC_LANG_PUSH(C)
+    AC_MSG_CHECKING(for libdepositcore)
+    TMP_LDFLAGS=$LDFLAGS
+    LDFLAGS="$LDFLAGS -L${withval}/lib -ldepositcore"
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[extern void LDC_Depcore_cont(int rank, int safemode);]],
+      [[LDC_Depcore_cont(0, 0);]])],
+      [libdepcore_found=yes],
+      [libdepcore_found=no]
+    )
+    LDFLAGS=$TMP_LDFLAGS
+    AC_MSG_RESULT($libdepcore_found)
+    if test "$libdepcore_found" = no; then
+      AC_MSG_ERROR([libdepositcore is required.  Specify libdepositcore prefix with --with-depcore])
+    fi
+  fi
 ])

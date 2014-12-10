@@ -29,6 +29,46 @@ int DysectAPI::Act::aggregateIdCounter = 0;
 //map<int, DysectAPI::Act*> DysectAPI::Act::aggregateMap;
 
 
+DysectAPI::Act* Act::loadLibrary(string library) {
+  return new LoadLibrary(library);
+}
+
+DysectAPI::Act* Act::irpc(string functionName, string libraryPath, void *value, int size) {
+  void *val;
+
+  val = malloc(size);
+  if (val == NULL) {
+    DYSECTVERBOSE(true, "irpc failed to malloc %d bytes", size);
+    return NULL;
+  }
+  memcpy(val, value, size);
+  return new Irpc(functionName, libraryPath, val, size);
+}
+
+DysectAPI::Act* Act::writeModuleVariable(string libraryPath, string variableName, void *value, int size) {
+  void *val;
+
+  val = malloc(size);
+  if (val == NULL) {
+    DYSECTVERBOSE(true, "writeModuleVariable failed to malloc %d bytes", size);
+    return NULL;
+  }
+  memcpy(val, value, size);
+  return new WriteModuleVariable(libraryPath, variableName, val, size);
+}
+
+DysectAPI::Act* Act::signal(int sigNum) {
+  return new Signal(sigNum);
+}
+
+DysectAPI::Act* Act::depositCore() {
+  return new DepositCore();
+}
+
+DysectAPI::Act* Act::totalview() {
+  return new Totalview();
+}
+
 DysectAPI::Act* Act::stat(AggScope scope, int traces, int frequency, bool threads) {
   return new Stat(scope, traces, frequency, threads);
 }
@@ -54,6 +94,76 @@ DysectAPI::Act::Act() : category(unknownCategory),
 
   id = aggregateIdCounter++;
   //aggregateMap.insert(pair<int, Act*>(id, this));
+}
+
+LoadLibrary::LoadLibrary(string library) : library(library) {
+  type = loadLibraryType;
+}
+
+bool LoadLibrary::prepare() {
+  return true;
+}
+
+WriteModuleVariable::WriteModuleVariable(string libraryPath, string variableName, void *value, int size) : variableName(variableName), libraryPath(libraryPath), value(value), size(size) {
+  type = writeModuleVariableType;
+}
+
+bool WriteModuleVariable::prepare() {
+  return true;
+}
+
+
+Irpc::Irpc(string libraryPath, string functionName, void *value, int size) : functionName(functionName), libraryPath(libraryPath), value(value), size(size) {
+  type = irpcType;
+}
+
+bool Irpc::prepare() {
+  return true;
+}
+
+Signal::Signal(int sigNum) : sigNum(sigNum) {
+  type = signalType;
+}
+
+bool Signal::prepare() {
+  return true;
+}
+
+DepositCore::DepositCore() {
+  type = depositCoreType;
+}
+
+bool DepositCore::prepare() {
+  findAggregates();
+  return true;
+}
+
+bool DepositCore::findAggregates() {
+  AggregateFunction* aggFunc = 0;
+  aggFunc = new RankListAgg(owner);
+  aggregates.push_back(aggFunc);
+  DYSECTVERBOSE(true, "Aggregate id: %d", aggFunc->getId());
+
+  return true;
+}
+
+
+Totalview::Totalview() {
+  type = totalviewType;
+}
+
+bool Totalview::prepare() {
+  findAggregates();
+  return true;
+}
+
+bool Totalview::findAggregates() {
+  AggregateFunction* aggFunc = 0;
+  aggFunc = new RankListAgg(owner);
+  aggregates.push_back(aggFunc);
+  DYSECTVERBOSE(true, "Aggregate id: %d", aggFunc->getId());
+
+  return true;
 }
 
 Stat::Stat(AggScope scope, int traces, int frequency, bool threads) : traces(traces), frequency(frequency), threads(threads) {
@@ -198,6 +308,9 @@ bool Trace::findAggregates() {
       break;
       case descAgg:
         aggFunc = new DescribeVariable(curDataExpr);
+      break;
+      case rankListAgg:
+        aggFunc = new RankListAgg(owner);
       break;
       default:
         DYSECTWARN(false, "Unsupported aggregate function '%s'", curAggName.c_str());

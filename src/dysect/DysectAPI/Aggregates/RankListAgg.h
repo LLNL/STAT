@@ -16,49 +16,39 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef __DYSECTAPI_AGGREGATE_h
-#define __DYSECTAPI_AGGREGATE_h
-
-enum agg_type {
-  minAgg = 1,
-  maxAgg = 2,
-  // String aggregates
-  funcLocAgg = 3,
-  fileLocAgg = 4,
-  paramNamesAgg = 5,
-  tracesAgg = 6,
-  staticStrAgg = 7,
-
-  // Folds to aggregates
-  descAgg = 8,
-
-  rankListAgg = 9
-};
-
-#include <typeinfo>
-#include <vector>
-#include <string>
-#include <map>
-#include <iostream>
-#include <string.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdio.h>
-
-#include "DysectAPI/Aggregates/Data.h"
-#include "DysectAPI/Aggregates/AggregateFunction.h"
-#include "DysectAPI/Aggregates/CmpAgg.h"
-//#include "DysectAPI/Aggregates/Min.h"
-#include "DysectAPI/Aggregates/StrAgg.h"
-#include "DysectAPI/Aggregates/RankListAgg.h"
-#include "DysectAPI/Aggregates/Location.h"
-#include "DysectAPI/Aggregates/DescVar.h"
-#include "DysectAPI/Aggregates/Packet.h"
+#ifndef __DYSECTAPI_INTLISTAGG_H
+#define __DYSECTAPI_INTLISTAGG_H
 
 namespace DysectAPI {
-  class Agg {
+  class RankListAgg : public AggregateFunction {
+  protected:
+    std::vector<int> rankList;
+
+    void* payloadEnd;
+
+    bool deserialize(void *payload);
+    bool serialize(std::vector<int>& rankList);
+     
   public:
-    static bool aggregateIdFromName(std::string name, int& id);
+    RankListAgg(int id, int count, std::string fmt, void* payload);
+    RankListAgg(Probe *inOwner);
+    RankListAgg();
+
+    std::vector<int>& getRankList();
+    void getRankList(std::vector<int>& outRankList);
+    
+    int getSize();
+    int writeSubpacket(char *p);
+    virtual bool collect(void* process, void* thread);
+    bool clear();
+    
+    bool getStr(std::string& str);
+    virtual bool print();
+    bool aggregate(AggregateFunction* agg);
+
+    bool isSynthetic();
+    bool getRealAggregates(std::vector<AggregateFunction*>& aggregates);
+    bool fetchAggregates(Probe* probe);
   };
 }
 

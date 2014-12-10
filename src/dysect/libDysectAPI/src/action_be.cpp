@@ -22,8 +22,314 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 using namespace std;
 using namespace DysectAPI;
 using namespace Dyninst;
+using namespace SymtabAPI;
 using namespace ProcControlAPI;
 using namespace MRN;
+
+
+bool LoadLibrary::collect(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  Process::ptr *proc = (Process::ptr *)&process;
+
+  DYSECTVERBOSE(true, "LoadLibrary::collect %d %s", owner->getProcessCount(), library.c_str());
+
+  triggeredProcs.push_back(*proc);
+
+  return true;
+}
+
+bool LoadLibrary::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool LoadLibrary::finishBE(struct packet*& p, int& len) {
+  vector<Process::ptr>::iterator procIter;
+
+  DYSECTVERBOSE(true, "LoadLibrary::finishBE %d %s", owner->getProcessCount(), library.c_str());
+
+  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
+    if (Backend::loadLibrary(*procIter, library) != OK)
+      return DYSECTWARN(false, "Failed to add library %s", library.c_str());
+  }
+  triggeredProcs.clear();
+
+  return true;
+}
+
+
+bool WriteModuleVariable::collect(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  Process::ptr *proc = (Process::ptr *)&process;
+
+  DYSECTVERBOSE(true, "WriteModuleVariable::collect %d", owner->getProcessCount());
+
+  triggeredProcs.push_back(*proc);
+
+  return true;
+}
+
+bool WriteModuleVariable::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool WriteModuleVariable::finishBE(struct packet*& p, int& len) {
+  vector<Process::ptr>::iterator procIter;
+
+  DYSECTVERBOSE(true, "WriteModuleVariable::finishBE %d %s %s %x %d", owner->getProcessCount(), libraryPath.c_str(), variableName.c_str(), value, size);
+
+  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
+    if (Backend::writeModuleVariable(*procIter, variableName, libraryPath, value, size) != OK)
+      return DYSECTWARN(false, "Failed to write variable %d bytes for %s in %s", size, variableName.c_str(), libraryPath.c_str());
+  }
+  triggeredProcs.clear();
+
+  return true;
+}
+
+
+bool Irpc::collect(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  Process::ptr *proc = (Process::ptr *)&process;
+
+  DYSECTVERBOSE(true, "Irpc::collect %d", owner->getProcessCount());
+
+  triggeredProcs.push_back(*proc);
+
+  return true;
+}
+
+bool Irpc::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool Irpc::finishBE(struct packet*& p, int& len) {
+  vector<Process::ptr>::iterator procIter;
+
+  DYSECTVERBOSE(true, "Irpc::finishBE %d %s %s %x %d", owner->getProcessCount(), libraryPath.c_str(), functionName.c_str(), value, size);
+
+  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
+    if (Backend::irpc(*procIter, libraryPath, functionName, value, size) != OK)
+      return DYSECTWARN(false, "Failed to irpc %s for %s with arg %s length %d", functionName.c_str(), libraryPath.c_str(), value, size);
+  }
+  triggeredProcs.clear();
+
+  return true;
+}
+
+
+bool Signal::collect(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  Process::ptr *proc = (Process::ptr *)&process;
+
+  DYSECTVERBOSE(true, "Signal::collect %d", owner->getProcessCount());
+
+  triggeredProcs.push_back(*proc);
+
+  return true;
+}
+
+bool Signal::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool Signal::finishBE(struct packet*& p, int& len) {
+  int iRet;
+  PID pid;
+  vector<Process::ptr>::iterator procIter;
+
+  DYSECTVERBOSE(true, "Signal::finishBE %d %d", owner->getProcessCount(), sigNum);
+
+  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
+    pid = (*procIter)->getPid();
+    DYSECTLOG(true, "sending %d to pid %d", sigNum, pid);
+    iRet = kill(pid, sigNum);
+    if (iRet == -1)
+      return DYSECTWARN(false, "Failed to send %d to pid %d: %s", sigNum, pid, strerror(errno));
+  }
+  triggeredProcs.clear();
+
+  return true;
+}
+
+bool DepositCore::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+#ifdef DYSECTAPI_DEPCORE
+  vector<AggregateFunction*>::iterator aggIter;
+
+  DYSECTVERBOSE(true, "DepositCore::collect %d", owner->getProcessCount());
+
+  if(aggregates.empty())
+    return true;
+
+  for(aggIter = aggregates.begin(); aggIter != aggregates.end(); aggIter++) {
+    AggregateFunction* aggregate = *aggIter;
+    if(aggregate) {
+      DYSECTVERBOSE(true, "Collect data for deposit core action");
+      aggregate->collect((void*)&process, (void*)&thread);
+      if (aggregate->getType() == rankListAgg) {
+        RankListAgg *agg = dynamic_cast<RankListAgg*>(aggregate);
+        vector<int> &intList = agg->getRankList();
+        int rank = intList[intList.size() - 1];
+        Process::ptr *proc = (Process::ptr *)&process;
+        triggeredProcs[rank] = *proc;
+      }
+    }
+  }
+  return true;
+#endif //ifdef DYSECTAPI_DEPCORE
+}
+
+bool DepositCore::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool DepositCore::finishBE(struct packet*& p, int& len) {
+#ifdef DYSECTAPI_DEPCORE
+  int rank, iRet;
+  string libraryPath, variableName;
+  vector<AggregateFunction*>::iterator aggIter;
+  vector<AggregateFunction*> realAggregates;
+  map<int, Process::ptr>::iterator procIter;
+  Process::ptr *proc;
+  PID pid;
+
+
+  DYSECTVERBOSE(true, "DepositCore::finishBE %d", owner->getProcessCount());
+
+  if(aggregates.empty())
+    return true;
+
+  // If we have synthetic aggregate, we need to get actual aggregates
+  for(aggIter = aggregates.begin(); aggIter != aggregates.end(); aggIter++) {
+    AggregateFunction* aggregate = *aggIter;
+
+    if(aggregate) {
+      if(aggregate->isSynthetic()) {
+        aggregate->getRealAggregates(realAggregates);
+      } else {
+        realAggregates.push_back(aggregate);
+      }
+    }
+  }
+
+  if(!AggregateFunction::getPacket(realAggregates, len, p)) {
+    return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
+  }
+
+  aggIter = realAggregates.begin();
+  for(;aggIter != realAggregates.end(); aggIter++) {
+    AggregateFunction* aggregate = *aggIter;
+    if(aggregate) {
+      aggregate->clear();
+    }
+  }
+
+  // we run libdepositcore through a wrapper so we can inject a signal handler
+  char *envValue;
+  envValue = getenv("STAT_PREFIX");
+  if (envValue != NULL)
+    libraryPath = envValue;
+  else
+    libraryPath = STAT_PREFIX;
+  libraryPath += "/lib/libdepositcorewrap.so";
+  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
+    rank = procIter->first;
+    proc = &(procIter->second);
+
+    DYSECTVERBOSE(true, "loading library %s into rank %d", libraryPath.c_str(), rank);
+    if (Backend::loadLibrary(*proc, libraryPath) != OK) {
+      return DYSECTWARN(false, "Failed to add library %s", libraryPath.c_str());
+    }
+    variableName = "globalMpiRank";
+    if (Backend::writeModuleVariable(*proc, variableName, libraryPath, &rank, sizeof(int)) != OK) {
+      return DYSECTWARN(false, "Failed to write variable %s in %s", variableName.c_str(), libraryPath.c_str());
+    }
+
+//    string funcName = "depositcorewrap_init";
+//    if (Backend::irpc(*proc, libraryPath, funcName, &rank, sizeof(unsigned long)) != OK) {
+//      return DYSECTWARN(false, "Failed to irpc func %s in %s with %ld", funcName.c_str(), libraryPath.c_str(), rank);
+//    }
+
+    pid = (*proc)->getPid();
+    DYSECTLOG(true, "sending SIGUSR1 to rank %d pid %d", rank, pid);
+    iRet = kill(pid, SIGUSR1);
+    if (iRet == -1)
+      return DYSECTWARN(false, "Failed to send SIGUSR1 to rank %d: %s", rank, strerror(errno));
+  }
+  triggeredProcs.clear();
+
+#endif //ifdef DYSECTAPI_DEPCORE
+
+  return true;
+}
+
+bool Totalview::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  vector<AggregateFunction*>::iterator aggIter;
+
+  DYSECTVERBOSE(true, "Totalview::collect %d", owner->getProcessCount());
+
+  if(aggregates.empty())
+    return true;
+
+  for(aggIter = aggregates.begin(); aggIter != aggregates.end(); aggIter++) {
+    AggregateFunction* aggregate = *aggIter;
+    if(aggregate) {
+      DYSECTVERBOSE(true, "Collect data for totalview action");
+      aggregate->collect((void*)&process, (void*)&thread);
+    }
+  }
+
+  return true;
+}
+
+bool Totalview::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool Totalview::finishBE(struct packet*& p, int& len) {
+  vector<AggregateFunction*>::iterator aggIter;
+  vector<AggregateFunction*> realAggregates;
+
+  DYSECTVERBOSE(true, "Totalview::finishBE %d", owner->getProcessCount());
+
+  if(aggregates.empty())
+    return true;
+
+  // If we have synthetic aggregate, we need to get actual aggregates
+  for(aggIter = aggregates.begin(); aggIter != aggregates.end(); aggIter++) {
+    AggregateFunction* aggregate = *aggIter;
+
+    if(aggregate) {
+      if(aggregate->isSynthetic()) {
+        aggregate->getRealAggregates(realAggregates);
+      } else {
+        realAggregates.push_back(aggregate);
+      }
+    }
+  }
+
+  if(!AggregateFunction::getPacket(realAggregates, len, p)) {
+    return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
+  }
+
+  aggIter = realAggregates.begin();
+  for(;aggIter != realAggregates.end(); aggIter++) {
+    AggregateFunction* aggregate = *aggIter;
+    if(aggregate) {
+      aggregate->clear();
+    }
+  }
+
+  // Hack to prevent release of processes
+  // Should be OK since we will be detaching anyway
+  ProcessSet::ptr& waitingProcs = owner->getWaitingProcs();
+  waitingProcs->clear();
+
+  return true;
+}
 
 bool Stat::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
@@ -102,7 +408,7 @@ bool Trace::finishBE(struct packet*& p, int& len) {
   if(aggregates.empty())
     return true;
 
-  
+
   vector<AggregateFunction*>::iterator aggIter;
 
   // If we have synthetic aggregate, we need to get actual aggregates
@@ -110,7 +416,7 @@ bool Trace::finishBE(struct packet*& p, int& len) {
   aggIter = aggregates.begin();
   for(;aggIter != aggregates.end(); aggIter++) {
     AggregateFunction* aggregate = *aggIter;
-    
+
     if(aggregate) {
       if(aggregate->isSynthetic()) {
         aggregate->getRealAggregates(realAggregates);

@@ -211,7 +211,7 @@ int main(int argc, char **argv)
     {
         statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "\n## Prototype DysectAPI enabled ##\n");
         statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "Notice: Traditional sampling is disabled troughout session!\n");
-        
+
         statError = statFrontEnd->dysectSetup(dysectApiSessionPath, dysectTimeout);
         if (statError != STAT_OK)
         {
