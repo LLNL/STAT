@@ -565,6 +565,8 @@ bool DataLocation::isStructure() {
 
 Value::content_t DataLocation::getDataType() {
   if(dataType == Value::noType) {
+    bool pointer = false;
+    DYSECTINFO(true, "Determining type");
     Type* symType = getType();
     
     // XXX: Distinguish float and doubles
@@ -575,12 +577,48 @@ Value::content_t DataLocation::getDataType() {
     if(!stype) {
       Type *lookupType;
       symtab->findType(lookupType, "int");
-
-      typeScalar* itype = lookupType->getScalarType();
-      if(symType->isCompatible(itype)) {
-        stype = itype;
+      typeScalar* type = lookupType->getScalarType();
+      if(symType->isCompatible(type)) {
+        DYSECTVERBOSE(false, "Compatible with int");
+        stype = type;
       } else {
         DYSECTVERBOSE(false, "Not compatible with int");
+      }
+    }
+
+    if(!stype) {
+      Type *lookupType;
+      symtab->findType(lookupType, "long");
+      typeScalar* type = lookupType->getScalarType();
+      if(symType->isCompatible(type)) {
+        DYSECTVERBOSE(false, "Compatible with long");
+        stype = type;
+      } else {
+        DYSECTVERBOSE(false, "Not compatible with long");
+      }
+    }
+
+    if(!stype) {
+      Type *lookupType;
+      symtab->findType(lookupType, "float");
+      typeScalar* type = lookupType->getScalarType();
+      if(symType->isCompatible(type)) {
+        DYSECTVERBOSE(false, "Compatible with float");
+        stype = type;
+      } else {
+        DYSECTVERBOSE(false, "Not compatible with float");
+      }
+    }
+
+    if(!stype) {
+      Type *lookupType;
+      symtab->findType(lookupType, "double");
+      typeScalar* type = lookupType->getScalarType();
+      if(symType->isCompatible(type)) {
+        DYSECTVERBOSE(false, "Compatible with double");
+        stype = type;
+      } else {
+        DYSECTVERBOSE(false, "Not compatible with double");
       }
     }
 
@@ -588,23 +626,41 @@ Value::content_t DataLocation::getDataType() {
       typePointer* ptype = symType->getPointerType();
       if(ptype) {
         //XXX: Hack to print out pointer as long value
-        
+        DYSECTVERBOSE(false, "Pointer type");
         Type *lookupType;
         symtab->findType(lookupType, "long");
         typeScalar* ltype = lookupType->getScalarType();
         stype = ltype;
+        pointer = true;
       }
     }
 
     if(stype) {
-      size_t typeSize = symType->getSize(); 
-      if(typeSize < sizeof(long)) {
+      string typeName = symType->getName();
+      if (typeName == "int")
         dataType = Value::intType;
-      } else if(typeSize == sizeof(long)) {
-        dataType = Value::longType;
-      } else {
-        DYSECTWARN(false, "Scalar data size too big: %d", typeSize);
+      else if (typeName == "long" || typeName == "long int") {
+        if (pointer == true)
+          dataType = Value::pointerType;
+        else
+          dataType = Value::longType;
       }
+      else if (typeName == "float")
+        dataType = Value::floatType;
+      else if (typeName == "double")
+        dataType = Value::doubleType;
+      else if (typeName == "int *")
+        dataType = Value::pointerType;
+      else
+        DYSECTWARN(false, "Unsupported data type: %s", typeName.c_str());
+//      size_t typeSize = symType->getSize(); 
+//      if(typeSize < sizeof(long)) {
+//        dataType = Value::intType;
+//      } else if(typeSize == sizeof(long)) {
+//        dataType = Value::longType;
+//      } else {
+//        DYSECTWARN(false, "Scalar data size too big: %d", typeSize);
+//      }
     } else {
       string& typeName = symType->getName();
 

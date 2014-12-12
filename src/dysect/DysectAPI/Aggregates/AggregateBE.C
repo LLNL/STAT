@@ -45,6 +45,24 @@ bool AggregateFunction::getParams(std::string fmt, std::vector<DataRef*>& params
           next = false;
           break;
         }
+        case 'f': {
+          const char* name = va_arg(args, const char*);
+          params.push_back(new DataRef(Value::floatType, name));
+          next = false;
+          break;
+        }
+        case 'L': {
+          const char* name = va_arg(args, const char*);
+          params.push_back(new DataRef(Value::doubleType, name));
+          next = false;
+          break;
+        }
+        case 'p': {
+          const char* name = va_arg(args, const char*);
+          params.push_back(new DataRef(Value::pointerType, name));
+          next = false;
+          break;
+        }
         default:
           fprintf(stderr, "Unknown format specifier '%c'\n", c);
           return false;

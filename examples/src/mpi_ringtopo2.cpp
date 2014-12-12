@@ -67,7 +67,7 @@ int main (int argc, char *argv[])
 void do_SendOrStall(int to, int tag, int rank, int* buf, MPI_Request* req, int n)
 {
     int i = 0;
-
+    float val = rank * 1.1; double val2 = rank * 2.2; long val3 = rank * 2; int *ip = &i;
     struct test_t st;
     st.a = rank;
     st.b = to % 4;

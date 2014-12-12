@@ -74,6 +74,16 @@ bool DescribeVariable::collect(void* process, void *thread) {
           format="%p";
         } else {
           string typeName = symType->getName();
+          if (typeName == "int")
+            format = "%d";
+          else if (typeName == "long")
+            format = "%l";
+          else if (typeName == "float")
+            format = "%f";
+          else if (typeName == "double")
+            format = "%L";
+          else if (typeName == "int *")
+            format = "%p";
         }
 
         snprintf((char*)&buf, bufSize, "%s[%s:%d:%d]", varName.c_str(), format.c_str(), minagg->getId(), maxagg->getId());

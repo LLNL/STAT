@@ -73,8 +73,16 @@ DysectAPI::DysectErrorCode TargetVar::getValue(ConditionResult& result, Value& c
   Value nc;
   DysectAPI::DysectErrorCode code = dataLoc->getValue(nc);
 
-  DYSECTVERBOSE(true, "Read long value: %ld", nc.getValue<long>());
-  DYSECTVERBOSE(true, "Read int value: %d", nc.getValue<int>());
+  if (nc.getType() == Value::longType)
+    DYSECTVERBOSE(true, "Read long value for %s: %ld", name.c_str(), nc.getValue<long>());
+  else if (nc.getType() == Value::intType)
+    DYSECTVERBOSE(true, "Read int value for %s: %d", name.c_str(), nc.getValue<int>());
+  else if (nc.getType() == Value::floatType)
+    DYSECTVERBOSE(true, "Read float value for %s: %f", name.c_str(), nc.getValue<float>());
+  else if (nc.getType() == Value::doubleType)
+    DYSECTVERBOSE(true, "Read double value for %s: %f", name.c_str(), nc.getValue<double>());
+  else if (nc.getType() == Value::pointerType)
+    DYSECTVERBOSE(true, "Read pointer value for %s: %lx", name.c_str(), nc.getValue<long>());
 
   if(code != OK)
     return code;

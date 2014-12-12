@@ -77,6 +77,7 @@ int CmpAgg::writeSubpacket(char *p) {
   packet->id = getId();
   packet->count = count_;
   packet->type = type;
+  fmt_ = curVal.getFmt();
   memcpy(&(packet->fmt), fmt_.c_str(), maxFmt);
 
   char* curpos = (char*)&(packet->payload);

@@ -35,6 +35,18 @@ Value::Value(std::string fmt, void *lbuf) {
         len = sizeof(long);
         content = longType;
 
+      } else if(str[1] == 'f') {
+        len = sizeof(float);
+        content = floatType;
+
+      } else if(str[1] == 'L') {
+        len = sizeof(double);
+        content = doubleType;
+
+      } else if(str[1] == 'p') {
+        len = sizeof(long);
+        content = pointerType;
+
       } else {
         fprintf(stderr, "Unknown format: %s\n", fmt.c_str());
       }
@@ -46,9 +58,13 @@ Value::Value(std::string fmt, void *lbuf) {
 
 Value::Value() : content(noType), len(0), buf(0) {}
 
-Value::Value(float fval) : content(floatType) {}
+Value::Value(float fval) : content(floatType), len(0), buf(0){
+  populate<float>(fval);
+}
 
-Value::Value(double dval) : content(doubleType) {}
+Value::Value(double dval) : content(doubleType), len(0), buf(0){
+  populate<double>(dval);
+}
 
 Value::Value(int ival) : content(intType), len(0), buf(0){
   populate<int>(ival);
@@ -60,6 +76,22 @@ Value::Value(long lval) : content(longType), len(0), buf(0){
 
 Value::Value(bool bval) : content(boolType), len(0), buf(0) {
   populate<bool>(bval);
+}
+
+char *Value::getFmt()
+{
+  if (content == intType)
+    return "%d";
+  else if (content == longType)
+    return "%l";
+  else if (content == floatType)
+    return "%f";
+  else if (content == doubleType)
+    return "%L";
+  else if (content == pointerType)
+    return "%p";
+  else
+    return "?";
 }
 
 void Value::copy(const Value& rhs) {
@@ -117,7 +149,7 @@ int Value::compare(Value& c) {
                     if(diff < 0)
                       return lt;
 
-                    if(diff > 0) 
+                    if(diff > 0)
                       return gt;
                   }
                   break;
@@ -133,7 +165,55 @@ int Value::compare(Value& c) {
                      if(diff < 0)
                        return lt;
 
-                     if(diff > 0) 
+                     if(diff > 0)
+                       return gt;
+                   }
+                   break;
+    case floatType: {
+                     float op1 = getValue<float>();
+                     float op2 = c.getValue<float>();
+
+                     float diff = op1 - op2;
+
+                     if(diff == 0.0)
+                       return eq;
+
+                     if(diff < 0.0)
+                       return lt;
+
+                     if(diff > 0.0)
+                       return gt;
+                   }
+                   break;
+    case doubleType: {
+                     double op1 = getValue<double>();
+                     double op2 = c.getValue<double>();
+
+                     double diff = op1 - op2;
+
+                     if(diff == 0.0)
+                       return eq;
+
+                     if(diff < 0.0)
+                       return lt;
+
+                     if(diff > 0.0)
+                       return gt;
+                   }
+                   break;
+    case pointerType: {
+                     long op1 = getValue<long>();
+                     long op2 = c.getValue<long>();
+
+                     long diff = op1 - op2;
+
+                     if(diff == 0)
+                       return eq;
+
+                     if(diff < 0)
+                       return lt;
+
+                     if(diff > 0)
                        return gt;
                    }
                    break;
@@ -192,8 +272,18 @@ bool Value::getStr(string& str) {
     case longType:
       snprintf((char*)&outBuf, 32, "%ld",  *(long*)buf);
       break;
+    case floatType:
+      snprintf((char*)&outBuf, 32, "%f",  *(float*)buf);
+      break;
+    case doubleType:
+      snprintf((char*)&outBuf, 32, "%f",  *(double*)buf);
+      break;
+    case pointerType:
+      snprintf((char*)&outBuf, 32, "%lx", *(long*)buf);
+      break;
 
     default:
+      snprintf((char*)&outBuf, 32, "unknown type %d", content);
       break;
   }
 

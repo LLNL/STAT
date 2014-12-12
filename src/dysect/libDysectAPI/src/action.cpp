@@ -291,7 +291,7 @@ bool Trace::findAggregates() {
 
     switch(type) {
       case minAgg:
-        // XXX: %d should be replaced with type specialization
+        // %d is a placeholder since we don't know the type yet
         aggFunc = new Min("%d", curDataExpr.c_str());
       break;
       case maxAgg:

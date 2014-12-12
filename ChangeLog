@@ -1,3 +1,6 @@
+2014-12-12 Gregory L. Lee <lee218@llnl.gov>
+	* : added support for long, float, double, and pointer types
+
 2014-12-10 Gregory L. Lee <lee218@llnl.gov>
 	* : implemented max aggregate
 

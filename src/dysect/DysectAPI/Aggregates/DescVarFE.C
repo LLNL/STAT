@@ -114,17 +114,7 @@ bool DescribeVariable::fetchAggregates(Probe* probe) {
 
         const int bufSize = 512;
         char buf[bufSize];
-
-        //XXX: Hack to print pointers
-        if(type.compare("%p") == 0) {
-          long minVal = atol(minStr.c_str());
-          long maxVal = atol(maxStr.c_str());
-
-          snprintf((char*)buf, bufSize, "%s = [%p:%p] ", name.c_str(), minVal, maxVal);
-        } else {
-          snprintf((char*)buf, bufSize, "%s = [%s:%s] ", name.c_str(), minStr.c_str(), maxStr.c_str());
-        }
-
+        snprintf((char*)buf, bufSize, "%s = [%s:%s] ", name.c_str(), minStr.c_str(), maxStr.c_str());
         DYSECTVERBOSE(true, "Adding string: %s", buf);
         outStr.append(buf); 
   

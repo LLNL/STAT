@@ -38,7 +38,8 @@ namespace DysectAPI {
       intType,
       longType,
       floatType,
-      doubleType
+      doubleType,
+      pointerType
     };
 
     enum cmp_t {
@@ -89,6 +90,21 @@ namespace DysectAPI {
           val = (T)ret;
         }
         break;
+        case floatType: {
+          float ret = *(float*)buf;
+          val = (T)ret;
+        }
+        break;
+        case doubleType: {
+          double ret = *(double*)buf;
+          val = (T)ret;
+        }
+        break;
+        case pointerType: {
+          long ret = *(long*)buf;
+          val = (T)ret;
+        }
+        break;
         default:
           fprintf(stderr, "Data type not yet supported: %d\n", content);
         break;
@@ -110,6 +126,7 @@ namespace DysectAPI {
     void* getBuf() { return buf; }
 
     bool getStr(std::string& str);
+    char *getFmt();
 
     Value& operator=(Value& rhs);
     bool operator<(Value &rhs);
