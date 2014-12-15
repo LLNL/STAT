@@ -290,7 +290,7 @@ bool StackTraces::collect(void* process, void* thread) {
 
   vector<Stackwalker::Frame> stackWalk;
   if(!proc->walkStack(stackWalk)) {
-    return DYSECTWARN(false, "Could not walk stack");
+    return DYSECTWARN(false, "Could not walk stack: %s", Stackwalker::getLastErrorMsg());
   }
   
   string trace = "";

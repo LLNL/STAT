@@ -294,23 +294,21 @@ void Err::write(const std::string fmt, va_list args, enum msgType type) {
             typeStr.c_str(),
             fmt.c_str());
 
-    if((type == Warn) || (type == Fatal)) {
-        vfprintf(errStream, strBuf, args);
-        fflush(errStream);
-        return;
-    }
-
     char msg[bufSize];
     vsnprintf(msg, bufSize, strBuf, args);
+
+    if((type == Warn) || (type == Fatal)) {
+      fprintf(errStream, "%s", msg);
+      fflush(errStream);
+    }
+
     if(useStatOutFp_) {
       fprintf(gStatOutFp, "%s", msg);
       if(type == Info && environment == FrontendEnvironment)
         fprintf(stdout, "%s", msg);
     } else {
-        if((type == Info) || (type == Log) || (type == Verbose)) {
-            fprintf(outStream, "%s", msg);
-            fflush(outStream);
-        }
+        fprintf(outStream, "%s", msg);
+        fflush(outStream);
     }
 }
 
