@@ -903,6 +903,7 @@ Process::cb_ret_t Backend::handleTimeEvent() {
     ProcessSet::iterator procIter = procset->begin();
     if(procset->size() == 0)
       continue;
+    procset->stopProcs(); // stop the processes so we can inspect them
     DYSECTVERBOSE(true, "Event detected on %d processes", procset->size());
     for(;procIter != procset->end(); procIter++) {
       Process::ptr procPtr = *procIter;
