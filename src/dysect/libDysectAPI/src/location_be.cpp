@@ -226,6 +226,7 @@ bool Location::resolveExpression() {
   //             |  image '#' symbol
   //             |  file '#' line
   //             |  symbol
+  // ~symbol for function exit
   
   vector<string> tokens = Parser::tokenize(locationExpr, '#');
   int numTokens = tokens.size();
