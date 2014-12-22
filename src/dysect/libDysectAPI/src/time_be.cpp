@@ -59,10 +59,8 @@ bool Time::enable() {
 }
 
 bool Time::enable(ProcessSet::ptr lprocset) {
-  //TODO: time probe not fully functional, only works with timeout of 0
-  if (timeout != 0)
-    DYSECTWARN(true, "Warning, time probe not fully functional, only works with timeout of 0");
   DYSECTINFO(true, "Enable time event for procset size %d with timeout %d", lprocset->size(), timeout);
+  triggerTime = SafeTimer::getTimeStamp();
   if(!lprocset) {
     return DYSECTWARN(false, "Process set not present");
   }
@@ -105,19 +103,28 @@ bool Time::disable(ProcessSet::ptr lprocset) {
 }
 
 bool Time::isEnabled(Dyninst::ProcControlAPI::Process::const_ptr process) {
-  bool result = false;
+  long ts;
 
   if(procset) {
     ProcessSet::iterator procIter = procset->find(process);
-    result = (procIter != procset->end());
+    if(procIter == procset->end())
+      return false;
   }
 
-  return result;
+  ts = SafeTimer::getTimeStamp();
+  if (ts >= triggerTime + timeout) {
+    return true;
+  }
 
-  return true;
+  return false;
 }
 
 ProcessSet::ptr Time::getProcset()
 {
   return procset;
+}
+
+int Time::getTimeout()
+{
+  return timeout;
 }

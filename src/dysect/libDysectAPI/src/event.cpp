@@ -269,7 +269,7 @@ bool CombinedEvent::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr pro
 
 
 DysectAPI::Event* Async::leaveFrame(Frame* frame) {
-  return new Async(CrashType);
+  return new Async(CrashType); // this isn't right! Can use location(~symbol) for function exit instead
 }
 
 DysectAPI::Event* Async::crash() {

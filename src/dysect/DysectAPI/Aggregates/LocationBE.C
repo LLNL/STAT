@@ -159,7 +159,7 @@ bool FileLocation::collect(void* process, void *thread) {
   if (wasRunning == true) {
     boolRet = pDebug->resume();
     if (boolRet == false)
-      return DYSECTWARN(false, "Failed to pause process");
+      return DYSECTWARN(false, "Failed to resume process");
   }
 
   DYSECTINFO(true, "Read PC as: 0x%08lx", (unsigned long)pcVal);
@@ -271,6 +271,8 @@ bool FuncParamNames::collect(void* process, void* thread) {
 
 bool StackTraces::collect(void* process, void* thread) {
   int count;
+  bool wasRunning = false, boolRet;
+  ProcDebug *pDebug;
   Process::const_ptr process_ptr = *(Process::const_ptr*)process;
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
 
@@ -288,8 +290,27 @@ bool StackTraces::collect(void* process, void* thread) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
   }
 
+  if (process_ptr->allThreadsRunning()) {
+    wasRunning = true;
+    pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
+    if (pDebug == NULL)
+      return DYSECTWARN(false, "Failed to dynamic_cast ProcDebug pointer");
+    if (pDebug->isTerminated())
+      return DYSECTWARN(false, "Process is terminated");
+    boolRet = pDebug->pause();
+    if (boolRet == false)
+      return DYSECTWARN(false, "Failed to pause process");
+  }
+
   vector<Stackwalker::Frame> stackWalk;
-  if(!proc->walkStack(stackWalk)) {
+  boolRet = proc->walkStack(stackWalk);
+
+  if (wasRunning == true) {
+    if (pDebug->resume() == false)
+      return DYSECTWARN(false, "Failed to resume process");
+  }
+
+  if(!boolRet) {
     return DYSECTWARN(false, "Could not walk stack: %s", Stackwalker::getLastErrorMsg());
   }
   

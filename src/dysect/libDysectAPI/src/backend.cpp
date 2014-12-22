@@ -903,14 +903,15 @@ Process::cb_ret_t Backend::handleTimeEvent() {
     ProcessSet::iterator procIter = procset->begin();
     if(procset->size() == 0)
       continue;
-    procset->stopProcs(); // stop the processes so we can inspect them
-    DYSECTVERBOSE(true, "Event detected on %d processes", procset->size());
+    if(!event || !event->isEnabled(*procIter))
+      continue; // this is to avoid a race condition where a time event occurs in the middle of iterating through the processes
+    DYSECTVERBOSE(true, "Time event with timeout %d detected on %d processes", ((Time *)event)->getTimeout(), procset->size());
     for(;procIter != procset->end(); procIter++) {
       Process::ptr procPtr = *procIter;
       if(event && event->isEnabled(procPtr)) {
-       Thread::ptr threadPtr = procPtr->threads().getInitialThread();
-       Walker *proc = (Walker *)procPtr->getData();
-       Backend::handleEventPub(procPtr, threadPtr, event);
+        Thread::ptr threadPtr = procPtr->threads().getInitialThread();
+        Walker *proc = (Walker *)procPtr->getData();
+        Backend::handleEventPub(procPtr, threadPtr, event);
       }
     }
     if(event->getOwner()->getLifeSpan() == fireOnce)

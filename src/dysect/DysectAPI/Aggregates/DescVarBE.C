@@ -27,6 +27,8 @@ using namespace ProcControlAPI;
 bool DescribeVariable::collect(void* process, void *thread) {
   Process::const_ptr process_ptr = *(Process::const_ptr*)process;
   Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
+  bool wasRunning = false, boolRet;
+  ProcDebug *pDebug;
 
   if(!process_ptr) {
     return DYSECTVERBOSE(false, "Process object not available");
@@ -38,9 +40,28 @@ bool DescribeVariable::collect(void* process, void *thread) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
   }
   
+  if (process_ptr->allThreadsRunning()) {
+    wasRunning = true;
+    pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
+    if (pDebug == NULL)
+      return DYSECTWARN(false, "Failed to dynamic_cast ProcDebug pointer");
+    if (pDebug->isTerminated())
+      return DYSECTWARN(false, "Process is terminated");
+    boolRet = pDebug->pause();
+    if (boolRet == false)
+      return DYSECTWARN(false, "Failed to pause process");
+  }
+
   DataLocation* varLocation;
 
-  if(!DataLocation::findVariable(process_ptr, proc, varName, varLocation)) {
+  boolRet = DataLocation::findVariable(process_ptr, proc, varName, varLocation);
+
+  if (wasRunning == true) {
+    if (pDebug->resume() == false)
+      return DYSECTWARN(false, "Failed to resume process");
+  }
+
+  if(!boolRet) {
     return DYSECTWARN(false, "Could not locate variable '%s'", varName.c_str());
   }
 

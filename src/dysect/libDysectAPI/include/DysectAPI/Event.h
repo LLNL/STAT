@@ -174,6 +174,7 @@ namespace DysectAPI {
     static std::set<Event*>& getTimeSubscribers();
     Dyninst::ProcControlAPI::ProcessSet::ptr getProcset();
     void setOwner(Probe* probe) { owner = probe; }
+    int getTimeout();
 
 
     bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 

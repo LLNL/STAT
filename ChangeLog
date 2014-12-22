@@ -1,3 +1,17 @@
+2014-12-17 Gregory L. Lee <lee218@llnl.gov>
+	* : implemented time event for non-zero timeouts
+	* : don't stop target processes on time event, do so in	actions
+
+2014-12-17 Gregory L. Lee <lee218@llnl.gov>
+	* backend.cpp : stop target processes on time event, only when enabled
+
+2014-12-16 Gregory L. Lee <lee218@llnl.gov>
+	* symbol.cpp : added ~symbol for location function exit event
+	* backend.cpp : stop target processes on time event
+
+2014-12-15 Gregory L. Lee <lee218@llnl.gov>
+	* err.cpp : also write warnings and fatal messages to logs
+
 2014-12-12 Gregory L. Lee <lee218@llnl.gov>
 	* : added support for long, float, double, and pointer types
 

@@ -510,8 +510,7 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
     }
   }
 
-
- return DYSECTWARN(false, "Could not find variable %s", name.c_str());
+ return DYSECTWARN(false, "Could not find variable %s in frame %s", name.c_str(), frameName.c_str());
 }
 
 bool DataLocation::findVariable(Address libOffset,
@@ -522,7 +521,7 @@ bool DataLocation::findVariable(Address libOffset,
 
     vector<Variable *> variables;
     if (!symtab->findVariablesByName(variables, name)) {
-       return false;
+      return false;
     }
 
     /* Multiple instances can not be distinguished */
