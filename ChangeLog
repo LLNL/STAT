@@ -1,4 +1,6 @@
-2014-12-17 Gregory L. Lee <lee218@llnl.gov>
+2014-12-22 Gregory L. Lee <lee218@llnl.gov>
+	* location_be.cpp : make sure process is stopped before removing breakpoint
+	* probe_be.cpp : reset processCount when finishing action
 	* : implemented time event for non-zero timeouts
 	* : don't stop target processes on time event, do so in	actions
 

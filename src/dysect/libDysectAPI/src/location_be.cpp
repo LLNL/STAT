@@ -69,9 +69,22 @@ bool Location::disable(ProcessSet::ptr lprocset) {
 
   ProcessSet::iterator procIter = lprocset->begin();
   for(;procIter != lprocset->end(); procIter++) {
+    bool wasRunning = false;
     Process::ptr procPtr = *procIter;
+    ProcDebug *pDebug;
 
     Walker* proc = (Walker*)procPtr->getData();
+
+    if (procPtr->allThreadsRunning()) {
+      wasRunning = true;
+      pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
+      if (pDebug == NULL)
+        return DYSECTWARN(false, "Failed to dynamic_cast ProcDebug pointer");
+      if (pDebug->isTerminated())
+        return DYSECTWARN(false, "Process is terminated");
+      if (pDebug->pause() == false)
+        return DYSECTWARN(false, "Failed to pause process");
+    }
 
     vector<DysectAPI::CodeLocation*>::iterator locationIter = codeLocations.begin();
     for(;locationIter != codeLocations.end(); locationIter++) {
@@ -98,6 +111,13 @@ bool Location::disable(ProcessSet::ptr lprocset) {
           DYSECTVERBOSE(false, "Breakpoint at %lx removed for %d!", addr, procPtr->getPid());
       }
     }
+
+    if (wasRunning == true) {
+      if (pDebug->resume() == false)
+        return DYSECTWARN(false, "Failed to resume process");
+    }
+
+
   }
 
   return true;

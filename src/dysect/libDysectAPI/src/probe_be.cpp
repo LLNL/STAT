@@ -280,7 +280,7 @@ DysectAPI::DysectErrorCode Probe::triggerAction(Process::const_ptr process, Thre
     if(act) {
       act->collect(process, thread);
       act->actionPending = true;
-      act->finishBE(p, len);
+      act->finishBE(p, len); // TODO: some actions cannot be run if we're in a CB, for example, if default probe for exit has Wait::NoWait, then detach will print warning
       act->actionPending = false;
     }
   }
@@ -377,6 +377,8 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
       return StreamError;
     }
   }
+
+  processCount = 0;
 
   return OK;
 }
