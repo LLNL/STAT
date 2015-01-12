@@ -226,10 +226,7 @@ bool Location::prepare() {
     if(!resolveExpression()) {
       return DYSECTWARN(false, "Expression '%s' could not be resolved", locationExpr.c_str());
     }
-
-    if(codeLocations.empty()) {
-      return DYSECTWARN(false, "No symbols found for expression '%s'", locationExpr.c_str());
-    }
+    return DYSECTWARN(false, "No symbols found for expression '%s'", locationExpr.c_str());
   }
 
   return DYSECTVERBOSE(true, "%d symbols found for expression '%s'", codeLocations.size(), locationExpr.c_str());

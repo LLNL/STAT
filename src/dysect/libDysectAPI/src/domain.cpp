@@ -150,7 +150,7 @@ bool Domain::addToMap(Domain* dom) {
 
   // Register id for stream -> domain binding
   if(domainMap.find(dom->getId()) != domainMap.end()) {
-    DYSECTWARN("Duplicate id '%x'", dom->getId());
+    DYSECTLOG("Duplicate id '%x'", dom->getId());
 
     return false;
   }

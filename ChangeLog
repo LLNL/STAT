@@ -1,3 +1,7 @@
+2015-01-09 Gregory L. Lee <lee218@llnl.gov>
+	* frontend.cpp : don't break on enter if not a tty
+	* : if probe root fails during preparation, add to pending and retry on	library load events
+
 2014-12-22 Gregory L. Lee <lee218@llnl.gov>
 	* location_be.cpp : make sure process is stopped before removing breakpoint
 	* probe_be.cpp : reset processCount when finishing action

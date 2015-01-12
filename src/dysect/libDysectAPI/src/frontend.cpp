@@ -56,7 +56,7 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
     // Copy fd_set structure
     fd_set fdRead = Domain::getFdSet();
 
-    if(breakOnEnter)
+    if(breakOnEnter && isatty(fileno(stdin)))
       FD_SET(0, &fdRead); //STDIN
 
     struct timeval timeout;

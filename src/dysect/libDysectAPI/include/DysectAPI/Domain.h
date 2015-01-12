@@ -35,7 +35,7 @@ namespace DysectAPI {
 
   typedef int tag_t;
 
-	class Domain {
+  class Domain {
     friend class Probe;
     friend class Backend;
     friend class Frontend;
@@ -104,8 +104,8 @@ namespace DysectAPI {
     static bool getDomainFromId(Domain*& dom, tag_t id);
     static bool getDomainFromTag(Domain*& dom, tag_t tag);
 
-		static Domain* world(long waitTime = Wait::inf, bool lblocking = true);
-		static Domain* group(std::string groupExpr, long waitTime = Wait::inf, bool lblocking = true);
+    static Domain* world(long waitTime = Wait::inf, bool lblocking = true);
+    static Domain* group(std::string groupExpr, long waitTime = Wait::inf, bool lblocking = true);
     static Domain* inherit(long waitTime = Wait::inherit, bool lblocking = true);
 
     static DysectErrorCode createFdSet();

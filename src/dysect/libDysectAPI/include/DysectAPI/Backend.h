@@ -62,7 +62,7 @@ namespace DysectAPI {
 
     static DysectErrorCode relayPacket(MRN::PacketPtr* packet, int tag, MRN::Stream* stream); //!< Incoming packages with DysectAPI signature in tag
 
-    static DysectErrorCode prepareProbes(struct DysectBEContext_t* context);
+    static DysectErrorCode prepareProbes(struct DysectBEContext_t* context, bool pending=false);
 
     static DysectErrorCode registerEventHandlers();
 
@@ -74,6 +74,7 @@ namespace DysectAPI {
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleSignal(Dyninst::ProcControlAPI::Event::const_ptr ev); //!< Called upon signal raised
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleProcessExit(ProcControlAPI::Event::const_ptr ev);
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleGenericEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
+    static Dyninst::ProcControlAPI::Process::cb_ret_t  handleLibraryEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
 
     static DysectErrorCode loadLibrary(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath);
     static DysectErrorCode writeModuleVariable(Dyninst::ProcControlAPI::Process::ptr process, std::string variableName, std::string libraryPath, void *value, int size);

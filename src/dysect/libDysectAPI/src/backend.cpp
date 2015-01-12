@@ -135,7 +135,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
   Walker* proc = (Walker*)curProcess->getData();
 
   if(!proc) {
-    DYSECTWARN(true, "Missing payload in process object: could not get walker");
+    DYSECTWARN(true, "Missing payload in process object: could not get walker for PID %d", curProcess->getPid());
   } else {
     dysectEvent->triggered(curProcess, curThread);
 
@@ -401,17 +401,23 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
 }
 
 
-DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* context) {
-  assert(context);
-  assert(context->walkerSet);
+DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* context, bool pending) {
+  if(!pending) {
+    assert(context);
+    assert(context->walkerSet);
 
-  walkerSet = context->walkerSet;
+    walkerSet = context->walkerSet;
 
-  Domain::setBEContext(context);
+    Domain::setBEContext(context);
 
-  DysectAPI::DaemonHostname = context->hostname;
+    DysectAPI::DaemonHostname = context->hostname;
+  }
 
-  vector<Probe*> roots = ProbeTree::getRoots();
+  vector<Probe*> roots, removePending;
+  if(pending)
+    roots = ProbeTree::getPendingRoots();
+  else
+    roots = ProbeTree::getRoots();
 
   for(int i = 0; i < roots.size(); i++) {
     Probe* probe = roots[i];
@@ -420,9 +426,17 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
     // for stream -> domain binding
     if(probe->prepareStream(recursive) != OK) {
       DYSECTWARN(Error, "Error occured while preparing streams");
+      if(!pending)
+        ProbeTree::addPendingRoot(probe);
+      continue;
     }
 
     if(probe->prepareEvent(recursive) != OK) {
+      if(!pending) {
+        DYSECTWARN(Error, "Error occured while preparing events, adding to pending events");
+        ProbeTree::addPendingRoot(probe);
+      }
+      continue;
       DYSECTWARN(Error, "Error occured while preparing events");
     }
 
@@ -430,11 +444,29 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
 
     if(probe->prepareCondition(recursive) != OK) {
       DYSECTWARN(Error, "Error occured while preparing conditions");
+      if(!pending)
+        ProbeTree::addPendingRoot(probe);
+      continue;
     }
 
     if(probe->prepareAction(recursive) != OK) {
       DYSECTWARN(Error, "Error occured while preparing actions");
+      if(!pending)
+        ProbeTree::addPendingRoot(probe);
+      continue;
     }
+
+    if(pending) {
+      DYSECTVERBOSE(true, "Enabled pending probe %x", probe);
+      removePending.push_back(probe);
+    }
+  }
+
+  if(pending) {
+    if(removePending.size() == 0)
+      return OK;
+    for(int i = 0; i < removePending.size(); i++)
+      ProbeTree::removePendingRoot(removePending[i]);
   }
 
   // Add all domains to missing bindings
@@ -475,7 +507,7 @@ DysectAPI::DysectErrorCode Backend::registerEventHandlers() {
   Process::registerEventCallback(ProcControlAPI::EventType::ThreadDestroy, Backend::handleGenericEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Fork, Backend::handleGenericEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Exec, Backend::handleGenericEvent);
-  Process::registerEventCallback(ProcControlAPI::EventType::Library, Backend::handleGenericEvent);
+  Process::registerEventCallback(ProcControlAPI::EventType::Library, Backend::handleLibraryEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Exit, Backend::handleProcessExit);
   Process::registerEventCallback(ProcControlAPI::EventType::Crash, Backend::handleCrash);
 
@@ -492,7 +524,7 @@ Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev)
 
   EventBreakpoint::const_ptr bpEvent = ev->getEventBreakpoint();
 
-  DYSECTVERBOSE(true, "Breakpoint hit");
+  DYSECTVERBOSE(true, "Breakpoint hit %lx", bpEvent->getAddress());
 
   if(!bpEvent) {
     DYSECTWARN(Error, "Breakpoint event could not be retrieved from generic event");
@@ -799,6 +831,16 @@ Process::cb_ret_t Backend::handleGenericEvent(ProcControlAPI::Event::const_ptr e
   return Process::cbDefault;
 }
 
+
+Process::cb_ret_t Backend::handleLibraryEvent(ProcControlAPI::Event::const_ptr ev) {
+  vector<Probe*> roots = ProbeTree::getPendingRoots();
+  DYSECTVERBOSE(true, "Library %s event captured, %d pending probes", ev->name().c_str(), roots.size());
+  if(roots.size() > 0)
+    prepareProbes(NULL, true);
+
+  return Process::cbDefault;
+}
+
 DysectAPI::DysectErrorCode Backend::handleTimerEvents() {
   if(SafeTimer::anySyncReady()) {
     DYSECTVERBOSE(true, "Handle timer notifications");
@@ -911,7 +953,7 @@ Process::cb_ret_t Backend::handleTimeEvent() {
       if(event && event->isEnabled(procPtr)) {
         Thread::ptr threadPtr = procPtr->threads().getInitialThread();
         Walker *proc = (Walker *)procPtr->getData();
-        Backend::handleEventPub(procPtr, threadPtr, event);
+        handleEvent(procPtr, threadPtr, event);
       }
     }
     if(event->getOwner()->getLifeSpan() == fireOnce)
