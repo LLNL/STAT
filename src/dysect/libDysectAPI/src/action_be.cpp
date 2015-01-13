@@ -474,6 +474,8 @@ bool Detach::prepare() {
 bool Detach::collect(Process::const_ptr process,
                      Thread::const_ptr thread) {
   DYSECTVERBOSE(true, "Collect for detach");
+  if (!detachProcs)
+    detachProcs = ProcessSet::newProcessSet();
   detachProcs->insert(process);
   return true;
 }

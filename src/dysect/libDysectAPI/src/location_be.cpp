@@ -28,7 +28,7 @@ using namespace ProcControlAPI;
 
 map<string, Symtab*> SymbolTable::symtabMap;
 
-Location::Location(string locationExpr) : locationExpr(locationExpr), Event() {
+Location::Location(string locationExpr, bool pendingEnabled) : locationExpr(locationExpr), pendingEnabled(pendingEnabled), Event() {
   bp = Breakpoint::newBreakpoint();
   bp->setData(this);
 }
@@ -226,7 +226,12 @@ bool Location::prepare() {
     if(!resolveExpression()) {
       return DYSECTWARN(false, "Expression '%s' could not be resolved", locationExpr.c_str());
     }
-    return DYSECTWARN(false, "No symbols found for expression '%s'", locationExpr.c_str());
+    if(codeLocations.empty()) {
+      if(pendingEnabled)
+        return DYSECTLOG(false, "No symbols found for expression '%s'", locationExpr.c_str());
+      else
+        return DYSECTWARN(false, "No symbols found for expression '%s'", locationExpr.c_str());
+    }
   }
 
   return DYSECTVERBOSE(true, "%d symbols found for expression '%s'", codeLocations.size(), locationExpr.c_str());
@@ -269,7 +274,10 @@ bool Location::resolveExpression() {
     }
 
     if(!DysectAPI::CodeLocation::findSymbol(proc, symbol, codeLocations)) {
-      return DYSECTWARN(false, "No symbols found for symbol %s", symbol.c_str());
+      if (pendingEnabled)
+        return DYSECTLOG(true, "No symbols found for symbol %s, pending enabled for future search", symbol.c_str());
+      else
+        return DYSECTWARN(false, "No symbols found for symbol %s", symbol.c_str());
     }
 
   } else if(numTokens == 2) { // file '#' line 

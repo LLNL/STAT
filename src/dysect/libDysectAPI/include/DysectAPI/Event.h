@@ -111,6 +111,7 @@ namespace DysectAPI {
 
   class Location: public Event {
     std::string locationExpr;
+    bool pendingEnabled;
 
     Dyninst::ProcControlAPI::Breakpoint::ptr bp;
     bool resolveExpression();
@@ -119,7 +120,7 @@ namespace DysectAPI {
 
   public:
 
-    Location(std::string locationExpr);
+    Location(std::string locationExpr, bool pendingEnabled = false);
     Location(Dyninst::Address address);
 
     bool enable();
@@ -131,6 +132,7 @@ namespace DysectAPI {
 
     bool prepare();
     bool isProcessWide() { return false; }
+    bool isPendingEnabled() { return pendingEnabled; }
     void setOwner(Probe* probe) { owner = probe; }
   };
 
@@ -140,9 +142,9 @@ namespace DysectAPI {
 
     class Code {
     public:
-        static Location* location(std::string locationExpr);
+        static Location* location(std::string locationExpr, bool pendingEnabled = false);
         static Location* address(Dyninst::Address address);
-        static Function* function(std::string functionExpr);
+        static Function* function(std::string functionExpr, bool pendingEnabled = false);
     };
 
   typedef enum TimeType {

@@ -106,7 +106,7 @@ bool DysectAPI::CodeLocation::findSymbol(Dyninst::Stackwalker::Walker* proc, str
 
 
   if(symbols.empty()) {
-    return DYSECTWARN(false, "No symbols found for %s", name.c_str());
+    return DYSECTLOG(false, "No symbols found for %s in current library set", name.c_str());
   }
 
   return true;

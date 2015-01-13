@@ -1,3 +1,7 @@
+2015-01-13 Gregory L. Lee <lee218@llnl.gov>
+	* : allow probe Location to specify if event can be pending library load
+	* : suppress warning messages for missing symbols if pending enabled
+
 2015-01-09 Gregory L. Lee <lee218@llnl.gov>
 	* frontend.cpp : don't break on enter if not a tty
 	* : if probe root fails during preparation, add to pending and retry on	library load events

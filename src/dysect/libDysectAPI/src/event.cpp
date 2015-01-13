@@ -215,8 +215,8 @@ DysectAPI::Event* Time::within(int timeout) {
 
 
 
-Location* Code::location(string locationExpr) {
-  Location* location = new Location(locationExpr);
+Location* Code::location(string locationExpr, bool pendingEnabled) {
+  Location* location = new Location(locationExpr, pendingEnabled);
 
   return location; 
 }

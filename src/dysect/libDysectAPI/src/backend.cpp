@@ -433,7 +433,7 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
 
     if(probe->prepareEvent(recursive) != OK) {
       if(!pending) {
-        DYSECTWARN(Error, "Error occured while preparing events, adding to pending events");
+        DYSECTLOG(Error, "Error occured while preparing events, adding to pending events");
         ProbeTree::addPendingRoot(probe);
       }
       continue;
@@ -834,7 +834,19 @@ Process::cb_ret_t Backend::handleGenericEvent(ProcControlAPI::Event::const_ptr e
 
 Process::cb_ret_t Backend::handleLibraryEvent(ProcControlAPI::Event::const_ptr ev) {
   vector<Probe*> roots = ProbeTree::getPendingRoots();
-  DYSECTVERBOSE(true, "Library %s event captured, %d pending probes", ev->name().c_str(), roots.size());
+  EventLibrary::const_ptr evLib = ev->getEventLibrary();
+  set<Library::ptr>::iterator iter;
+  string msg;
+
+  msg = "libs added: ";
+  for (iter = evLib->libsAdded().begin(); iter != evLib->libsAdded().end(); iter++) {
+    msg += (*iter)->getName() + ", ";
+  }
+  msg += "libs removed: ";
+  for (iter = evLib->libsRemoved().begin(); iter != evLib->libsRemoved().end(); iter++) {
+    msg += (*iter)->getName() + ", ";
+  }
+  DYSECTVERBOSE(true, "Library event captured, %d pending probes, %s", roots.size(), msg.c_str());
   if(roots.size() > 0)
     prepareProbes(NULL, true);
 
