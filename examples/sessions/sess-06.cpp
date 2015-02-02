@@ -37,10 +37,20 @@ DysectStatus DysectAPI::onProcStart() {
                            Domain::world(500),
                            Act::stat());
 
+  Probe* p5    = new Probe(Code::location("mpi_ringtopo2.cpp#88"),
+                           Domain::world(1000, true),
+                           Acts(Act::trace("Location is '@location()'"),
+                                Act::trace("rank = @desc(rank), i = '@desc(i)")),
+                           stay);
+
+  Probe* exit = new Probe(Async::exit(), Domain::world(50), Acts(Act::trace("My Process exited"), Act::stat(), Act::detach()), stay);
+
+  ProbeTree::addRoot(exit);
   ProbeTree::addRoot(p1);
   ProbeTree::addRoot(p2);
   ProbeTree::addRoot(p3);
   ProbeTree::addRoot(p4);
+  ProbeTree::addRoot(p5);
 
   return DysectOK;
 }

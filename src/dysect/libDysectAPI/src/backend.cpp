@@ -300,7 +300,7 @@ DysectAPI::DysectErrorCode Backend::pauseApplication() {
     return OK;
 
   if(allProcs->stopProcs()) {
-    DYSECTINFO(true, "stop all processes");
+    DYSECTLOG(true, "stop all processes");
     return OK;
   } else {
     return DYSECTWARN(Error, "Procset could not stop processes");
@@ -324,7 +324,7 @@ DysectAPI::DysectErrorCode Backend::resumeApplication() {
     return OK;
 
   if(allProcs->continueProcs()) {
-    DYSECTINFO(true, "continue all processes");
+    DYSECTLOG(true, "continue all processes");
     return OK;
   } else {
     return DYSECTWARN(Error, "Procset could not continue processes");
@@ -337,7 +337,7 @@ int Backend::getPendingExternalAction() {
 }
 
 void  Backend::setPendingExternalAction(int pending) {
-  DYSECTINFO(true, "set pendingExternalAction %d %d", pendingExternalAction, pending);
+  DYSECTLOG(true, "set pendingExternalAction %d %d", pendingExternalAction, pending);
   pendingExternalAction = pending;
 }
 

@@ -1651,7 +1651,7 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
     boolRet = libState->getLibraryAtAddr(addr, lib);
     if (boolRet == false)
     {
-        printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to get library at address 0x%lx\n", addr);
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Failed to get library at address 0x%lx\n", addr);
         snprintf(outBuf, BUFSIZE, "?");
         return STAT_OK;
     }

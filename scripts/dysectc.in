@@ -9,4 +9,12 @@ objname="$stripped.o"
 echo "Creating session library: '$libname'"
 
 g++ -g -O2 -fPIC -D__DYSECT_SESSION_BUILD -I@prefix@/include/ @CXXFLAGS@ -c $@ -o $objname
+if test $? -ne 0
+then
+    exit 1
+fi
 g++ -g -shared -W1,-soname,$libname -o $libname $objname
+if test $? -ne 0
+then
+    exit 1
+fi

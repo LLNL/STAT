@@ -39,7 +39,8 @@ host_triplet = @host@
 @ENABLE_EXAMPLES_TRUE@	mpi_ringtopo_defunct$(EXEEXT) \
 @ENABLE_EXAMPLES_TRUE@	to_test$(EXEEXT) rank_test$(EXEEXT) \
 @ENABLE_EXAMPLES_TRUE@	template_test$(EXEEXT) \
-@ENABLE_EXAMPLES_TRUE@	mpi_ringtopo2$(EXEEXT)
+@ENABLE_EXAMPLES_TRUE@	mpi_ringtopo2$(EXEEXT) \
+@ENABLE_EXAMPLES_TRUE@	dysect_test$(EXEEXT)
 subdir = examples/src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -69,6 +70,9 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(examplesdir)"
 PROGRAMS = $(examples_PROGRAMS)
+am_dysect_test_OBJECTS = dysect_test.$(OBJEXT)
+dysect_test_OBJECTS = $(am_dysect_test_OBJECTS)
+dysect_test_LDADD = $(LDADD)
 am_hw_OBJECTS = hw.$(OBJEXT)
 hw_OBJECTS = $(am_hw_OBJECTS)
 hw_LDADD = $(LDADD)
@@ -120,14 +124,14 @@ CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
-SOURCES = $(hw_SOURCES) $(mpi_ringtopo_SOURCES) \
+SOURCES = $(dysect_test_SOURCES) $(hw_SOURCES) $(mpi_ringtopo_SOURCES) \
 	$(mpi_ringtopo2_SOURCES) $(mpi_ringtopo_defunct_SOURCES) \
 	$(rank_test_SOURCES) $(template_test_SOURCES) \
 	$(to_test_SOURCES)
-DIST_SOURCES = $(hw_SOURCES) $(mpi_ringtopo_SOURCES) \
-	$(mpi_ringtopo2_SOURCES) $(mpi_ringtopo_defunct_SOURCES) \
-	$(rank_test_SOURCES) $(template_test_SOURCES) \
-	$(to_test_SOURCES)
+DIST_SOURCES = $(dysect_test_SOURCES) $(hw_SOURCES) \
+	$(mpi_ringtopo_SOURCES) $(mpi_ringtopo2_SOURCES) \
+	$(mpi_ringtopo_defunct_SOURCES) $(rank_test_SOURCES) \
+	$(template_test_SOURCES) $(to_test_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -306,6 +310,7 @@ mpi_ringtopo_defunct_SOURCES = mpi_ringtopo_defunct.c
 to_test_SOURCES = to_test.c
 template_test_SOURCES = template_test.cpp
 mpi_ringtopo2_SOURCES = mpi_ringtopo2.cpp
+dysect_test_SOURCES = dysect_test.cpp
 all: all-am
 
 .SUFFIXES:
@@ -319,9 +324,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign examples/src/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu examples/src/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign examples/src/Makefile
+	  $(AUTOMAKE) --gnu examples/src/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -390,6 +395,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dysect_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpi_ringtopo.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpi_ringtopo2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpi_ringtopo_defunct.Po@am__quote@
@@ -666,12 +672,14 @@ mpi_ringtopo: mpi_ringtopo.c Makefile
 rank_test: rank_test.c Makefile
 	$(MPICC) -g -gdwarf-2 -o $@ $<
 mpi_ringtopo_defunct: mpi_ringtopo_defunct.c Makefile
-	$(MPICC) -g -gdwarf-2  -o $@ $<
+	$(MPICC) -g -gdwarf-2 -o $@ $<
 to_test: to_test.c Makefile
 	$(MPICC) -g -gdwarf-2 -o $@ $<
 template_test: template_test.cpp Makefile
 	$(MPICXX) -g -gdwarf-2 -o $@ $<
 mpi_ringtopo2: mpi_ringtopo2.cpp Makefile
+	$(MPICXX) -g -gdwarf-2 -O0 -o $@ $<
+dysect_test: dysect_test.cpp Makefile
 	$(MPICXX) -g -gdwarf-2 -O0 -o $@ $<
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
