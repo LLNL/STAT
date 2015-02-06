@@ -25,18 +25,45 @@ using namespace Dyninst;
 using namespace ProcControlAPI;
 
 bool CmpAgg::collect(void *process, void *thread) {
-  Process::const_ptr* process_ptr = (Process::const_ptr*)process;
-  Thread::const_ptr* thread_ptr = (Thread::const_ptr*)thread;
+  Process::const_ptr process_ptr = *(Process::const_ptr*)process;
+  Thread::const_ptr thread_ptr = *(Thread::const_ptr*)thread;
+  bool wasRunning = false, boolRet;
+  ProcDebug *pDebug;
 
   if(params_.size() != 1) {
     fprintf(stderr, "Compare aggregate takes one numeric value\n");
     return false;
   }
+
+  Walker* proc = (Walker*)process_ptr->getData();
+
+  if(!proc) {
+    return DYSECTVERBOSE(false, "Could not get walker from process");
+  }
   
+  if (process_ptr->allThreadsRunning()) {
+    wasRunning = true;
+    pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
+    if (pDebug == NULL)
+      return DYSECTWARN(false, "Failed to dynamic_cast ProcDebug pointer");
+    if (pDebug->isTerminated())
+      return DYSECTWARN(false, "Process is terminated");
+    boolRet = pDebug->pause();
+    if (boolRet == false)
+      return DYSECTWARN(false, "Failed to pause process");
+  }
+
   DataRef* ref = params_[0];
   Value val;
   
-  if(!ref->getVal(val, *process_ptr, *thread_ptr)) {
+  boolRet = ref->getVal(val, process_ptr, thread_ptr);
+
+  if (wasRunning == true) {
+    if (pDebug->resume() == false)
+      return DYSECTWARN(false, "Failed to resume process");
+  }
+
+  if(!boolRet) {
     fprintf(stderr, "Could not get value for data reference\n");
     return false;
   }

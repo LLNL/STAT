@@ -22,7 +22,7 @@ DysectStatus DysectAPI::onProcStart() {
   Probe *slowFunctionTimer  = new Probe(Event::And(Time::within(5000), Event::Not(Code::location("~do_SendOrStall"))),
                             Domain::world(1001, true),
                             Acts(Act::stackTrace(),
-                                 Act::trace("Took more than 5000ms to return from do_SendOrStall(), location = @location()")));
+                                 Act::trace("@desc(do_SendOrStall:rank) took more than 5000ms to return from do_SendOrStall(), location = @location()")));
 
   Probe *endOfFunctionBreakpoint  = new Probe(Code::location("dysect_test.cpp#107"),
                             Domain::world(1002, true),

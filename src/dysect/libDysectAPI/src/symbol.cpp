@@ -352,11 +352,30 @@ bool CodeLocation::findFileLine(Dyninst::SymtabAPI::Symtab* symtab, std::string 
 bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string name, DataLocation*& location) {
   assert(proc != 0);
   bool found = false;
+  string function, variable;
+  int frame = 0;
 
+  // DataLocation expression parsed:
+  //
+  // loc_expr   ::= function:variable
+  //             |  variable
+  vector<string> tokens = Parser::tokenize(name, ':');
+  int numTokens = tokens.size();
+  if(numTokens == 1) {
+    variable = tokens[0];
+  }
+  else if (numTokens == 2) {
+    function = tokens[0];
+    variable = tokens[1];
+  }
+  else {
+    return DYSECTWARN(false, "Could not parse variable specification %s", name.c_str());
+  }
+
+#if 0
   string baseStr, memberStr;
   int len = name.size();
 
- #if 0
   // XXX: Quick hack to get structure members
   // Should really be a part of the expression engine
   enum struct_parser {
@@ -382,11 +401,11 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
         memberStr += c;
     }
   }
-#endif
 
   if(!memberStr.empty()) {
     name = baseStr;
   }
+#endif
 
   // 1st approach - look for local variable (resident in function for current frame)
   vector<Stackwalker::Frame> stackWalk;
@@ -397,9 +416,27 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
     return DYSECTWARN(false, "Could not walk stack %s", Stackwalker::getLastErrorMsg());
   }
 
-  Stackwalker::Frame& curFrame = stackWalk[0];
-  string frameName;
-  curFrame.getName(frameName);
+  Stackwalker::Frame curFrame;
+  string frameName, simpleFrameName;
+  if(numTokens == 1) {
+    curFrame = stackWalk[0];
+    curFrame.getName(frameName);
+  }
+  else {
+    int i;
+    for(i = 0; i < stackWalk.size(); i++) {
+      curFrame = stackWalk[i];
+      curFrame.getName(frameName);
+      vector<string> tokens2 = Parser::tokenize(frameName, '(');
+      frameName = tokens2[0];
+      if(frameName == function)
+        break;
+    }
+    if(i == stackWalk.size()) {
+      return DYSECTWARN(false, "Failed to find frame '%s' for variable request %s", function.c_str(), name.c_str());
+    }
+    frame = i;
+  }
 
   SymtabAPI::Function* func = getFunctionForFrame(curFrame);
 
@@ -407,9 +444,9 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
     return DYSECTWARN(false, "Function for frame '%s' not found", frameName.c_str());
   }
 
-  func->findLocalVariable(vars, name);
+  func->findLocalVariable(vars, variable);
 
-  DYSECTVERBOSE(true, "Is variables for '%s' empty in frame %s? %s", name.c_str(), frameName.c_str(), vars.empty() ? "yes" : "no");
+  DYSECTVERBOSE(true, "Is variables for '%s' empty in frame[%d] %s? %s", variable.c_str(), frame, frameName.c_str(), vars.empty() ? "yes" : "no");
 
   if(!vars.empty()) {
     found = true;
@@ -419,10 +456,10 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
     if(mod) {
       symtab = mod->exec();
     } else {
-      return DYSECTWARN(false, "Could not find symbol table containing variable '%s'", name.c_str());
+      return DYSECTWARN(false, "Could not find symbol table containing variable '%s'", variable.c_str());
     }
 
-    location = new LocalVariableLocation(stackWalk, 0, vars[0], symtab);
+    location = new LocalVariableLocation(stackWalk, frame, vars[0], symtab);
 
 # if 0
     // XXX: Hack continued
@@ -504,13 +541,13 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
         return DYSECTWARN(false, "Could not get symbol table");
       }
 
-      if(findVariable(offset, symtab, process, name, location)) {
+      if(findVariable(offset, symtab, process, variable, location)) {
         return true;
       }
     }
   }
 
- return DYSECTWARN(false, "Could not find variable %s in frame %s", name.c_str(), frameName.c_str());
+  return DYSECTWARN(false, "Could not find variable %s in frame %s", variable.c_str(), frameName.c_str());
 }
 
 bool DataLocation::findVariable(Address libOffset,
