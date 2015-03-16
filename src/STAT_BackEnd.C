@@ -549,25 +549,37 @@ void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
             if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error coloring graph by leading edge label\n");
-                abort();
+                if (sig != SIGTERM)
+                    abort();
+                else
+                    exit(sig);
             }
             graphlibError = graphlib_scaleNodeWidth(prefixTree2d, 80, 160);
             if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error scaling node width\n");
-                abort();
+                if (sig != SIGTERM)
+                    abort();
+                else
+                    exit(sig);
             }
             snprintf(outFile, BUFSIZE, "%s/%s.BE_%s_%d.dot", outDir_, filePrefix_, localHostName_, myRank_);
             graphlibError = graphlib_exportGraph(outFile, GRF_DOT, prefixTree2d);
             if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error exporting graph to dot format\n");
-                abort();
+                if (sig != SIGTERM)
+                    abort();
+                else
+                    exit(sig);
             }
         }
     }
 
-    abort();
+    if (sig != SIGTERM)
+        abort();
+    else
+        exit(sig);
 }
 
 
