@@ -262,6 +262,20 @@ bool Domain::setBEContext(struct DysectBEContext_t* context) {
   return true;
 }
 
+void Domain::clearDomains() {
+  network = 0;
+  upstreamFilterId = 0;
+  processTable = 0;
+  processTableSize = 0;
+  mrnetRankToMpiRanksMap = 0;
+  mpiRankToProcessMap = 0;
+  domainIdCounter = 0;
+  domainMap.clear();
+  fdMap.clear();
+  FD_ZERO(&fdSet);
+  maxFd = -1;
+}
+
 tag_t Domain::getId()   { return id; }
 
 Stream* Domain::getStream() {

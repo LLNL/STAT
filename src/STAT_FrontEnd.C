@@ -4792,4 +4792,9 @@ StatError_t STAT_FrontEnd::dysectListen(bool blocking)
     }
     return STAT_DYSECT_ERROR;
 }
+StatError_t STAT_FrontEnd::dysectStop()
+{
+    dysectFrontEnd_->requestBackendShutdown();
+    delete dysectFrontEnd_;
+}
 #endif

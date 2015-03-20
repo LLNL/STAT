@@ -651,6 +651,7 @@ class STAT_FrontEnd
 #ifdef DYSECTAPI
         StatError_t dysectSetup(const char *dysectApiSessionPath, int dysectTimeout);
         StatError_t dysectListen(bool blocking = true);
+        StatError_t dysectStop();
 #endif
 
     private:

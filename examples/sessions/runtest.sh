@@ -3,7 +3,7 @@
 
 #testnums="01 02 03"
 #testmodes="attach launch"
-testnums="02"
+testnums="03"
 testmodes="launch"
 
 statcl_command="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test/bin/stat-cl"

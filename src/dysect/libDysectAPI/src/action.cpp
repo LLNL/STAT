@@ -96,6 +96,10 @@ DysectAPI::Act::Act() : category(unknownCategory),
   //aggregateMap.insert(pair<int, Act*>(id, this));
 }
 
+void Act::resetAggregateIdCounter() {
+  aggregateIdCounter = 0;
+}
+
 LoadLibrary::LoadLibrary(string library) : library(library) {
   type = loadLibraryType;
 }

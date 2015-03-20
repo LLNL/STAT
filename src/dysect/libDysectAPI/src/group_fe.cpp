@@ -146,7 +146,7 @@ bool Group::getMRNetRanksFromIntervals() {
   string daemonRanks;
   daemonRanksStr(daemonRanks);
 
-  DYSECTINFO(true, "Expression: '%s' has been resolved to daemon ranks: %s", groupExpr.c_str(), daemonRanks.c_str());
+  DYSECTVERBOSE(true, "Expression: '%s' has been resolved to daemon ranks: %s", groupExpr.c_str(), daemonRanks.c_str());
 
   return true;
 }

@@ -76,7 +76,7 @@ void mySleep(int sleepTime);
 #ifdef DYSECTAPI
 bool dysectApiEnabled = false;
 char *dysectApiSessionPath = NULL;
-int dysectTimeout = -1;
+int dysectTimeout = 0;
 #endif
 
 

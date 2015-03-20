@@ -118,6 +118,7 @@ namespace DysectAPI {
 
     static bool setFEContext(struct DysectFEContext_t* context);
     static bool setBEContext(struct DysectBEContext_t* context);
+    static void clearDomains();
 
     enum predefinedTags {
       initTagId         = 1,

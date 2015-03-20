@@ -115,6 +115,37 @@ typedef enum {
                STAT_PENDING_ACK
 } StatError_t;
 
+#ifdef DYSECTAPI
+%rename(DysectAPI_OK) DysectAPI::OK;
+%rename(DysectAPI_Error) DysectAPI::Error;
+%rename(DysectAPI_InvalidSystemState) DysectAPI::InvalidSystemState;
+%rename(DysectAPI_LibraryNotLoaded) DysectAPI::LibraryNotLoaded;
+%rename(DysectAPI_SymbolNotFound) DysectAPI::SymbolNotFound;
+%rename(DysectAPI_SessionCont) DysectAPI::SessionCont;
+%rename(DysectAPI_SessionQuit) DysectAPI::SessionQuit;
+%rename(DysectAPI_DomainNotFound) DysectAPI::DomainNotFound;
+%rename(DysectAPI_NetworkError) DysectAPI::NetworkError;
+%rename(DysectAPI_DomainExpressionError) DysectAPI::DomainExpressionError;
+%rename(DysectAPI_StreamError) DysectAPI::StreamError;
+%rename(DysectAPI_OptimizedOut) DysectAPI::OptimizedOut;
+namespace DysectAPI {
+  typedef enum RunTimeErrorCode {
+    OK,
+    Error,
+    InvalidSystemState,
+    LibraryNotLoaded,
+    SymbolNotFound,
+    SessionCont,
+    SessionQuit,
+    DomainNotFound,
+    NetworkError,
+    DomainExpressionError,
+    StreamError,
+    OptimizedOut,
+  } DysectErrorCode;
+}
+#endif
+
 class STAT_FrontEnd
 {
     public:
@@ -176,6 +207,11 @@ class STAT_FrontEnd
         StatError_t addPerfData(const char *buf, double time);
         const char *getInstallPrefix();
         void getVersion(int *version);
+#ifdef DYSECTAPI
+        StatError_t dysectSetup(const char *dysectApiSessionPath, int dysectTimeout);
+        StatError_t dysectListen(bool blocking = true);
+        StatError_t dysectStop();
+#endif
 };
 
 %pythoncode %{

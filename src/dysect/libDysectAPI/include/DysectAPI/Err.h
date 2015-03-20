@@ -37,13 +37,14 @@ namespace DysectAPI {
 
     static FILE* errStream;
     static FILE* outStream;
+    static FILE* outFile;
     static bool useStatOutFp_;
 
     static void write(const std::string fmt, va_list ap, enum msgType type);
     static void write(enum msgType type, const std::string fmt, ...);
 
   public:
-    static void init(FILE* estream, FILE* ostream, bool useStatOutFp = false);
+    static void init(FILE* estream, FILE* ostream, const char *outDir = NULL, bool useStatOutFp = false);
     
     static void verbose(int line, const char *file, const std::string fmt, ...);
     static DysectErrorCode verbose(int line, const char *file, DysectErrorCode code, const std::string fmt, ...);

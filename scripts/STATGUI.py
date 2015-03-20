@@ -23,13 +23,26 @@ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendr
 __version__ = "2.1.0"
 
 import STAThelper
-from STAThelper import var_spec_to_string, get_task_list, get_proctab, decompose_node
+from STAThelper import var_spec_to_string, get_task_list, get_proctab, decompose_node, HAVE_PYGMENTS
+if HAVE_PYGMENTS:
+    import pygments
+    import pango
+    from pygments.lexers import CLexer
+    from pygments.lexers import CppLexer
+    from pygments.lexers import FortranLexer
+    from STAThelper import STATviewFormatter
 import STATview
-from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO
+from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO, run_gtk_main_loop
 import sys
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
 from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
+HAVE_DYSECT = True
+try:
+    from STAT import DysectAPI_OK, DysectAPI_Error, DysectAPI_InvalidSystemState, DysectAPI_LibraryNotLoaded, DysectAPI_SymbolNotFound, DysectAPI_SessionCont, DysectAPI_SessionQuit, DysectAPI_DomainNotFound, DysectAPI_NetworkError, DysectAPI_DomainExpressionError, DysectAPI_StreamError, DysectAPI_OptimizedOut
+except:
+    HAVE_DYSECT = False
+
 import commands
 import subprocess
 import time
@@ -124,6 +137,8 @@ class STATGUI(STATDotWindow):
                    'Clear On Sample':                  True,
                    'Gather Individual Samples':        False,
                    'Run Time Before Sample (sec)':     0,
+                   'Enable DySectAPI':                 False,
+                   'DySectAPI Session':                '',
                    'Sample Type':                      'function only',
                    'Edge Type':                        'full list',
                    'DDT Path':                         STAThelper.which('ddt'),
@@ -724,6 +739,45 @@ host[1-10,12,15-20];otherhost[30]
             self.attach_cb(None, False, False, STAT_ATTACH)
         return True
 
+    def on_choose_dysect_session(self, attach_dialog, widget):
+        """Callback to generate an open file dialog."""
+        chooser = gtk.FileChooserDialog(title="Select a DySectAPI session",
+                                        action=gtk.FILE_CHOOSER_ACTION_OPEN,
+                                        buttons=(gtk.STOCK_CANCEL,
+                                                 gtk.RESPONSE_CANCEL,
+                                                 gtk.STOCK_OPEN,
+                                                 gtk.RESPONSE_OK))
+        chooser.set_default_response(gtk.RESPONSE_OK)
+        chooser.set_current_folder(os.getcwd())
+        chooser.set_select_multiple(False)
+        file_filter = gtk.FileFilter()
+        file_filter.set_name("DySectAPI session source file")
+        file_filter.add_pattern("*.cpp")
+        file_filter.add_pattern("*.cxx")
+        file_filter.add_pattern("*.CXX")
+        file_filter.add_pattern("*.c")
+        file_filter.add_pattern("*.C")
+        chooser.add_filter(file_filter)
+        file_filter = gtk.FileFilter()
+        file_filter.set_name("All files")
+        file_filter.add_pattern("*")
+        chooser.add_filter(file_filter)
+        if chooser.run() == gtk.RESPONSE_OK:
+            filenames = chooser.get_filenames()
+            chooser.destroy()
+            self.options['DySectAPI Session'] = filenames[0]
+            vbox = gtk.VBox()
+            children = widget.get_children()
+            for child in children:
+                if type(child) == type(gtk.CheckButton()):
+                    child.set_active(True)
+                if type(child) == type(gtk.Label()):
+                    child.set_text('Session: %s' % self.options['DySectAPI Session'])
+            attach_dialog.show_all()
+            self.options['Enable DySectAPI'] = True
+        else:
+            chooser.destroy()
+
     def on_attach(self, action):
         """Generate a dialog to attach to a new job."""
         if self.reattach is True and self.STAT is not None:
@@ -778,7 +832,7 @@ host[1-10,12,15-20];otherhost[30]
         vbox.pack_start(hbox, False, False, 10)
         entry = gtk.Entry()
         entry.set_max_length(8192)
-        entry.connect("activate", lambda w: self.launch_application_cb(entry, attach_dialog))
+        entry.connect("activate", lambda w: stat_wait_dialog.show_wait_dialog_and_run(self.launch_application_cb, (entry, attach_dialog), self.attach_task_list, attach_dialog))
         vbox.pack_start(entry, False, False, 0)
         hbox = gtk.HButtonBox()
         button = gtk.Button(stock=gtk.STOCK_CANCEL)
@@ -833,6 +887,28 @@ host[1-10,12,15-20];otherhost[30]
         vbox.pack_start(hbox, False, False, 0)
         label = gtk.Label('Serial Attach')
         notebook.append_page(vbox, label)
+
+        # DySect options
+        if HAVE_DYSECT:
+            vbox = gtk.VBox()
+            frame = gtk.Frame('DySectAPI Options')
+            dysect_vbox = gtk.VBox()
+            self.pack_check_button(dysect_vbox, 'Enable DySectAPI', False, False, 5)
+            label = gtk.Label('Session: %s' % self.options['DySectAPI Session'])
+            label.set_alignment(0, .5)
+            dysect_vbox.pack_start(label, True, True, 0)
+            button = gtk.Button('Select DySectAPI Session')
+            button.connect("clicked", lambda w: self.on_choose_dysect_session(attach_dialog, dysect_vbox))
+            dysect_vbox.pack_start(button, False, False, 0)
+            frame.add(dysect_vbox)
+            vbox.pack_start(frame, False, False, 0)
+            hbox = gtk.HBox()
+            button = gtk.Button(stock=gtk.STOCK_CANCEL)
+            button.connect("clicked", lambda w: self.on_cancel_attach(w, attach_dialog))
+            hbox.pack_start(button, False, False, 0)
+            vbox.pack_end(hbox, False, False, 0)
+            label = gtk.Label('DySect')
+            notebook.append_page(vbox, label)
 
         # sample options
         vbox = gtk.VBox()
@@ -933,6 +1009,23 @@ host[1-10,12,15-20];otherhost[30]
             self.STAT.addLauncherArgv(arg)
         self.attach_cb(attach_dialog, True, False, STAT_LAUNCH)
 
+    def destroy_dysect_dialog(self, dialog):
+        self.dysect_dialog = None
+        self.on_detach(dialog)
+
+    def update_dysect_active_bar(self):
+        """Register activity on the active bar."""
+        if self.dysect_timer != None:
+            self.dysect_progress_bar.pulse()
+        return True
+
+    def stop_dysect_session(self, button):
+        self.dysect_session = False
+        button.set_sensitive(False)
+        if self.STAT:
+            self.STAT.dysectStop()
+        self.on_detach(button)
+
     def attach_cb(self, attach_dialog, launch, serial, application_option=STAT_ATTACH):
         """Callback to attach to a job and gather a stack trace."""
         if serial is False:
@@ -940,9 +1033,10 @@ host[1-10,12,15-20];otherhost[30]
             self.process_list = None
         else:
             self.serial_attach = True
-        stat_wait_dialog.update_progress_bar(0.01)
         if attach_dialog is not None:
+            run_gtk_main_loop()
             attach_dialog.destroy()
+        stat_wait_dialog.update_progress_bar(0.01)
         self.options['Topology Type'] = self.types['Topology Type'][self.combo_boxes['Topology Type'].get_active()]
         self.options['CP Policy'] = self.types['CP Policy'][self.combo_boxes['CP Policy'].get_active()]
         self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
@@ -988,6 +1082,8 @@ host[1-10,12,15-20];otherhost[30]
         else:
             if 'LMON_DEBUG_BES' in os.environ:
                 del os.environ['LMON_DEBUG_BES']
+        if HAVE_DYSECT is True and self.options['Enable DySectAPI'] is True:
+            os.environ['STAT_GROUP_OPS'] = "1"
         self.STAT.setProcsPerNode(self.options['Communication Processes per Node'])
         stat_wait_dialog.update_progress_bar(0.05)
 
@@ -1043,8 +1139,7 @@ host[1-10,12,15-20];otherhost[30]
 
         if application_option != STAT_SERIAL_ATTACH:
             while 1:
-                if gtk.events_pending():
-                    gtk.main_iteration()
+                run_gtk_main_loop()
                 ret = self.STAT.connectMrnetTree(False)
                 if ret == STAT_OK:
                     break
@@ -1065,8 +1160,7 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return False
         while 1:
-            if gtk.events_pending():
-                gtk.main_iteration()
+            run_gtk_main_loop()
             ret = self.STAT.receiveAck(False)
             if ret == STAT_OK:
                 break
@@ -1076,11 +1170,16 @@ host[1-10,12,15-20];otherhost[30]
                 return ret
         stat_wait_dialog.update(0.20)
         self.attached = True
-        ret = self.sample()
-        if ret != STAT_OK:
-            return ret
-        self.set_action_sensitivity('paused')
-        stat_wait_dialog.update_progress_bar(1.0)
+
+        if HAVE_DYSECT is True and self.options['Enable DySectAPI'] is True:
+            stat_wait_dialog.destroy()
+            self.run_dysect_session()
+        else:
+            ret = self.sample()
+            if ret != STAT_OK:
+                return ret
+            self.set_action_sensitivity('paused')
+            stat_wait_dialog.update_progress_bar(1.0)
 
     def on_detach(self, widget, stop_list=intArray(0), stop_list_len=0):
         """Determine the process state and detach from the current job."""
@@ -1099,8 +1198,7 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return ret
         while 1:
-            if gtk.events_pending():
-                gtk.main_iteration()
+            run_gtk_main_loop()
             ret = self.STAT.receiveAck(False)
             if ret == STAT_OK:
                 break
@@ -1109,7 +1207,7 @@ host[1-10,12,15-20];otherhost[30]
                 self.on_fatal_error()
                 return ret
         if ret != STAT_OK:
-            show_error_dialog('Failed to resume application:\n%s' % self.STAT.getLastErrorMessage(), self)
+            show_error_dialog('Failed to detach from application:\n%s' % self.STAT.getLastErrorMessage(), self)
             self.on_fatal_error()
             return False
         self.STAT.shutDown()
@@ -1138,8 +1236,7 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return ret
         while 1:
-            if gtk.events_pending():
-                gtk.main_iteration()
+            run_gtk_main_loop()
             ret = self.STAT.receiveAck(False)
             if ret == STAT_OK:
                 break
@@ -1158,8 +1255,7 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return ret
         while 1:
-            if gtk.events_pending():
-                gtk.main_iteration()
+            run_gtk_main_loop()
             ret = self.STAT.receiveAck(False)
             if ret == STAT_OK:
                 break
@@ -1267,8 +1363,7 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return ret
         while 1:
-            if gtk.events_pending():
-                gtk.main_iteration()
+            run_gtk_main_loop()
             ret = self.STAT.receiveAck(False)
             if ret == STAT_OK:
                 break
@@ -1283,8 +1378,7 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return ret
         while 1:
-            if gtk.events_pending():
-                gtk.main_iteration()
+            run_gtk_main_loop()
             ret = self.STAT.receiveAck(False)
             if ret == STAT_OK:
                 break
@@ -1358,8 +1452,7 @@ host[1-10,12,15-20];otherhost[30]
                 self.on_fatal_error()
                 return ret
             while 1:
-                if gtk.events_pending():
-                    gtk.main_iteration()
+                run_gtk_main_loop()
                 ret = self.STAT.receiveAck(False)
                 if ret == STAT_OK:
                     break
@@ -1381,8 +1474,7 @@ host[1-10,12,15-20];otherhost[30]
                     self.on_fatal_error()
                     return ret
                 while 1:
-                    if gtk.events_pending():
-                        gtk.main_iteration()
+                    run_gtk_main_loop()
                     ret = self.STAT.receiveAck(False)
                     if ret == STAT_OK:
                         break
@@ -1418,8 +1510,7 @@ host[1-10,12,15-20];otherhost[30]
                 self.set_action_sensitivity('running')
                 for i in xrange(int(self.options['Trace Frequency (ms)'] / 10)):
                     time.sleep(.01)
-                    if gtk.events_pending():
-                        gtk.main_iteration()
+                    run_gtk_main_loop()
         self.options['Clear On Sample'] = previous_clear
         stat_wait_dialog.update(0.91)
         ret = self.STAT.gatherTraces(False)
@@ -1428,8 +1519,7 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return ret
         while 1:
-            if gtk.events_pending():
-                gtk.main_iteration()
+            run_gtk_main_loop()
             ret = self.STAT.receiveAck(False)
             if ret == STAT_OK:
                 break
@@ -1460,6 +1550,176 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
 
         return ret_val
+
+    def run_dysect_session(self):
+        """Run the dysect session."""
+
+        self.set_action_sensitivity('busy')
+        self.STAT.resume()
+        dysect_c = '%s/bin/dysectc' % self.STAT.getInstallPrefix()
+        if not os.path.exists(dysect_c):
+            show_error_dialog('DySect compiler %s not found' % dysect_c, self)
+            self.on_fatal_error()
+            return -1
+        proc = subprocess.Popen([dysect_c, self.options['DySectAPI Session']], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout_output, stderr_output = proc.communicate()
+        if stderr_output != '':
+            sys.stderr.write('dysectc outputted error message: %s\n' % stderr_output)
+        if proc.returncode != 0:
+            show_error_dialog('Failed to compile session %s:\n\n%s' % (self.options['DySectAPI Session'], stderr_output))
+            self.on_fatal_error()
+            return proc.returncode
+        session_so = os.path.join(os.getcwd(), 'lib' + os.path.basename(self.options['DySectAPI Session']).strip('.cpp') + '.so')
+        if not os.path.exists(session_so):
+            show_error_dialog('Compiled session %s not found' % session_so)
+            self.on_fatal_error()
+            return -1
+        ret = self.STAT.dysectSetup(session_so, -1)
+        if ret != STAT_OK:
+            show_error_dialog('Failed to setup DySect Session %s:\n%s' % (session_so, self.STAT.getLastErrorMessage()), self)
+            self.on_fatal_error()
+            return ret
+        self.dysect_session = True
+
+        self.dysect_dialog = gtk.Dialog("DySectAPI Console", self)
+        self.dysect_dialog.set_default_size(1048, 600)
+        self.dysect_dialog.set_destroy_with_parent(True)
+        self.dysect_dialog.connect('destroy', lambda w: self.destroy_dysect_dialog(w))
+        vpaned = gtk.VPaned()
+        my_frame = gtk.Frame("Session %s:" % self.options['DySectAPI Session'])
+        sw = gtk.ScrolledWindow()
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        text_view = gtk.TextView()
+        text_view.set_editable(False)
+        text_view.set_cursor_visible(False)
+        text_view_buffer = text_view.get_buffer()
+        text_view.set_wrap_mode(gtk.WRAP_NONE)
+        sw.add(text_view)
+        my_frame.add(sw)
+        with open(self.options['DySectAPI Session'], "r") as dysect_session_file:
+            if HAVE_PYGMENTS:
+                text_view_buffer.create_tag("monospace", family="monospace")
+                pygments.highlight(dysect_session_file.read(), CppLexer(), STATviewFormatter())
+                text_view_buffer.create_tag('bold_tag', weight=pango.WEIGHT_BOLD)
+                text_view_buffer.create_tag('italics_tag', style=pango.STYLE_ITALIC)
+                text_view_buffer.create_tag('underline_tag', underline=pango.UNDERLINE_SINGLE)
+                lines = STAThelper.pygments_lines
+                iterator = text_view_buffer.get_iter_at_offset(0)
+                width = len(str(len(lines)))
+                for i, line in enumerate(lines):
+                    source_string = "%0*d| " % (width, i + 1)
+                    text_view_buffer.insert_with_tags_by_name(iterator, source_string, "monospace")
+                    for item in line:
+                        source_string, format_tuple = item
+                        pygments_color, bold, italics, underline = format_tuple
+                        foreground = gtk.gdk.color_parse(pygments_color)
+                        fore_color_tag = "color_fore%s" % (pygments_color)
+                        try:
+                            text_view_buffer.create_tag(fore_color_tag, foreground_gdk=foreground)
+                        except:
+                            pass
+                        args = [iterator, source_string, fore_color_tag, "monospace"]
+                        if bold:
+                            args.append('bold_tag')
+                        if italics:
+                            args.append('italics_tag')
+                        if underline:
+                            args.append('underline_tag')
+                        apply(text_view_buffer.insert_with_tags_by_name, tuple(args))
+            else:
+                text_view_buffer.set_text(dysect_session_file.read())
+        vpaned.pack1(my_frame, True, True)
+        self.separator = gtk.HSeparator()
+        self.dysect_dialog.vbox.pack_start(self.separator, False, True, 5)
+
+        out_dir = self.STAT.getOutDir()
+        dysect_outfile = os.path.join(out_dir, 'dysect_output.txt')
+        my_frame = gtk.Frame("Output %s:" % dysect_outfile)
+        sw = gtk.ScrolledWindow()
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        text_view = gtk.TextView()
+        text_view.set_editable(False)
+        text_view.set_cursor_visible(False)
+        text_view_buffer = text_view.get_buffer()
+        iterator = text_view_buffer.get_iter_at_offset(0)
+        text_view_buffer.create_tag("monospace", family="monospace")
+        text_view.set_wrap_mode(gtk.WRAP_NONE)
+        sw.add(text_view)
+        my_frame.add(sw)
+        vpaned.pack2(my_frame, True, True)
+        self.dysect_dialog.vbox.pack_start(vpaned, True, True, 5)
+        self.separator = gtk.HSeparator()
+        self.dysect_dialog.vbox.pack_start(self.separator, False, True, 5)
+        box2 = gtk.HButtonBox()
+        stop_button = gtk.Button(stock=gtk.STOCK_STOP)
+        stop_button.connect("clicked", lambda w: self.stop_dysect_session(w))
+        box2.pack_end(stop_button, False, True, 5)
+        self.dysect_timer = gobject.timeout_add(75, self.update_dysect_active_bar)
+        self.dysect_progress_bar = gtk.ProgressBar()
+        self.dysect_progress_bar.set_fraction(0.0)
+        self.dysect_progress_bar.set_text('session running')
+        box2.pack_start(self.dysect_progress_bar, True, True, 5)
+        dyysect_ok_button = gtk.Button(stock=gtk.STOCK_OK)
+        dyysect_ok_button.connect("clicked", lambda w: self.dysect_dialog.destroy())
+        dyysect_ok_button.set_sensitive(False)
+        box2.pack_end(dyysect_ok_button, False, True, 5)
+        self.dysect_dialog.vbox.pack_end(box2, False, False, 0)
+        self.dysect_dialog.show_all()
+
+        if not os.path.exists(dysect_outfile):
+            sys.stderr.write('DySect session output file %s not found\n' % dysect_outfile)
+            self.on_fatal_error()
+            return -1
+        with open(dysect_outfile, "r") as dysect_output_file:
+            prev = ''
+            dot_file_list = []
+            break_next_iter = False
+            while 1 and self.dysect_session is True:
+                filename = self.STAT.getLastDotFilename()
+                if filename != "NULL" and filename != prev:
+                    prev = filename
+                    for file in os.listdir(out_dir):
+                        if file.find('.dot') == -1 or file in dot_file_list:
+                            continue
+                        dot_file_list.append(file)
+                        filename = os.path.join(out_dir, file)
+                        if len(dot_file_list) > 1:
+                            page = self.notebook.get_current_page()
+                            self.create_new_tab(page + 1)
+                            self.notebook.set_current_page(page + 1)
+                        try:
+                            with open(filename, 'r') as dot_file:
+                                self.tabs[self.notebook.get_current_page()].history_view.get_buffer().set_text('')
+                                self.set_dotcode(dot_file.read(), filename, self.notebook.get_current_page())
+                        except IOError as e:
+                            show_error_dialog('%s\nFailed to open file %s' % (repr(e), filename), self)
+                        except Exception as e:
+                            show_error_dialog('%s\nFailed to process file %s' % (repr(e), filename), self)
+                text = dysect_output_file.read()
+                if text != '' and self.dysect_dialog != None:
+                    text_view_buffer.insert_with_tags_by_name(iterator, text, "monospace")
+                    self.dysect_dialog.show_all()
+
+                run_gtk_main_loop()
+                if break_next_iter is True:
+                    break
+                if self.dysect_session:
+                    ret = self.STAT.dysectListen(False)
+                    if ret != DysectAPI_SessionCont and ret != STAT_PENDING_ACK:
+                        break_next_iter = True
+        dyysect_ok_button.set_sensitive(True)
+        if self.dysect_timer != None:
+            gobject.source_remove(self.dysect_timer)
+            self.dysect_timer = None
+        self.dysect_progress_bar.set_fraction(1.0)
+        self.dysect_progress_bar.set_text('session complete')
+        if self.dysect_dialog != None:
+            self.dysect_dialog.show_all()
+        run_gtk_main_loop()
+        if self.STAT:
+            self.STAT.dysectStop()
+        stop_button.set_sensitive(False)
+        return STAT_OK
 
     def on_identify_num_eq_classes(self, action):
         """Callback to identify equivalence classes."""

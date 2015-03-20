@@ -196,6 +196,10 @@ int AggregateFunction::getAggregate(char *p, AggregateFunction*& aggFunc) {
 }
 
 
+void AggregateFunction::resetCounterId() {
+  counterId = 0;
+}
+
 bool Agg::aggregateIdFromName(std::string name, int& id) {
   bool found = false;
 

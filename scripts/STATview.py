@@ -324,6 +324,13 @@ def create_temp(dot_filename, truncate, max_node_name):
     return temp_dot_filename
 
 
+def run_gtk_main_loop(iters = 100):
+    iter = 0
+    while gtk.events_pending() and iter < iters:
+        iter += 1
+        gtk.main_iteration(False)
+
+
 class CellRendererButtonPixbuf(gtk.CellRendererPixbuf):
     __gproperties__ = {"callable": (gobject.TYPE_PYOBJECT, "callable property", "callable property", gobject.PARAM_READWRITE)}
     _button_width = 20
@@ -490,6 +497,8 @@ class STAT_wait_dialog(object):
         Note, the specified function should NOT create any new windows or do
         any drawing, otherwise it will hang.
         """
+        if self.wait_dialog != None:
+            self.wait_dialog.destroy()
         self.wait_dialog = gtk.Dialog('Please Wait', parent)
         self.current_task = 0
         self.tasks = []
@@ -535,6 +544,11 @@ class STAT_wait_dialog(object):
         """Callback to handle clicking of cancel button."""
         self.cancelled = True
 
+    def destroy(self):
+        if self.wait_dialog is not None:
+            self.wait_dialog.destroy()
+            self.wait_dialog = None
+
     ## \param self - the instance
     #  \param fun - the function to run
     #  \param args - the tuple arguments for the \a fun function
@@ -549,9 +563,7 @@ class STAT_wait_dialog(object):
         except Exception as e:
             ret = False
             show_error_dialog('Unexpected error:  %s\n%s\n%s\n' % (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]), exception=e)
-        if self.wait_dialog is not None:
-            self.wait_dialog.destroy()
-            self.wait_dialog = None
+        self.destroy()
         if len(self.task_progress_bars) != 0:
             gobject.source_remove(self.timer)
         return ret
@@ -567,10 +579,7 @@ class STAT_wait_dialog(object):
         self.task_progress_bars[self.current_task].set_fraction(1.0)
         self.current_task += 1
         self.progress_bar.set_fraction(fraction)
-        #TODO: while hangs on jaguar (Cray XT)
-        #while gtk.events_pending():
-        if gtk.events_pending():
-            gtk.main_iteration()
+        run_gtk_main_loop()
 
     ## \param self - the instance
     #  \param fraction - the new fraction
@@ -579,10 +588,7 @@ class STAT_wait_dialog(object):
     def update_progress_bar(self, fraction):
         """Update the fraction of the progress bar."""
         self.progress_bar.set_fraction(fraction)
-        #TODO: while hangs on jaguar (Cray XT)
-        #while gtk.events_pending():
-        if gtk.events_pending():
-            gtk.main_iteration()
+        run_gtk_main_loop()
 
     def update_active_bar(self):
         """Register activity on the active bar."""
@@ -1478,8 +1484,7 @@ class STATGraph(xdot.Graph):
         self.source_view_notebook.set_current_page(pages - 1)
 
         # run iterations to get sw generated so we can scroll
-        while gtk.events_pending():
-            gtk.main_iteration()
+        run_gtk_main_loop()
         source_view.scroll_to_mark(cur_line_mark, 0.0, True)
 
     def on_source_view_destroy(self, action):
@@ -3393,6 +3398,7 @@ entered as a regular expression"""
                                                  gtk.STOCK_OPEN,
                                                  gtk.RESPONSE_OK))
         chooser.set_default_response(gtk.RESPONSE_OK)
+        chooser.set_current_folder(os.getcwd())
         chooser.set_select_multiple(True)
         file_filter = gtk.FileFilter()
         file_filter.set_name("Graphviz dot files")
@@ -3451,6 +3457,7 @@ entered as a regular expression"""
                                                       gtk.STOCK_SAVE_AS,
                                                       gtk.RESPONSE_OK))
         self.chooser.set_default_response(gtk.RESPONSE_OK)
+        self.chooser.set_current_folder(os.getcwd())
         self.chooser.set_do_overwrite_confirmation(True)
         for extension in file_extensions:
             file_filter = gtk.FileFilter()

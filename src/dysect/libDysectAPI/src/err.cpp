@@ -23,6 +23,7 @@ using namespace DysectAPI;
 
 FILE* Err::errStream;
 FILE* Err::outStream;
+FILE* Err::outFile;
 extern FILE *gStatOutFp;
 bool Err::useStatOutFp_ = false;
 
@@ -32,10 +33,15 @@ bool Err::useStatOutFp_ = false;
 #define DYSECT_VERBOSE
 #define DYSECT_LOG_LINE
 
-void Err::init(FILE* estream, FILE* ostream, bool useStatOutFp) {
+void Err::init(FILE* estream, FILE* ostream, const char *outDir, bool useStatOutFp) {
+    char outFilename[1024];
     errStream = estream;
     outStream = ostream;
     useStatOutFp_ = useStatOutFp;
+    if(environment == FrontendEnvironment && outDir != NULL) {
+        snprintf(outFilename, 1024, "%s/dysect_output.txt", outDir);
+        outFile = fopen(outFilename, "w");
+    }
 }
 
 DysectErrorCode Err::log(int line, const char *file, DysectErrorCode code, const std::string fmt, ...) {
@@ -288,14 +294,15 @@ void Err::write(const std::string fmt, va_list args, enum msgType type) {
       snprintf(environmentStr, bufSize, "Unknown environment!");
     }
 
-    sprintf(strBuf, "<%s> DysectAPI %s: %s > %s\n",
+    char inMsg[bufSize];
+    vsnprintf(inMsg, bufSize, fmt.c_str(), args);
+
+    char msg[bufSize];
+    snprintf(msg, bufSize, "<%s> DysectAPI %s: %s > %s\n",
             timeString,
             environmentStr,
             typeStr.c_str(),
-            fmt.c_str());
-
-    char msg[bufSize];
-    vsnprintf(msg, bufSize, strBuf, args);
+            inMsg);
 
     if((type == Warn) || (type == Fatal)) {
       fprintf(errStream, "%s", msg);
@@ -306,9 +313,14 @@ void Err::write(const std::string fmt, va_list args, enum msgType type) {
       fprintf(gStatOutFp, "%s", msg);
       if(type == Info && environment == FrontendEnvironment)
         fprintf(stdout, "%s", msg);
+        fflush(stdout);
     } else {
         fprintf(outStream, "%s", msg);
         fflush(outStream);
+    }
+    if(type == Info && environment == FrontendEnvironment && outFile != NULL && fmt != "%s[%d]: ") {
+        fprintf(outFile, "%s\n", inMsg);
+        fflush(outFile);
     }
 }
 
@@ -329,11 +341,16 @@ void Err::write(enum msgType type, const std::string fmt, ...) {
       fprintf(gStatOutFp, "%s", msg);
       if(type == Info && environment == FrontendEnvironment && fmt != "%s[%d]: ")
         fprintf(stdout, "%s", msg);
+        fflush(stdout);
     } else {
         if((type == Info) || (type == Log) || (type == Verbose)) {
             fprintf(outStream, "%s", msg);
             fflush(outStream);
         }
+    }
+    if(type == Info && environment == FrontendEnvironment && outFile != NULL && fmt != "%s[%d]: ") {
+        fprintf(outFile, "%s", msg);
+        fflush(outFile);
     }
     va_end(arg);
 }

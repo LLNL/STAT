@@ -1291,7 +1291,8 @@ uninstall-am: uninstall-binPROGRAMS uninstall-includeHEADERS \
 
 
 @ENABLE_GUI_TRUE@STAT_wrap.C:$(GUI_SWIG_SOURCES) Makefile
-@ENABLE_GUI_TRUE@	$(SWIG) -c++ -python -o $@ $<
+@ENABLE_DYSECTAPI_TRUE@@ENABLE_GUI_TRUE@	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) -DDYSECTAPI $(AM_CXXFLAGS) -o $@ $<
+@ENABLE_DYSECTAPI_FALSE@@ENABLE_GUI_TRUE@	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(AM_CXXFLAGS) -o $@ $<
 
 @ENABLE_GUI_TRUE@STAT.py:$(GUI_SWIG_SOURCES) Makefile
 @ENABLE_GUI_TRUE@	$(MAKE) $(AM_MAKEFLAGS) STAT_wrap.C

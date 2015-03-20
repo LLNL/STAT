@@ -63,7 +63,7 @@ BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
   bool useStatOutFpPrintf = false;
   if (be->logType_ & STAT_LOG_BE)
     useStatOutFpPrintf = true;
-  Err::init(be->errOutFp_, gStatOutFp, useStatOutFpPrintf);
+  Err::init(be->errOutFp_, gStatOutFp, NULL, useStatOutFpPrintf);
 
   // Setup session
   lib_proc_start();

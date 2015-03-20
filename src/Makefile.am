@@ -82,7 +82,11 @@ _STAT_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi)
 _STAT_la_LIBADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
 
 STAT_wrap.C:$(GUI_SWIG_SOURCES) Makefile
-	$(SWIG) -c++ -python -o $@ $<
+if ENABLE_DYSECTAPI
+	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) -DDYSECTAPI $(AM_CXXFLAGS) -o $@ $<
+else
+	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(AM_CXXFLAGS) -o $@ $<
+endif
 
 STAT.py:$(GUI_SWIG_SOURCES) Makefile
 	$(MAKE) $(AM_MAKEFLAGS) STAT_wrap.C

@@ -26,7 +26,7 @@ using namespace MRN;
 
 bool Frontend::running = true;
 
-int Frontend::selectTimeout = 1;
+int Frontend::selectTimeout = 100;
 int Frontend::numEvents = 0;
 bool Frontend::breakOnEnter = true;
 bool Frontend::breakOnTimeout = true;
@@ -36,22 +36,24 @@ extern bool checkAppExit();
 extern bool checkDaemonExit();
 
 DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
-  int ret;
-  static int count = 0;
+  int ret = 0;
+  static int iter_count = 0;
   static int exit = 0;
 
   // Install handler for (ctrl-c) abort
   // signal(SIGINT, Frontend::interrupt);
   //
 
-  if (count == 0) {
-    count++;
+  if (iter_count == 0) {
+    iter_count++;
     printf("Waiting for events (! denotes captured event)\n");
-    printf("Hit <enter> to stop session\n");
+    if (breakOnEnter)
+      printf("Hit <enter> to stop session\n");
     fflush(stdout);
   }
 
   do {
+    iter_count++;
     // select() overwrites fd_set with ready fd's
     // Copy fd_set structure
     fd_set fdRead = Domain::getFdSet();
@@ -60,8 +62,8 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
       FD_SET(0, &fdRead); //STDIN
 
     struct timeval timeout;
-    timeout.tv_sec =  Frontend::selectTimeout;
-    timeout.tv_usec = 0;
+    timeout.tv_sec = 0;
+    timeout.tv_usec =  Frontend::selectTimeout * 1000;
 
     ret = select(Domain::getMaxFd() + 1, &fdRead, NULL, NULL, &timeout);
 
@@ -77,7 +79,7 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
       return DysectAPI::OK;
     }
     if (checkAppExit()) {
-      if (exit * Frontend::selectTimeout >= 5) {
+      if (exit * Frontend::selectTimeout >= 5000) {
         DYSECTINFO(true, "Stopping session - application has exited");
         return DysectAPI::OK;
       }
@@ -94,7 +96,8 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
 
     // Look for owners
     vector<Domain*> doms = Domain::getFdsFromSet(fdRead);
-    DYSECTLOG(true, "Listening over %d domains", doms.size());
+    if (iter_count % 10 == 0)
+        DYSECTLOG(true, "Listening over %d domains", doms.size());
 
     if(doms.size() == 0) {
       if(Frontend::breakOnTimeout && (--Frontend::numEvents < 0)) {
@@ -225,6 +228,10 @@ DysectAPI::DysectErrorCode Frontend::createStreams(struct DysectFEContext_t* con
 }
 
 void Frontend::stop() {
+  Domain::clearDomains();
+  ProbeTree::clearRoots();
+  Act::resetAggregateIdCounter();
+  AggregateFunction::resetCounterId();
   Frontend::running = false;
 }
 
@@ -240,9 +247,10 @@ STAT_FrontEnd* Frontend::getStatFE() {
 
 void Frontend::setStopCondition(bool breakOnEnter, bool breakOnTimeout, int timeout) {
   DYSECTVERBOSE(true, "Break on enter key: %s", breakOnEnter ? "yes" : "no");
-  DYSECTVERBOSE(true, "Break on timeout: %s", breakOnTimeout ? "yes" : "no");
+  DYSECTVERBOSE(true, "Break on timeout[%d]: %s", timeout, breakOnTimeout ? "yes" : "no");
 
   Frontend::breakOnEnter = breakOnEnter;
   Frontend::breakOnTimeout = breakOnTimeout;
   Frontend::numEvents = timeout;
+  running = true;
 }

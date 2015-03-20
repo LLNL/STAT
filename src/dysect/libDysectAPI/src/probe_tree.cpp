@@ -54,3 +54,8 @@ bool ProbeTree::removePendingRoot(Probe* probe) {
 vector<Probe*>& ProbeTree::getPendingRoots() {
   return pendingRoots;
 }
+
+void ProbeTree::clearRoots() {
+  roots.clear();
+  pendingRoots.clear();
+}

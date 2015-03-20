@@ -32,6 +32,7 @@ namespace DysectAPI {
     static bool addPendingRoot(Probe* probe);
     static bool removePendingRoot(Probe* probe);
     static std::vector<Probe*>& getPendingRoots();
+    static void clearRoots();
   };
 }
 

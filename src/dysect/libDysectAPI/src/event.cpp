@@ -200,7 +200,7 @@ bool Time::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process) {
   struct timeval now;
   gettimeofday(&now, NULL);
   long timestamp_now = ((now.tv_sec) * 1000) + ((now.tv_usec) / 1000);
-  return timestamp_now > triggerTime;
+  return timestamp_now >= triggerTime;
 }
 
 Time::Time(TimeType type_, int timeout_) : type(type_), timeout(timeout_), Event() {

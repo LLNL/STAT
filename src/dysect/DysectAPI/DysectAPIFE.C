@@ -32,6 +32,22 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
   assert(fe != 0);
   assert(libPath != 0);
 
+  struct DysectFEContext_t context;
+  context.network = fe->network_;
+  context.processTable = fe->proctab_;
+  context.processTableSize = fe->nApplProcs_;
+  context.mrnetRankToMpiRanksMap = &(fe->mrnetRankToMpiRanksMap_);
+  context.statFE = fe;
+
+  statFE = fe;
+  network = fe->network_;
+  filterPath = fe->filterPath_;
+
+  bool useStatOutFpPrintf = false;
+  if (fe->logging_ & STAT_LOG_FE)
+    useStatOutFpPrintf = true;
+  Err::init(stderr, gStatOutFp, fe->outDir_, useStatOutFpPrintf);
+
   sessionLib = new SessionLibrary(libPath);
 
   if(!sessionLib->isLoaded()) {
@@ -39,11 +55,14 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
     return ;
   }
 
-  if(timeout < 0) {
+  if(timeout == 0) {
     // No timeout
     // Use 'enter-to-break'
     Frontend::setStopCondition(true, false, 0);
-
+  } else if(timeout < 0) {
+    // No timeout
+    // No 'enter-to-break'
+    Frontend::setStopCondition(false, false, 0);
   } else {
     // Timeout only
     Frontend::setStopCondition(false, true, timeout);
@@ -59,25 +78,8 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
     loaded = false;
     return ;
   }
-
-  struct DysectFEContext_t context;
-  context.network = fe->network_;
-  context.processTable = fe->proctab_;
-  context.processTableSize = fe->nApplProcs_;
-  context.mrnetRankToMpiRanksMap = &(fe->mrnetRankToMpiRanksMap_);
-  context.statFE = fe;
-
   // Setup session
   lib_proc_start();
-
-  statFE = fe;
-  network = fe->network_;
-  filterPath = fe->filterPath_;
-
-  bool useStatOutFpPrintf = false;
-  if (fe->logging_ & STAT_LOG_FE)
-    useStatOutFpPrintf = true;
-  Err::init(stderr, gStatOutFp, useStatOutFpPrintf);
 
   int upstreamFilterId = network->load_FilterFunc(filterPath, "dysectAPIUpStream");
   if (upstreamFilterId == -1)
@@ -234,12 +236,14 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
 
   long elapsedms = endms - startms;
   
-  DYSECTINFO(true, "DysectAPI setup took %ld ms", elapsedms);
+  DYSECTVERBOSE(true, "DysectAPI setup took %ld ms", elapsedms);
   
   return OK;
 }
 
 DysectErrorCode FE::requestBackendShutdown() {
+  DYSECTINFO(true, "DysectAPI shutting down");
+  Frontend::stop();
   return OK;
 }
 

@@ -1,3 +1,10 @@
+2015-03-20 Gregory L. Lee <lee218@llnl.gov>
+	* : added DySect to GUI
+	* : reset class staic variables to allow multiple sessions in single run
+
+2015-02-12 Gregory L. Lee <lee218@llnl.gov>
+	* symbol.cpp : more systematic type search + support for typedefs
+
 2015-01-13 Gregory L. Lee <lee218@llnl.gov>
 	* : allow probe Location to specify if event can be pending library load
 	* : suppress warning messages for missing symbols if pending enabled

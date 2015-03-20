@@ -29,7 +29,7 @@ DysectStatus DysectAPI::onProcStart() {
   Probe *timer  = new Probe(Event::And(Time::within(5000), Event::Not(Code::location("~do_SendOrStall"))),
                             Domain::inherit(3001, true),
                             Acts(Act::stackTrace(),
-                                 Act::trace("Took more than 5000ms to return from do_SendOrStall(), rank = @desc(rank) location = @location()")));
+                                 Act::trace("Took more than 5000ms to return from do_SendOrStall(), rank = @desc(do_SendOrStall:rank) location = @location()")));
 
   // task 1 will be delayed in triggering this probe
   Probe *endOfFunction  = new Probe(Code::location("dysect_test.cpp#107"),

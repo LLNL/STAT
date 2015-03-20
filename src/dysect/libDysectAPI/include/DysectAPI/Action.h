@@ -84,6 +84,7 @@ namespace DysectAPI {
     static Act* detachAll(AggScope scope = AllProcs);
     static Act* detach();
     static Act* stackTrace();
+    static void resetAggregateIdCounter();
 
     int getId() { return id; }
     virtual bool prepare() = 0;
