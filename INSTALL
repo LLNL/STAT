@@ -54,6 +54,10 @@ Installation
    source. Note this script was developed for BlueGene/Q systems,
    but can be used as guidance for other systems as well.
 
+   STAT and its dependencies can also be built via the Spack
+   package management tool, available at
+   http://scalability-llnl.github.io/spack/index.html.
+
    When building STAT itself, first run configure. You will need
    to use the --with-package options to specify the install prefix
    for mrnet, graphlib, launchmon, libdwarf, and stackwalker.

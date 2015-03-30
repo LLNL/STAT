@@ -427,16 +427,12 @@ host[1-10,12,15-20];otherhost[30]
         #sw.add(text_view)
         #frame.add(sw)
         #vbox.pack_start(frame, True, True, 0)
-        #global blahblah
-        #blahblah = text_buffer
 
         self.properties_window.add(vbox)
         self.properties_window.show_all()
 
     def on_properties_destroy(self, action):
         """Clean up the properties window."""
-        #global blahblah
-        #blahblah.set_text('')
         self.properties_window = None
 
     def pid_toggle_cb(self, action, pid, command):

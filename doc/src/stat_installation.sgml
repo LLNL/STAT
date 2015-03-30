@@ -2,6 +2,9 @@
 A script that downloads and install STAT and all its dependencies for BlueGene/Q has been created and can be downloaded at <ulink url="https://github.com/lee218llnl/STAT/blob/master/script-stat-install"></ulink> or can be found in the top-level directory of the STAT source.  Note this script was developed for BlueGene/Q systems, but can be used as guidance for other systems as well.
 </para>
 <para>
+STAT and its dependencies can also be built via the Spack package management tool, available at http://scalability-llnl.github.io/spack/index.html.
+</para>
+<para>
 When building STAT itself, first run configure.  You will need to use the --with-package options to specify the install prefix for mrnet, graphlib, launchmon, libdwarf, and stackwalker.  These options will add the necessary include and library search paths to the compile options.  Refer to configure --help for exact options.  You may also wish to specify the maximum number of communication processes to launch per node with the option --with-procspernode=number, generally set to the number of cores per node. 
 </para>
 <para>
