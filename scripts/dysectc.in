@@ -13,7 +13,7 @@ if test $? -ne 0
 then
     exit 1
 fi
-g++ -g -shared -W1,-soname,$libname -o $libname $objname
+g++ -g -shared -o $libname $objname
 if test $? -ne 0
 then
     exit 1
