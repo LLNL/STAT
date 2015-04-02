@@ -38,5 +38,9 @@ expr-scanner.cc:expr-scanner.ll Makefile
 
 expr-scanner.h:expr-scanner.cc
 
+expr-parser.h:expr-scanner.cc
+	if [ -f expr-parser.hh ]; then \
+		cp $< expr-parser.hh; \
+	fi
 clean-local:
 	-rm -rf expr-scanner.h expr-scanner.cc expr-parser.cc expr-parser.h

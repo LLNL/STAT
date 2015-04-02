@@ -1520,8 +1520,11 @@ StatError_t STAT_BackEnd::resume()
                 stopped->continueProcs();
 
         }
-        else
-            procSet_->continueProcs();
+        else {
+            if(procSet_->anyThreadStopped()) {
+                procSet_->continueProcs();
+            }
+        }
     }
   #else
         procSet_->continueProcs();
