@@ -1925,7 +1925,8 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
         void *symtab = NULL;
 
         boolRet = frame.getLibOffset(modName, offset, symtab);
-        return "error";
+        if (boolRet == false)
+            return "error";
 #ifdef SW_VERSION_8_0_0
         if (frame.isTopFrame() == false)
             offset = offset - 1;

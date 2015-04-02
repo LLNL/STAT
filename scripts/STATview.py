@@ -3546,7 +3546,7 @@ entered as a regular expression"""
             temp_dot_file = open(temp_dot_filename, 'w')
         except:
             home_dir = os.environ.get("HOME")
-            temp_dot_filename = '%s/redraw.dot' % home_dir
+            temp_dot_filename = '%s/tranlsated.dot' % home_dir
             try:
                 temp_dot_file = open(temp_dot_filename, 'w')
             except:
