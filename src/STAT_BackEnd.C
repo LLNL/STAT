@@ -49,7 +49,11 @@ StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType)
     /* In 3/2014, SIGUSR2 was found to be blocked on Cray systems, which was causing detach to hang */
     intRet = sigfillset(&mask);
     if (intRet == 0)
+    {
         intRet = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+        if (intRet != 0)
+            fprintf(stderr, "warning: failed to set pthread_sigmask: %s\n", strerror(errno));
+    }
 
     if (launchType == STATD_LMON_LAUNCH)
     {
@@ -116,6 +120,9 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
 #ifdef STAT_FGFS
     fgfsCommFabric_ = NULL;
 #endif
+#ifdef DYSECTAPI
+    dysectBE_ = NULL;
+#endif
     gBePtr = this;
 	registerSignalHandlers(true);
 }
@@ -180,6 +187,10 @@ STAT_BackEnd::~STAT_BackEnd()
         delete network_;
         network_ = NULL;
     }
+
+#ifdef DYSECTAPI
+    dysectBE_ = NULL;
+#endif
 
 	registerSignalHandlers(false);
     gBePtr = NULL;
@@ -1911,6 +1922,7 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
         void *symtab = NULL;
 
         boolRet = frame.getLibOffset(modName, offset, symtab);
+        return "error";
 #ifdef SW_VERSION_8_0_0
         if (frame.isTopFrame() == false)
             offset = offset - 1;
