@@ -7,6 +7,7 @@ AC_COPYRIGHT([Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADER([config.h])
+AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE(STAT, 2.2.0)
 AC_CANONICAL_HOST
 
