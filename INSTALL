@@ -46,7 +46,7 @@ Dependent Packages
 
 Installation
 
-   A script that downloads and install STAT and all its
+   A script that downloads and installs STAT and all its
    dependencies for BlueGene/Q has been created and can be
    downloaded at
    https://github.com/lee218llnl/STAT/blob/master/script-stat-inst
