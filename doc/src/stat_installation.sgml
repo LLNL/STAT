@@ -1,5 +1,5 @@
 <para>
-A script that downloads and install STAT and all its dependencies for BlueGene/Q has been created and can be downloaded at <ulink url="https://github.com/lee218llnl/STAT/blob/master/script-stat-install"></ulink> or can be found in the top-level directory of the STAT source.  Note this script was developed for BlueGene/Q systems, but can be used as guidance for other systems as well.
+A script that downloads and installs STAT and all its dependencies for BlueGene/Q has been created and can be downloaded at <ulink url="https://github.com/lee218llnl/STAT/blob/master/script-stat-install"></ulink> or can be found in the top-level directory of the STAT source.  Note this script was developed for BlueGene/Q systems, but can be used as guidance for other systems as well.
 </para>
 <para>
 STAT and its dependencies can also be built via the Spack package management tool, available at http://scalability-llnl.github.io/spack/index.html.

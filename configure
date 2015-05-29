@@ -17621,7 +17621,7 @@ $as_echo_n "checking for libmrnet... " >&6; }
 
 # Check whether --with-cray-xt was given.
 if test "${with_cray_xt+set}" = set; then
-  withval=$with_cray_xt; mrnet_libs="-lmrnet -lxplat -lpthread -ldl -lalps -lxmlrpc -lalpsutil"
+  withval=$with_cray_xt; mrnet_libs="-lmrnet -lxplat -lpthread -ldl -lalps -lalpsutil"
 else
   mrnet_libs="-lmrnet -lxplat -lpthread -ldl"
 

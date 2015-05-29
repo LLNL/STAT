@@ -1,3 +1,6 @@
+2015-05-29 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_mrnet : removed xmlrpc lib dependence for cray-xt
+
 2015-04-03 Gregory L. Lee <lee218@llnl.gov>
 	* : updated build system files
 
