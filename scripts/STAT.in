@@ -58,4 +58,4 @@ if test -z "$LMON_FE_ENGINE_TIMEOUT" ; then
     export LMON_FE_ENGINE_TIMEOUT=600
 fi
 
-exec $prefix/bin/STATbin -r 5 -c $@
+exec $prefix/bin/STATbin -r 5 -A -c $@

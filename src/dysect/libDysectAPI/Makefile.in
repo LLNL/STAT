@@ -36,7 +36,12 @@ host_triplet = @host@
 subdir = src/dysect/libDysectAPI
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/config/libtool.m4 \
+	$(top_srcdir)/config/ltoptions.m4 \
+	$(top_srcdir)/config/ltsugar.m4 \
+	$(top_srcdir)/config/ltversion.m4 \
+	$(top_srcdir)/config/lt~obsolete.m4 \
+	$(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_boost.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
 	$(top_srcdir)/config/x_ac_dysectapi.m4 \
@@ -282,9 +287,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu src/dysect/libDysectAPI/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign src/dysect/libDysectAPI/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu src/dysect/libDysectAPI/Makefile
+	  $(AUTOMAKE) --foreign src/dysect/libDysectAPI/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \

@@ -18,8 +18,10 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 
+import sys
+import os
 import os.path
 from collections import namedtuple
 import re
@@ -430,9 +432,6 @@ expr = r'([^\s]+)\+(0x[a-fA-F0-9]+)'
 # around an open pipe to an addr2line process, to which we send offsets
 translators = {}
 
-addr2line = "/collab/usr/global/tools/dyninst/symt_addr2line/chaos_5_x86_64_ib/symt_addr2line"
-addr2line = "addr2line"
-
 class Translator:
     """A translator is a read/write pipe to an addr2line process.
        If you write an address to it, it will read the file/line info
@@ -442,12 +441,17 @@ class Translator:
     """
     def __init__(self, filename):
         self.filename = filename
+        if "STAT_ADDR2LINE" in os.environ:
+            self.addr2line = os.environ["STAT_ADDR2LINE"]
+        else:
+            self.addr2line = which("addr2line")
         try:
-            args = [addr2line]
+            args = [self.addr2line]
             args.append('-C')
-            args += ["-f", "-e", filename]
-            self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-        except:
+            args += ["-f", "-e", self.filename]
+            self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        except Exception as e:
+            sys.stderr.write("%s failed for %s: %s\n" % (self.addr2line, self.filename, e))
             self.proc = None
 
     def kill(self):
@@ -455,10 +459,18 @@ class Translator:
 
     def translate(self, addr):
         if self.proc:
-            self.proc.stdin.write("%s\n" % addr)
-            function = self.proc.stdout.readline().rstrip("\n")
-            line = self.proc.stdout.readline().rstrip("\n")
-            return "%s@%s" % (function, line)
+            try:
+                self.proc.stdin.write("%s\n" % addr)
+                function = self.proc.stdout.readline().rstrip("\n")
+                line = self.proc.stdout.readline().rstrip("\n")
+                return "%s@%s" % (function, line)
+            except Exception as e:
+                sys.stderr.write("%s failed for %s+%s: %s\n" % (self.addr2line, self.filename, addr, e))
+                if self.proc:
+                    self.proc.poll()
+                    sys.stderr.write("return code = %s, sdterr = %s\n" % (self.proc.returncode, self.proc.stderr.read()))
+                    self.proc = None
+            return "??"
         else:
             return "??"
 

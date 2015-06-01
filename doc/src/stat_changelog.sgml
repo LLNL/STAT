@@ -6,6 +6,9 @@
         most edits for this release were bug fixes and enhancements to the prototype DySectAPI (refer to ChangeLog file in top-level directory for details of changes)
       </para></listitem>
       <listitem><para>
+        DySectAPI session added to STAT GUI
+      </para></listitem>
+      <listitem><para>
         added module offset granularity
       </para></listitem>
       <listitem><para>

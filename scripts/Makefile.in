@@ -46,7 +46,12 @@ DIST_COMMON = $(am__python_PYTHON_DIST) $(dist_bin_SCRIPTS) \
 	$(srcdir)/stat-core-merger.in $(srcdir)/stat-gui.in \
 	$(srcdir)/stat-script.in $(srcdir)/stat-view.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/config/libtool.m4 \
+	$(top_srcdir)/config/ltoptions.m4 \
+	$(top_srcdir)/config/ltsugar.m4 \
+	$(top_srcdir)/config/ltversion.m4 \
+	$(top_srcdir)/config/lt~obsolete.m4 \
+	$(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_boost.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
 	$(top_srcdir)/config/x_ac_dysectapi.m4 \
@@ -290,9 +295,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu scripts/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign scripts/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu scripts/Makefile
+	  $(AUTOMAKE) --foreign scripts/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
