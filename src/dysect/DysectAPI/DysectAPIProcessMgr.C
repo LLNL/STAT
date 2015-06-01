@@ -52,12 +52,12 @@ bool ProcessMgr::detach(Process::const_ptr process) {
 
 bool ProcessMgr::detach(ProcessSet::ptr detachedSet) {
   if(!detachedSet) {
-    return Err::warn(false, "detach from empty detachSet");
+    return DYSECTWARN(false, "detach from empty detachSet");
   }
 
   bool ret = detachedSet->temporaryDetach();
   if (ret == false) {
-    return Err::warn(false, "detach from detachSet failed: %s", ProcControlAPI::getLastErrorMsg());
+    return DYSECTWARN(false, "detach from detachSet failed: %s", ProcControlAPI::getLastErrorMsg());
   }
 
   allProcs = allProcs->set_difference(detachedSet);
@@ -68,7 +68,7 @@ bool ProcessMgr::detach(ProcessSet::ptr detachedSet) {
 
 bool ProcessMgr::detachAll() {
   
-  Err::verbose(true, "Detaching from all!");
+  DYSECTVERBOSE(true, "Detaching from all!");
 
   if(!allProcs)
     return true;
@@ -76,7 +76,7 @@ bool ProcessMgr::detachAll() {
   if(allProcs->size() <= 0)
     return true;
 
-  Err::verbose(true, "Filtering set!");
+  DYSECTVERBOSE(true, "Filtering set!");
   allProcs = filterExited(allProcs);
 
   if(!allProcs)
@@ -85,22 +85,22 @@ bool ProcessMgr::detachAll() {
   if(allProcs->size() <= 0)
     return true;
 
-  Err::verbose(true, "Get running set!");
+  DYSECTVERBOSE(true, "Get running set!");
   // Continue stopped processes
   ProcessSet::ptr runningProcs = allProcs->getAnyThreadRunningSubset();
  
   if(runningProcs && (runningProcs->size() > 0)) {
-    Err::verbose(true, "Stopping %d processes...", runningProcs->size());
+    DYSECTVERBOSE(true, "Stopping %d processes...", runningProcs->size());
     runningProcs->stopProcs();
-    Err::verbose(true, "Processes stop done");
+    DYSECTVERBOSE(true, "Processes stop done");
   }
 
   if(allProcs && allProcs->size() > 0) {
-    Err::verbose(true, "Detaching from %d processes...", allProcs->size());
+    DYSECTVERBOSE(true, "Detaching from %d processes...", allProcs->size());
     allProcs->temporaryDetach();
   }
 
-  Err::verbose(true, "Done");
+  DYSECTVERBOSE(true, "Done");
 
   return true;
 }

@@ -31,6 +31,7 @@ examples/src/mpi_ringtopo
 examples/src/mpi_ringtopo_defunct
 examples/src/rank_test
 examples/src/to_test
+examples/src/dysect_test
 examples/src/template_test
 examples/sessions/doit.sh
 libtool
@@ -44,12 +45,14 @@ scripts/STATBench
 scripts/STATGUI
 scripts/STATview
 scripts/core_stack_merge
+scripts/stat-core-merger
 scripts/stat-bench
 scripts/stat-cl
 scripts/stat-gui
 scripts/stat-view
 scripts/stat-script
 scripts/dysectc
+scripts/mpi_segfault*
 src/.deps/
 src/.libs/
 src/STATBenchD
@@ -82,3 +85,5 @@ tags
 test.msub
 test.pdf
 to_test
+dysect-experiment*
+/*.sh

@@ -109,6 +109,7 @@ namespace DysectAPI {
     static bool processRequests();
 
     bool addWaitingProc(Dyninst::ProcControlAPI::Process::const_ptr process);
+    bool addWaitingProc(Dyninst::ProcControlAPI::ProcessSet::ptr procset);
     Dyninst::ProcControlAPI::ProcessSet::ptr& getWaitingProcs();
     bool releaseWaitingProcs();
     int numWaitingProcs();

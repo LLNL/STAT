@@ -49,7 +49,11 @@ StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType)
     /* In 3/2014, SIGUSR2 was found to be blocked on Cray systems, which was causing detach to hang */
     intRet = sigfillset(&mask);
     if (intRet == 0)
+    {
         intRet = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+        if (intRet != 0)
+            fprintf(stderr, "warning: failed to set pthread_sigmask: %s\n", strerror(errno));
+    }
 
     if (launchType == STATD_LMON_LAUNCH)
     {
@@ -116,6 +120,9 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
 #ifdef STAT_FGFS
     fgfsCommFabric_ = NULL;
 #endif
+#ifdef DYSECTAPI
+    dysectBE_ = NULL;
+#endif
     gBePtr = this;
 	registerSignalHandlers(true);
 }
@@ -180,6 +187,10 @@ STAT_BackEnd::~STAT_BackEnd()
         delete network_;
         network_ = NULL;
     }
+
+#ifdef DYSECTAPI
+    dysectBE_ = NULL;
+#endif
 
 	registerSignalHandlers(false);
     gBePtr = NULL;
@@ -549,25 +560,37 @@ void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
             if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error coloring graph by leading edge label\n");
-                abort();
+                if (sig != SIGTERM)
+                    abort();
+                else
+                    exit(sig);
             }
             graphlibError = graphlib_scaleNodeWidth(prefixTree2d, 80, 160);
             if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error scaling node width\n");
-                abort();
+                if (sig != SIGTERM)
+                    abort();
+                else
+                    exit(sig);
             }
             snprintf(outFile, BUFSIZE, "%s/%s.BE_%s_%d.dot", outDir_, filePrefix_, localHostName_, myRank_);
             graphlibError = graphlib_exportGraph(outFile, GRF_DOT, prefixTree2d);
             if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error exporting graph to dot format\n");
-                abort();
+                if (sig != SIGTERM)
+                    abort();
+                else
+                    exit(sig);
             }
         }
     }
 
-    abort();
+    if (sig != SIGTERM)
+        abort();
+    else
+        exit(sig);
 }
 
 
@@ -854,18 +877,6 @@ StatError_t STAT_BackEnd::mainLoop()
 
     do
     {
-#ifdef DYSECTAPI
-        if (dysectBE_)
-        {
-            DysectAPI::DysectErrorCode dysectRet = dysectBE_->handleAll();
-            if (dysectRet != DysectAPI::OK)
-            {
-                printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "failure on call to dysectBE_ hanldeAll\n");
-                return STAT_STACKWALKER_ERROR;
-            }
-        }
-#endif
-
         /* Set the stackwalker notification file descriptor */
         if (processMap_.size() > 0 and processMapNonNull_ > 0)
             swNotificationFd = ProcDebug::getNotificationFD();
@@ -938,7 +949,20 @@ StatError_t STAT_BackEnd::mainLoop()
         recvShouldBlock=false;
         intRet = network_->recv(&tag, packet, &stream, recvShouldBlock);
         if (intRet == 0)
+        {
+#ifdef DYSECTAPI
+            if (dysectBE_)
+            {
+                DysectAPI::DysectErrorCode dysectRet = dysectBE_->handleAll();
+                if (dysectRet != DysectAPI::OK)
+                {
+                    printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "failure on call to dysectBE_ hanldeAll\n");
+                    return STAT_STACKWALKER_ERROR;
+                }
+            }
+#endif
             continue;
+        }
         else if (intRet != 1)
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::recv() failure %d\n", intRet);
@@ -1496,8 +1520,11 @@ StatError_t STAT_BackEnd::resume()
                 stopped->continueProcs();
 
         }
-        else
-            procSet_->continueProcs();
+        else {
+            if(procSet_->anyThreadStopped()) {
+                procSet_->continueProcs();
+            }
+        }
     }
   #else
         procSet_->continueProcs();
@@ -1650,7 +1677,7 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
     boolRet = libState->getLibraryAtAddr(addr, lib);
     if (boolRet == false)
     {
-        printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to get library at address 0x%lx\n", addr);
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Failed to get library at address 0x%lx\n", addr);
         snprintf(outBuf, BUFSIZE, "?");
         return STAT_OK;
     }
@@ -1889,6 +1916,23 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
         else
 #endif
             snprintf(buf, BUFSIZE, "@0x%lx", frame.getRA() - 1);
+        name += buf;
+    }
+    else if (sampleType_ & STAT_SAMPLE_MODULE_OFFSET)
+    {
+        Dyninst::Offset offset;
+        string modName;
+        void *symtab = NULL;
+
+        boolRet = frame.getLibOffset(modName, offset, symtab);
+        if (boolRet == false)
+            return "error";
+#ifdef SW_VERSION_8_0_0
+        if (frame.isTopFrame() == false)
+            offset = offset - 1;
+#endif
+        name = modName;
+        snprintf(buf, BUFSIZE, "+0x%lx", offset);
         name += buf;
     }
     else if (sampleType_ & STAT_SAMPLE_LINE)
@@ -2525,7 +2569,7 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
 
 #if defined(GROUP_OPS)
-    if (doGroupOps_)
+    if (doGroupOps_ && stopArrayLen == 0)
   #ifdef DYSECTAPI
     {
         if(DysectAPI::ProcessMgr::isActive())

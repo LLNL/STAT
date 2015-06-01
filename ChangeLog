@@ -1,3 +1,127 @@
+2015-05-29 Gregory L. Lee <lee218@llnl.gov>
+	* config/x_ac_mrnet : removed xmlrpc lib dependence for cray-xt
+
+2015-04-03 Gregory L. Lee <lee218@llnl.gov>
+	* : updated build system files
+
+2015-04-02 Gregory L. Lee <lee218@llnl.gov>
+	* : module offset fixes and enhancements
+	* : documentation updates
+
+2015-03-20 Gregory L. Lee <lee218@llnl.gov>
+	* : added DySect to GUI
+	* : reset class staic variables to allow multiple sessions in single run
+
+2015-02-12 Gregory L. Lee <lee218@llnl.gov>
+	* symbol.cpp : more systematic type search + support for typedefs
+
+2015-01-13 Gregory L. Lee <lee218@llnl.gov>
+	* : allow probe Location to specify if event can be pending library load
+	* : suppress warning messages for missing symbols if pending enabled
+
+2015-01-09 Gregory L. Lee <lee218@llnl.gov>
+	* frontend.cpp : don't break on enter if not a tty
+	* : if probe root fails during preparation, add to pending and retry on	library load events
+
+2014-12-22 Gregory L. Lee <lee218@llnl.gov>
+	* location_be.cpp : make sure process is stopped before removing breakpoint
+	* probe_be.cpp : reset processCount when finishing action
+	* : implemented time event for non-zero timeouts
+	* : don't stop target processes on time event, do so in	actions
+
+2014-12-17 Gregory L. Lee <lee218@llnl.gov>
+	* backend.cpp : stop target processes on time event, only when enabled
+
+2014-12-16 Gregory L. Lee <lee218@llnl.gov>
+	* symbol.cpp : added ~symbol for location function exit event
+	* backend.cpp : stop target processes on time event
+
+2014-12-15 Gregory L. Lee <lee218@llnl.gov>
+	* err.cpp : also write warnings and fatal messages to logs
+
+2014-12-12 Gregory L. Lee <lee218@llnl.gov>
+	* : added support for long, float, double, and pointer types
+
+2014-12-10 Gregory L. Lee <lee218@llnl.gov>
+	* : implemented max aggregate
+
+2014-12-03 Gregory L. Lee <lee218@llnl.gov>
+	* : added irpc action
+	* : renamed writeVariable to writeModuleVariable
+	* frontend.cpp : specify TotalView path via DYSECTAPI_TOTALVIEW_PATH
+	* StrAgg.C : fixed deserialize of counts
+
+2014-12-02 Gregory L. Lee <lee218@llnl.gov>
+	* dysect* : added LoadLibrary, WriteVariable, and Signal actions
+	* event.cpp, Event.h : fixed Time probe (false warning and incorrect comparison in wasTriggered)
+
+2014-10-17 Gregory L. Lee <lee218@llnl.gov>
+	* dysect* : added Totalview and DepositCore actions
+
+2014-10-17 Gregory L. Lee <lee218@llnl.gov>
+	* scripts/* : added full-core-file merging script
+
+2014-08-18 Gregory L. Lee <lee218@llnl.gov>
+	* dysect* : modified logging to use macros with optional line info
+
+2014-08-15 Gregory L. Lee <lee218@llnl.gov>
+	* LocationBE.C : use getInitialFrame instead of walking full stack
+
+2014-08-11 Nicklas Jensen <nboa@dtu.dk>
+	* : added Event composition
+
+2014-07-15 Gregory L. Lee <lee218@llnl.gov>
+	* backend.cpp : only wait for attached processes, not full domain
+
+2014-07-10 Gregory L. Lee <lee218@llnl.gov>
+	* SafeTimer.h, safe_timer.cpp : added resetSyncTimer function
+	* backend.cpp : reset timer when all target procs satisfy a probe condition to trigger action immediately
+
+2014-07-08 Gregory L. Lee <lee218@llnl.gov>
+	* frontend.cpp : check for EINTR on select failure
+	* frontend.cpp, default_probes.cpp : modified handling of process exit
+
+2014-06-26 Gregory L. Lee <lee218@llnl.gov>
+	* probe.cpp : initialize processCount to zero for all Probe constructors
+	* backend.cpp : disable fireonce timed probes after handling
+	* backend.cpp : no need to operate on relayed packet
+	* STAT_BackEnd.C : look for MRNet messages before handling Dysect operations
+
+2014-06-25 Gregory L. Lee <lee218@llnl.gov>
+	* frontend.cpp : remove errant printf!
+	* safe_timer.cpp : avoid overlapping probes in probesTimeoutMap with same timeout
+	* : code cleanup
+	* backend.cpp : send enqueued notifications when handling action
+
+2014-06-24 Gregory L. Lee <lee218@llnl.gov>
+	* backend.cpp, safe_timer.cpp, SafeTimer.h, Timer.h : clear timer for handled probe
+
+2014-06-24 Gregory L. Lee <lee218@llnl.gov>
+	* Backend.h, backend.cpp : protect probesPendingAction with a mutex
+
+2014-06-23 Gregory L. Lee <lee218@llnl.gov>
+	* probe_be.cpp, backend.cpp : disable/enable children only for processes that have triggered action
+
+2014-06-23 Gregory L. Lee <lee218@llnl.gov>
+	* : process control fixes for DysectAPI
+	* : complete probe actions before enabling children and disabling self
+
+2014-05-21 Gregory L. Lee <lee218@llnl.gov>
+	* : add ability to disable build of examples
+	* : build system clean up
+
+2014-05-21 Gregory L. Lee <lee218@llnl.gov>
+	scripts/script_test.py : added module offset sample test
+
+2014-05-15 Gregory L. Lee <lee218@llnl.gov>
+	* : add translate feature for module offset
+
+2014-05-14 Gregory L. Lee <lee218@llnl.gov>
+	* : enhanced node label decomposition in GUI
+
+2014-05-13 Gregory L. Lee <lee218@llnl.gov>
+	* : added module offset sample granularity
+
 2014-04-03 Gregory L. Lee <lee218@llnl.gov>
 	* : tag version 2.1.0
 

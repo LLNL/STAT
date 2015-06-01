@@ -93,15 +93,15 @@ DysectAPI::DysectErrorCode Domain::createStreamGeneric() {
 
   if(waitTime == Wait::inf) {
     upSync = SFILTER_WAITFORALL;
-    Err::verbose(true, "Block in filter");
+    DYSECTVERBOSE(true, "Block in filter");
 
   } else if(waitTime == Wait::NoWait) {
     upSync = SFILTER_DONTWAIT;
   } else if(waitTime > 0) {
-    Err::verbose(true, "Using timeout for filter: %d ms", waitTime);
+    DYSECTVERBOSE(true, "Using timeout for filter: %d ms", waitTime);
     upSync = SFILTER_TIMEOUT;
   } else {
-    return Err::warn(Error, "Invalid wait time '%d' specified", waitTime);
+    return DYSECTWARN(Error, "Invalid wait time '%d' specified", waitTime);
   }
 
   stream = network->new_Stream(comm, Domain::upstreamFilterId, upSync);
@@ -118,7 +118,7 @@ DysectAPI::DysectErrorCode Domain::createStreamGeneric() {
 
   top->get_TreeStatistics(num_nodes, depth, min_fanout, max_fanout, avg_fanout, stddev_fanout);
 
-  Err::verbose(true, "Max depth of tree: %d", depth);
+  DYSECTVERBOSE(true, "Max depth of tree: %d", depth);
 
   int effectiveWaitTime = waitTime;
   if(depth > 0)
@@ -133,7 +133,7 @@ DysectAPI::DysectErrorCode Domain::createStreamGeneric() {
 
   int dataEventDescriptor = stream->get_DataNotificationFd();
   
-  Err::verbose(true, "Domain %x has stream %d", getId(), stream->get_Id());
+  DYSECTVERBOSE(true, "Domain %x has stream %d", getId(), stream->get_Id());
 
   fdMap.insert(pair<int, Domain*>(dataEventDescriptor, this));
 
@@ -150,7 +150,7 @@ bool Domain::addToMap(Domain* dom) {
 
   // Register id for stream -> domain binding
   if(domainMap.find(dom->getId()) != domainMap.end()) {
-    Err::warn("Duplicate id '%x'", dom->getId());
+    DYSECTLOG("Duplicate id '%x'", dom->getId());
 
     return false;
   }
@@ -235,6 +235,10 @@ fd_set Domain::getFdSet() { return fdSet; }
 
 int Domain::getMaxFd()    { return maxFd; }
 
+std::map<int, Dyninst::ProcControlAPI::Process::ptr>* Domain::getMpiRankToProcessMap() {
+  return mpiRankToProcessMap;
+}
+
 bool Domain::setFEContext(struct DysectFEContext_t* context) {
   assert(context != 0);
 
@@ -256,6 +260,20 @@ bool Domain::setBEContext(struct DysectBEContext_t* context) {
   mpiRankToProcessMap = context->mpiRankToProcessMap;
 
   return true;
+}
+
+void Domain::clearDomains() {
+  network = 0;
+  upstreamFilterId = 0;
+  processTable = 0;
+  processTableSize = 0;
+  mrnetRankToMpiRanksMap = 0;
+  mpiRankToProcessMap = 0;
+  domainIdCounter = 0;
+  domainMap.clear();
+  fdMap.clear();
+  FD_ZERO(&fdSet);
+  maxFd = -1;
 }
 
 tag_t Domain::getId()   { return id; }
@@ -304,15 +322,15 @@ bool Domain::sendContinue() {
 
 DysectAPI::DysectErrorCode Domain::broadcastStreamInit() {
   if(!stream) {
-    return Err::warn(StreamError, "Stream not ready (domain %x)", id);
+    return DYSECTWARN(StreamError, "Stream not ready (domain %x)", id);
   }
 
   if(stream->send(getInitTag(), "") == -1) {
-    return Err::warn(StreamError, "Send failed");
+    return DYSECTWARN(StreamError, "Send failed");
   }
   
   if (stream->flush() == -1) {
-    return Err::warn(StreamError, "Flush failed");
+    return DYSECTWARN(StreamError, "Flush failed");
   }
 
   return OK;
@@ -324,7 +342,7 @@ World::World(long waitTime, bool lblocking) : Domain(waitTime, lblocking, WorldD
 DysectAPI::DysectErrorCode World::createStream() {
   assert(network != 0);
   
-  Err::verbose(true, "Creating world stream with broadcast comm");
+  DYSECTVERBOSE(true, "Creating world stream with broadcast comm");
   comm = network->get_BroadcastCommunicator();
 
   assert(comm != 0);
@@ -366,17 +384,17 @@ DysectAPI::DysectErrorCode Inherit::prepareStream() {
 
 DysectAPI::DysectErrorCode Inherit::copyDomainFromParent(Domain*& retDom) {
   if(!owner) {
-    return Err::warn(Error, "Could not determine owning probe!");
+    return DYSECTWARN(Error, "Could not determine owning probe!");
   }
 
   Probe *parent = owner->getParent();
   if(!parent) {
-    return Err::warn(Error, "Owner probe do not have parent!");
+    return DYSECTWARN(Error, "Owner probe do not have parent!");
   }
 
   Domain* dom = parent->getDomain();
   if(!dom) {
-    return Err::warn(Error, "Parent probe do not have a specified domain!");
+    return DYSECTWARN(Error, "Parent probe do not have a specified domain!");
   }
 
   long inheritedWaitTime = dom->getWaitTime();
@@ -392,7 +410,7 @@ DysectAPI::DysectErrorCode Inherit::copyDomainFromParent(Domain*& retDom) {
     retDom = new Group(grp->getExpr(), waitTime, tblocking);
 
   } else {
-    return Err::warn(Error, "Unknown parent domain");
+    return DYSECTWARN(Error, "Unknown parent domain");
   }
 
   retDom->setOwner(owner);

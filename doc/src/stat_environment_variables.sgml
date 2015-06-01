@@ -187,10 +187,10 @@ Several environment variables influence STAT and its dependent packages.  Note t
     </listitem>
 </varlistentry>
 <varlistentry>
-    <term>STAT_GROUP_OPS=<replaceable class="parameter">value</replaceable></term>
+    <term>STAT_ADDR2LINE=<replaceable class="parameter">path</replaceable></term>
     <listitem>
         <para>
-        If this environment variable is set on the daemons, STAT will use Stackwalker's group operations instead of operating on individual processes.  This is set by default on BG/Q systems.
+        Use the addr2line utility located in <replaceable class="parameter">path</replaceable> to translate module and offset prefix trees in the stat-view GUI.
         </para>
     </listitem>
 </varlistentry>

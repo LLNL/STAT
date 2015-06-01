@@ -43,18 +43,18 @@ DysectAPI::DysectErrorCode Probe::createStream(treeCallBehavior callBehavior) {
 
 DysectAPI::DysectErrorCode Probe::broadcastStreamInit(treeCallBehavior callBehavior) {
   if(!dom) {
-    return Err::warn(DomainNotFound, "domain not found");
+    return DYSECTWARN(DomainNotFound, "domain not found");
   }
 
   if(dom->broadcastStreamInit() != OK) {
-    return Err::warn(StreamError, "stream error");
+    return DYSECTWARN(StreamError, "stream error");
   }
 
   if(callBehavior == recursive) {
     for(int i = 0; i < linked.size(); i++) {
       if(linked[i]->broadcastStreamInit(callBehavior) != OK) {
 
-        return Err::warn(StreamError, "failed to broadcast inits");
+        return DYSECTWARN(StreamError, "failed to broadcast inits");
       }
     }
   }
@@ -87,7 +87,7 @@ DysectErrorCode Probe::handleActions(int count, char *payload, int len) {
 
   aggregates.clear();
 
-  Err::log(true, "Handling %d actions from payload len %d, with count %d", actions.size(), len, count);
+  DYSECTLOG(true, "Handling %d actions from payload len %d, with count %d", actions.size(), len, count);
 
   if((payload != 0) && (len > 1)) {
     AggregateFunction::getAggregates(aggregates, (struct packet*)payload);
@@ -111,7 +111,7 @@ DysectErrorCode Probe::handleNotifications(int count, char *payload, int len) {
 
   aggregates.clear();
 
-  Err::log(true, "Handling %d actions from payload len %d, with count %d", actions.size(), len, count);
+  DYSECTLOG(true, "Handling %d actions from payload len %d, with count %d", actions.size(), len, count);
 
   if((payload != 0) && (len > 1)) {
 

@@ -1,5 +1,16 @@
 AC_DEFUN([X_AC_FGFS], [
   AM_CONDITIONAL([ENABLE_FGFS], false)
+  AC_ARG_WITH(mpa, 
+    [AS_HELP_STRING([--with-mpa=prefix],
+      [Add the compile and link search paths for mpa]
+    )],
+    [CXXFLAGS="$CXXFLAGS -I${withval}/include"
+      LDFLAGS="$LDFLAGS -L${withval}/lib"
+      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"
+    ],
+    [CXXFLAGS="$CXXFLAGS"
+    ]
+  )
   AC_ARG_WITH(fgfs, 
     [AS_HELP_STRING([--with-fgfs=prefix],
       [Add the compile and link search paths for fgfs]

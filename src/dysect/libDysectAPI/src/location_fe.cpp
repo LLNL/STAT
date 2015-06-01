@@ -29,7 +29,7 @@ using namespace ProcControlAPI;
 // Location operations do not apply for front-end session
 //
 
-Location::Location(string locationExpr) : locationExpr(locationExpr) {
+Location::Location(string locationExpr, bool pendingEnabled) : locationExpr(locationExpr), pendingEnabled(pendingEnabled) {
 }
 
 bool Location::enable() {

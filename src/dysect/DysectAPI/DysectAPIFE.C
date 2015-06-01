@@ -32,6 +32,22 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
   assert(fe != 0);
   assert(libPath != 0);
 
+  struct DysectFEContext_t context;
+  context.network = fe->network_;
+  context.processTable = fe->proctab_;
+  context.processTableSize = fe->nApplProcs_;
+  context.mrnetRankToMpiRanksMap = &(fe->mrnetRankToMpiRanksMap_);
+  context.statFE = fe;
+
+  statFE = fe;
+  network = fe->network_;
+  filterPath = fe->filterPath_;
+
+  bool useStatOutFpPrintf = false;
+  if (fe->logging_ & STAT_LOG_FE)
+    useStatOutFpPrintf = true;
+  Err::init(stderr, gStatOutFp, fe->outDir_, useStatOutFpPrintf);
+
   sessionLib = new SessionLibrary(libPath);
 
   if(!sessionLib->isLoaded()) {
@@ -39,11 +55,14 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
     return ;
   }
 
-  if(timeout < 0) {
+  if(timeout == 0) {
     // No timeout
     // Use 'enter-to-break'
     Frontend::setStopCondition(true, false, 0);
-
+  } else if(timeout < 0) {
+    // No timeout
+    // No 'enter-to-break'
+    Frontend::setStopCondition(false, false, 0);
   } else {
     // Timeout only
     Frontend::setStopCondition(false, true, timeout);
@@ -59,25 +78,8 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
     loaded = false;
     return ;
   }
-
-  struct DysectFEContext_t context;
-  context.network = fe->network_;
-  context.processTable = fe->proctab_;
-  context.processTableSize = fe->nApplProcs_;
-  context.mrnetRankToMpiRanksMap = &(fe->mrnetRankToMpiRanksMap_);
-  context.statFE = fe;
-
   // Setup session
   lib_proc_start();
-
-  statFE = fe;
-  network = fe->network_;
-  filterPath = fe->filterPath_;
-
-  bool useStatOutFpPrintf = false;
-  if (fe->logging_ & STAT_LOG_FE)
-    useStatOutFpPrintf = true;
-  Err::init(stderr, gStatOutFp, useStatOutFpPrintf);
 
   int upstreamFilterId = network->load_FilterFunc(filterPath, "dysectAPIUpStream");
   if (upstreamFilterId == -1)
@@ -89,7 +91,7 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
 
   context.upstreamFilterId = upstreamFilterId;
 
-  Err::verbose(true, "Creating streams...");
+  DYSECTVERBOSE(true, "Creating streams...");
   if(Frontend::createStreams(&context) != OK) {
     loaded = false;
     return ;
@@ -138,7 +140,7 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
   //
   int tag;
   MRN::PacketPtr packet;
-  Err::verbose(true, "Block and wait for all backends to confirm library load...");
+  DYSECTVERBOSE(true, "Block and wait for all backends to confirm library load...");
 
 #ifdef STAT_FGFS
   unsigned int streamId = 0;
@@ -179,7 +181,7 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
   // stream binding.
   // Do not wait for response until all init packets have been broadcasted.
   //
-  Err::verbose(true, "Broadcast request for notification upon finishing stream binding");
+  DYSECTVERBOSE(true, "Broadcast request for notification upon finishing stream binding");
   if(controlStream->send(DysectGlobalReadyTag, "") == -1) {
     return Error;
   }
@@ -191,12 +193,12 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
   //
   // Broadcast init packets on all created streams
   //
-  Err::verbose(true, "Broadcast init packets on all created streams");
+  DYSECTVERBOSE(true, "Broadcast init packets on all created streams");
   if(Frontend::broadcastStreamInits() != OK) {
     return Error;
   }
 
-  Err::verbose(true, "Waiting for backends to finish stream binding...");
+  DYSECTVERBOSE(true, "Waiting for backends to finish stream binding...");
   if(controlStream->recv(&tag, packet, true) == -1) {
     return Error;
   }
@@ -216,7 +218,7 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
   //
   // Kick off session
   //
-  Err::verbose(true, "Kick off session");
+  DYSECTVERBOSE(true, "Kick off session");
   if (controlStream->send(DysectGlobalStartTag, "") == -1) {
     return Error;
   }
@@ -234,12 +236,14 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
 
   long elapsedms = endms - startms;
   
-  Err::info(true, "DysectAPI setup took %ld ms", elapsedms);
+  DYSECTVERBOSE(true, "DysectAPI setup took %ld ms", elapsedms);
   
   return OK;
 }
 
 DysectErrorCode FE::requestBackendShutdown() {
+  DYSECTINFO(true, "DysectAPI shutting down");
+  Frontend::stop();
   return OK;
 }
 

@@ -30,8 +30,8 @@ void Probe::linkComponents() {
 
   dom->owner = this;
 
-  event->owner = this;
-
+  event->setOwner(this);
+  
   if(cond) {
     cond->owner = this;
   }
@@ -58,6 +58,7 @@ Probe::Probe( Event* event,
                                procSetInitialized(false),
                                awaitingNotifications(0),
                                awaitingActions(0),
+                               processCount(0),
                                parent(0) {
 
   if(dom == 0) {
@@ -85,6 +86,7 @@ Probe::Probe( Event* event,
                                timerId(0),
                                procSetInitialized(false),
                                awaitingActions(0),
+                               processCount(0),
                                awaitingNotifications(0) {
   if(dom == 0) {
     dom = Domain::inherit();
@@ -109,6 +111,7 @@ Probe::Probe( Event* event,
                                procSetInitialized(false),
                                awaitingNotifications(0),
                                awaitingActions(0),
+                               processCount(0),
                                cond(0){
   if(dom == 0) {
     dom = Domain::inherit();
@@ -135,6 +138,7 @@ Probe::Probe( Event* event,
                                procSetInitialized(false),
                                awaitingNotifications(0),
                                awaitingActions(0),
+                               processCount(0),
                                cond(0){
   if(dom == 0) {
     dom = Domain::inherit();
@@ -157,6 +161,7 @@ Probe::Probe( Event* event,
                                timerId(0),
                                procSetInitialized(false),
                                awaitingActions(0),
+                               processCount(0),
                                awaitingNotifications(0) {
   dom = Domain::inherit();
  
@@ -193,7 +198,7 @@ DysectAPI::DysectErrorCode Probe::prepareStream(treeCallBehavior callBehavior) {
     Inherit *curDom = dynamic_cast<Inherit*>(dom);
     Domain *newDom = 0;
     if(curDom->copyDomainFromParent(newDom) != OK) {
-      return Err::warn(Error, "Domain could not inherit parent domain info");
+      return DYSECTWARN(Error, "Domain could not inherit parent domain info");
     }
 
     //delete(curDom);
@@ -234,13 +239,13 @@ DysectAPI::DysectErrorCode Probe::prepareEvent(treeCallBehavior callBehavior) {
 }
 
 DysectAPI::DysectErrorCode Probe::prepareCondition(treeCallBehavior callBehavior) {
-  Err::verbose(true, "Prepare condition");
+  DYSECTVERBOSE(true, "Prepare condition");
   if(cond != 0) {
     if(!cond->prepare()) {
       return Error;
     }
   } else {
-    Err::verbose(true, "Preparing condition");
+    DYSECTVERBOSE(true, "Preparing condition");
   }
 
   if(callBehavior == recursive) {

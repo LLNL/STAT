@@ -34,10 +34,16 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@ENABLE_DEPCORE_TRUE@am__append_1 = libdepositcorewrap.la
 subdir = src/dysect/DysectAPI
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/config/libtool.m4 \
+	$(top_srcdir)/config/ltoptions.m4 \
+	$(top_srcdir)/config/ltsugar.m4 \
+	$(top_srcdir)/config/ltversion.m4 \
+	$(top_srcdir)/config/lt~obsolete.m4 \
+	$(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_boost.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
 	$(top_srcdir)/config/x_ac_dysectapi.m4 \
@@ -89,12 +95,13 @@ am__objects_1 = libDysectAPIBE_la-DysectAPI.lo
 am__objects_2 = libDysectAPIBE_la-Data.lo \
 	libDysectAPIBE_la-Aggregate.lo libDysectAPIBE_la-Location.lo \
 	libDysectAPIBE_la-CmpAgg.lo libDysectAPIBE_la-DescVar.lo \
-	libDysectAPIBE_la-StrAgg.lo
+	libDysectAPIBE_la-StrAgg.lo libDysectAPIBE_la-RankListAgg.lo
 am_libDysectAPIBE_la_OBJECTS = libDysectAPIBE_la-DysectAPIBE.lo \
 	libDysectAPIBE_la-DysectAPIProcessMgr.lo \
 	libDysectAPIBE_la-AggregateBE.lo \
 	libDysectAPIBE_la-LocationBE.lo libDysectAPIBE_la-DescVarBE.lo \
-	libDysectAPIBE_la-CmpAggBE.lo $(am__objects_1) \
+	libDysectAPIBE_la-CmpAggBE.lo \
+	libDysectAPIBE_la-RankListAggBE.lo $(am__objects_1) \
 	$(am__objects_2)
 libDysectAPIBE_la_OBJECTS = $(am_libDysectAPIBE_la_OBJECTS)
 libDysectAPIBE_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
@@ -104,10 +111,11 @@ libDysectAPIFD_la_LIBADD =
 am__objects_3 = libDysectAPIFD_la-Data.lo \
 	libDysectAPIFD_la-Aggregate.lo libDysectAPIFD_la-Location.lo \
 	libDysectAPIFD_la-CmpAgg.lo libDysectAPIFD_la-DescVar.lo \
-	libDysectAPIFD_la-StrAgg.lo
+	libDysectAPIFD_la-StrAgg.lo libDysectAPIFD_la-RankListAgg.lo
 am_libDysectAPIFD_la_OBJECTS = libDysectAPIFD_la-DysectAPIFilter.lo \
 	libDysectAPIFD_la-LocationFE.lo libDysectAPIFD_la-DescVarCP.lo \
-	libDysectAPIFD_la-CmpAggFE.lo $(am__objects_3)
+	libDysectAPIFD_la-CmpAggFE.lo \
+	libDysectAPIFD_la-RankListAggFE.lo $(am__objects_3)
 libDysectAPIFD_la_OBJECTS = $(am_libDysectAPIFD_la_OBJECTS)
 libDysectAPIFD_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
@@ -117,15 +125,24 @@ am__objects_4 = libDysectAPIFE_la-DysectAPI.lo
 am__objects_5 = libDysectAPIFE_la-Data.lo \
 	libDysectAPIFE_la-Aggregate.lo libDysectAPIFE_la-Location.lo \
 	libDysectAPIFE_la-CmpAgg.lo libDysectAPIFE_la-DescVar.lo \
-	libDysectAPIFE_la-StrAgg.lo
+	libDysectAPIFE_la-StrAgg.lo libDysectAPIFE_la-RankListAgg.lo
 am_libDysectAPIFE_la_OBJECTS = libDysectAPIFE_la-DysectAPIFE.lo \
 	libDysectAPIFE_la-LocationFE.lo libDysectAPIFE_la-DescVarFE.lo \
-	libDysectAPIFE_la-CmpAggFE.lo $(am__objects_4) \
+	libDysectAPIFE_la-CmpAggFE.lo \
+	libDysectAPIFE_la-RankListAggFE.lo $(am__objects_4) \
 	$(am__objects_5)
 libDysectAPIFE_la_OBJECTS = $(am_libDysectAPIFE_la_OBJECTS)
 libDysectAPIFE_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(libDysectAPIFE_la_LDFLAGS) $(LDFLAGS) -o $@
+libdepositcorewrap_la_LIBADD =
+am__libdepositcorewrap_la_SOURCES_DIST = libdepositcoreWrap.C
+@ENABLE_DEPCORE_TRUE@am_libdepositcorewrap_la_OBJECTS = libdepositcorewrap_la-libdepositcoreWrap.lo
+libdepositcorewrap_la_OBJECTS = $(am_libdepositcorewrap_la_OBJECTS)
+libdepositcorewrap_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
+	$(CXXFLAGS) $(libdepositcorewrap_la_LDFLAGS) $(LDFLAGS) -o $@
+@ENABLE_DEPCORE_TRUE@am_libdepositcorewrap_la_rpath = -rpath $(libdir)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -149,9 +166,10 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(libDysectAPIBE_la_SOURCES) $(libDysectAPIFD_la_SOURCES) \
-	$(libDysectAPIFE_la_SOURCES)
+	$(libDysectAPIFE_la_SOURCES) $(libdepositcorewrap_la_SOURCES)
 DIST_SOURCES = $(libDysectAPIBE_la_SOURCES) \
-	$(libDysectAPIFD_la_SOURCES) $(libDysectAPIFE_la_SOURCES)
+	$(libDysectAPIFD_la_SOURCES) $(libDysectAPIFE_la_SOURCES) \
+	$(am__libdepositcorewrap_la_SOURCES_DIST)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -175,6 +193,7 @@ CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
+DEPCOREPREFIX = @DEPCOREPREFIX@
 DEPDIR = @DEPDIR@
 DOTBINDIR = @DOTBINDIR@
 DOTFOUND = @DOTFOUND@
@@ -324,19 +343,23 @@ top_srcdir = @top_srcdir@
 # what flags you want to pass to the C compiler & linker
 AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
 AM_LDFLAGS = 
-lib_LTLIBRARIES = libDysectAPIFE.la libDysectAPIBE.la libDysectAPIFD.la
+lib_LTLIBRARIES = libDysectAPIFE.la libDysectAPIBE.la \
+	libDysectAPIFD.la $(am__append_1)
 dysectapi_includes = -I$(abs_top_srcdir)/src -I$(abs_top_srcdir)/src/dysect -I$(abs_top_srcdir)/src/dysect/libDysectAPI/include
 dysectapi_sources = DysectAPI.h DysectAPI.C
-dysectapi_aggregate_sources = Aggregates/Data.C Aggregates/Aggregate.C Aggregates/Location.C Aggregates/CmpAgg.C Aggregates/DescVar.C Aggregates/StrAgg.C
-libDysectAPIFE_la_SOURCES = DysectAPIFE.C DysectAPIFE.h Aggregates/LocationFE.C Aggregates/DescVarFE.C Aggregates/CmpAggFE.C $(dysectapi_sources) $(dysectapi_aggregate_sources)
+dysectapi_aggregate_sources = Aggregates/Data.C Aggregates/Aggregate.C Aggregates/Location.C Aggregates/CmpAgg.C Aggregates/DescVar.C Aggregates/StrAgg.C Aggregates/RankListAgg.C
+libDysectAPIFE_la_SOURCES = DysectAPIFE.C DysectAPIFE.h Aggregates/LocationFE.C Aggregates/DescVarFE.C Aggregates/CmpAggFE.C Aggregates/RankListAggFE.C $(dysectapi_sources) $(dysectapi_aggregate_sources)
 libDysectAPIFE_la_CPPFLAGS = -g -O2 -fPIC $(dysectapi_includes) -D__DYSECT_IS_FRONTEND
 libDysectAPIFE_la_LDFLAGS = --export-dynamic
-libDysectAPIBE_la_SOURCES = DysectAPIBE.C DysectAPIBE.h DysectAPIProcessMgr.C Aggregates/AggregateBE.C Aggregates/LocationBE.C Aggregates/DescVarBE.C Aggregates/CmpAggBE.C $(dysectapi_sources) $(dysectapi_aggregate_sources)
+libDysectAPIBE_la_SOURCES = DysectAPIBE.C DysectAPIBE.h DysectAPIProcessMgr.C Aggregates/AggregateBE.C Aggregates/LocationBE.C Aggregates/DescVarBE.C Aggregates/CmpAggBE.C Aggregates/RankListAggBE.C $(dysectapi_sources) $(dysectapi_aggregate_sources)
 libDysectAPIBE_la_CPPFLAGS = -g -O2 -fPIC $(dysectapi_includes) -D__DYSECT_IS_BACKEND
 libDysectAPIBE_la_LDFLAGS = --export-dynamic -lrt
-libDysectAPIFD_la_SOURCES = DysectAPIFilter.C DysectAPIFilter.h Aggregates/LocationFE.C Aggregates/DescVarCP.C Aggregates/CmpAggFE.C $(dysectapi_aggregate_sources)
+libDysectAPIFD_la_SOURCES = DysectAPIFilter.C DysectAPIFilter.h Aggregates/LocationFE.C Aggregates/DescVarCP.C Aggregates/CmpAggFE.C Aggregates/RankListAggFE.C $(dysectapi_aggregate_sources)
 libDysectAPIFD_la_CPPFLAGS = -g -O2 -fPIC $(dysectapi_includes)
 libDysectAPIFD_la_LDFLAGS = --export-dynamic -lrt
+@ENABLE_DEPCORE_TRUE@libdepositcorewrap_la_SOURCES = libdepositcoreWrap.C
+@ENABLE_DEPCORE_TRUE@libdepositcorewrap_la_CPPFLAGS = -g -O0 -fPIC -I$(DEPCOREPREFIX)/include 
+@ENABLE_DEPCORE_TRUE@libdepositcorewrap_la_LDFLAGS = -L$(DEPCOREPREFIX)/lib -Wl,-rpath=$(DEPCOREPREFIX)/lib -Wl,-init=depositcorewrap_init -ldl -ldepositcore
 all: all-am
 
 .SUFFIXES:
@@ -408,6 +431,8 @@ libDysectAPIFD.la: $(libDysectAPIFD_la_OBJECTS) $(libDysectAPIFD_la_DEPENDENCIES
 	$(libDysectAPIFD_la_LINK) -rpath $(libdir) $(libDysectAPIFD_la_OBJECTS) $(libDysectAPIFD_la_LIBADD) $(LIBS)
 libDysectAPIFE.la: $(libDysectAPIFE_la_OBJECTS) $(libDysectAPIFE_la_DEPENDENCIES) 
 	$(libDysectAPIFE_la_LINK) -rpath $(libdir) $(libDysectAPIFE_la_OBJECTS) $(libDysectAPIFE_la_LIBADD) $(LIBS)
+libdepositcorewrap.la: $(libdepositcorewrap_la_OBJECTS) $(libdepositcorewrap_la_DEPENDENCIES) 
+	$(libdepositcorewrap_la_LINK) $(am_libdepositcorewrap_la_rpath) $(libdepositcorewrap_la_OBJECTS) $(libdepositcorewrap_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -427,6 +452,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-DysectAPIProcessMgr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-Location.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-LocationBE.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-RankListAgg.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-RankListAggBE.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-StrAgg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-Aggregate.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-CmpAgg.Plo@am__quote@
@@ -437,6 +464,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-DysectAPIFilter.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-Location.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-LocationFE.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-RankListAgg.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-RankListAggFE.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-StrAgg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-Aggregate.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-CmpAgg.Plo@am__quote@
@@ -448,7 +477,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-DysectAPIFE.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-Location.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-LocationFE.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-RankListAgg.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-RankListAggFE.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFE_la-StrAgg.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libdepositcorewrap_la-libdepositcoreWrap.Plo@am__quote@
 
 .C.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -513,6 +545,13 @@ libDysectAPIBE_la-CmpAggBE.lo: Aggregates/CmpAggBE.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-CmpAggBE.lo `test -f 'Aggregates/CmpAggBE.C' || echo '$(srcdir)/'`Aggregates/CmpAggBE.C
 
+libDysectAPIBE_la-RankListAggBE.lo: Aggregates/RankListAggBE.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-RankListAggBE.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-RankListAggBE.Tpo -c -o libDysectAPIBE_la-RankListAggBE.lo `test -f 'Aggregates/RankListAggBE.C' || echo '$(srcdir)/'`Aggregates/RankListAggBE.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-RankListAggBE.Tpo $(DEPDIR)/libDysectAPIBE_la-RankListAggBE.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Aggregates/RankListAggBE.C' object='libDysectAPIBE_la-RankListAggBE.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-RankListAggBE.lo `test -f 'Aggregates/RankListAggBE.C' || echo '$(srcdir)/'`Aggregates/RankListAggBE.C
+
 libDysectAPIBE_la-DysectAPI.lo: DysectAPI.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-DysectAPI.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-DysectAPI.Tpo -c -o libDysectAPIBE_la-DysectAPI.lo `test -f 'DysectAPI.C' || echo '$(srcdir)/'`DysectAPI.C
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-DysectAPI.Tpo $(DEPDIR)/libDysectAPIBE_la-DysectAPI.Plo
@@ -562,6 +601,13 @@ libDysectAPIBE_la-StrAgg.lo: Aggregates/StrAgg.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-StrAgg.lo `test -f 'Aggregates/StrAgg.C' || echo '$(srcdir)/'`Aggregates/StrAgg.C
 
+libDysectAPIBE_la-RankListAgg.lo: Aggregates/RankListAgg.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-RankListAgg.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-RankListAgg.Tpo -c -o libDysectAPIBE_la-RankListAgg.lo `test -f 'Aggregates/RankListAgg.C' || echo '$(srcdir)/'`Aggregates/RankListAgg.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-RankListAgg.Tpo $(DEPDIR)/libDysectAPIBE_la-RankListAgg.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Aggregates/RankListAgg.C' object='libDysectAPIBE_la-RankListAgg.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-RankListAgg.lo `test -f 'Aggregates/RankListAgg.C' || echo '$(srcdir)/'`Aggregates/RankListAgg.C
+
 libDysectAPIFD_la-DysectAPIFilter.lo: DysectAPIFilter.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFD_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFD_la-DysectAPIFilter.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFD_la-DysectAPIFilter.Tpo -c -o libDysectAPIFD_la-DysectAPIFilter.lo `test -f 'DysectAPIFilter.C' || echo '$(srcdir)/'`DysectAPIFilter.C
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFD_la-DysectAPIFilter.Tpo $(DEPDIR)/libDysectAPIFD_la-DysectAPIFilter.Plo
@@ -589,6 +635,13 @@ libDysectAPIFD_la-CmpAggFE.lo: Aggregates/CmpAggFE.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Aggregates/CmpAggFE.C' object='libDysectAPIFD_la-CmpAggFE.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFD_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFD_la-CmpAggFE.lo `test -f 'Aggregates/CmpAggFE.C' || echo '$(srcdir)/'`Aggregates/CmpAggFE.C
+
+libDysectAPIFD_la-RankListAggFE.lo: Aggregates/RankListAggFE.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFD_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFD_la-RankListAggFE.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFD_la-RankListAggFE.Tpo -c -o libDysectAPIFD_la-RankListAggFE.lo `test -f 'Aggregates/RankListAggFE.C' || echo '$(srcdir)/'`Aggregates/RankListAggFE.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFD_la-RankListAggFE.Tpo $(DEPDIR)/libDysectAPIFD_la-RankListAggFE.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Aggregates/RankListAggFE.C' object='libDysectAPIFD_la-RankListAggFE.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFD_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFD_la-RankListAggFE.lo `test -f 'Aggregates/RankListAggFE.C' || echo '$(srcdir)/'`Aggregates/RankListAggFE.C
 
 libDysectAPIFD_la-Data.lo: Aggregates/Data.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFD_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFD_la-Data.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFD_la-Data.Tpo -c -o libDysectAPIFD_la-Data.lo `test -f 'Aggregates/Data.C' || echo '$(srcdir)/'`Aggregates/Data.C
@@ -632,6 +685,13 @@ libDysectAPIFD_la-StrAgg.lo: Aggregates/StrAgg.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFD_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFD_la-StrAgg.lo `test -f 'Aggregates/StrAgg.C' || echo '$(srcdir)/'`Aggregates/StrAgg.C
 
+libDysectAPIFD_la-RankListAgg.lo: Aggregates/RankListAgg.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFD_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFD_la-RankListAgg.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFD_la-RankListAgg.Tpo -c -o libDysectAPIFD_la-RankListAgg.lo `test -f 'Aggregates/RankListAgg.C' || echo '$(srcdir)/'`Aggregates/RankListAgg.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFD_la-RankListAgg.Tpo $(DEPDIR)/libDysectAPIFD_la-RankListAgg.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Aggregates/RankListAgg.C' object='libDysectAPIFD_la-RankListAgg.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFD_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFD_la-RankListAgg.lo `test -f 'Aggregates/RankListAgg.C' || echo '$(srcdir)/'`Aggregates/RankListAgg.C
+
 libDysectAPIFE_la-DysectAPIFE.lo: DysectAPIFE.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-DysectAPIFE.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-DysectAPIFE.Tpo -c -o libDysectAPIFE_la-DysectAPIFE.lo `test -f 'DysectAPIFE.C' || echo '$(srcdir)/'`DysectAPIFE.C
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-DysectAPIFE.Tpo $(DEPDIR)/libDysectAPIFE_la-DysectAPIFE.Plo
@@ -659,6 +719,13 @@ libDysectAPIFE_la-CmpAggFE.lo: Aggregates/CmpAggFE.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Aggregates/CmpAggFE.C' object='libDysectAPIFE_la-CmpAggFE.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-CmpAggFE.lo `test -f 'Aggregates/CmpAggFE.C' || echo '$(srcdir)/'`Aggregates/CmpAggFE.C
+
+libDysectAPIFE_la-RankListAggFE.lo: Aggregates/RankListAggFE.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-RankListAggFE.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-RankListAggFE.Tpo -c -o libDysectAPIFE_la-RankListAggFE.lo `test -f 'Aggregates/RankListAggFE.C' || echo '$(srcdir)/'`Aggregates/RankListAggFE.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-RankListAggFE.Tpo $(DEPDIR)/libDysectAPIFE_la-RankListAggFE.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Aggregates/RankListAggFE.C' object='libDysectAPIFE_la-RankListAggFE.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-RankListAggFE.lo `test -f 'Aggregates/RankListAggFE.C' || echo '$(srcdir)/'`Aggregates/RankListAggFE.C
 
 libDysectAPIFE_la-DysectAPI.lo: DysectAPI.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-DysectAPI.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-DysectAPI.Tpo -c -o libDysectAPIFE_la-DysectAPI.lo `test -f 'DysectAPI.C' || echo '$(srcdir)/'`DysectAPI.C
@@ -708,6 +775,20 @@ libDysectAPIFE_la-StrAgg.lo: Aggregates/StrAgg.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Aggregates/StrAgg.C' object='libDysectAPIFE_la-StrAgg.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-StrAgg.lo `test -f 'Aggregates/StrAgg.C' || echo '$(srcdir)/'`Aggregates/StrAgg.C
+
+libDysectAPIFE_la-RankListAgg.lo: Aggregates/RankListAgg.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFE_la-RankListAgg.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFE_la-RankListAgg.Tpo -c -o libDysectAPIFE_la-RankListAgg.lo `test -f 'Aggregates/RankListAgg.C' || echo '$(srcdir)/'`Aggregates/RankListAgg.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIFE_la-RankListAgg.Tpo $(DEPDIR)/libDysectAPIFE_la-RankListAgg.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Aggregates/RankListAgg.C' object='libDysectAPIFE_la-RankListAgg.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIFE_la-RankListAgg.lo `test -f 'Aggregates/RankListAgg.C' || echo '$(srcdir)/'`Aggregates/RankListAgg.C
+
+libdepositcorewrap_la-libdepositcoreWrap.lo: libdepositcoreWrap.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdepositcorewrap_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libdepositcorewrap_la-libdepositcoreWrap.lo -MD -MP -MF $(DEPDIR)/libdepositcorewrap_la-libdepositcoreWrap.Tpo -c -o libdepositcorewrap_la-libdepositcoreWrap.lo `test -f 'libdepositcoreWrap.C' || echo '$(srcdir)/'`libdepositcoreWrap.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libdepositcorewrap_la-libdepositcoreWrap.Tpo $(DEPDIR)/libdepositcorewrap_la-libdepositcoreWrap.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='libdepositcoreWrap.C' object='libdepositcorewrap_la-libdepositcoreWrap.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libdepositcorewrap_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libdepositcorewrap_la-libdepositcoreWrap.lo `test -f 'libdepositcoreWrap.C' || echo '$(srcdir)/'`libdepositcoreWrap.C
 
 mostlyclean-libtool:
 	-rm -f *.lo

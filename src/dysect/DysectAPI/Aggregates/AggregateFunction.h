@@ -43,9 +43,13 @@ namespace DysectAPI {
   
     static int getAggregate(char *p, AggregateFunction*& aggFunc);
     static bool getAggregates(std::map<int, AggregateFunction*>& aggregates, struct packet* ptr) ;  
+    static void resetCounterId();
     
     AggregateFunction(agg_type type) : type(type), count_(0) { id_ = genId(); }
+    AggregateFunction(Probe *inOwner) : owner(inOwner), count_(0) { id_ = genId(); }
     AggregateFunction() : count_(0) {}
+
+    Probe *getOwner() { return owner; }
     
     long getId() { return id_; }
     agg_type getType() { return type; }

@@ -35,10 +35,13 @@ namespace DysectAPI {
     static bool streamBindAckSent;
     static int pendingExternalAction;
     static std::vector<DysectAPI::Probe *> probesPendingAction;
+    static pthread_mutex_t probesPendingActionMutex; 
 
     static MRN::Stream* controlStream;
     static std::set<tag_t> missingBindings; //!< Set of tags needed to be bound by incoming front-end packets
     static Dyninst::Stackwalker::WalkerSet *walkerSet;
+
+    static std::map<std::string, Dyninst::SymtabAPI::Symtab *> symtabs;
 
     static Dyninst::ProcControlAPI::ProcessSet::ptr enqueuedDetach;
 
@@ -59,7 +62,7 @@ namespace DysectAPI {
 
     static DysectErrorCode relayPacket(MRN::PacketPtr* packet, int tag, MRN::Stream* stream); //!< Incoming packages with DysectAPI signature in tag
 
-    static DysectErrorCode prepareProbes(struct DysectBEContext_t* context);
+    static DysectErrorCode prepareProbes(struct DysectBEContext_t* context, bool pending=false);
 
     static DysectErrorCode registerEventHandlers();
 
@@ -71,6 +74,11 @@ namespace DysectAPI {
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleSignal(Dyninst::ProcControlAPI::Event::const_ptr ev); //!< Called upon signal raised
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleProcessExit(ProcControlAPI::Event::const_ptr ev);
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleGenericEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
+    static Dyninst::ProcControlAPI::Process::cb_ret_t  handleLibraryEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
+
+    static DysectErrorCode loadLibrary(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath);
+    static DysectErrorCode writeModuleVariable(Dyninst::ProcControlAPI::Process::ptr process, std::string variableName, std::string libraryPath, void *value, int size);
+    static DysectErrorCode irpc(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath, std::string funcName, void *arg, int argLength);
 
     static DysectErrorCode handleTimerEvents();
     static DysectErrorCode handleTimerActions();

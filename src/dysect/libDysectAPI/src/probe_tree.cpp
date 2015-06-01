@@ -22,13 +22,40 @@ using namespace std;
 using namespace DysectAPI;
 
 vector<Probe*> ProbeTree::roots;
+vector<Probe*> ProbeTree::pendingRoots;
 
 bool ProbeTree::addRoot(Probe* probe) {
   ProbeTree::roots.push_back(probe);
 
-  return true; 
+  return true;
 }
 
 vector<Probe*>& ProbeTree::getRoots() {
   return roots;
+}
+
+bool ProbeTree::addPendingRoot(Probe* probe) {
+  ProbeTree::pendingRoots.push_back(probe);
+
+  return true;
+}
+
+bool ProbeTree::removePendingRoot(Probe* probe) {
+  for(int i = 0; i < pendingRoots.size(); i++) {
+    if(pendingRoots[i] = probe) {
+      ProbeTree::pendingRoots.erase(pendingRoots.begin() + i);
+      break;
+    }
+  }
+
+  return true;
+}
+
+vector<Probe*>& ProbeTree::getPendingRoots() {
+  return pendingRoots;
+}
+
+void ProbeTree::clearRoots() {
+  roots.clear();
+  pendingRoots.clear();
 }

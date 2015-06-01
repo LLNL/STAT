@@ -29,6 +29,46 @@ int DysectAPI::Act::aggregateIdCounter = 0;
 //map<int, DysectAPI::Act*> DysectAPI::Act::aggregateMap;
 
 
+DysectAPI::Act* Act::loadLibrary(string library) {
+  return new LoadLibrary(library);
+}
+
+DysectAPI::Act* Act::irpc(string functionName, string libraryPath, void *value, int size) {
+  void *val;
+
+  val = malloc(size);
+  if (val == NULL) {
+    DYSECTVERBOSE(true, "irpc failed to malloc %d bytes", size);
+    return NULL;
+  }
+  memcpy(val, value, size);
+  return new Irpc(functionName, libraryPath, val, size);
+}
+
+DysectAPI::Act* Act::writeModuleVariable(string libraryPath, string variableName, void *value, int size) {
+  void *val;
+
+  val = malloc(size);
+  if (val == NULL) {
+    DYSECTVERBOSE(true, "writeModuleVariable failed to malloc %d bytes", size);
+    return NULL;
+  }
+  memcpy(val, value, size);
+  return new WriteModuleVariable(libraryPath, variableName, val, size);
+}
+
+DysectAPI::Act* Act::signal(int sigNum) {
+  return new Signal(sigNum);
+}
+
+DysectAPI::Act* Act::depositCore() {
+  return new DepositCore();
+}
+
+DysectAPI::Act* Act::totalview() {
+  return new Totalview();
+}
+
 DysectAPI::Act* Act::stat(AggScope scope, int traces, int frequency, bool threads) {
   return new Stat(scope, traces, frequency, threads);
 }
@@ -54,6 +94,80 @@ DysectAPI::Act::Act() : category(unknownCategory),
 
   id = aggregateIdCounter++;
   //aggregateMap.insert(pair<int, Act*>(id, this));
+}
+
+void Act::resetAggregateIdCounter() {
+  aggregateIdCounter = 0;
+}
+
+LoadLibrary::LoadLibrary(string library) : library(library) {
+  type = loadLibraryType;
+}
+
+bool LoadLibrary::prepare() {
+  return true;
+}
+
+WriteModuleVariable::WriteModuleVariable(string libraryPath, string variableName, void *value, int size) : variableName(variableName), libraryPath(libraryPath), value(value), size(size) {
+  type = writeModuleVariableType;
+}
+
+bool WriteModuleVariable::prepare() {
+  return true;
+}
+
+
+Irpc::Irpc(string libraryPath, string functionName, void *value, int size) : functionName(functionName), libraryPath(libraryPath), value(value), size(size) {
+  type = irpcType;
+}
+
+bool Irpc::prepare() {
+  return true;
+}
+
+Signal::Signal(int sigNum) : sigNum(sigNum) {
+  type = signalType;
+}
+
+bool Signal::prepare() {
+  return true;
+}
+
+DepositCore::DepositCore() {
+  type = depositCoreType;
+}
+
+bool DepositCore::prepare() {
+  findAggregates();
+  return true;
+}
+
+bool DepositCore::findAggregates() {
+  AggregateFunction* aggFunc = 0;
+  aggFunc = new RankListAgg(owner);
+  aggregates.push_back(aggFunc);
+  DYSECTVERBOSE(true, "Aggregate id: %d", aggFunc->getId());
+
+  return true;
+}
+
+
+Totalview::Totalview() {
+  type = totalviewType;
+}
+
+bool Totalview::prepare() {
+  findAggregates();
+  return true;
+}
+
+bool Totalview::findAggregates() {
+  AggregateFunction* aggFunc = 0;
+  aggFunc = new RankListAgg(owner);
+  aggregates.push_back(aggFunc);
+  DYSECTVERBOSE(true, "Aggregate id: %d", aggFunc->getId());
+
+  return true;
 }
 
 Stat::Stat(AggScope scope, int traces, int frequency, bool threads) : traces(traces), frequency(frequency), threads(threads) {
@@ -83,7 +197,7 @@ Trace::Trace(string str) : str(str) {
 
 bool Trace::prepare() {
   
-  Err::verbose(true, "Preparing trace message: '%s'", str.c_str());
+  DYSECTVERBOSE(true, "Preparing trace message: '%s'", str.c_str());
 
   findAggregates();
 
@@ -112,7 +226,7 @@ bool Trace::findAggregates() {
 
     if(c == '@') {
       if(parser_state != text) {
-        return Err::warn(false, "Trace string parser error: '@' denotes aggregate function");
+        return DYSECTWARN(false, "Trace string parser error: '@' denotes aggregate function");
       }
       
       strParts.push_back(pair<bool, string>(true, string(nonAggStr)));
@@ -125,7 +239,7 @@ bool Trace::findAggregates() {
 
     if((parser_state == aggName) && (c == '(')) {
       if(aggNameStr.size() <= 0) {
-        return Err::warn(false, "Aggregate function name cannot be empty");
+        return DYSECTWARN(false, "Aggregate function name cannot be empty");
       }
       
       dataExprStr = "";
@@ -139,7 +253,7 @@ bool Trace::findAggregates() {
     if((parser_state == dataExpr) && (c == ')')) {
       
       if(aggNameStr.size() <= 0) {
-        return Err::warn(false, "Aggregate function name cannot be empty");
+        return DYSECTWARN(false, "Aggregate function name cannot be empty");
       }
 
       strParts.push_back(pair<bool, string>(false, "")); 
@@ -164,25 +278,28 @@ bool Trace::findAggregates() {
   }
 
   // Create aggregate function instances 
-  Err::verbose(true, "Found aggregates: ");
+  DYSECTVERBOSE(true, "Found aggregates: ");
   vector< pair<string, string> >::iterator aggIter = foundAggregates.begin();
   for(int i = 0; aggIter != foundAggregates.end(); aggIter++, i++) {
     string& curAggName = aggIter->first;
     string& curDataExpr = aggIter->second;
 
-    Err::verbose(true, "%d: %s(%s)", i, curAggName.c_str(), curDataExpr.c_str());
+    DYSECTVERBOSE(true, "%d: %s(%s)", i, curAggName.c_str(), curDataExpr.c_str());
 
     int type;
     if(!Agg::aggregateIdFromName(curAggName, type)) {
-      return Err::warn(false, "Unknown aggregate function '%s'", curAggName.c_str());
+      return DYSECTWARN(false, "Unknown aggregate function '%s'", curAggName.c_str());
     }
 
     AggregateFunction* aggFunc = 0;
 
     switch(type) {
       case minAgg:
-        // XXX: %d should be replaced with type specialization
+        // %d is a placeholder since we don't know the type yet
         aggFunc = new Min("%d", curDataExpr.c_str());
+      break;
+      case maxAgg:
+        aggFunc = new Max("%d", curDataExpr.c_str());
       break;
       case funcLocAgg:
         aggFunc = new FuncLocation();
@@ -199,13 +316,16 @@ bool Trace::findAggregates() {
       case descAgg:
         aggFunc = new DescribeVariable(curDataExpr);
       break;
+      case rankListAgg:
+        aggFunc = new RankListAgg(owner);
+      break;
       default:
-        Err::warn(false, "Unsupported aggregate function '%s'", curAggName.c_str());
+        DYSECTWARN(false, "Unsupported aggregate function '%s'", curAggName.c_str());
       break;
     }
 
     aggregates.push_back(aggFunc);
-    Err::verbose(true, "Aggregate id: %d", aggFunc->getId());
+    DYSECTVERBOSE(true, "Aggregate id: %d", aggFunc->getId());
   }
 
   return true;

@@ -24,10 +24,15 @@ namespace DysectAPI {
 
   class ProbeTree {
     static std::vector<Probe*> roots;
+    static std::vector<Probe*> pendingRoots;
 
   public:
     static bool addRoot(Probe* probe);
     static std::vector<Probe*>& getRoots();
+    static bool addPendingRoot(Probe* probe);
+    static bool removePendingRoot(Probe* probe);
+    static std::vector<Probe*>& getPendingRoots();
+    static void clearRoots();
   };
 }
 

@@ -38,6 +38,13 @@ DysectAPI::Event* DysectAPI::Event::And(DysectAPI::Event* first, DysectAPI::Even
   return new CombinedEvent(first, second, CombinedEvent::AndRel);
 }
 
+DysectAPI::Event* DysectAPI::Event::Or(DysectAPI::Event* first, DysectAPI::Event* second) {
+  assert(first != 0);
+  assert(second != 0);
+
+  return new CombinedEvent(first, second, CombinedEvent::OrRel);
+}
+
 DysectAPI::Event* DysectAPI::Event::Not(DysectAPI::Event *ev) {
   assert(ev != 0);
 
@@ -85,6 +92,27 @@ void DysectAPI::Event::triggered(Process::const_ptr process, Thread::const_ptr t
   }
 }
 
+void CombinedEvent::triggered(Process::const_ptr process, Thread::const_ptr thread) {
+
+  map<Process::const_ptr, set<Thread::const_ptr> >::iterator cIter = triggeredMap.find(process);
+
+  if(cIter == triggeredMap.end()) {
+    set<Thread::const_ptr> tset;
+    tset.insert(thread);
+
+    triggeredMap.insert(pair<Process::const_ptr, set<Thread::const_ptr> >(process, tset));
+  } else {
+    // See if thread is already in set
+    set<Thread::const_ptr>& threadSet = cIter->second;
+
+    if(threadSet.find(thread) == threadSet.end()) {
+      threadSet.insert(thread);
+    }
+  }
+}
+
+
+
 bool DysectAPI::Event::wasTriggered(Process::const_ptr process, Thread::const_ptr thread) {
   map<Process::const_ptr, set<Thread::const_ptr> >::iterator cIter = triggeredMap.find(process);
 
@@ -105,6 +133,9 @@ bool DysectAPI::Event::wasTriggered(Process::const_ptr process, Thread::const_pt
   }
 }
 
+
+
+
 bool DysectAPI::Event::wasTriggered(Process::const_ptr process) {
   map<Process::const_ptr, set<Thread::const_ptr> >::iterator cIter = triggeredMap.find(process);
 
@@ -116,27 +147,84 @@ bool DysectAPI::Event::wasTriggered(Process::const_ptr process) {
 }
 
 bool CombinedEvent::enable() {
+  assert(first != 0);
+  first->enable();
+  if(relation != NotRel)
+    second->enable();
   return true;
 }
 
 bool CombinedEvent::enable(ProcessSet::ptr lprocset) {
+  assert(first != 0);
+  first->enable(lprocset);
+  if(relation != NotRel)
+    second->enable(lprocset);
   return true;
 }
 
 bool CombinedEvent::disable() {
+  assert(first != 0);
+  first->disable();
+  if(relation != NotRel)
+    second->disable();
   return true;
 }
 
 bool CombinedEvent::disable(ProcessSet::ptr lprocset) {
+  assert(first != 0);
+  first->disable(lprocset);
+  if(relation != NotRel)
+    second->disable(lprocset);
   return true;
 }
 
 bool CombinedEvent::prepare() {
+  assert(first != 0);
+  first->prepare();
+  if(relation != NotRel)
+    second->prepare();
   return true;
 }
 
-bool CombinedEvent::isEnabled(Dyninst::ProcControlAPI::Process::const_ptr process) {
+bool Time::prepare() {
   return true;
+}
+
+
+bool Time::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+                      Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  return wasTriggered(process);
+}
+
+bool Time::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process) {
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  long timestamp_now = ((now.tv_sec) * 1000) + ((now.tv_usec) / 1000);
+  return timestamp_now >= triggerTime;
+}
+
+Time::Time(TimeType type_, int timeout_) : type(type_), timeout(timeout_), Event() {
+  struct timeval start;
+  gettimeofday(&start, NULL);
+  triggerTime = ((start.tv_sec) * 1000) + ((start.tv_usec) / 1000) + timeout;
+}
+
+DysectAPI::Event* Time::within(int timeout) {
+  return new Time(WithinType, timeout);
+}
+
+
+
+Location* Code::location(string locationExpr, bool pendingEnabled) {
+  Location* location = new Location(locationExpr, pendingEnabled);
+
+  return location; 
+}
+
+bool CombinedEvent::isEnabled(Dyninst::ProcControlAPI::Process::const_ptr process) {
+  assert(first != 0);
+  assert(second != 0);
+  return first->isEnabled(process) && second->isEnabled(process);
 }
 
 CombinedEvent::CombinedEvent(DysectAPI::Event* first, DysectAPI::Event* second, EventRelation relation) : first(first), second(second), relation(relation), Event() {
@@ -146,26 +234,42 @@ CombinedEvent::CombinedEvent(DysectAPI::Event* first, DysectAPI::Event* second, 
   }
 }
 
-Location* Code::location(string locationExpr) {
-  Location* location = new Location(locationExpr);
+bool CombinedEvent::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+                      Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  switch(relation)
+  {
+    case AndRel:
+      return  first->wasTriggered(process, thread) && second->wasTriggered(process, thread);
+    case OrRel:
+      return  first->wasTriggered(process, thread) || second->wasTriggered(process, thread);
+    case NotRel:
+      return !(first->wasTriggered(process, thread));
+    default:
+      assert(0);
+      return 0;
+  }
 
-  return location; 
 }
 
-Time::Time(TimeType type, int timeout) : type(type), Event() {
+
+bool CombinedEvent::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process) {
+  switch(relation)
+  {
+    case AndRel:
+      return first->wasTriggered(process) && second->wasTriggered(process);
+    case OrRel:
+      return first->wasTriggered(process) || second->wasTriggered(process);
+    case NotRel:
+      return !(first->wasTriggered(process));
+    default:
+      assert(0);
+      return 0;
+  }
 }
 
-DysectAPI::Event* Time::within(int timeout) {
-  return new Time(WithinType, timeout);
-}
-
-
-bool Time::prepare() {
-  return true;
-}
 
 DysectAPI::Event* Async::leaveFrame(Frame* frame) {
-  return new Async(CrashType);
+  return new Async(CrashType); // this isn't right! Can use location(~symbol) for function exit instead
 }
 
 DysectAPI::Event* Async::crash() {

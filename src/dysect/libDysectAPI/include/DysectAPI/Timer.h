@@ -42,6 +42,7 @@ namespace DysectAPI {
     static bool setup();
 
     static bool startSyncTimer(Probe* probe);
+    static bool clearSyncTimer(Probe* probe);
     static bool syncTimerRunning(Probe* probe);
     static bool anySyncReady();
     static std::vector<Probe*> getAndClearSyncReady();

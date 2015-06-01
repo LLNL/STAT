@@ -3341,14 +3341,15 @@ StatError_t STAT_FrontEnd::dumpPerf()
         }
     }
 
+    snprintf(usageLogFile, BUFSIZE, "/dev/null");
 #ifdef STAT_USAGELOG
-    snprintf(usageLogFile , BUFSIZE, STAT_USAGELOG);
+    snprintf(usageLogFile, BUFSIZE, STAT_USAGELOG);
     isUsageLogging = true;
 #endif
     envValue = getenv("STAT_USAGE_LOG");
     if (envValue != NULL)
     {
-        snprintf(usageLogFile , BUFSIZE, envValue);
+        snprintf(usageLogFile, BUFSIZE, envValue);
         isUsageLogging = true;
     }
     if (isUsageLogging == true && sCount == 1)
@@ -3430,6 +3431,8 @@ void STAT_FrontEnd::shutDown()
                 printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Launchmon failed to detach from launcher... have the daemons exited?\n");
         }
     }
+    isLaunched_ = false;
+    gsLmonState = gsLmonState &(~0x00000002);
 }
 
 
@@ -4766,6 +4769,7 @@ StatError_t STAT_FrontEnd::dysectSetup(const char *dysectApiSessionPath, int dys
         printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
         return statError;
     }
+    return STAT_OK;
 }
 
 StatError_t STAT_FrontEnd::dysectListen(bool blocking)
@@ -4789,5 +4793,11 @@ StatError_t STAT_FrontEnd::dysectListen(bool blocking)
             return STAT_PENDING_ACK;
     }
     return STAT_DYSECT_ERROR;
+}
+StatError_t STAT_FrontEnd::dysectStop()
+{
+    dysectFrontEnd_->requestBackendShutdown();
+    delete dysectFrontEnd_;
+    return STAT_OK;
 }
 #endif

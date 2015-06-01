@@ -29,10 +29,6 @@ DysectErrorCode SessionLibrary::loadLibrary(const char *path) {
 
   if (!libraryHandle) {
     fprintf(stderr, "Cannot open library: %s\n", dlerror());
-    return Error;
-  }
-
-  if(!libraryHandle) {
     return LibraryNotLoaded;
   }
 

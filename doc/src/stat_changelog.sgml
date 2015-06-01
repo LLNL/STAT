@@ -1,39 +1,65 @@
 <section>
-  <title>STAT version 2.1</title>
+  <title>stat version 2.2</title>
   <para>
     <itemizedlist>
       <listitem><para>
-        Added prototype DysectAPI
+        most edits for this release were bug fixes and enhancements to the prototype DySectAPI (refer to ChangeLog file in top-level directory for details of changes)
       </para></listitem>
       <listitem><para>
-        Added prototype temporal ordering capability
+        DySectAPI session added to STAT GUI
       </para></listitem>
       <listitem><para>
-        Improved Python wrapping, including new python-script command and a Python-based test script to run through STAT functionality
+        added module offset granularity
       </para></listitem>
       <listitem><para>
-        Modified cut/hide interface to allow for user-defined programming models
+        cleaner daemon crash handling
       </para></listitem>
       <listitem><para>
-        Modified dot file naming convention for easier sequencing.  Also allow specification of dot filename on gather.
+        build system fixes
       </para></listitem>
       <listitem><para>
-        New process table interface (via File->Properties)
+        as always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
+      </para></listitem>
+    </itemizedlist>
+  </para>
+</section>
+
+<section>
+  <title>stat version 2.1</title>
+  <para>
+    <itemizedlist>
+      <listitem><para>
+        added prototype DySectAPI
       </para></listitem>
       <listitem><para>
-        Added CP location policy
+        added prototype temporal ordering capability
       </para></listitem>
       <listitem><para>
-        Improved BG/Q support, including use of StackWalker timeouts.
+        improved python wrapping, including new python-script command and a python-based test script to run through stat functionality
       </para></listitem>
       <listitem><para>
-        Improved FGFS support, including adding BG/Q support and re-enabling MRNet failure recovery when FGFS is in use
+        modified cut/hide interface to allow for user-defined programming models
       </para></listitem>
       <listitem><para>
-        Better labeling of error tasks in stack traces
+        modified dot file naming convention for easier sequencing.  also allow specification of dot filename on gather.
       </para></listitem>
       <listitem><para>
-        As always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
+        new process table interface (via file->properties)
+      </para></listitem>
+      <listitem><para>
+        added cp location policy
+      </para></listitem>
+      <listitem><para>
+        improved bg/q support, including use of stackwalker timeouts.
+      </para></listitem>
+      <listitem><para>
+        improved fgfs support, including adding bg/q support and re-enabling mrnet failure recovery when fgfs is in use
+      </para></listitem>
+      <listitem><para>
+        better labeling of error tasks in stack traces
+      </para></listitem>
+      <listitem><para>
+        as always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
       </para></listitem>
     </itemizedlist>
   </para>

@@ -46,7 +46,7 @@ ExprTree* ExprTree::generate(string expr) {
   
   snprintf((char*)&buf, bufSize, "%s", expr.c_str());
 
-  Err::verbose(true, "Parsing '%s'", (char*)&buf);
+  DYSECTVERBOSE(true, "Parsing '%s'", (char*)&buf);
 
   // XXX: Parse into lex local context instead of global one
   yy_scan_string((char*)&buf);
@@ -56,7 +56,7 @@ ExprTree* ExprTree::generate(string expr) {
   yyparse();
 
   if(parsedRoot == 0) {
-    Err::warn(Error, "Could not generate expression tree!");
+    DYSECTWARN(Error, "Could not generate expression tree!");
     return 0;
   }
 
@@ -123,28 +123,28 @@ DysectAPI::DysectErrorCode ExprNode::evaluate(ConditionResult& result, Value& c,
 
   switch(opType) {
     case ExprContainer:
-      Err::verbose(true, "Value node");
+      DYSECTVERBOSE(true, "Value node");
       code = containerHandler(result, c, process, tid);
       break;
 
     case ExprTest: 
-      Err::verbose(true, "Evaluating test");
+      DYSECTVERBOSE(true, "Evaluating test");
       code = exprTestHandler(result, c, process, tid);
       break;
 
     case ExprLTest:
-      Err::verbose(true, "Logic test");
+      DYSECTVERBOSE(true, "Logic test");
       code = exprLTestHandler(result, c, process, tid);
       break;
 
     case ExprBArith:
-      return Err::warn(Error, "Boolean arithmetic expressions not yet supported");
+      return DYSECTWARN(Error, "Boolean arithmetic expressions not yet supported");
       break;
     case ExprArith:
-      return Err::warn(Error, "Arithmetic expressions not yet supported");
+      return DYSECTWARN(Error, "Arithmetic expressions not yet supported");
       break;
     default:
-      return Err::warn(Error, "Unknown operation for expression");
+      return DYSECTWARN(Error, "Unknown operation for expression");
       break;
   }
 
@@ -157,17 +157,17 @@ DysectAPI::DysectErrorCode ExprNode::containerHandler(ConditionResult& result, V
   switch(nodeType) {
     case target: 
       if(!lnode) {
-        return Err::warn(Error, "Node type is local node, but node data not present");
+        return DYSECTWARN(Error, "Node type is local node, but node data not present");
       }
 
       code = lnode->getValue(result, c, process, tid);
       if(code != DysectAPI::OK) {
-        return Err::warn(code, "Could not get value for local node");
+        return DYSECTWARN(code, "Could not get value for local node");
       }
       break;
 
     case value: 
-      Err::verbose(true, "Constant value found");
+      DYSECTVERBOSE(true, "Constant value found");
       c.copy(*cval);
 
       if(cval->getType() == Value::boolType) {
@@ -184,7 +184,7 @@ DysectAPI::DysectErrorCode ExprNode::containerHandler(ConditionResult& result, V
 
     case internal:
     case global:
-      return Err::warn(Error, "Node type not yet supported");
+      return DYSECTWARN(Error, "Node type not yet supported");
       break;
   }
 
@@ -193,7 +193,7 @@ DysectAPI::DysectErrorCode ExprNode::containerHandler(ConditionResult& result, V
 
 DysectAPI::DysectErrorCode ExprNode::exprTestHandler(ConditionResult& result, Value& c, Process::const_ptr process, THR_ID tid) {
   if((operands[0] == 0) || (operands[1] == 0)) {
-    return Err::warn(Error, "2 operands are required for test");
+    return DYSECTWARN(Error, "2 operands are required for test");
   }
 
   Value c1, c2;
@@ -202,11 +202,11 @@ DysectAPI::DysectErrorCode ExprNode::exprTestHandler(ConditionResult& result, Va
 
   if( (operands[0]->evaluate(r1, c1, process, tid) != DysectAPI::OK)  || 
       (operands[1]->evaluate(r2, c2, process, tid) != DysectAPI::OK)) {
-    return Err::warn(Error, "Operand could not be evaluated");
+    return DYSECTWARN(Error, "Operand could not be evaluated");
   }
 
   if((!isResolved(r1)) || (!isResolved(r2))) {
-    return Err::warn(Error, "Can't handle unresolved subtrees yet"); 
+    return DYSECTWARN(Error, "Can't handle unresolved subtrees yet"); 
   }
 
   switch(testOp) {
@@ -229,29 +229,29 @@ DysectAPI::DysectErrorCode ExprNode::exprTestHandler(ConditionResult& result, Va
       result = (c1.isGreaterThanEqual(c2) ? ResolvedTrue : ResolvedFalse);
       break;
     default:
-      return Err::warn(Error, "Test not yet supported");
+      return DYSECTWARN(Error, "Test not yet supported");
       break;
   }
 
 
   bool val = (result == ResolvedTrue);
 
-  Err::verbose(true, "Test evaluated: %s", val ? "true" : "false" );
+  DYSECTVERBOSE(true, "Test evaluated: %s", val ? "true" : "false");
 
   Value retVal(val);
 
-  Err::verbose(true, "New value is of type %d", retVal.getType());
+  DYSECTVERBOSE(true, "New value is of type %d", retVal.getType());
   
   c.copy(retVal);
 
-  Err::verbose(true, "Copied value type %d", c.getType());
+  DYSECTVERBOSE(true, "Copied value type %d", c.getType());
 
   return OK;
 }
 
 DysectAPI::DysectErrorCode ExprNode::exprLTestHandler(ConditionResult& result, Value& c, Process::const_ptr process, THR_ID tid) {
   if(operands[0] == 0) {
-    return Err::warn(Error, "At least 1 operand is required for logical test");
+    return DYSECTWARN(Error, "At least 1 operand is required for logical test");
   }
 
   Value c1, c2;
@@ -259,28 +259,28 @@ DysectAPI::DysectErrorCode ExprNode::exprLTestHandler(ConditionResult& result, V
   ConditionResult r1, r2;
 
   if(operands[0]->evaluate(r1, c1, process, tid) != DysectAPI::OK) {
-    return Err::warn(Error, "Operand could not be evaluated");
+    return DYSECTWARN(Error, "Operand could not be evaluated");
   }
 
   if(!isResolved(r1)) {
-    return Err::warn(Error, "Can't handle unresolved subtrees yet");
+    return DYSECTWARN(Error, "Can't handle unresolved subtrees yet");
   }
   
   if(c1.getType() != Value::boolType) {
-    Err::verbose(Error, "Comparing non-boolean value (operand 1): %d", c1.getType());
+    DYSECTVERBOSE(Error, "Comparing non-boolean value (operand 1): %d", c1.getType());
   }
 
   if(ltestOp != TestNot) {
     if(operands[1]->evaluate(r2, c2, process, tid) != DysectAPI::OK) {
-      return Err::verbose(Error, "Operand could not be evaluated");
+      return DYSECTVERBOSE(Error, "Operand could not be evaluated");
     }
 
     if(!isResolved(r2)) {
-      return Err::verbose(Error, "Can't handle unresolved subtrees yet");
+      return DYSECTVERBOSE(Error, "Can't handle unresolved subtrees yet");
     }
     
     if(c2.getType() != Value::boolType) {
-      Err::verbose(Error, "Comparing non-boolean value (operand 2): %d", c2.getType());
+      DYSECTVERBOSE(Error, "Comparing non-boolean value (operand 2): %d", c2.getType());
     }
   }
   
@@ -306,7 +306,7 @@ DysectAPI::DysectErrorCode ExprNode::exprLTestHandler(ConditionResult& result, V
       result = (op1val == false) ? ResolvedTrue : ResolvedFalse;
       break;
     default:
-      return Err::warn(Error, "Logical test not yet supported");
+      return DYSECTWARN(Error, "Logical test not yet supported");
       break;
   }
 

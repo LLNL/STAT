@@ -20,7 +20,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 
 import os.path
 import string
@@ -63,7 +63,7 @@ except Exception as e:
 
 try:
     import STAThelper
-    from STAThelper import which, color_to_string, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, label_has_source, label_collapsed
+    from STAThelper import which, color_to_string, DecomposedNode, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, has_module_offset_and_not_collapsed, label_has_source, label_has_module_offset, label_collapsed, translate, expr
 except Exception as e:
     sys.stderr.write('%s\n' % repr(e))
     sys.stderr.write('There was a problem loading the STAThelper module.\n')
@@ -237,15 +237,23 @@ def create_temp(dot_filename, truncate, max_node_name):
                         for i, label in enumerate(label_lines):
                             if has_source_and_not_collapsed(label):
                                 # if the source file information is full path, reduce to the basename
-                                function_name, source_line, iter_string = decompose_node(label)
-                                if source_line.find(':') != -1 and source_line.find('?') == -1:
-                                    source = source_line[:source_line.find(':')]
-                                    cur_line_num = int(source_line[source_line.find(':') + 1:])
+                                decomposed_node = decompose_node(label)
+                                iter_string = decomposed_node.iter_string
+                                if decomposed_node.source_line.find(':') != -1 and decomposed_node.source_line.find('?') == -1:
+                                    source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
+                                    cur_line_num = int(decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:])
                                     if os.path.isabs(source):
                                         source = os.path.basename(source)
                                     if iter_string != '':
                                         iter_string = '$' + iter_string
-                                    label = "%s@%s:%d%s" % (function_name, source, cur_line_num, iter_string)
+                                    label = "%s@%s:%d%s" % (decomposed_node.function_name, source, cur_line_num, iter_string)
+                            elif has_module_offset_and_not_collapsed(label):
+                                # if the source file information is full path, reduce to the basename
+                                decomposed_node = decompose_node(label)
+                                module = decomposed_node.module
+                                if os.path.isabs(module):
+                                    module = os.path.basename(module)
+                                label = "%s+%s" % (module, decomposed_node.offset)
 
                             if len(label) > max_node_name and truncate == "front":
                                 # clip long node names at the front (preserve most significant characters)
@@ -314,6 +322,13 @@ def create_temp(dot_filename, truncate, max_node_name):
         temp_dot_file.close()
 
     return temp_dot_filename
+
+
+def run_gtk_main_loop(iters = 100):
+    iter = 0
+    while gtk.events_pending() and iter < iters:
+        iter += 1
+        gtk.main_iteration(False)
 
 
 class CellRendererButtonPixbuf(gtk.CellRendererPixbuf):
@@ -482,6 +497,8 @@ class STAT_wait_dialog(object):
         Note, the specified function should NOT create any new windows or do
         any drawing, otherwise it will hang.
         """
+        if self.wait_dialog != None:
+            self.wait_dialog.destroy()
         self.wait_dialog = gtk.Dialog('Please Wait', parent)
         self.current_task = 0
         self.tasks = []
@@ -527,6 +544,11 @@ class STAT_wait_dialog(object):
         """Callback to handle clicking of cancel button."""
         self.cancelled = True
 
+    def destroy(self):
+        if self.wait_dialog is not None:
+            self.wait_dialog.destroy()
+            self.wait_dialog = None
+
     ## \param self - the instance
     #  \param fun - the function to run
     #  \param args - the tuple arguments for the \a fun function
@@ -541,9 +563,7 @@ class STAT_wait_dialog(object):
         except Exception as e:
             ret = False
             show_error_dialog('Unexpected error:  %s\n%s\n%s\n' % (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]), exception=e)
-        if self.wait_dialog is not None:
-            self.wait_dialog.destroy()
-            self.wait_dialog = None
+        self.destroy()
         if len(self.task_progress_bars) != 0:
             gobject.source_remove(self.timer)
         return ret
@@ -559,10 +579,7 @@ class STAT_wait_dialog(object):
         self.task_progress_bars[self.current_task].set_fraction(1.0)
         self.current_task += 1
         self.progress_bar.set_fraction(fraction)
-        #TODO: while hangs on jaguar (Cray XT)
-        #while gtk.events_pending():
-        if gtk.events_pending():
-            gtk.main_iteration()
+        run_gtk_main_loop()
 
     ## \param self - the instance
     #  \param fraction - the new fraction
@@ -571,10 +588,7 @@ class STAT_wait_dialog(object):
     def update_progress_bar(self, fraction):
         """Update the fraction of the progress bar."""
         self.progress_bar.set_fraction(fraction)
-        #TODO: while hangs on jaguar (Cray XT)
-        #while gtk.events_pending():
-        if gtk.events_pending():
-            gtk.main_iteration()
+        run_gtk_main_loop()
 
     def update_active_bar(self):
         """Register activity on the active bar."""
@@ -1271,12 +1285,12 @@ class STATGraph(xdot.Graph):
             show_error_dialog('Cannot determine source file, please run STAT with the -i option to get source file and line number information\n')
             return
 
-        function_name, source_line, iter_string = decompose_node(node.label, item)
-        if source_line.find(':') == -1 and source_line.find('?') != -1:
+        decomposed_node = decompose_node(node.label, item)
+        if decomposed_node.source_line.find(':') == -1 and decomposed_node.source_line.find('?') != -1:
             show_error_dialog('Cannot determine source file, please run STAT with the -i option to get source file and line number information\n')
             return
-        source = source_line[:source_line.find(':')]
-        cur_line_num = int(source_line[source_line.find(':') + 1:])
+        source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
+        cur_line_num = int(decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:])
 
         # get the node font and background colors
         for shape in node.shapes:
@@ -1292,12 +1306,12 @@ class STATGraph(xdot.Graph):
         line_nums.append((cur_line_num, fill_color_string, font_color_string))
         for node_iter in self.nodes:
             frames = decompose_node(node_iter.label, -1)
-            if (type(frames) == tuple):
+            if (type(frames) == DecomposedNode):
                 frames = [frames]
-            for function_name, source_line, iter_string in frames:
-                if source_line.find(':') == -1:
+            for decomposed_node in frames:
+                if decomposed_node.source_line.find(':') == -1:
                     continue
-                this_source = source_line[:source_line.find(':')]
+                this_source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
                 if this_source == source:
                     for shape in node_iter.shapes:
                         if isinstance(shape, xdot.TextShape):
@@ -1306,7 +1320,7 @@ class STATGraph(xdot.Graph):
                             fill_color = shape.pen.fillcolor
                     font_color_string = color_to_string(font_color)
                     fill_color_string = color_to_string(fill_color)
-                    line_nums.append((int(source_line[source_line.find(':') + 1:]), fill_color_string, font_color_string))
+                    line_nums.append((int(decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:]), fill_color_string, font_color_string))
 
         found = False
         error_msg = ''
@@ -1470,8 +1484,7 @@ class STATGraph(xdot.Graph):
         self.source_view_notebook.set_current_page(pages - 1)
 
         # run iterations to get sw generated so we can scroll
-        while gtk.events_pending():
-            gtk.main_iteration()
+        run_gtk_main_loop()
         source_view.scroll_to_mark(cur_line_mark, 0.0, True)
 
     def on_source_view_destroy(self, action):
@@ -1518,23 +1531,23 @@ class STATGraph(xdot.Graph):
         if node.label.find('libc_start') != -1:
             node.lex_string = ''
             return True
-        function_name, source_line, iter_string = decompose_node(node.label)
-        if is_mpi(function_name):
+        decomposed_node = decompose_node(node.label)
+        if is_mpi(decomposed_node.function_name):
             node.lex_string = ''
             return True
-        lex_map_index = source_line
+        lex_map_index = decomposed_node.source_line
         if node.lex_string is None:
-            if source_line.find(':') == -1:
+            if decomposed_node.source_line.find(':') == -1:
                 return False
             if lex_map_index in lex_map.keys():
                 lex_string = lex_map[lex_map_index]
-                if lex_string.find('$') != -1 and iter_string != '':
-                    input_val = iter_string[iter_string.find('=') + 1:]
+                if lex_string.find('$') != -1 and decomposed_node.iter_string != '':
+                    input_val = decomposed_node.iter_string[decomposed_node.iter_string.find('=') + 1:]
                     lex_string = lex_string[:lex_string.find('$')] + input_val + lex_string[lex_string.find(')') + 1:]
                 node.lex_string = lex_string
                 return True
-            source = source_line[:source_line.find(':')]
-            line = source_line[source_line.find(':') + 1:]
+            source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
+            line = decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:]
             if os.path.isabs(source):
                 node.source_dir, source = os.path.split(source)
                 node.source_dir += '/'
@@ -1558,8 +1571,8 @@ class STATGraph(xdot.Graph):
                 tomod.add_program_point(to_input)
                 return True
             lex_string = tomod.get_lex_string(to_input)
-            if lex_string.find('$') != -1 and iter_string != '':
-                input_val = iter_string[iter_string.find('=') + 1:]
+            if lex_string.find('$') != -1 and decomposed_node.iter_string != '':
+                input_val = decomposed_node.iter_string[decomposed_node.iter_string.find('=') + 1:]
                 lex_string = lex_string[:lex_string.find('$')] + input_val + lex_string[lex_string.find(')') + 1:]
             node.lex_string = lex_string
             lex_map[lex_map_index] = lex_string
@@ -1609,12 +1622,12 @@ class STATGraph(xdot.Graph):
             if not has_source_and_not_collapsed(temp_node.label):
                 error_nodes.append(temp_node.label)
                 continue
-            function_name, source_line, iter_string = decompose_node(temp_node.label)
-            if source_line.find(':') == -1:
+            decomposed_node = decompose_node(temp_node.label)
+            if decomposed_node.source_line.find(':') == -1:
                 error_nodes.append(temp_node.label)
                 continue
-            source = source_line[:source_line.find(':')]
-            line = source_line[source_line.find(':') + 1:]
+            source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
+            line = decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:]
             temp_string = temp_node.lex_string[temp_node.lex_string.find('#') + 1:]
             temp_string = temp_string[:temp_string.find('#')]
             # temp_string is now the line number offset of the function
@@ -1639,7 +1652,7 @@ class STATGraph(xdot.Graph):
             found = False
             skip_node_rename_list = []
             for to_input_tuple, node in source:
-                function_name, source_line, iter_string = decompose_node(node.label)
+                decomposed_node = decompose_node(node.label)
                 if node.lex_string.find('$') != -1 or node.label.find('$') != -1:
                     # check if this is the first time visiting this variable
                     if node not in self.to_var_visit_list:
@@ -1665,12 +1678,12 @@ class STATGraph(xdot.Graph):
                 parent_temporal_string = ''
                 if parent is not None:
                     parent_temporal_string = self.get_to_string(parent)
-                function_name, source_line, iter_string = decompose_node(node.label)
+                decomposed_node = decompose_node(node.label)
                 node.temporally_ordered = True
                 if parent_temporal_string == '':
-                    node.set_text(function_name + "@T" + temporal_string)
+                    node.set_text(decomposed_node.function_name + "@T" + temporal_string)
                 else:
-                    node.set_text(function_name + "@T" + parent_temporal_string + '.' + temporal_string)
+                    node.set_text(decomposed_node.function_name + "@T" + parent_temporal_string + '.' + temporal_string)
         self.color_temporally_ordered_edges()
         #t2 = time.time()
         #print t2 - t1
@@ -1688,9 +1701,9 @@ class STATGraph(xdot.Graph):
         temporal_string = ''
         name = node.get_text()
         if name.find('@') != -1:
-            function_name, name, iter_string = decompose_node(name)
-            if name.find('T') != -1 and name.find(':') == -1:
-                temporal_string = name[name.find('T') + 1:]
+            decomposed_node = decompose_node(name)
+            if decomposed_node.source_line.find('T') != -1 and decomposed_node.source_line.find(':') == -1:
+                temporal_string = decomposed_node.source_line[decomposed_node.source_line.find('T') + 1:]
         return temporal_string
 
     def has_to_descendents(self, node):
@@ -1847,7 +1860,7 @@ class STATGraph(xdot.Graph):
     #  \param full_node_label - [optional] whether to save full node labels, defaults to True
     #
     #  \n
-    def save_dot(self, filename, full_edge_label=True, full_node_label=True):
+    def save_dot(self, filename, full_edge_label=True, full_node_label=True, translate_module_offset=False):
         """Save the current graph as a dot file."""
         try:
             with open(filename, 'w') as f:
@@ -1862,7 +1875,9 @@ class STATGraph(xdot.Graph):
                             node_text = shape.t
                         else:
                             fill_color = shape.pen.fillcolor
-                    if full_node_label is True:
+                    if translate_module_offset is True and label_has_module_offset(node.label):
+                        node_text = re.sub(expr, translate, node.label)
+                    elif full_node_label is True:
                         if (hasattr(node, 'eq_collapsed_label')):
                             node_text = node.eq_collapsed_label
                         else:
@@ -1942,13 +1957,13 @@ class STATGraph(xdot.Graph):
         modified = False
         for node in self.nodes:
             frames = decompose_node(node.label, -1)
-            if (type(frames) == tuple):
+            if (type(frames) == DecomposedNode):
                 frames = [frames]
-            for function_name, source_line, iter_string in frames:
+            for decomposed_node in frames:
                 if args != ():
-                    hide = func(function_name, args)
+                    hide = func(decomposed_node.function_name, args)
                 else:
-                    hide = func(function_name)
+                    hide = func(decomposed_node.function_name)
                 if hide is True:
                     ret = self.collapse(node, True)
                     if ret is True:
@@ -2045,8 +2060,8 @@ class STATGraph(xdot.Graph):
                 edge.dst.hide = False
                 found_lex_string = True
         if found_lex_string is False:
-            function_name, source_line, iter_string = decompose_node(node.label)
-            if is_mpi(function_name):
+            decomposed_node = decompose_node(node.label)
+            if is_mpi(decomposed_node.function_name):
                 return False
             # we want to TO this node's children
             ret = self.get_children_temporal_order(node)
@@ -3383,6 +3398,7 @@ entered as a regular expression"""
                                                  gtk.STOCK_OPEN,
                                                  gtk.RESPONSE_OK))
         chooser.set_default_response(gtk.RESPONSE_OK)
+        chooser.set_current_folder(os.getcwd())
         chooser.set_select_multiple(True)
         file_filter = gtk.FileFilter()
         file_filter.set_name("Graphviz dot files")
@@ -3441,6 +3457,7 @@ entered as a regular expression"""
                                                       gtk.STOCK_SAVE_AS,
                                                       gtk.RESPONSE_OK))
         self.chooser.set_default_response(gtk.RESPONSE_OK)
+        self.chooser.set_current_folder(os.getcwd())
         self.chooser.set_do_overwrite_confirmation(True)
         for extension in file_extensions:
             file_filter = gtk.FileFilter()
@@ -3514,6 +3531,29 @@ entered as a regular expression"""
                 return False
         temp_dot_file.close()
         self.get_current_graph().save_dot(temp_dot_filename)
+        page = self.notebook.get_current_page()
+        self.create_new_tab(page + 1)
+        self.notebook.set_current_page(page + 1)
+        self.open_file(temp_dot_filename)
+        os.remove(temp_dot_filename)
+        return True
+
+    def on_translate(self):
+        if hasattr(self, "my_dialog"):
+            self.my_dialog.destroy()
+        temp_dot_filename = 'translated.dot'
+        try:
+            temp_dot_file = open(temp_dot_filename, 'w')
+        except:
+            home_dir = os.environ.get("HOME")
+            temp_dot_filename = '%s/tranlsated.dot' % home_dir
+            try:
+                temp_dot_file = open(temp_dot_filename, 'w')
+            except:
+                show_error_dialog('Failed to open temp dot file %s for writing' % temp_dot_filename, exception=e)
+                return False
+        temp_dot_file.close()
+        self.get_current_graph().save_dot(temp_dot_filename, True, True, True)
         page = self.notebook.get_current_page()
         self.create_new_tab(page + 1)
         self.notebook.set_current_page(page + 1)
@@ -4154,7 +4194,7 @@ enterered as a regular expression.
         tasks = node.edge_label
         if node.hide is True:
             return True
-        options = ['Join Equivalence Class', 'Collapse', 'Collapse Depth', 'Hide', 'Expand', 'Expand All', 'Focus', 'View Source']
+        options = ['Join Equivalence Class', 'Collapse', 'Collapse Depth', 'Hide', 'Expand', 'Expand All', 'Focus', 'View Source', 'Translate']
 
         if HAVE_TOMOD is True:
             options.append('Temporally Order Children')
@@ -4261,7 +4301,7 @@ enterered as a regular expression.
             box2 = gtk.HButtonBox()
             for option in options:
                 button = gtk.Button(option.replace(' ', '\n'))
-                if option != 'View Source' and option != 'Get Full Edge Label':
+                if option != 'View Source' and option != 'Get Full Edge Label' and option != 'Translate':
                     button.connect("clicked", self.manipulate_cb, option, node)
                 if option == 'View Source':
                     if not label_has_source(node.label):
@@ -4270,6 +4310,11 @@ enterered as a regular expression.
                         button.connect("clicked", lambda w, n: self.select_source(n), node)
                     else:
                         button.connect("clicked", self.manipulate_cb, option, node)
+                elif option == 'Translate':
+                    if not label_has_module_offset(node.label):
+                        button.set_sensitive(False)
+                    else:
+                        button.connect("clicked", lambda x:self.on_translate())
                 elif option == 'Join Equivalence Class':
                     if not node.can_join_eq_c():
                         button.set_sensitive(False)
@@ -4286,7 +4331,7 @@ enterered as a regular expression.
             for option in options:
                 menu_item = gtk.MenuItem(option)
                 menu.append(menu_item)
-                if option != 'View Source' and option != 'Get Full Edge Label':
+                if option != 'View Source' and option != 'Get Full Edge Label' and option != 'Translate':
                     menu_item.connect('activate', self.manipulate_cb, option, node)
                 if option == 'View Source':
                     if label_has_source(node.label):
@@ -4296,13 +4341,18 @@ enterered as a regular expression.
                             sub_menu = gtk.Menu()
                             frames = node.label.split('\\n')
                             for i, frame in enumerate(frames):
-                                function_name, source_line, iter_string = decompose_node(frame)
-                                sub_menu_item = gtk.MenuItem(source_line)
+                                decomposed_node = decompose_node(frame)
+                                sub_menu_item = gtk.MenuItem(decomposed_node.source_line)
                                 sub_menu_item.connect('button-release-event', lambda w, e, o, n, i2: self.get_current_graph().view_source(n, i2), option, node, i)
                                 sub_menu.append(sub_menu_item)
                                 sub_menu_item.show()
 
                             menu_item.set_submenu(sub_menu)
+                    else:
+                        menu_item.set_sensitive(False)
+                elif option == 'Translate':
+                    if label_has_module_offset(node.label):
+                        menu_item.connect('activate', lambda w: self.on_translate())
                     else:
                         menu_item.set_sensitive(False)
                 elif option == 'Join Equivalence Class':
@@ -4321,16 +4371,16 @@ enterered as a regular expression.
     def select_source(self, node):
         self.my_dialog.destroy()
         frames = decompose_node(node.label, -1)
-        if (type(frames) == tuple):
-            function_name, source_line, iter_string = frames
+        if (type(frames) == DecomposedNode):
+            decomposed_node = frames
             self.get_current_graph().view_source(node)
         else:
             self.my_dialog = gtk.Dialog("Select Frame")
             hbox = gtk.HBox()
             hbox.pack_start(gtk.Label("Select a frame"), False, False, 0)
             combo_box = gtk.combo_box_new_text()
-            for i, (function_name, source_line, iter_string) in enumerate(frames):
-                combo_box.append_text(source_line)
+            for i, decomposed_node in enumerate(frames):
+                combo_box.append_text(decomposed_node.source_line)
             combo_box.set_active(0)
             hbox.pack_start(combo_box, False, False, 10)
             self.my_dialog.vbox.pack_start(hbox, True, True, 0)

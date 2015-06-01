@@ -78,6 +78,14 @@ The node operations are defined as follows:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term><GUIbutton>Translate</GUIbutton></term>
+    <listitem>
+        <para>
+        For traces with module and offset granularity, this button will translate all node labels into source file and line number information and open the resulting graph in a new tab.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>Temporally Order Children</GUIbutton></term>
     <listitem>
         <para>

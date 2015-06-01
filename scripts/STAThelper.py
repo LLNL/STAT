@@ -18,9 +18,14 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 
+import sys
+import os
 import os.path
+from collections import namedtuple
+import re
+import subprocess
 
 ## A variable to determine whther we have the pygments module for syntax hilighting
 HAVE_PYGMENTS = True
@@ -304,6 +309,15 @@ def label_has_source(label):
 
 
 ## \param label - the stack frame text
+#  \return True if the label includes module and offset representation
+#
+#  \n
+def label_has_module_offset(label):
+    """return True if the label includes source file and line number info"""
+    return label.find('+0x') != -1
+
+
+## \param label - the stack frame text
 #  \return True if the label includes source file and line number info and the node is not eq class collapsed
 #
 #  \n
@@ -322,6 +336,19 @@ def has_source_and_not_collapsed(label):
 
 
 ## \param label - the stack frame text
+#  \return True if the label includes module offset representation and the node is not eq class collapsed
+#
+#  \n
+def has_module_offset_and_not_collapsed(label):
+    """return True if the label includes source file and line number info and the node is not eq class collapsed"""
+    return label_has_module_offset(label) and not label_collapsed(label)
+
+
+## A named tuple to store the node label components
+DecomposedNode = namedtuple("DecomposedNode", "function_name, source_line, iter_string, module, offset")
+
+
+## \param label - the stack frame text
 ## \param item - [optional] the item index
 #  \return - a tuple of (function name, line number, variable info)
 #
@@ -331,6 +358,8 @@ def decompose_node(label, item=None):
     function_name = ''
     source_line = ''
     iter_string = ''
+    module = ''
+    offset = ''
     if has_source_and_not_collapsed(label):
         function_name = label[:label.find('@')]
         if label.find('$') != -1 and label.find('$$') == -1:  # and clause for name mangling of C++ on BG/Q example
@@ -339,19 +368,28 @@ def decompose_node(label, item=None):
         else:
             source_line = label[label.find('@') + 1:]
             iter_string = ''
+    elif has_module_offset_and_not_collapsed(label):
+        module = label[:label.find('+0x')]
+        offset = label[label.find('+0x') + 1:]
     elif label_collapsed(label) and item is not None:
         if item == -1:
             return_list = []
             frames = label.split('\\n')
             for frame in frames:
-                function_name, source_line, iter_string = decompose_node(frame)
-                return_list.append((function_name, source_line, iter_string))
+                decomposed_node = decompose_node(frame)
+                return_list.append(decomposed_node)
             return return_list
         else:
-            function_name, source_line, iter_string = decompose_node(label.split('\\n')[item])
+            decomposed_node = decompose_node(label.split('\\n')[item])
+            function_name = decomposed_node.function_name
+            source_line = decomposed_node.source_line
+            iter_string = decomposed_node.iter_string
+            module = decomposed_node.module
+            offset = decomposed_node.offset
     else:
         function_name = label
-    return function_name, source_line, iter_string
+    decomposed_node = DecomposedNode(function_name, source_line, iter_string, module, offset)
+    return decomposed_node
 
 
 ## \param var_spec - the variable specificaiton (location and name)
@@ -385,6 +423,67 @@ def escaped_label(label):
         ret += character
         prev = character
     return ret
+
+# This is what a path to a library followed by an offset looks like.
+#expr = r'([^\s]+)\((0x[a-fA-F0-9]+)\)'
+expr = r'([^\s]+)\+(0x[a-fA-F0-9]+)'
+
+# Map from module name -> translator.  Each translator is a wrapper
+# around an open pipe to an addr2line process, to which we send offsets
+translators = {}
+
+class Translator:
+    """A translator is a read/write pipe to an addr2line process.
+       If you write an address to it, it will read the file/line info
+       from the process's output.
+
+       You can use this like any other object.
+    """
+    def __init__(self, filename):
+        self.filename = filename
+        if "STAT_ADDR2LINE" in os.environ:
+            self.addr2line = os.environ["STAT_ADDR2LINE"]
+        else:
+            self.addr2line = which("addr2line")
+        try:
+            args = [self.addr2line]
+            args.append('-C')
+            args += ["-f", "-e", self.filename]
+            self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        except Exception as e:
+            sys.stderr.write("%s failed for %s: %s\n" % (self.addr2line, self.filename, e))
+            self.proc = None
+
+    def kill(self):
+        self.proc.terminate()
+
+    def translate(self, addr):
+        if self.proc:
+            try:
+                self.proc.stdin.write("%s\n" % addr)
+                function = self.proc.stdout.readline().rstrip("\n")
+                line = self.proc.stdout.readline().rstrip("\n")
+                return "%s@%s" % (function, line)
+            except Exception as e:
+                sys.stderr.write("%s failed for %s+%s: %s\n" % (self.addr2line, self.filename, addr, e))
+                if self.proc:
+                    self.proc.poll()
+                    sys.stderr.write("return code = %s, sdterr = %s\n" % (self.proc.returncode, self.proc.stderr.read()))
+                    self.proc = None
+            return "??"
+        else:
+            return "??"
+
+
+def translate(match):
+    """Takes a match with groups representing module and offset.
+       Returns file/line info from a translator.
+    """
+    module, offset = match.groups()
+    if not module in translators:
+        translators[module] = Translator(module)
+    trans = translators[module]
+    return trans.translate(offset)
 
 #global DEBUG
 #DEBUG = False

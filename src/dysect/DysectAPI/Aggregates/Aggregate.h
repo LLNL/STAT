@@ -30,7 +30,9 @@ enum agg_type {
   staticStrAgg = 7,
 
   // Folds to aggregates
-  descAgg = 8
+  descAgg = 8,
+
+  rankListAgg = 9
 };
 
 #include <typeinfo>
@@ -46,8 +48,8 @@ enum agg_type {
 #include "DysectAPI/Aggregates/Data.h"
 #include "DysectAPI/Aggregates/AggregateFunction.h"
 #include "DysectAPI/Aggregates/CmpAgg.h"
-//#include "DysectAPI/Aggregates/Min.h"
 #include "DysectAPI/Aggregates/StrAgg.h"
+#include "DysectAPI/Aggregates/RankListAgg.h"
 #include "DysectAPI/Aggregates/Location.h"
 #include "DysectAPI/Aggregates/DescVar.h"
 #include "DysectAPI/Aggregates/Packet.h"

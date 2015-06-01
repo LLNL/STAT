@@ -63,7 +63,7 @@ BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
   bool useStatOutFpPrintf = false;
   if (be->logType_ & STAT_LOG_BE)
     useStatOutFpPrintf = true;
-  Err::init(be->errOutFp_, gStatOutFp, useStatOutFpPrintf);
+  Err::init(be->errOutFp_, gStatOutFp, NULL, useStatOutFpPrintf);
 
   // Setup session
   lib_proc_start();
@@ -145,16 +145,16 @@ DysectErrorCode BE::handleAll() {
   handleTimerEvents();
   count2 = getPendingExternalAction();
   if (count2 > count1 && count2 != 0) {
-    Err::verbose(true, "STAT action detected %d %d, deferring control...", count1, count2);
+    DYSECTVERBOSE(true, "STAT action detected %d %d, deferring control...", count1, count2);
     returnControlToDysect = false;
   }
 
   count1 = getPendingExternalAction();
   if (ProcControlAPI::Process::handleEvents(false)) {
     count2 = getPendingExternalAction();
-    Err::verbose(true, "Event handled... %d %d", count1, count2);
+    DYSECTVERBOSE(true, "Event handled... %d %d", count1, count2);
     if (count2 > count1 && count2 != 0) {
-      Err::verbose(true, "STAT2 action detected %d %d, deferring control...", count1, count2);
+      DYSECTVERBOSE(true, "STAT2 action detected %d %d, deferring control...", count1, count2);
       returnControlToDysect = false;
     }
   }
@@ -175,7 +175,7 @@ void BE::gracefulShutdown(int signal) {
   if(!called) {
     called = true;
 
-    Err::verbose(false, "Backend caught signal %d - shutting down", signal);
+    DYSECTVERBOSE(false, "Backend caught signal %d - shutting down", signal);
   
     ProcessMgr::detachAll(); 
 
@@ -183,11 +183,11 @@ void BE::gracefulShutdown(int signal) {
   }
 
   if(signal != 18) {
-    Err::info("Backend shutdown due to signal %d", signal);
+    DYSECTINFO("Backend shutdown due to signal %d", signal);
   }
   sleep(10);
 
-  Err::info("Throwing SIGILL to get stacktrace");
+  DYSECTINFO("Throwing SIGILL to get stacktrace");
   raise(SIGILL);
 
   exit(EXIT_SUCCESS);

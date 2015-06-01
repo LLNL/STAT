@@ -38,7 +38,12 @@ subdir = src/dysect
 DIST_COMMON = $(nobase_include_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/config/x_ac_arch.m4 \
+am__aclocal_m4_deps = $(top_srcdir)/config/libtool.m4 \
+	$(top_srcdir)/config/ltoptions.m4 \
+	$(top_srcdir)/config/ltsugar.m4 \
+	$(top_srcdir)/config/ltversion.m4 \
+	$(top_srcdir)/config/lt~obsolete.m4 \
+	$(top_srcdir)/config/x_ac_arch.m4 \
 	$(top_srcdir)/config/x_ac_boost.m4 \
 	$(top_srcdir)/config/x_ac_debuglibs.m4 \
 	$(top_srcdir)/config/x_ac_dysectapi.m4 \
@@ -148,6 +153,7 @@ CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
+DEPCOREPREFIX = @DEPCOREPREFIX@
 DEPDIR = @DEPDIR@
 DOTBINDIR = @DOTBINDIR@
 DOTFOUND = @DOTFOUND@
@@ -294,7 +300,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 SUBDIRS = libDysectAPI DysectAPI
-nobase_include_HEADERS = DysectAPI/DysectAPIProcessMgr.h DysectAPI/Aggregates/Aggregate.h DysectAPI/Aggregates/AggregateFunction.h DysectAPI/Aggregates/Data.h DysectAPI/Aggregates/Packet.h DysectAPI/Aggregates/Location.h DysectAPI/Aggregates/StrAgg.h DysectAPI/Aggregates/DescVar.h DysectAPI/Aggregates/CmpAgg.h
+nobase_include_HEADERS = DysectAPI/DysectAPIProcessMgr.h DysectAPI/Aggregates/Aggregate.h DysectAPI/Aggregates/AggregateFunction.h DysectAPI/Aggregates/Data.h DysectAPI/Aggregates/Packet.h DysectAPI/Aggregates/Location.h DysectAPI/Aggregates/StrAgg.h DysectAPI/Aggregates/RankListAgg.h DysectAPI/Aggregates/DescVar.h DysectAPI/Aggregates/CmpAgg.h
 all: all-recursive
 
 .SUFFIXES:

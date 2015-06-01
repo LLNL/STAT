@@ -84,14 +84,14 @@ bool Group::getAttached(Dyninst::ProcControlAPI::ProcessSet::ptr& lprocset) {
     map<int, Process::ptr>::iterator processIter;
     int rank;
 
-    Err::info(true, "MPI subset size: %d", subsetMPIRanks.size());
+    DYSECTINFO(true, "MPI subset size: %d", subsetMPIRanks.size());
 
     for(subsetIter = subsetMPIRanks.begin(); subsetIter != subsetMPIRanks.end(); subsetIter++) {
       rank = *subsetIter;
 
       processIter = mpiRankToProcessMap->find(rank);
       if(processIter == mpiRankToProcessMap->end()) {
-        Err::warn(false, "Process structure for MPI Rank %d could not be found", rank);
+        DYSECTWARN(false, "Process structure for MPI Rank %d could not be found", rank);
       } else {
         Process::ptr process = processIter->second;
         processes.insert(process);
@@ -99,7 +99,7 @@ bool Group::getAttached(Dyninst::ProcControlAPI::ProcessSet::ptr& lprocset) {
     }
 
     if(processes.empty()) {
-      Err::warn(false, "No processes found for rank subset");
+      DYSECTWARN(false, "No processes found for rank subset");
     } else {
       procSubset = ProcessSet::newProcessSet(processes);
       lprocset = procSubset;
@@ -116,7 +116,7 @@ DysectErrorCode Group::createStream()   { return OK; }
 
 DysectErrorCode Group::prepareStream() {
   if(!resolveExpr()) {
-    return Err::warn(DomainExpressionError, "Failed resolving group expression: \"%s\"", groupExpr.c_str());
+    return DYSECTWARN(DomainExpressionError, "Failed resolving group expression: \"%s\"", groupExpr.c_str());
   }
 
   lookupAttached();

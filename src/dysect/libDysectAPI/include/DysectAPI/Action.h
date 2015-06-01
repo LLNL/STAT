@@ -51,7 +51,13 @@ namespace DysectAPI {
       statType = 2,
       detachAllType = 3,
       stackTraceType = 4,
-      detachType = 5
+      detachType = 5,
+      totalviewType = 6,
+      depositCoreType = 7,
+      loadLibraryType = 8,
+      writeModuleVariableType = 9,
+      signalType = 10,
+      irpcType = 11,
     } aggType;
 
     aggType type;
@@ -68,24 +74,124 @@ namespace DysectAPI {
 
   public:
     static Act* trace(std::string str);
+    static Act* totalview();
+    static Act* depositCore();
+    static Act* signal(int sigNum);
+    static Act* loadLibrary(std::string library);
+    static Act* irpc(std::string libraryPath, std::string functionNAme, void *value, int size);
+    static Act* writeModuleVariable(std::string libraryPath, std::string variableName, void *value, int size);
     static Act* stat(AggScope scope = SatisfyingProcs, int traces = 5, int frequency = 300, bool threads = false);
     static Act* detachAll(AggScope scope = AllProcs);
     static Act* detach();
     static Act* stackTrace();
+    static void resetAggregateIdCounter();
 
     int getId() { return id; }
-
     virtual bool prepare() = 0;
-
     virtual bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
                           Dyninst::ProcControlAPI::Thread::const_ptr thread) = 0;
-
     virtual bool finishBE(struct packet*& p, int& len) = 0;
     virtual bool finishFE(int count) = 0;
   };
 
-
   std::vector<Act*> Acts(Act* act1, Act* act2 = 0, Act* act3 = 0, Act* act4 = 0, Act* act5 = 0, Act* act6 = 0, Act* act7 = 0, Act* act8 = 0);
+
+
+  class LoadLibrary : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+    std::string library;
+
+    public:
+    LoadLibrary(std::string library);
+    bool prepare();
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
+  class WriteModuleVariable : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+    std::string variableName;
+    std::string libraryPath;
+    void *value;
+    int size;
+
+    public:
+    WriteModuleVariable(std::string libraryPath, std::string variableName, void *value, int size);
+    bool prepare();
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
+  class Irpc : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+    std::string functionName;
+    std::string libraryPath;
+    void *value;
+    int size;
+
+    public:
+    Irpc(std::string libraryPath, std::string functionName, void *value, int size);
+    bool prepare();
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
+  class Signal : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+    int sigNum;
+
+    public:
+    Signal(int sigNum);
+    bool prepare();
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
+  class DepositCore : public Act {
+    std::vector<AggregateFunction*> aggregates;
+    bool findAggregates();
+    std::map<int, Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+
+    public:
+    DepositCore();
+
+    bool prepare();
+
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
+  class Totalview : public Act {
+    std::vector<AggregateFunction*> aggregates;
+    bool findAggregates();
+
+    public:
+    Totalview();
+
+    bool prepare();
+
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
 
   class Stat : public Act {
     int traces;

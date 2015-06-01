@@ -29,15 +29,15 @@ bool DysectAPI::CodeLocation::addProcLib(Walker* proc) {
   if(procLibraries.find(proc) != procLibraries.end()) {
     return true;
   }
-  
+
   LibraryState *libState = proc->getProcessState()->getLibraryTracker();
   if(!libState) {
-    return Err::warn(false, "Library state could not be retrieved");
+    return DYSECTWARN(false, "Library state could not be retrieved");
   }
-  
+
   vector<LibAddrPair> libs;
   if(!libState->getLibraries(libs)) {
-    return Err::warn(false, "Cannot get libraries from library state");
+    return DYSECTWARN(false, "Cannot get libraries from library state");
   }
 
   vector<LibAddrPair>::iterator libIter;
@@ -59,11 +59,11 @@ bool DysectAPI::CodeLocation::addProcLib(Walker* proc) {
 bool DysectAPI::CodeLocation::getAddrs(Dyninst::Stackwalker::Walker* proc, std::vector<Dyninst::Address>& addrs) {
   map<Walker*, Dyninst::Address>::iterator procIter = procLibraries.find(proc);
   if(procLibraries.find(proc) == procLibraries.end()) {
-    return Err::warn(false, "Library offset for process cannot be found");
+    return DYSECTWARN(false, "Library offset for process cannot be found");
   }
 
   if(offsets.empty()) {
-    return Err::warn(false, "No relative symbol offsets present");
+    return DYSECTWARN(false, "No relative symbol offsets present");
   }
 
   Dyninst::Address libOffset = procIter->second;
@@ -82,7 +82,7 @@ bool DysectAPI::CodeLocation::findSymbol(Dyninst::Stackwalker::Walker* proc, str
   vector<LibAddrPair> libs;
 
   if(SymbolTable::getLibraries(libs, proc) != OK) {
-    return Err::warn(false, "Could not get library list");
+    return DYSECTWARN(false, "Could not get library list");
   }
 
   vector<LibAddrPair>::iterator libIter;
@@ -98,15 +98,15 @@ bool DysectAPI::CodeLocation::findSymbol(Dyninst::Stackwalker::Walker* proc, str
     Symtab* symtab = 0;
 
     if(SymbolTable::getSymbolTable(curLibName, symtab) != OK) {
-      return Err::warn(false, "Could not get symbol table");
+      return DYSECTWARN(false, "Could not get symbol table");
     }
 
     findSymbol(symtab, name, curLibName, symbols, isRegex);
   }
-    
+
 
   if(symbols.empty()) {
-    return Err::warn(false, "No symbols found for %s", name.c_str());
+    return DYSECTLOG(false, "No symbols found for %s in current library set", name.c_str());
   }
 
   return true;
@@ -115,6 +115,7 @@ bool DysectAPI::CodeLocation::findSymbol(Dyninst::Stackwalker::Walker* proc, str
 bool DysectAPI::CodeLocation::findSymbol(SymtabAPI::Symtab* symtab, string name, string libName, vector<DysectAPI::CodeLocation*>& symbols, bool isRegex) {
   assert(symtab != 0);
 
+  bool exit = false;
   vector<SymtabAPI::Symbol *> symtabSymbols;
   vector<SymtabAPI::Symbol *> foundSymtabSymbols;
   vector<Dyninst::Address> lOffsets;
@@ -123,10 +124,14 @@ bool DysectAPI::CodeLocation::findSymbol(SymtabAPI::Symtab* symtab, string name,
   symtabSymbols.clear();
 
   // XXX: Include class specialization!
+  if (name[0] == '~') {
+    name.erase(0, 1);
+    exit = true;
+  }
   string symbolExpr = string(name);
   symbolExpr.append("<*>");
   //boost::regex expression(symbolExpr);
-  
+
   if(!symtab->findSymbol(foundSymtabSymbols, name, SymtabAPI::Symbol::ST_FUNCTION, anyName, isRegex) && !isRegex) {
 
     // Try to search for template specialization
@@ -147,6 +152,8 @@ bool DysectAPI::CodeLocation::findSymbol(SymtabAPI::Symtab* symtab, string name,
 
     string* str = new string(ssym->getPrettyName());
     Dyninst::Address offset = ssym->getOffset();
+    if (exit == true)
+      offset = offset + ssym->getSize() - 1; // this is computing the exit!
 
     // XXX: Search for pair instead of plain offset
     if(dsym->offsets.find(offset) != dsym->offsets.end()) {
@@ -157,7 +164,7 @@ bool DysectAPI::CodeLocation::findSymbol(SymtabAPI::Symtab* symtab, string name,
 
     symbols.push_back(dsym);
   }
-  
+
   return true;
 }
 
@@ -165,9 +172,9 @@ DysectAPI::CodeLocation::CodeLocation() {
 }
 
 DysectAPI::DysectErrorCode SymbolTable::getSymbolTable(std::string name, Symtab*& symtab) {
-  
+
   map<string, Symtab*>::iterator symIter = symtabMap.find(name);
-  
+
   if(symIter != symtabMap.end()) {
     symtab = symIter->second;
     return OK;
@@ -175,9 +182,9 @@ DysectAPI::DysectErrorCode SymbolTable::getSymbolTable(std::string name, Symtab*
 
   // XXX: Use broadcast instead of file-system read!
   int ret = Symtab::openFile(symtab, name);
-  
+
   if(!ret || !symtab) {
-    return Err::warn(Error, "Cannot get symbol table for library '%s'", name.c_str());
+    return DYSECTWARN(Error, "Cannot get symbol table for library '%s'", name.c_str());
   }
 
   symtabMap.insert(pair<string, Symtab*>(name, symtab));
@@ -191,13 +198,13 @@ DysectAPI::DysectErrorCode SymbolTable::getLibraries(vector<LibAddrPair>& libs, 
 
   LibraryState *libState = proc->getProcessState()->getLibraryTracker();
   if(!libState) {
-    return Err::warn(Error, "Library state could not be retrieved");
+    return DYSECTWARN(Error, "Library state could not be retrieved");
   }
 
   if(!libState->getLibraries(libs)) {
-    return Err::warn(Error, "Cannot get libraries from library state");
+    return DYSECTWARN(Error, "Cannot get libraries from library state");
   }
-  
+
   return OK;
 }
 
@@ -212,7 +219,7 @@ DysectAPI::DysectErrorCode SymbolTable::findSymtabByName(string name, Walker* pr
     string curLibName = libIter->first;
 
     vector<string> tokens = Parser::tokenize(curLibName, '/');
-    
+
     if(tokens.empty())
       continue;
 
@@ -221,7 +228,7 @@ DysectAPI::DysectErrorCode SymbolTable::findSymtabByName(string name, Walker* pr
     if(name.compare(lastToken) == 0) {
       if(getSymbolTable(curLibName, symtab) != OK)
         return Error;
-      
+
       libName = curLibName;
       return OK;
     }
@@ -234,7 +241,7 @@ bool CodeLocation::findFileLine(Dyninst::Stackwalker::Walker* proc, std::string 
   vector<LibAddrPair> libs;
 
   if(SymbolTable::getLibraries(libs, proc) != OK) {
-    return Err::warn(false, "Could not get library list");
+    return DYSECTWARN(false, "Could not get library list");
   }
 
   vector<LibAddrPair>::iterator libIter;
@@ -244,15 +251,15 @@ bool CodeLocation::findFileLine(Dyninst::Stackwalker::Walker* proc, std::string 
     Symtab* symtab = 0;
 
     if(SymbolTable::getSymbolTable(curLibName, symtab) != OK) {
-      return Err::warn(false, "Could not get symbol table");
+      return DYSECTWARN(false, "Could not get symbol table");
     }
 
     findFileLine(symtab, name, line, curLibName, locations);
   }
-    
+
 
   if(locations.empty()) {
-    return Err::warn(false, "No symbols found for file %s & line %d", name.c_str(), line);
+    return DYSECTWARN(false, "No symbols found for file %s & line %d", name.c_str(), line);
   }
 
   return true;
@@ -268,13 +275,13 @@ DysectAPI::DysectErrorCode SymbolTable::getLibraryByAddr(Dyninst::Stackwalker::L
 
   libState = proc->getProcessState()->getLibraryTracker();
   if(!libState) {
-    return Err::warn(Error, "Could not load library tracker");
+    return DYSECTWARN(Error, "Could not load library tracker");
   }
 
   if(!libState->getLibraryAtAddr(addr, lib)) {
-    return Err::warn(Error, "Failed to get library at address 0x%lx", addr);
+    return DYSECTWARN(Error, "Failed to get library at address 0x%lx", addr);
   }
-  
+
   return OK;
 }
 
@@ -292,7 +299,7 @@ DysectAPI::DysectErrorCode SymbolTable::getFileLineByAddr(string& fileName, int&
   Symtab* symtab = 0;
   string libName = lib.first;
   if(SymbolTable::getSymbolTable(libName, symtab) != OK) {
-    return Err::warn(Error, "Could not load symbol table for library '%s'", libName.c_str());
+    return DYSECTWARN(Error, "Could not load symbol table for library '%s'", libName.c_str());
   }
 
   symtab->setTruncateLinePaths(false);
@@ -300,7 +307,7 @@ DysectAPI::DysectErrorCode SymbolTable::getFileLineByAddr(string& fileName, int&
   ret = symtab->getSourceLines(lines, addr - loadAddr);
   if (!ret)
   {
-    fileName = "?"; 
+    fileName = "?";
     line = 0;
     return OK;
   }
@@ -313,7 +320,7 @@ DysectAPI::DysectErrorCode SymbolTable::getFileLineByAddr(string& fileName, int&
 
 bool CodeLocation::findFileLine(Dyninst::SymtabAPI::Symtab* symtab, std::string name, int line, string libName, std::vector<DysectAPI::CodeLocation*>& locations) {
   assert(symtab != 0);
-  
+
   vector<pair<Offset, Offset> > ranges;
   vector<pair<Offset, Offset> >::iterator rangeIter;
 
@@ -332,8 +339,8 @@ bool CodeLocation::findFileLine(Dyninst::SymtabAPI::Symtab* symtab, std::string 
 
   for(rangeIter = ranges.begin(); rangeIter != ranges.end(); ++rangeIter) {
     Offset start = (*rangeIter).first;
-  
-    location->offsets.insert(pair<Dyninst::Address, string*>(start, NULL));  
+
+    location->offsets.insert(pair<Dyninst::Address, string*>(start, NULL));
   }
 
   locations.push_back(location);
@@ -345,11 +352,30 @@ bool CodeLocation::findFileLine(Dyninst::SymtabAPI::Symtab* symtab, std::string 
 bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string name, DataLocation*& location) {
   assert(proc != 0);
   bool found = false;
- 
+  string function, variable;
+  int frame = 0;
+
+  // DataLocation expression parsed:
+  //
+  // loc_expr   ::= function:variable
+  //             |  variable
+  vector<string> tokens = Parser::tokenize(name, ':');
+  int numTokens = tokens.size();
+  if(numTokens == 1) {
+    variable = tokens[0];
+  }
+  else if (numTokens == 2) {
+    function = tokens[0];
+    variable = tokens[1];
+  }
+  else {
+    return DYSECTWARN(false, "Could not parse variable specification %s", name.c_str());
+  }
+
+#if 0
   string baseStr, memberStr;
   int len = name.size();
 
- #if 0
   // XXX: Quick hack to get structure members
   // Should really be a part of the expression engine
   enum struct_parser {
@@ -358,7 +384,7 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
     gt,
     member
   } state = base;
-  
+
   const char* str = name.c_str();
 
   for(int i = 0; i < len; i++) {
@@ -375,11 +401,11 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
         memberStr += c;
     }
   }
-#endif
 
   if(!memberStr.empty()) {
     name = baseStr;
   }
+#endif
 
   // 1st approach - look for local variable (resident in function for current frame)
   vector<Stackwalker::Frame> stackWalk;
@@ -387,22 +413,40 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
   vector<localVar *>::iterator varIter;
 
   if(!proc->walkStack(stackWalk)) {
-    return Err::warn(false, "Could not walk stack");
+    return DYSECTWARN(false, "Could not walk stack %s", Stackwalker::getLastErrorMsg());
   }
 
-  Stackwalker::Frame& curFrame = stackWalk[0];
-  string frameName;
-  curFrame.getName(frameName);
+  Stackwalker::Frame curFrame;
+  string frameName, simpleFrameName;
+  if(numTokens == 1) {
+    curFrame = stackWalk[0];
+    curFrame.getName(frameName);
+  }
+  else {
+    int i;
+    for(i = 0; i < stackWalk.size(); i++) {
+      curFrame = stackWalk[i];
+      curFrame.getName(frameName);
+      vector<string> tokens2 = Parser::tokenize(frameName, '(');
+      frameName = tokens2[0];
+      if(frameName == function)
+        break;
+    }
+    if(i == stackWalk.size()) {
+      return DYSECTWARN(false, "Failed to find frame '%s' for variable request %s", function.c_str(), name.c_str());
+    }
+    frame = i;
+  }
 
   SymtabAPI::Function* func = getFunctionForFrame(curFrame);
 
   if (!func) {
-    return Err::warn(false, "Function for frame '%s' not found", frameName.c_str());
+    return DYSECTWARN(false, "Function for frame '%s' not found", frameName.c_str());
   }
 
-  func->findLocalVariable(vars, name);
+  func->findLocalVariable(vars, variable);
 
-  Err::verbose(true, "Is variables for '%s' empty? %s", name.c_str(), vars.empty() ? "yes" : "no");
+  DYSECTVERBOSE(true, "Is variables for '%s' empty in frame[%d] %s? %s", variable.c_str(), frame, frameName.c_str(), vars.empty() ? "yes" : "no");
 
   if(!vars.empty()) {
     found = true;
@@ -412,12 +456,12 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
     if(mod) {
       symtab = mod->exec();
     } else {
-      return Err::warn(false, "Could not find symbol table containing variable '%s'", name.c_str());
+      return DYSECTWARN(false, "Could not find symbol table containing variable '%s'", variable.c_str());
     }
 
-    location = new LocalVariableLocation(stackWalk, 0, vars[0], symtab);
+    location = new LocalVariableLocation(stackWalk, frame, vars[0], symtab);
 
-#if 0
+# if 0
     // XXX: Hack continued
     if(!memberStr.empty()) {
       Type* symType = location->getType();
@@ -447,34 +491,34 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
         }
       }
     }
-#endif
+# endif
 
     return true;
   }
 
   // Is parameter?
   if(func->getParams(vars)) {
-    Err::verbose(true, "Is parameters empty? %s", vars.empty() ? "yes" : "no" );
+    DYSECTVERBOSE(true, "Is parameters empty? %s", vars.empty() ? "yes" : "no");
 
     if(!vars.empty()) {
       varIter = vars.begin();
       for(;varIter != vars.end(); varIter++) {
-        Err::verbose(true, "Parameter found: '%s'", (*varIter)->getName().c_str());
+        DYSECTVERBOSE(true, "Parameter found: '%s'", (*varIter)->getName().c_str());
       }
     }
   }
 
   if(func->getLocalVariables(vars)) {
-    Err::verbose(true, "Is locals empty? %s", vars.empty() ? "yes" : "no" );
+    DYSECTVERBOSE(true, "Is locals empty? %s", vars.empty() ? "yes" : "no");
 
     if(!vars.empty()) {
       varIter = vars.begin();
       for(;varIter != vars.end(); varIter++) {
-        Err::verbose(true, "Local found: '%s'", (*varIter)->getName().c_str());
+        DYSECTVERBOSE(true, "Local found: '%s'", (*varIter)->getName().c_str());
       }
     }
   } else {
-    Err::verbose(true, "Local variables not present");
+    DYSECTVERBOSE(true, "Local variables not present");
   }
 
   if(!found) {
@@ -483,7 +527,7 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
     vector<LibAddrPair>::iterator libIter;
 
     if(SymbolTable::getLibraries(libs, proc) != OK) {
-      return Error;
+      return DYSECTWARN(false, "Could not get libraries");
     }
 
     // Search through libraries
@@ -494,32 +538,32 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
       Symtab* symtab = 0;
 
       if(SymbolTable::getSymbolTable(curLibName, symtab) != OK) {
-        return Err::warn(false, "Could not get symbol table");
+        return DYSECTWARN(false, "Could not get symbol table");
       }
-      
-      if(findVariable(offset, symtab, process, name, location)) {
+
+      if(findVariable(offset, symtab, process, variable, location)) {
         return true;
       }
     }
   }
-  
- return false;
+
+  return DYSECTWARN(false, "Could not find variable %s in frame %s", variable.c_str(), frameName.c_str());
 }
 
 bool DataLocation::findVariable(Address libOffset,
-                                Symtab* symtab, 
+                                Symtab* symtab,
                                 Dyninst::ProcControlAPI::Process::const_ptr process,
-                                string name, 
+                                string name,
                                 DataLocation*& location) {
 
     vector<Variable *> variables;
     if (!symtab->findVariablesByName(variables, name)) {
-       return false;
+      return false;
     }
 
     /* Multiple instances can not be distinguished */
     if(variables.size() != 1) {
-       return Err::warn(false, "Found unexpected number(%d) of instances for variable %s", variables.size(), name.c_str());
+       return DYSECTWARN(false, "Found unexpected number(%d) of instances for variable %s", variables.size(), name.c_str());
     }
 
     Variable *gvar = variables[0];
@@ -530,23 +574,23 @@ bool DataLocation::findVariable(Address libOffset,
 
 // GLL comment: Niklas' code replaced by Matt's above
 //  vector<SymtabAPI::Symbol *> symbols;
-//  
+//
 //  if(!symtab->findSymbolByType(symbols, name, SymtabAPI::Symbol::ST_OBJECT)) {
 //    return false;
 //  }
-//  
+//
 //  /* Multiple instances can not be distinguished */
 //  if(symbols.size() != 1) {
 //    return Err::warn(false, "Found unexpected number(%d) of instances for variable %s", symbols.size(), name.c_str());
 //  }
-//  
+//
 //  Symbol *globalVar = symbols[0];
 //  Variable *gvar = NULL;
-//  
+//
 //  /* Find corresponding Variable structure*/
 //  if(!symtab->findVariableByOffset(gvar, globalVar->getOffset())) {
 //    return Err::warn(false, "Variable not found for symbol '%s'", name.c_str());
-//  } 
+//  }
 //
 //  location = new GlobalVariableLocation(libOffset, process, globalVar, gvar, symtab);
 //
@@ -559,28 +603,50 @@ bool DataLocation::isStructure() {
     return false;
 
   typeStruct *stType = symType->getStructType();
-  
+
   return (stType);
 }
 
 Value::content_t DataLocation::getDataType() {
-  if(dataType == Value::noType) {
-    Type* symType = getType();
-    
-    // XXX: Distinguish float and doubles
-    typeScalar* stype = symType->getScalarType();
-    
-    // Check if compatible with scalar
-    // XXX: Make systematic compatibility check
-    if(!stype) {
-      Type *lookupType;
-      symtab->findType(lookupType, "int");
+  int i;
+  const char *scalarTypeNames[] = {"int", "long", "float", "double", NULL};
+  const char *scalarTypeName;
+  bool pointer;
+  Type *symType;
+  Type *lookupType;
+  typeScalar *stype, *type;
 
-      typeScalar* itype = lookupType->getScalarType();
-      if(symType->isCompatible(itype)) {
-        stype = itype;
-      } else {
-        Err::verbose(false, "Not compatible with int");
+  if(dataType == Value::noType) {
+    DYSECTINFO(true, "Determining type");
+
+    pointer = false;
+    symType = getType();
+    stype = symType->getScalarType();
+    type;
+    if (!stype) {
+      for (i = 0; scalarTypeNames[i] != NULL; i++) {
+        scalarTypeName = scalarTypeNames[i];
+        symtab->findType(lookupType, scalarTypeName);
+        type = lookupType->getScalarType();
+
+        if(symType->isCompatible(type)) {
+          DYSECTVERBOSE(false, "Compatible with %s", scalarTypeName);
+          stype = type;
+          break;
+        } else {
+          DYSECTVERBOSE(false, "Not compatible with %s", scalarTypeName);
+        }
+
+        typeTypedef *typedefType = symType->getTypedefType();
+        if(typedefType != NULL) {
+          if(typedefType->isCompatible(type)) {
+            DYSECTVERBOSE(false, "Typdef compatible with %s", scalarTypeName);
+            stype = type;
+            break;
+          } else {
+            DYSECTVERBOSE(false, "Typedef not compatible with %s", scalarTypeName);
+          }
+        }
       }
     }
 
@@ -588,30 +654,47 @@ Value::content_t DataLocation::getDataType() {
       typePointer* ptype = symType->getPointerType();
       if(ptype) {
         //XXX: Hack to print out pointer as long value
-        
-        Type *lookupType;
+        DYSECTVERBOSE(false, "Pointer type");
         symtab->findType(lookupType, "long");
-        typeScalar* ltype = lookupType->getScalarType();
-        stype = ltype;
+        type = lookupType->getScalarType();
+        stype = type;
+        pointer = true;
       }
     }
 
     if(stype) {
-      size_t typeSize = symType->getSize(); 
-      if(typeSize < sizeof(long)) {
+      string typeName = stype->getName();
+      if (typeName == "int")
         dataType = Value::intType;
-      } else if(typeSize == sizeof(long)) {
-        dataType = Value::longType;
-      } else {
-        Err::warn(false, "Scalar data size too big: %d", typeSize);
+      else if (typeName == "long" || typeName == "long int") {
+        if (pointer == true)
+          dataType = Value::pointerType;
+        else
+          dataType = Value::longType;
       }
+      else if (typeName == "float")
+        dataType = Value::floatType;
+      else if (typeName == "double")
+        dataType = Value::doubleType;
+      else if (typeName == "int *")
+        dataType = Value::pointerType;
+      else
+        DYSECTWARN(false, "Unsupported data type: %s", typeName.c_str());
+//      size_t typeSize = symType->getSize();
+//      if(typeSize < sizeof(long)) {
+//        dataType = Value::intType;
+//      } else if(typeSize == sizeof(long)) {
+//        dataType = Value::longType;
+//      } else {
+//        DYSECTWARN(false, "Scalar data size too big: %d", typeSize);
+//      }
     } else {
       string& typeName = symType->getName();
 
-      Err::warn(false, "Currently unsupported data type: %s", typeName.c_str());
+      DYSECTWARN(false, "Currently unsupported data type: %s", typeName.c_str());
     }
   } else {
-    Err::info(true, "Type already determined to %d", dataType);
+    DYSECTINFO(true, "Type already determined to %d", dataType);
   }
 
   return dataType;
@@ -620,12 +703,12 @@ Value::content_t DataLocation::getDataType() {
 DataLocation::DataLocation(LocationType locationType, Value::content_t dataType, Symtab* symtab) : locationType(locationType), dataType(dataType), symtab(symtab) {
 }
 
-LocalVariableLocation::LocalVariableLocation( std::vector<Stackwalker::Frame>& walkedStack, 
-                                              int frame, 
+LocalVariableLocation::LocalVariableLocation( std::vector<Stackwalker::Frame>& walkedStack,
+                                              int frame,
                                               localVar* var,
                                               Symtab* symtab) : DataLocation(LocationLocal, Value::noType, symtab),
-                                                                walkedStack(walkedStack), 
-                                                                frame(frame), 
+                                                                walkedStack(walkedStack),
+                                                                frame(frame),
                                                                 var(var) {
 }
 
@@ -637,13 +720,13 @@ DysectAPI::DysectErrorCode LocalVariableLocation::getValue(Value& val) {
   val.buf = malloc(len);
   val.len = len;
   if(!val.buf) {
-    Err::warn(false, "Out of memory - buffer could not be allocated for fetching variable content");
+    DYSECTWARN(false, "Out of memory - buffer could not be allocated for fetching variable content");
   }
 
   int result = getLocalVariableValue(var, walkedStack, frame, val.buf, val.len);
 
   if(result == glvv_Success) {
-    Err::verbose(true, "Value read from local variable");
+    DYSECTVERBOSE(true, "Value read from local variable");
     code = OK;
   } else if(result == glvv_EUnknown) {
     code = OptimizedOut;
@@ -666,31 +749,31 @@ Type* LocalVariableLocation::getType() {
 DataLocation* LocalVariableLocation::getInnerVariable(Type *newType, int offset) {
 
   localVar *origVar = var;
-  
+
   vector<VariableLocation>* newLocations = new vector<VariableLocation>();
   vector<VariableLocation> origLocs = origVar->getLocationLists();
-  vector<VariableLocation>::iterator vit; 
+  vector<VariableLocation>::iterator vit;
 
   for(vit = origLocs.begin(); vit != origLocs.end(); vit++) {
     VariableLocation& loc = *vit;
     if(loc.stClass == storageReg) {
-      Err::verbose(false, ">> Cannot adjust address of variable value");
+      DYSECTVERBOSE(false, ">> Cannot adjust address of variable value");
       free(newLocations);
       return NULL;
     }
-    
+
     /* Copy location information */
     VariableLocation newLoc(loc);
-    
+
     /* Adjust offset */
     newLoc.frameOffset = loc.frameOffset + offset;
-    
+
     newLocations->push_back(newLoc);
   }
 
   /* Create new localVar from container with new type and adjusted address */
   localVar *newVar = new localVar("", /* XXX: Get more meaning full name */
-                                    newType, 
+                                    newType,
                                     origVar->getFileName(),
                                     origVar->getLineNum(),
                                     NULL, /* Function unknown */
@@ -704,7 +787,7 @@ DataLocation* LocalVariableLocation::getInnerVariable(Type *newType, int offset)
 
 GlobalVariableLocation::GlobalVariableLocation( Address offset,
                                                 Process::const_ptr process,
-                                                SymtabAPI::Symbol *sym, 
+                                                SymtabAPI::Symbol *sym,
                                                 Variable *var,
                                                 Symtab* symtab) : DataLocation(LocationGlobal, Value::noType, symtab),
                                                                  offset(offset),
@@ -733,7 +816,7 @@ DysectAPI::DysectErrorCode GlobalVariableLocation::getValue(Value& val) {
   val.buf = malloc(len);
   val.len = len;
   if(!val.buf) {
-    Err::warn(false, "Out of memory - buffer could not be allocated for fetching variable content");
+    DYSECTWARN(false, "Out of memory - buffer could not be allocated for fetching variable content");
   }
 
   if(!process->readMemory(val.buf, offset + sym->getOffset(), val.len)) {
@@ -750,23 +833,22 @@ bool DataLocation::getParams( vector<string>& params,
                               Walker* proc) {
   assert(proc != 0);
   bool found = false;
-  
-  vector<Stackwalker::Frame> stackWalk;
+
   vector<localVar *> vars;
   vector<localVar *>::iterator varIter;
 
-  if(!proc->walkStack(stackWalk)) {
-    return Err::warn(false, "Could not walk stack");
+  Stackwalker::Frame curFrame(proc);
+  if(!proc->getInitialFrame(curFrame)) {
+    return DYSECTWARN(false, "FuncParamNames could not get Initial Frame: %s", Stackwalker::getLastErrorMsg());
   }
-
-  Stackwalker::Frame& curFrame = stackWalk[0];
   string frameName;
-  curFrame.getName(frameName);
+  if(!curFrame.getName(frameName))
+    DYSECTWARN(false, "Failed to get frame name: %s", Stackwalker::getLastErrorMsg());
 
   SymtabAPI::Function* func = getFunctionForFrame(curFrame);
 
   if (!func) {
-    return Err::warn(false, "Function for frame '%s' not found", frameName.c_str());
+    return DYSECTWARN(false, "Function for frame '%s' not found", frameName.c_str());
   }
 
   func->getParams(vars);
@@ -775,7 +857,7 @@ bool DataLocation::getParams( vector<string>& params,
     varIter = vars.begin();
     for(; varIter != vars.end(); varIter++) {
       localVar* var = *varIter;
-      
+
       if(var) {
         string name = var->getName();
         params.push_back(name);

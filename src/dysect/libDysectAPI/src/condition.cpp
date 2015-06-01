@@ -34,7 +34,7 @@ Cond* Data::eval(string expr) {
 }
 
 Cond* Synthetic::prune(double ratio) {
- Err::verbose(true, "Create synthetic prune filter");
+ DYSECTVERBOSE(true, "Create synthetic prune filter");
  Synthetic* sobj = new Synthetic(ratio);
 
  sobj->filterId = filterIdCounter++;
@@ -57,7 +57,7 @@ DysectAPI::DysectErrorCode Cond::evaluate(ConditionResult& result, Process::cons
   if(conditionType == DataCondition) {
     if(dataExpr) {
       if(dataExpr->evaluate(result, process, tid) != DysectAPI::OK) {
-        return Err::warn(Error, "Could not evaluate data expression");
+        return DYSECTWARN(Error, "Could not evaluate data expression");
       }
     }
   } else if(conditionType == SyntheticCondition) {
@@ -65,7 +65,7 @@ DysectAPI::DysectErrorCode Cond::evaluate(ConditionResult& result, Process::cons
     Synthetic* syn = dynamic_cast<Synthetic*>(this);
 
     if(syn->evaluate(result, process, tid) != DysectAPI::OK) {
-        return Err::warn(Error, "Could not evaluate synchetic expression");
+        return DYSECTWARN(Error, "Could not evaluate synchetic expression");
     }
 
   }
@@ -74,7 +74,7 @@ DysectAPI::DysectErrorCode Cond::evaluate(ConditionResult& result, Process::cons
 }
 
 bool Cond::prepare() {
-  Err::verbose(true, "Prepare generic expression");
+  DYSECTVERBOSE(true, "Prepare generic expression");
   return true;
 }
 
@@ -83,19 +83,19 @@ Data::Data(string expr) : expr(expr), Cond(this) {
 }
 
 bool Data::prepare() {
-  Err::verbose(true, "Prepare data expression: %s", expr.c_str());
+  DYSECTVERBOSE(true, "Prepare data expression: %s", expr.c_str());
   return true;
 }
 
 DysectAPI::DysectErrorCode Data::evaluate(ConditionResult& result, Process::const_ptr process, THR_ID tid) {
   assert(etree != 0);
 
-  Err::verbose(true, "Evaluate expression tree");
+  DYSECTVERBOSE(true, "Evaluate expression tree");
   if(etree->evaluate(result, process, tid) != OK) {
-    return Err::verbose(Error, "Evaluation failed");
+    return DYSECTVERBOSE(Error, "Evaluation failed");
   }
 
-  Err::verbose(true, "Evaluation done");
+  DYSECTVERBOSE(true, "Evaluation done");
 
   return OK;
 }
@@ -109,13 +109,13 @@ bool Synthetic::prepare() {
 
 DysectAPI::DysectErrorCode Synthetic::evaluate(ConditionResult& result, Process::const_ptr process, THR_ID tid) {
 
-  Err::verbose(true, "Filter %d Procs in: %d", filterId, procsIn);
+  DYSECTVERBOSE(true, "Filter %d Procs in: %d", filterId, procsIn);
 
   if((procsIn % (int)ceil(1/ratio)) == 0) {
-    Err::verbose(true, "Let through");
+    DYSECTVERBOSE(true, "Let through");
     result = ResolvedTrue;
   } else {
-    Err::verbose(true, "Let go");
+    DYSECTVERBOSE(true, "Let go");
     result = ResolvedFalse;
   }
 

@@ -183,6 +183,9 @@ int AggregateFunction::getAggregate(char *p, AggregateFunction*& aggFunc) {
     case tracesAgg:
       aggFunc = new StackTraces(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
       break;
+    case rankListAgg:
+      aggFunc = new RankListAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
+      break;
     default:
       fprintf(stderr, "Unknown aggregate '%d'\n", ptr->type);
       aggFunc = 0;
@@ -193,11 +196,18 @@ int AggregateFunction::getAggregate(char *p, AggregateFunction*& aggFunc) {
 }
 
 
+void AggregateFunction::resetCounterId() {
+  counterId = 0;
+}
+
 bool Agg::aggregateIdFromName(std::string name, int& id) {
   bool found = false;
 
   if(name.compare("min") == 0) {
     id = minAgg;
+    found = true;
+  } else if(name.compare("max") == 0) {
+    id = maxAgg;
     found = true;
   } else if(name.compare("function") == 0) {
     id = funcLocAgg;
@@ -213,6 +223,9 @@ bool Agg::aggregateIdFromName(std::string name, int& id) {
     found = true;
   } else if(name.compare("desc") == 0) {
     id = descAgg;
+    found = true;
+  } else if(name.compare("ranks") == 0) {
+    id = rankListAgg;
     found = true;
   }
 
