@@ -1,3 +1,9 @@
+2015-06-05 Gregory L. Lee <lee218@llnl.gov>
+	* : fix for Jira STAT-12, DySect + FGFS hang
+
+2015-06-01 Gregory L. Lee <lee218@llnl.gov>
+	* : tag version 2.2.0
+
 2015-05-29 Gregory L. Lee <lee218@llnl.gov>
 	* config/x_ac_mrnet : removed xmlrpc lib dependence for cray-xt
 

@@ -1342,12 +1342,9 @@ StatError_t STAT_FrontEnd::sendFileRequestStream()
 
 StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int &streamId, int &returnTag, PacketPtr &packetPtr, int &intRetVal)
 {
-    int tag, intRet;
-    long signedFileSize;
-    uint64_t fileSize;
-    char *receiveFileName = NULL, *fileContents = NULL, errorMsg[BUFSIZE];
-    FILE *file = NULL;
+    char *receiveFileName = NULL;
     Stream *stream;
+    StatError_t statError;
 
     while (1)
     {
@@ -1372,90 +1369,151 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int &streamId, int &retu
             return STAT_MRNET_ERROR;
         }
 
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "received request for file %s\n", receiveFileName);
+        statError = serveFileRequest(receiveFileName);
+        if (statError != STAT_OK)
+        {
+            printMsg(statError, __FILE__, __LINE__, "Failed to serve file %s\n", receiveFileName);
+            isPendingAck_ = false;
+            return statError;
+        }
 
-        file = fopen(receiveFileName, "r");
-        if (file == NULL)
-        {
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%s: Failed to open file %s\n", strerror(errno), receiveFileName);
-            snprintf(errorMsg, BUFSIZE, "STAT FE failed to open file %s", receiveFileName);
-            fileSize = strlen(errorMsg) + 1;
-            fileContents = strdup(errorMsg);
-            if (fileContents == NULL)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %lu bytes\n", strerror(errno), fileSize);
-                return STAT_ALLOCATE_ERROR;
-            }
-            tag = PROT_LIB_REQ_ERR;
-        }
-        else
-        {
-            intRet = fseek(file, 0, SEEK_END);
-            if (intRet == -1)
-            {
-                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: failed to fseek file %s\n", strerror(errno), receiveFileName);
-                fclose(file);
-                return STAT_FILE_ERROR;
-            }
-            signedFileSize = ftell(file);
-            if (signedFileSize < 0)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: ftell returned %ld for %s\n", strerror(errno), signedFileSize, receiveFileName);
-                fclose(file);
-                return STAT_ALLOCATE_ERROR;
-            }
-            fileSize = signedFileSize;
-            intRet = fseek(file, 0, SEEK_SET);
-            if (intRet == -1)
-            {
-                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: failed to fseek file %s\n", strerror(errno), receiveFileName);
-                fclose(file);
-                return STAT_FILE_ERROR;
-            }
-            fileContents = (char *)malloc(fileSize * sizeof(char));
-            if (fileContents == NULL)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %lu bytes for contents\n", strerror(errno), fileSize);
-                fclose(file);
-                return STAT_ALLOCATE_ERROR;
-            }
-            intRet = fread(fileContents, fileSize, 1, file);
-            if (intRet < 1)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to fread %d, %d bytes for file %s, with return code %d\n", strerror(errno), fileSize, 1, receiveFileName, intRet);
-                fclose(file);
-                return STAT_ALLOCATE_ERROR;
-            }
-            intRet = ferror(file);
-            if (intRet == -1)
-            {
-                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: ferror returned %d on fread of %s\n", strerror(errno), intRet, receiveFileName);
-                fclose(file);
-                return STAT_FILE_ERROR;
-            }
-            fclose(file);
-            tag = PROT_LIB_REQ_RESP;
-        }
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "sending contents of file %s, length %lu bytes\n", receiveFileName, fileSize);
-#ifdef MRNET40
-        if (stream->send(tag, "%Ac %s", fileContents, fileSize, receiveFileName) == -1)
-#else
-        if (stream->send(tag, "%ac %s", fileContents, fileSize, receiveFileName) == -1)
-#endif
-        {
-            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send file contents\n");
-            return STAT_MRNET_ERROR;
-        }
-        if (stream->flush() == -1)
-        {
-            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to flush file contents\n");
-            return STAT_MRNET_ERROR;
-        }
-        if (fileContents != NULL)
-            free(fileContents);
         if (receiveFileName != NULL)
             free(receiveFileName);
     }
+    return STAT_OK;
+}
+
+StatError_t STAT_FrontEnd::serveFileRequest(const char *receiveFileName)
+{
+    int tag, intRet;
+    long signedFileSize;
+    uint64_t fileSize;
+    char *fileContents = NULL, errorMsg[BUFSIZE];
+    FILE *file = NULL;
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "received request for file %s\n", receiveFileName);
+
+    file = fopen(receiveFileName, "r");
+    if (file == NULL)
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%s: Failed to open file %s\n", strerror(errno), receiveFileName);
+        snprintf(errorMsg, BUFSIZE, "STAT FE failed to open file %s", receiveFileName);
+        fileSize = strlen(errorMsg) + 1;
+        fileContents = strdup(errorMsg);
+        if (fileContents == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %lu bytes\n", strerror(errno), fileSize);
+            return STAT_ALLOCATE_ERROR;
+        }
+        tag = PROT_LIB_REQ_ERR;
+    }
+    else
+    {
+        intRet = fseek(file, 0, SEEK_END);
+        if (intRet == -1)
+        {
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: failed to fseek file %s\n", strerror(errno), receiveFileName);
+            fclose(file);
+            return STAT_FILE_ERROR;
+        }
+        signedFileSize = ftell(file);
+        if (signedFileSize < 0)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: ftell returned %ld for %s\n", strerror(errno), signedFileSize, receiveFileName);
+            fclose(file);
+            return STAT_ALLOCATE_ERROR;
+        }
+        fileSize = signedFileSize;
+        intRet = fseek(file, 0, SEEK_SET);
+        if (intRet == -1)
+        {
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: failed to fseek file %s\n", strerror(errno), receiveFileName);
+            fclose(file);
+            return STAT_FILE_ERROR;
+        }
+        fileContents = (char *)malloc(fileSize * sizeof(char));
+        if (fileContents == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %lu bytes for contents\n", strerror(errno), fileSize);
+            fclose(file);
+            return STAT_ALLOCATE_ERROR;
+        }
+        intRet = fread(fileContents, fileSize, 1, file);
+        if (intRet < 1)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to fread %d, %d bytes for file %s, with return code %d\n", strerror(errno), fileSize, 1, receiveFileName, intRet);
+            fclose(file);
+            return STAT_ALLOCATE_ERROR;
+        }
+        intRet = ferror(file);
+        if (intRet == -1)
+        {
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: ferror returned %d on fread of %s\n", strerror(errno), intRet, receiveFileName);
+            fclose(file);
+            return STAT_FILE_ERROR;
+        }
+        fclose(file);
+        tag = PROT_LIB_REQ_RESP;
+    }
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "sending contents of file %s, length %lu bytes\n", receiveFileName, fileSize);
+#ifdef MRNET40
+    if (fileRequestStream_->send(tag, "%Ac %s", fileContents, fileSize, receiveFileName) == -1)
+#else
+    if (fileRequestStream_->send(tag, "%ac %s", fileContents, fileSize, receiveFileName) == -1)
+#endif
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send file contents\n");
+        return STAT_MRNET_ERROR;
+    }
+    if (fileRequestStream_->flush() == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to flush file contents\n");
+        return STAT_MRNET_ERROR;
+    }
+    if (fileContents != NULL)
+        free(fileContents);
+    return STAT_OK;
+}
+
+StatError_t STAT_FrontEnd::checkFileRequest()
+{
+    int tag, intRetVal;
+    char *receiveFileName = NULL;
+    StatError_t statError;
+    PacketPtr packetPtr;
+
+    intRetVal = fileRequestStream_->recv(&tag, packetPtr, false);
+    if (intRetVal == 0)
+        return STAT_PENDING_ACK;
+    else if (intRetVal < 0)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "network::recv() failure\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    if (tag != PROT_LIB_REQ)
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "checkFileRequest received unexpected tag %d\n", tag);
+        return STAT_OK;
+    }
+    if (packetPtr->unpack("%s", &receiveFileName) == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "packetPtr::unpack() failure\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    statError = serveFileRequest(receiveFileName);
+    if (statError != STAT_OK)
+    {
+        printMsg(statError, __FILE__, __LINE__, "Failed to serve file %s\n", receiveFileName);
+        isPendingAck_ = false;
+        return statError;
+    }
+
+    if (receiveFileName != NULL)
+        free(receiveFileName);
+
+    return STAT_OK;
 }
 
 #endif /* STAT_FGFS */
@@ -1674,6 +1732,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
         (*this.*pendingAckCb_)();
     return STAT_OK;
 }
+
 
 StatError_t STAT_FrontEnd::setDaemonNodes()
 {
@@ -2447,6 +2506,14 @@ bool checkAppExit()
 bool checkDaemonExit()
 {
     return !WIFBESPAWNED(gsLmonState);
+}
+
+void checkPendingActions(STAT_FrontEnd *statFE)
+{
+    StatError_t statError;
+    statError = statFE->checkFileRequest();
+    if (statError != STAT_OK && statError != STAT_PENDING_ACK)
+      statFE->printMsg(statError, __FILE__, __LINE__, "Unable to process file requests\n");
 }
 
 StatError_t STAT_FrontEnd::attachApplication(bool blocking)

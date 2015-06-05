@@ -34,6 +34,7 @@ bool Frontend::breakOnTimeout = true;
 class STAT_FrontEnd* Frontend::statFE = 0;
 extern bool checkAppExit();
 extern bool checkDaemonExit();
+extern void checkPendingActions(class STAT_FrontEnd *statFE);
 
 DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
   int ret = 0;
@@ -89,6 +90,10 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
       DYSECTINFO(true, "Stopping session - daemons have exited");
       return DysectAPI::OK;
     }
+
+#ifdef STAT_FGFS
+    checkPendingActions(statFE);
+#endif
 
     if(ret == 0 && !blocking) {
       return DysectAPI::SessionCont;

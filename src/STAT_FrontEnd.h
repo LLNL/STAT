@@ -174,6 +174,7 @@ void topologyChangeCb(MRN::Event *event, void *statObject);
 
 bool checkAppExit();
 bool checkDaemonExit();
+void checkPendingActions(STAT_FrontEnd *statFE);
 
 //! The STAT FrontEnd object is used to Launch STAT daemons and gather and merge stack traces
 class STAT_FrontEnd
@@ -401,6 +402,14 @@ class STAT_FrontEnd
             \return STAT_OK on success
         */
         StatError_t receiveAck(bool blocking = true);
+
+#ifdef STAT_FGFS
+        //! Check for file requests and serve any requests
+        /*!
+            \return STAT_OK on success, STAT_PENDING_ACK if no active requests
+        */
+        StatError_t checkFileRequest();
+#endif
 
         //! Collect the full incoming-edge label for the specified node
         /*!
@@ -897,6 +906,13 @@ class STAT_FrontEnd
             \return STAT_OK on success
         */
         StatError_t waitForFileRequests(unsigned int &streamId, int &returnTag, MRN::PacketPtr &packetPtr, int &retval);
+
+        //! Send requested-file contents to daemons
+        /*!
+            \param[in] receiveFileName - the file to send
+            \return STAT_OK on success
+        */
+        StatError_t serveFileRequest(const char *receiveFileName);
 #endif
 
 

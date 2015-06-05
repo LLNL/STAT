@@ -30,7 +30,7 @@ DysectStatus DysectAPI::onProcStart() {
 //  p3->link(p4);
 
   ProbeTree::addRoot(p1);
-//  ProbeTree::addRoot(p2);
-  ProbeTree::addRoot(p3);
+  ProbeTree::addRoot(p2);
+//  ProbeTree::addRoot(p3);
   return DysectOK;
 }
