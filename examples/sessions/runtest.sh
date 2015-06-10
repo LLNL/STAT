@@ -1,15 +1,12 @@
 #!/bin/sh
 #set -ex
 
-#testnums="01 02 03"
-#testmodes="attach launch"
-testnums="01"
-testmodes="launch"
+prefix="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test"
+testnums="01 02 03"
+testmodes="attach launch"
 
-statcl_command="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test/bin/stat-cl"
-#statcl_command="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test/bin/STAT-inspxe"
-#export STAT_DAEMON_PATH="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test/bin/STATD-inspxe"
-app_exe="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test/share/STAT/examples/bin/dysect_test"
+statcl_command="${prefix}/bin/stat-cl"
+app_exe="${prefix}/share/STAT/examples/bin/dysect_test"
 logmode=" -l FE -l BE -l CP "
 topologymode=" -u 1-1-1 -p 8 -A -n 8 "
 
@@ -19,7 +16,7 @@ for testnum in $testnums
 do
   echo
   echo
-  cmd="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test/bin/dysectc test-$testnum.cpp"
+  cmd="${prefix}/bin/dysectc test-$testnum.cpp"
   echo $cmd
   $cmd
   if test $? -ne 0
