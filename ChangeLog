@@ -1,3 +1,7 @@
+2015-06-12 Gregory L. Lee <lee218@llnl.gov>
+	* STAT_FrontEnd.C : added appropriate #ifdef STAT_FGFS pragma
+	* symbol.cpp : don't return redundant addresses for symbol resolution
+
 2015-06-05 Gregory L. Lee <lee218@llnl.gov>
 	* : fix for Jira STAT-12, DySect + FGFS hang
 
