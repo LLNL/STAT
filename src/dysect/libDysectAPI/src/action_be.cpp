@@ -264,6 +264,22 @@ bool DepositCore::finishBE(struct packet*& p, int& len) {
   return true;
 }
 
+bool Null::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "Null::collect %d", owner->getProcessCount());
+  return true;
+}
+
+bool Null::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool Null::finishBE(struct packet*& p, int& len) {
+  DYSECTVERBOSE(true, "Null::finishBE %d", owner->getProcessCount());
+  return true;
+}
+
 bool Totalview::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   vector<AggregateFunction*>::iterator aggIter;

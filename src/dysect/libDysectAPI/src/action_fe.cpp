@@ -159,6 +159,24 @@ bool DepositCore::finishBE(struct packet*& p, int& len) {
   return false;
 }
 
+bool Null::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "Null::collect");
+
+  return true;
+}
+
+bool Null::finishFE(int count) {
+  DYSECTVERBOSE(true, "Null::finishFE %d", count);
+  return true;
+}
+
+bool Null::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+
 bool Totalview::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   DYSECTVERBOSE(true, "Totalview::collect");

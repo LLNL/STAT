@@ -1,4 +1,5 @@
 2015-06-15 Gregory L. Lee <lee218@llnl.gov>
+	* action* : added Null Action
 	* location_be.cpp : make sure process is stopped before inserting breakpoint
 
 2015-06-12 Gregory L. Lee <lee218@llnl.gov>

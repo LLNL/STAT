@@ -58,6 +58,7 @@ namespace DysectAPI {
       writeModuleVariableType = 9,
       signalType = 10,
       irpcType = 11,
+      nullType = 12
     } aggType;
 
     aggType type;
@@ -74,6 +75,7 @@ namespace DysectAPI {
 
   public:
     static Act* trace(std::string str);
+    static Act* null();
     static Act* totalview();
     static Act* depositCore();
     static Act* signal(int sigNum);
@@ -166,6 +168,20 @@ namespace DysectAPI {
 
     public:
     DepositCore();
+
+    bool prepare();
+
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
+  class Null : public Act {
+    public:
+    Null();
 
     bool prepare();
 
