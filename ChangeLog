@@ -1,3 +1,6 @@
+2015-06-15 Gregory L. Lee <lee218@llnl.gov>
+	* location_be.cpp : make sure process is stopped before inserting breakpoint
+
 2015-06-12 Gregory L. Lee <lee218@llnl.gov>
 	* STAT_FrontEnd.C : added appropriate #ifdef STAT_FGFS pragma
 	* symbol.cpp : don't return redundant addresses for symbol resolution
