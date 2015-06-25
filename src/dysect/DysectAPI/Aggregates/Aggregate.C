@@ -176,6 +176,12 @@ int AggregateFunction::getAggregate(char *p, AggregateFunction*& aggFunc) {
     case maxAgg:
       aggFunc = new Max(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
       break;
+    case firstAgg:
+      aggFunc = new First(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
+      break;
+    case lastAgg:
+      aggFunc = new Last(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
+      break;
     case funcLocAgg:
       aggFunc = new FuncLocation(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
       break;
@@ -193,6 +199,12 @@ int AggregateFunction::getAggregate(char *p, AggregateFunction*& aggFunc) {
       break;
     case rankListAgg:
       aggFunc = new RankListAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
+      break;
+    case timeListAgg:
+      aggFunc = new TimeListAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
+      break;
+    case bucketAgg:
+      aggFunc = new BucketAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
       break;
     default:
       fprintf(stderr, "Unknown aggregate '%d'\n", ptr->type);
@@ -217,6 +229,12 @@ bool Agg::aggregateIdFromName(std::string name, int& id) {
   } else if(name.compare("max") == 0) {
     id = maxAgg;
     found = true;
+  } else if(name.compare("first") == 0) {
+    id = firstAgg;
+    found = true;
+  } else if(name.compare("last") == 0) {
+    id = lastAgg;
+    found = true;
   } else if(name.compare("function") == 0) {
     id = funcLocAgg;
     found = true;
@@ -234,6 +252,12 @@ bool Agg::aggregateIdFromName(std::string name, int& id) {
     found = true;
   } else if(name.compare("ranks") == 0) {
     id = rankListAgg;
+    found = true;
+  } else if(name.compare("time") == 0) {
+    id = timeListAgg;
+    found = true;
+  } else if(name.compare("bucket") == 0) {
+    id = bucketAgg;
     found = true;
   }
 

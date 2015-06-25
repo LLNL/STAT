@@ -1,7 +1,7 @@
 /*
 Copyright (c) 2013-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory.
-Written by Niklas Nielsen, Gregory Lee [lee218@llnl.gov], Dong Ahn.
+Written by Jesper Puge Nielsen, Niklas Nielsen, Gregory Lee [lee218@llnl.gov], Dong Ahn.
 LLNL-CODE-645136.
 All rights reserved.
 
@@ -17,23 +17,11 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include "DysectAPI/Aggregates/Aggregate.h"
-#include "DysectAPI/Aggregates/CmpAgg.h"
 
 using namespace std;
 using namespace DysectAPI;
 
-bool CmpAgg::collect(void *process, void *thread) {
-  return true;
+bool BucketAgg::collect(void* process, void *thread) {
+  return false;
 }
 
-Min::Min(std::string fmt, ...) : CmpAgg(minAgg, fmt) {
-}
-
-Max::Max(std::string fmt, ...) : CmpAgg(maxAgg, fmt) {
-}
-
-First::First(std::string fmt, ...) : CmpAgg(firstAgg, fmt) {
-}
-
-Last::Last(std::string fmt, ...) : CmpAgg(lastAgg, fmt) {
-}

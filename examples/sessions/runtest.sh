@@ -1,7 +1,7 @@
 #!/bin/sh
 #set -ex
 
-prefix="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test"
+prefix="/g/g92/jpuge/bin/stat"
 testnums="01 02 03"
 testmodes="attach launch"
 

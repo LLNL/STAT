@@ -77,6 +77,24 @@ namespace DysectAPI {
     Max(int id, int count, std::string fmt, void* payload);
     Max(std::string fmt, ...);
   };
+
+  class First : public CmpAgg {
+  protected:
+    bool compare(Value& lhs, Value& rhs);
+
+  public:
+    First(int id, int count, std::string fmt, void* payload);
+    First(std::string fmt, ...);
+  };
+
+  class Last : public CmpAgg {
+  protected:
+    bool compare(Value& lhs, Value& rhs);
+
+  public:
+    Last(int id, int count, std::string fmt, void* payload);
+    Last(std::string fmt, ...);
+  };
 }
 
 #endif

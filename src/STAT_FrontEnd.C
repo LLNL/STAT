@@ -2531,7 +2531,9 @@ void checkPendingActions(STAT_FrontEnd *statFE)
 {
 #ifdef STAT_FGFS
     StatError_t statError;
+#ifdef STAT_FGFS
     statError = statFE->checkFileRequest();
+#endif /* STAT_FGFS */
     if (statError != STAT_OK && statError != STAT_PENDING_ACK)
       statFE->printMsg(statError, __FILE__, __LINE__, "Unable to process file requests\n");
 #endif

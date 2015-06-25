@@ -120,3 +120,18 @@ Max::Max(int id, int count, std::string fmt, void* payload) : CmpAgg(maxAgg, id,
 bool Max::compare(Value& newVal, Value& oldVal) {
   return oldVal < newVal;
 }
+
+
+First::First(int id, int count, std::string fmt, void* payload) : CmpAgg(firstAgg, id, count, fmt, payload) {
+}
+
+bool First::compare(Value& newVal, Value& oldVal) {
+  return false;
+}
+
+Last::Last(int id, int count, std::string fmt, void* payload) : CmpAgg(lastAgg, id, count, fmt, payload) {
+}
+
+bool Last::compare(Value& newVal, Value& oldVal) {
+  return true;
+}

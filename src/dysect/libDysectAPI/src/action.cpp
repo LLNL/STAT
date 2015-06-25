@@ -383,6 +383,12 @@ bool Trace::findAggregates() {
       case maxAgg:
         aggFunc = new Max("%d", curDataExpr.c_str());
       break;
+      case firstAgg:
+        aggFunc = new First("%d", curDataExpr.c_str());
+      break;
+      case lastAgg:
+        aggFunc = new Last("%d", curDataExpr.c_str());
+      break;
       case funcLocAgg:
         aggFunc = new FuncLocation();
       break;
@@ -400,6 +406,12 @@ bool Trace::findAggregates() {
       break;
       case rankListAgg:
         aggFunc = new RankListAgg(owner);
+      break;
+      case timeListAgg:
+        aggFunc = new TimeListAgg(owner);
+      break;
+      case bucketAgg:
+        aggFunc = new BucketAgg(owner, curDataExpr.c_str());
       break;
       default:
         DYSECTWARN(false, "Unsupported aggregate function '%s'", curAggName.c_str());

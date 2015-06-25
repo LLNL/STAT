@@ -6,11 +6,11 @@ DysectStatus DysectAPI::onProcStart() {
 
   Probe *entry  = new Probe(Code::location("do_SendOrStall"),
                             Domain::group("0-4", true),
-                            Act::trace("Entered do_SendOrStall(), location = @location()"));
+                            Act::trace("@desc(rank) Entered do_SendOrStall(), location = @location()"));
 
   Probe *exit  = new Probe(Code::location("~do_SendOrStall"),
                             Domain::world(2002, true),
-                            Act::trace("Exiting do_SendOrStall(), location = @location()"));
+                            Act::trace("@desc(rank) Exiting do_SendOrStall(), location = @location()"));
 
   // all tasks should trigger this simultaneously
   Probe *codeBreakpoint  = new Probe(Code::location("dysect_test.cpp#81"),

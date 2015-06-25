@@ -55,6 +55,7 @@ namespace DysectAPI {
     void setType(content_t type) { content = type; }
 
     Value();
+    Value(const Value& copy);
     Value(bool bval);
     Value(float fval);
     Value(double dval);
@@ -123,6 +124,12 @@ namespace DysectAPI {
     bool isGreaterThan(Value& c);
     bool isGreaterThanEqual(Value& c);
 
+    bool isLongLike();
+    bool isDoubleLike();
+
+    long asLong();
+    double asDouble();
+
     void copy(const Value& rhs);
 
     int getLen() { return len; }
@@ -132,8 +139,10 @@ namespace DysectAPI {
     char *getFmt();
 
     Value& operator=(Value& rhs);
+    Value operator+(Value& rhs);
     bool operator<(Value &rhs);
     bool operator>(Value &rhs);
+    bool operator<=(Value& rhs);
 
   private:
     enum content_t content;

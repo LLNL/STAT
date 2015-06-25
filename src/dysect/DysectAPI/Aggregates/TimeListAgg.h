@@ -16,24 +16,36 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "DysectAPI/Aggregates/Aggregate.h"
-#include "DysectAPI/Aggregates/CmpAgg.h"
+#ifndef __DYSECTAPI_TIMELISTAGG_H
+#define __DYSECTAPI_TIMELISTAGG_H
 
-using namespace std;
-using namespace DysectAPI;
+namespace DysectAPI {
+	class TimeListAgg : public AggregateFunction {
+	protected: 
+		std::vector<long> timeList;
 
-bool CmpAgg::collect(void *process, void *thread) {
-  return true;
+		bool deserialize(void *payload);
+
+	public:
+		TimeListAgg(int id, int count, std::string fmt, void* payload);
+		TimeListAgg(Probe* inOwner);
+		TimeListAgg();
+
+		std::vector<long>& getTimeList();
+
+		int getSize();
+    int writeSubpacket(char *p);
+    virtual bool collect(void* process, void* thread);
+    bool clear();
+    
+    bool getStr(std::string& str);
+    virtual bool print();
+    bool aggregate(AggregateFunction* agg);
+
+    bool isSynthetic();
+    bool getRealAggregates(std::vector<AggregateFunction*>& aggregates);
+    bool fetchAggregates(Probe* probe);
+	};
 }
 
-Min::Min(std::string fmt, ...) : CmpAgg(minAgg, fmt) {
-}
-
-Max::Max(std::string fmt, ...) : CmpAgg(maxAgg, fmt) {
-}
-
-First::First(std::string fmt, ...) : CmpAgg(firstAgg, fmt) {
-}
-
-Last::Last(std::string fmt, ...) : CmpAgg(lastAgg, fmt) {
-}
+#endif

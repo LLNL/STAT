@@ -24,18 +24,44 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 enum agg_type {
   minAgg = 1,
   maxAgg = 2,
+  // Dummy aggregate
+  firstAgg = 3,
+  lastAgg = 4,
+  timeListAgg = 5,
+  bucketAgg = 6,
   // String aggregates
-  funcLocAgg = 3,
-  fileLocAgg = 4,
-  paramNamesAgg = 5,
-  tracesAgg = 6,
-  staticStrAgg = 7,
+  funcLocAgg = 7,
+  fileLocAgg = 8,
+  paramNamesAgg = 9,
+  tracesAgg = 10,
+  staticStrAgg = 11,
 
   // Folds to aggregates
-  descAgg = 8,
+  descAgg = 12,
 
-  rankListAgg = 9
+  rankListAgg = 13
 };
+
+#include <typeinfo>
+#include <vector>
+#include <string>
+#include <map>
+#include <iostream>
+#include <string.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "DysectAPI/Aggregates/Data.h"
+#include "DysectAPI/Aggregates/AggregateFunction.h"
+#include "DysectAPI/Aggregates/CmpAgg.h"
+#include "DysectAPI/Aggregates/StrAgg.h"
+#include "DysectAPI/Aggregates/RankListAgg.h"
+#include "DysectAPI/Aggregates/TimeListAgg.h"
+#include "DysectAPI/Aggregates/BucketAgg.h"
+#include "DysectAPI/Aggregates/Location.h"
+#include "DysectAPI/Aggregates/DescVar.h"
+#include "DysectAPI/Aggregates/Packet.h"
 
 namespace DysectAPI {
   class Agg {
