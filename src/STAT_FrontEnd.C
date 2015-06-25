@@ -2510,10 +2510,12 @@ bool checkDaemonExit()
 
 void checkPendingActions(STAT_FrontEnd *statFE)
 {
+#ifdef STAT_FGFS
     StatError_t statError;
     statError = statFE->checkFileRequest();
     if (statError != STAT_OK && statError != STAT_PENDING_ACK)
       statFE->printMsg(statError, __FILE__, __LINE__, "Unable to process file requests\n");
+#endif
 }
 
 StatError_t STAT_FrontEnd::attachApplication(bool blocking)
