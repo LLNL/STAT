@@ -394,6 +394,10 @@ bool Value::operator<=(Value& rhs) {
   return isLessThanEqual(rhs);
 }
 
+bool Value::operator>=(Value& rhs) {
+  return isGreaterThanEqual(rhs);
+}
+
 bool Value::operator<(Value& rhs) {
   return isLessThan(rhs);
 }

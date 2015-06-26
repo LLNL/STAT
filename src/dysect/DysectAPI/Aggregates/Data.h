@@ -143,6 +143,7 @@ namespace DysectAPI {
     bool operator<(Value &rhs);
     bool operator>(Value &rhs);
     bool operator<=(Value& rhs);
+    bool operator>=(Value& rhs);
 
   private:
     enum content_t content;

@@ -112,7 +112,7 @@ bool BucketAgg::parseDescription(string description) {
   }
   
   // Prepare the buckets, add an extra for values out of range
-  buckets.insert(buckets.end(), bucketCount + 1, 0);
+  buckets.insert(buckets.end(), bucketCount + 2, 0);
 
   // Log the result
   string rangeStartStr, stepSizeStr, rangeEndStr;
@@ -200,7 +200,7 @@ bool BucketAgg::aggregate(AggregateFunction* agg) {
     return false;
   }
 
-  for (int i = 0; i <= bucketCount; i++) {
+  for (int i = 0; i <= bucketCount + 1; i++) {
     buckets[i] += bucketInstance->buckets[i];
   }
 
@@ -217,10 +217,10 @@ int BucketAgg::getSize() {
   // [ long stepSize                ]
   // [ long rangeEnd                ]
   // [ int bucketCount              ]
-  // [ int[bucketCount + 1] buckets ]
+  // [ int[bucketCount + 2] buckets ]
   //
 
-  return sizeof(struct subPacket) - sizeof(void*) + (sizeof(double) * 3) + (sizeof(int) * (bucketCount + 1 + 2));
+  return sizeof(struct subPacket) - sizeof(void*) + (sizeof(double) * 3) + (sizeof(int) * (bucketCount + 2 + 2));
 }
 
 int BucketAgg::writeSubpacket(char* p) {
@@ -257,7 +257,7 @@ int BucketAgg::writeSubpacket(char* p) {
   *curpos = bucketCount;
   curpos += 1;
 
-  for (int i = 0; i <= bucketCount; i++) {
+  for (int i = 0; i <= bucketCount + 1; i++) {
     *curpos = buckets[i];
     curpos += 1;
   }
@@ -302,7 +302,7 @@ bool BucketAgg::readSubpacket(char* payload) {
   curpos += 1;
 
   // Read the bucket values
-  buckets.insert(buckets.end(), curpos, curpos + bucketCount + 1);
+  buckets.insert(buckets.end(), curpos, curpos + bucketCount + 2);
 
   return true;
 }
@@ -316,6 +316,9 @@ bool BucketAgg::getStr(string& str) {
   string curRangeStartStr, nextRangeStartStr;
   const int bufSize = 64;
   char buffer[bufSize];
+
+  snprintf(buffer, bufSize, "Below bucket range: %d\n", buckets[bucketCount]);
+  str.append(buffer);
 
   Value curRangeStart(rangeStart);
   for (int i = 0; i < bucketCount; i++) {
@@ -331,7 +334,7 @@ bool BucketAgg::getStr(string& str) {
     curRangeStart = nextRangeStart;
   }
 
-  snprintf(buffer, bufSize, "Outside buckets: %d", buckets[bucketCount]);
+  snprintf(buffer, bufSize, "Above bucket range: %d", buckets[bucketCount + 1]);
   str.append(buffer);
 
   return true;
@@ -350,25 +353,27 @@ bool BucketAgg::print() {
 }
 
 int BucketAgg::getBucketFromValue(Value& val) {
+  if (val < rangeStart) {
+    return bucketCount;
+  }
+
+  if (val >= rangeEnd) {
+    return bucketCount + 1;
+  }
+
   if (val.isLongLike()) {
     long value = val.asLong();
     long lRangeStart = rangeStart.asLong();
+    long lStepSize   = stepSize.asLong();
 
-    if (value < lRangeStart || value >= rangeEnd.asLong()) {
-      return bucketCount;
-    }
-
-    return (int)((value - lRangeStart) / stepSize.asLong());
+    return (int)((value - lRangeStart) / lStepSize);
 
   } else if (val.isDoubleLike()) {
     double value = val.asDouble();
     double dRangeStart = rangeStart.asDouble();
+    double dStepSize   = stepSize.asDouble();
 
-    if (value < dRangeStart || value >= rangeEnd.asDouble()) {
-      return bucketCount;
-    }
-
-    return (int)((value - dRangeStart) / stepSize.asDouble());
+    return (int)((value - dRangeStart) / dStepSize);
 
   } else {
     DYSECTWARN("Invalid value type cannot be placed in bucket");
