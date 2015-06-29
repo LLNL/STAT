@@ -246,7 +246,7 @@ bool Value::isLessThan(Value& c) {
 bool Value::isLessThanEqual(Value& c) {
   int ret = compare(c);
 
-  return (((ret & lt) == gt) || ((ret & eq) == eq));
+  return (((ret & lt) == lt) || ((ret & eq) == eq));
 }
 
 bool Value::isGreaterThan(Value& c) {
