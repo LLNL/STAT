@@ -145,10 +145,12 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
 #ifdef STAT_FGFS
   unsigned int streamId = 0;
   StatError_t statError;
+  vector<MRN::Stream *> expectedStreams;
 
+  expectedStreams.push_back(controlStream);
   do
   {
-    statError = statFE->waitForFileRequests(streamId, tag, packet, ret);
+    statError = statFE->waitForFileRequests(streamId, tag, packet, ret, expectedStreams);
     if (statError == STAT_PENDING_ACK)
     {
         usleep(1000);

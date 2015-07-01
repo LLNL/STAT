@@ -1,3 +1,6 @@
+2015-07-01 Gregory L. Lee <lee218@llnl.gov>
+	* STAT_FrontEnd : FGFS recv only on expected streams, not all streams
+
 2015-06-15 Gregory L. Lee <lee218@llnl.gov>
 	* action* : added Null Action
 	* location_be.cpp : make sure process is stopped before inserting breakpoint
