@@ -26,15 +26,15 @@ struct test_t {
 
 int main (int argc, char *argv[])
 {
-    int rank;
+    int rank, i;
     int numtasks, next, prev, buf[2], tag=2;
     MPI_Request reqs[2];
     MPI_Status stats[2];
 
-    MPI_Init(&argc,&argv);
+    //int timeout = 3;
+    //sleep(timeout);
 
-    int timeout = 6;
-    sleep(timeout);
+    MPI_Init(&argc,&argv);
 
     if (argc > 1)
         sleeptime = atoi(argv[1]);
@@ -50,13 +50,14 @@ int main (int argc, char *argv[])
         next = 0;
 
     if(sleeptime < 0 && rank == 6) raise(SIGSEGV); 
-
+  for (i = 0; i < 1; i++) {
     do_Receive(prev, tag, &buf[0], &reqs[0]);
 
     do_SendOrStall(next, tag, rank, &buf[1], &reqs[1], numtasks);
     MPI_Waitall(2, reqs, stats);
 
     MPI_Barrier(MPI_COMM_WORLD);
+  }
     MPI_Finalize();
     sleep(5);
     if (rank == 0)

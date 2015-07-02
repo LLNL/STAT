@@ -152,7 +152,7 @@ bool DysectAPI::CodeLocation::findSymbol(SymtabAPI::Symtab* symtab, string name,
 
     string* str = new string(ssym->getPrettyName());
     Dyninst::Address offset = ssym->getOffset();
-    if (exit == true)
+    if (exit == true) //TODO: This may not work if code optimized (i.e. MPI functions)
       offset = offset + ssym->getSize() - 1; // this is computing the exit!
 
     if(lOffsets.find(pair<Dyninst::Address, string> (offset, *str)) != lOffsets.end()) {
