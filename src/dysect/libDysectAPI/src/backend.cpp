@@ -34,6 +34,7 @@ using namespace SymtabAPI;
 enum            Backend::BackendState Backend::state = start;
 bool            Backend::streamBindAckSent = false;
 int             Backend::pendingExternalAction = 0;
+vector<DysectAPI::Probe*> Backend::pendingProbesToEnable;
 Stream*         Backend::controlStream = 0;
 set<tag_t>      Backend::missingBindings;
 WalkerSet*      Backend::walkerSet;
@@ -271,7 +272,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
         } else {
           DYSECTWARN(false, "Could not evaluate conditions for probe");
         }
-      } else {
+      } else { // if(probe->wasTriggered(curProcess, curThread))
         retState = Process::cbProcContinue;
       }
 
@@ -366,7 +367,7 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
           return DYSECTWARN(StreamError, "Failed to bind stream!");
         }
       } else {
-        assert(!"Save packet until all streams have been bound to domains - not yet supported");
+        return DYSECTWARN(StreamError, "Save packet until all streams have been bound to domains - not yet supported");
       }
     }
     break;
@@ -401,8 +402,10 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
 }
 
 
-DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* context, bool pending) {
-  if(!pending) {
+DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* context, bool processingPending) {
+  vector<Probe*> roots;
+
+  if(!processingPending) {
     assert(context);
     assert(context->walkerSet);
 
@@ -413,8 +416,7 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
     DysectAPI::DaemonHostname = context->hostname;
   }
 
-  vector<Probe*> roots, removePending;
-  if(pending)
+  if(processingPending)
     roots = ProbeTree::getPendingRoots();
   else
     roots = ProbeTree::getRoots();
@@ -422,54 +424,48 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
   for(int i = 0; i < roots.size(); i++) {
     Probe* probe = roots[i];
 
-    // Prepare all streams ie. ensure all domain ids and tags are created
-    // for stream -> domain binding
-    if(probe->prepareStream(recursive) != OK) {
-      DYSECTWARN(Error, "Error occured while preparing streams");
-      if(!pending)
-        ProbeTree::addPendingRoot(probe);
-      continue;
+    if(!processingPending) {
+      // Prepare all streams ie. ensure all domain ids and tags are created
+      // for stream -> domain binding
+      if(probe->prepareStream(recursive) != OK) {
+        DYSECTWARN(Error, "Error occured while preparing streams");
+        continue;
+      }
     }
 
     if(probe->prepareEvent(recursive) != OK) {
-      if(!pending) {
+      if(!processingPending) {
         DYSECTLOG(Error, "Error occured while preparing events, adding to pending events");
         ProbeTree::addPendingRoot(probe);
       }
-      continue;
-      DYSECTWARN(Error, "Error occured while preparing events");
+      else {
+        DYSECTLOG(Error, "Error occured while preparing pending events, retaining in queue");
+        continue;
+      }
     }
 
     DYSECTVERBOSE(true, "Starting preparation of conditions");
 
     if(probe->prepareCondition(recursive) != OK) {
       DYSECTWARN(Error, "Error occured while preparing conditions");
-      if(!pending)
-        ProbeTree::addPendingRoot(probe);
       continue;
     }
 
     if(probe->prepareAction(recursive) != OK) {
       DYSECTWARN(Error, "Error occured while preparing actions");
-      if(!pending)
-        ProbeTree::addPendingRoot(probe);
       continue;
     }
 
-    if(pending) {
-      DYSECTVERBOSE(true, "Enabled pending probe %x", probe);
-      removePending.push_back(probe);
+    if(processingPending) {
+      DYSECTVERBOSE(true, "Prepared pending probe %x", probe);
+      pendingProbesToEnable.push_back(probe);
     }
   }
 
-  if(pending) {
-    if(removePending.size() == 0)
+  if(processingPending)
       return OK;
-    for(int i = 0; i < removePending.size(); i++)
-      ProbeTree::removePendingRoot(removePending[i]);
-  }
 
-  // Add all domains to missing bindings
+  // Add all domains to missing bindingsa
   map<tag_t, Domain*> domainMap = Domain::getDomainMap();
   map<tag_t, Domain*>::iterator domainIter = domainMap.begin();
   for(;domainIter != domainMap.end(); domainIter++) {
@@ -492,13 +488,23 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
       DYSECTVERBOSE(true, "No domains need to be bound - send ack");
       ackBindings();
     }
- } else {
+  } else {
+    DYSECTVERBOSE(true, "%d missing bindings", missingBindings.size());
     state = bindingStreams;
-
   }
 
   return OK;
 }
+
+DysectAPI::DysectErrorCode Backend::enablePending() {
+  for(int i = 0; i < pendingProbesToEnable.size(); i++) {
+    pendingProbesToEnable[i]->enable();
+    ProbeTree::removePendingRoot(pendingProbesToEnable[i]);
+  }
+  pendingProbesToEnable.clear();
+  return OK;
+}
+
 
 DysectAPI::DysectErrorCode Backend::registerEventHandlers() {
   Process::registerEventCallback(ProcControlAPI::EventType::Breakpoint, Backend::handleBreakpoint);

@@ -36,6 +36,7 @@ namespace DysectAPI {
     static int pendingExternalAction;
     static std::vector<DysectAPI::Probe *> probesPendingAction;
     static pthread_mutex_t probesPendingActionMutex; 
+    static std::vector<DysectAPI::Probe*> pendingProbesToEnable;
 
     static MRN::Stream* controlStream;
     static std::set<tag_t> missingBindings; //!< Set of tags needed to be bound by incoming front-end packets
@@ -63,6 +64,7 @@ namespace DysectAPI {
     static DysectErrorCode relayPacket(MRN::PacketPtr* packet, int tag, MRN::Stream* stream); //!< Incoming packages with DysectAPI signature in tag
 
     static DysectErrorCode prepareProbes(struct DysectBEContext_t* context, bool pending=false);
+    static DysectErrorCode enablePending();
 
     static DysectErrorCode registerEventHandlers();
 

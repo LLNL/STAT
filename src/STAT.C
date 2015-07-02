@@ -188,7 +188,11 @@ int main(int argc, char **argv)
     }
 
     /* If we're launching, sleep here to let the job start */
+#ifdef DYSECTAPI
+    if (statArgs->applicationOption == STAT_LAUNCH && dysectApiEnabled == false)
+#else
     if (statArgs->applicationOption == STAT_LAUNCH)
+#endif
     {
         statError = statFrontEnd->resume();
         if (statError != STAT_OK)
@@ -221,6 +225,17 @@ int main(int argc, char **argv)
             free(statArgs);
             return -1;
         }
+
+        statError = statFrontEnd->resume();
+        if (statError != STAT_OK)
+        {
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
+            statFrontEnd->shutDown();
+            delete statFrontEnd;
+            free(statArgs);
+            return -1;
+        }
+        mySleep(statArgs->sleepTime);
 
         statError = statFrontEnd->dysectListen(true);
         if (statError != STAT_OK)

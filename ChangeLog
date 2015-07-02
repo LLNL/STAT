@@ -1,3 +1,17 @@
+2015-07-02 Gregory L. Lee <lee218@llnl.gov>
+	* : Fixes for probes pending library load
+
+2015-07-01 Gregory L. Lee <lee218@llnl.gov>
+	* STAT_FrontEnd : FGFS recv only on expected streams, not all streams
+
+2015-06-15 Gregory L. Lee <lee218@llnl.gov>
+	* action* : added Null Action
+	* location_be.cpp : make sure process is stopped before inserting breakpoint
+
+2015-06-12 Gregory L. Lee <lee218@llnl.gov>
+	* STAT_FrontEnd.C : added appropriate #ifdef STAT_FGFS pragma
+	* symbol.cpp : don't return redundant addresses for symbol resolution
+
 2015-06-05 Gregory L. Lee <lee218@llnl.gov>
 	* : fix for Jira STAT-12, DySect + FGFS hang
 

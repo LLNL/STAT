@@ -1340,7 +1340,7 @@ StatError_t STAT_FrontEnd::sendFileRequestStream()
 }
 
 
-StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int &streamId, int &returnTag, PacketPtr &packetPtr, int &intRetVal)
+StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int &streamId, int &returnTag, PacketPtr &packetPtr, int &intRetVal, vector<Stream *> expectedStreams)
 {
     char *receiveFileName = NULL;
     Stream *stream;
@@ -1348,21 +1348,36 @@ StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int &streamId, int &retu
 
     while (1)
     {
-        intRetVal = network_->recv(&returnTag, packetPtr, &stream, false);
+        // first check for file request
+        intRetVal = fileRequestStream_->recv(&returnTag, packetPtr, false);
         if (intRetVal == 0)
+        {
+            // no pending file request, check for other messages to forward
+            vector<Stream *>::iterator iter;
+            for (iter = expectedStreams.begin(); iter != expectedStreams.end(); iter++)
+            {
+                stream = *iter;
+                intRetVal = stream->recv(&returnTag, packetPtr, false);
+                if (intRetVal == 0)
+                    continue;
+                else if (intRetVal < 0)
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::recv() failure for stream ID %d\n", stream->get_Id());
+                    return STAT_MRNET_ERROR;
+                }
+                streamId = stream->get_Id();
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waitForFileRequests returing tag %d, stream ID %d\n", returnTag, streamId);
+                return STAT_OK;
+            }
             return STAT_PENDING_ACK;
+        }
         else if (intRetVal < 0)
         {
-            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "network::recv() failure\n");
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "fileRequestStream_::recv() failure\n");
             return STAT_MRNET_ERROR;
         }
 
-        if (returnTag != PROT_LIB_REQ)
-        {
-            streamId = stream->get_Id();
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waitForFileRequests returing tag %d, stream ID %d\n", returnTag, streamId);
-            return STAT_OK;
-        }
+        // file request received
         if (packetPtr->unpack("%s", &receiveFileName) == -1)
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "packetPtr::unpack() failure\n");
@@ -1630,6 +1645,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
     unsigned int streamId = 0;
     StatError_t statError;
     PacketPtr packet;
+    vector<Stream *> expectedStreams;
 
     if (isPendingAck_ == false)
         return STAT_OK;
@@ -1647,6 +1663,8 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
     }
 
     /* Receive an acknowledgement packet that all daemons have completed */
+    expectedStreams.push_back(broadcastStream_);
+    expectedStreams.push_back(mergeStream_);
     do
     {
         if (hasFatalError_ == true)
@@ -1656,7 +1674,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
             return STAT_DAEMON_ERROR;
         }
 #ifdef STAT_FGFS
-        statError = waitForFileRequests(streamId, tag, packet, intRet);
+        statError = waitForFileRequests(streamId, tag, packet, intRet, expectedStreams);
         if (statError == STAT_PENDING_ACK)
         {
             if (!WIFBESPAWNED(gsLmonState))

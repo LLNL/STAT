@@ -65,6 +65,10 @@ DysectAPI::Act* Act::depositCore() {
   return new DepositCore();
 }
 
+DysectAPI::Act* Act::null() {
+  return new Null();
+}
+
 DysectAPI::Act* Act::totalview() {
   return new Totalview();
 }
@@ -148,6 +152,15 @@ bool DepositCore::findAggregates() {
   aggregates.push_back(aggFunc);
   DYSECTVERBOSE(true, "Aggregate id: %d", aggFunc->getId());
 
+  return true;
+}
+
+
+Null::Null() {
+  type = nullType;
+}
+
+bool Null::prepare() {
   return true;
 }
 

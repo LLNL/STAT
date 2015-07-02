@@ -118,7 +118,7 @@ bool DysectAPI::CodeLocation::findSymbol(SymtabAPI::Symtab* symtab, string name,
   bool exit = false;
   vector<SymtabAPI::Symbol *> symtabSymbols;
   vector<SymtabAPI::Symbol *> foundSymtabSymbols;
-  vector<Dyninst::Address> lOffsets;
+  set<pair<Dyninst::Address, string> > lOffsets;
 
   foundSymtabSymbols.clear();
   symtabSymbols.clear();
@@ -152,13 +152,13 @@ bool DysectAPI::CodeLocation::findSymbol(SymtabAPI::Symtab* symtab, string name,
 
     string* str = new string(ssym->getPrettyName());
     Dyninst::Address offset = ssym->getOffset();
-    if (exit == true)
+    if (exit == true) //TODO: This may not work if code optimized (i.e. MPI functions)
       offset = offset + ssym->getSize() - 1; // this is computing the exit!
 
-    // XXX: Search for pair instead of plain offset
-    if(dsym->offsets.find(offset) != dsym->offsets.end()) {
+    if(lOffsets.find(pair<Dyninst::Address, string> (offset, *str)) != lOffsets.end()) {
       continue;
     }
+    lOffsets.insert(pair<Dyninst::Address, string> (offset, *str));
 
     dsym->offsets.insert(pair<Dyninst::Address, string*>(offset, str));
 

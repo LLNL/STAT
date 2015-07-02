@@ -210,7 +210,7 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedNotifications() {
 
   assert(stream != 0);
 
-  DYSECTVERBOSE(true, "Sending %d notifications on stream id: %x", awaitingNotifications, stream->get_Id());
+  DYSECTVERBOSE(true, "Sending %d notifications with tag %d on stream id: %x", awaitingNotifications, dom->getProbeNotifyTag(), stream->get_Id());
 
   if(stream->send(dom->getProbeNotifyTag(), "%d %auc", awaitingNotifications, "", 1) == -1) {
     return StreamError;
@@ -337,7 +337,7 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
       act->actionPending = false;
       actionsHandled += 1;
 
-      DYSECTVERBOSE(true, "Aggregate packet length: %d", len);
+      DYSECTVERBOSE(true, "Aggregate packet with tag %d length: %d", dom->getProbeEnabledTag(), len);
     }
 
     if(!p) {

@@ -167,9 +167,22 @@ bool Location::enable(ProcessSet::ptr lprocset) {
 
   // Find library location for target processes
   for(;procIter != lprocset->end(); procIter++) {
+    bool wasRunning = false;
     Process::ptr procPtr = *procIter;
+    ProcDebug *pDebug;
 
     Walker* proc = (Walker*)procPtr->getData();
+
+    if (procPtr->allThreadsRunning()) {
+      wasRunning = true;
+      pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
+      if (pDebug == NULL)
+        return DYSECTWARN(false, "Failed to dynamic_cast ProcDebug pointer");
+      if (pDebug->isTerminated())
+        return DYSECTWARN(false, "Process is terminated");
+      if (pDebug->pause() == false)
+        return DYSECTWARN(false, "Failed to pause process");
+    }
 
     vector<DysectAPI::CodeLocation*>::iterator locationIter = codeLocations.begin();
     for(;locationIter != codeLocations.end(); locationIter++) {
@@ -188,6 +201,9 @@ bool Location::enable(ProcessSet::ptr lprocset) {
       // Breakpoint locations at hand
       for(int i = 0; i < addrs.size() ; i++) {
         Dyninst::Address addr = addrs[i];
+
+        if(addr == 0x2aaaaad02e7f)
+          addr = 0x2aaaaad02e28;
         
         if(!procPtr->addBreakpoint(addr, bp)) {
           return DYSECTVERBOSE(false, "Breakpoint not installed at %lx: %s", addr, ProcControlAPI::getLastErrorMsg());
@@ -202,6 +218,12 @@ bool Location::enable(ProcessSet::ptr lprocset) {
       //  Err::verbose(true, "No addresses");
       //}
     }
+
+    if (wasRunning == true) {
+      if (pDebug->resume() == false)
+        return DYSECTWARN(false, "Failed to resume process");
+    }
+
 
   }
   

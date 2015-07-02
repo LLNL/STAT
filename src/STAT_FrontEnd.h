@@ -174,7 +174,6 @@ void topologyChangeCb(MRN::Event *event, void *statObject);
 
 bool checkAppExit();
 bool checkDaemonExit();
-void checkPendingActions(STAT_FrontEnd *statFE);
 
 //! The STAT FrontEnd object is used to Launch STAT daemons and gather and merge stack traces
 class STAT_FrontEnd
@@ -905,7 +904,7 @@ class STAT_FrontEnd
             \param[out] retval - the return value from MRNet recv
             \return STAT_OK on success
         */
-        StatError_t waitForFileRequests(unsigned int &streamId, int &returnTag, MRN::PacketPtr &packetPtr, int &retval);
+        StatError_t waitForFileRequests(unsigned int &streamId, int &returnTag, MRN::PacketPtr &packetPtr, int &retval, std::vector<MRN::Stream *> expectedStreams);
 
         //! Send requested-file contents to daemons
         /*!
@@ -979,5 +978,7 @@ class STAT_FrontEnd
         DysectAPI::FE* dysectFrontEnd_;
 #endif
 };
+
+void checkPendingActions(STAT_FrontEnd *statFE);
 
 #endif /* #define __STAT_FRONTEND_H */
