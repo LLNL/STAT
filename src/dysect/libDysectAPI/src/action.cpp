@@ -413,6 +413,9 @@ bool Trace::findAggregates() {
       case bucketAgg:
         aggFunc = new BucketAgg(owner, curDataExpr.c_str());
       break;
+      case rankBucketAgg:
+        aggFunc = new RankBucketAgg(owner, curDataExpr.c_str());
+      break;
       default:
         DYSECTWARN(false, "Unsupported aggregate function '%s'", curAggName.c_str());
       break;

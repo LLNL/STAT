@@ -206,6 +206,9 @@ int AggregateFunction::getAggregate(char *p, AggregateFunction*& aggFunc) {
     case bucketAgg:
       aggFunc = new BucketAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
       break;
+    case rankBucketAgg:
+      aggFunc = new RankBucketAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
+      break;
     default:
       fprintf(stderr, "Unknown aggregate '%d'\n", ptr->type);
       aggFunc = 0;
@@ -258,6 +261,9 @@ bool Agg::aggregateIdFromName(std::string name, int& id) {
     found = true;
   } else if(name.compare("bucket") == 0) {
     id = bucketAgg;
+    found = true;
+  } else if(name.compare("rankBucket") == 0) {
+    id = rankBucketAgg;
     found = true;
   }
 

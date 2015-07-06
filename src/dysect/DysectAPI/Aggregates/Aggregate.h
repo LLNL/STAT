@@ -29,17 +29,18 @@ enum agg_type {
   lastAgg = 4,
   timeListAgg = 5,
   bucketAgg = 6,
+  rankBucketAgg = 7,
   // String aggregates
-  funcLocAgg = 7,
-  fileLocAgg = 8,
-  paramNamesAgg = 9,
-  tracesAgg = 10,
-  staticStrAgg = 11,
+  funcLocAgg = 8,
+  fileLocAgg = 9,
+  paramNamesAgg = 10,
+  tracesAgg = 11,
+  staticStrAgg = 12,
 
   // Folds to aggregates
-  descAgg = 12,
+  descAgg = 13,
 
-  rankListAgg = 13
+  rankListAgg = 14
 };
 
 #include <typeinfo>
@@ -59,6 +60,7 @@ enum agg_type {
 #include "DysectAPI/Aggregates/RankListAgg.h"
 #include "DysectAPI/Aggregates/TimeListAgg.h"
 #include "DysectAPI/Aggregates/BucketAgg.h"
+#include "DysectAPI/Aggregates/RankBucketAgg.h"
 #include "DysectAPI/Aggregates/Location.h"
 #include "DysectAPI/Aggregates/DescVar.h"
 #include "DysectAPI/Aggregates/Packet.h"
