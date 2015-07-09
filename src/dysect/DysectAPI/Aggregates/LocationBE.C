@@ -342,4 +342,6 @@ bool StackTraces::collect(void* process, void* thread) {
 
     countMap.insert(pair<string, int>(trace, count));
   }
+
+  return true;
 }

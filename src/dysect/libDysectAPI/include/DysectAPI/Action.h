@@ -66,7 +66,8 @@ namespace DysectAPI {
       writeModuleVariableType = 9,
       signalType = 10,
       irpcType = 11,
-      nullType = 12
+      nullType = 12,
+      fullStackTraceType = 13
     } aggType;
 
     aggType type;
@@ -96,6 +97,7 @@ namespace DysectAPI {
     static Act* detachAll(AggScope scope = AllProcs);
     static Act* detach();
     static Act* stackTrace();
+    static Act* fullStackTrace();
     static void resetAggregateIdCounter();
 
     int getId() { return id; }
@@ -262,6 +264,22 @@ namespace DysectAPI {
 
   public:
     StackTrace();
+
+    bool prepare();
+
+    bool collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                 Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+  class FullStackTrace : public Act {
+    std::string str;
+    DataStackTrace* traces;
+
+  public:
+    FullStackTrace();
 
     bool prepare();
 

@@ -141,6 +141,10 @@ DysectAPI::Act* Act::stackTrace() {
   return new StackTrace();
 }
 
+DysectAPI::Act* Act::fullStackTrace() {
+  return new FullStackTrace();
+}
+
 DysectAPI::Act* Act::detachAll(AggScope scope) {
   return new DetachAll(scope);
 }
@@ -267,6 +271,16 @@ StackTrace::StackTrace() {
 
 bool StackTrace::prepare() {
   traces = new StackTraces();
+  return true;
+}
+
+FullStackTrace::FullStackTrace() {
+  type = fullStackTraceType;
+  lscope = SatisfyingProcs;
+}
+
+bool FullStackTrace::prepare() {
+  traces = new DataStackTrace();
   return true;
 }
 
@@ -400,6 +414,9 @@ bool Trace::findAggregates() {
       break;
       case tracesAgg:
         aggFunc = new StackTraces();
+      break;
+      case dataTracesAgg:
+        aggFunc = new DataStackTrace();
       break;
       case descAgg:
         aggFunc = new DescribeVariable(curDataExpr);

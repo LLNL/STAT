@@ -404,6 +404,39 @@ bool StackTrace::finishBE(struct packet*& p, int& len) {
   return true;
 }
 
+bool FullStackTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+
+  DYSECTVERBOSE(true, "FullStackTrace::collect");
+  if(traces) {
+    traces->collect((void*)&process, (void*)&thread);
+  }
+
+  return true;
+}
+
+bool FullStackTrace::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool FullStackTrace::finishBE(struct packet*& p, int& len) {
+  DYSECTVERBOSE(true, "FullStackTrace::finishBE");
+  vector<AggregateFunction*> aggregates;
+
+  if(traces) {
+    aggregates.push_back(traces);
+
+    if(!AggregateFunction::getPacket(aggregates, len, p)) {
+      return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
+    }
+
+    traces->clear();
+  }
+
+  return true;
+}
+
 bool Trace::collect(Process::const_ptr process,
                     Thread::const_ptr thread) {
 
