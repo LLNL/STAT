@@ -116,8 +116,7 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
     for(int i = 0; i < doms.size(); i++) {
       //TODO: when multiple packets from different domains present, this doesn't processes in time order
       // also a problem when collect and finish packets received (processing finish before collect)
-      // could do network->recv()
-      // we could use getDomainFromTag?
+      // could do network->recv() and getDomainFromTag
       Domain* dom = doms[i];
 
       PacketPtr packet;

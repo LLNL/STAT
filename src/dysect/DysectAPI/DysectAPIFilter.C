@@ -50,6 +50,11 @@ struct packetAgg {
     int streamId = packetsIn[0]->get_StreamId();
     map<int, struct packetAgg *> newPackets;
     map<int, struct packetAgg *>::iterator iter;
+    vector<int> packetTagOrder;
+    vector<int>::iterator vIter;
+    vector<PacketPtr> myPacketsOut;
+    map<int, PacketPtr> tagToPacket;
+    map<int, PacketPtr>::iterator mIter;
 
     UpstreamFilter upstreamFilter(streamId);
 
@@ -74,6 +79,12 @@ struct packetAgg {
         cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Could not unpack packet!\n");
         continue;
       }
+
+      // we process tags in receive order, but based on when the last packet from that tag is received
+      vIter = find(packetTagOrder.begin(), packetTagOrder.end(), tag);
+      if(vIter != packetTagOrder.end())
+        packetTagOrder.erase(vIter);
+      packetTagOrder.push_back(tag);
 
       //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Incoming packet tag %d, unpack count '%d' payload size %d\n", tag, count, payloadLen);
 
@@ -104,12 +115,15 @@ struct packetAgg {
       packetAgg *newPacket = iter->second;
       //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting probe packet tag %d with base (npl: %d)\n", iter->first, newPacket->packetLen);
       PacketPtr packet(new Packet(streamId, iter->first, "%d %auc", newPacket->count, (unsigned char*)newPacket->packet, newPacket->packetLen));
-      packetsOut.push_back(packet);
+      tagToPacket[iter->first] = packet;
     }
 
     if(upstreamFilter.anyControlPackets()) {
-      upstreamFilter.getControlPackets(packetsOut);
+      upstreamFilter.getControlPackets(tagToPacket);
     }
+
+    for(vIter = packetTagOrder.begin(); vIter != packetTagOrder.end(); vIter++)
+      packetsOut.push_back(tagToPacket[*vIter]);
 
     gettimeofday(&endTime, NULL);
 
@@ -164,7 +178,7 @@ bool UpstreamFilter::aggregateControlPacket(int tag, int count) {
     return false;
   }
 
-  vector<int>::iterator iter;
+//  vector<int>::iterator iter;
   int controlTag = indexFromControlTag(tag);
   controlPacketsAdded = true;
 
@@ -178,11 +192,10 @@ bool UpstreamFilter::aggregateControlPacket(int tag, int count) {
 
   controlStatus[controlTag] += count;
 
-  // we process tags in receive order, but based on when the last packet from that tag is received
-  iter = find(controlPacketOrder.begin(), controlPacketOrder.end(), controlTag);
-  if(iter != controlPacketOrder.end())
-    controlPacketOrder.erase(iter);
-  controlPacketOrder.push_back(controlTag);
+//  iter = find(controlPacketOrder.begin(), controlPacketOrder.end(), controlTag);
+//  if(iter != controlPacketOrder.end())
+//    controlPacketOrder.erase(iter);
+//  controlPacketOrder.push_back(controlTag);
 
   //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Aggregated control packet tag %d, count %d, controlTag %d controlTagTemplate %d\n", tag, count, controlTag, controlTagTemplate);
 
@@ -191,17 +204,16 @@ bool UpstreamFilter::aggregateControlPacket(int tag, int count) {
   return true;
 }
 
-bool UpstreamFilter::getControlPackets(std::vector<MRN::PacketPtr>& packets) {
+bool UpstreamFilter::getControlPackets(std::map<int, MRN::PacketPtr>& packets) {
   int i;
-  for (vector<int>::iterator iter = controlPacketOrder.begin(); iter != controlPacketOrder.end(); iter++) {
-    i = *iter;
+  for (i = 0; i < numControlTags; i++) {
     int count = controlStatus[i];
 
     if(count != inactive) {
       int newControlTag = controlTagTemplate | i;
-      cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Producing control packet\n");
+      cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Producing control packet %d\n", newControlTag);
       PacketPtr packet(new Packet(streamId, newControlTag, "%d %auc", count, "", 1));
-      packets.push_back(packet);
+      packets[newControlTag] = packet;
     }
   }
 

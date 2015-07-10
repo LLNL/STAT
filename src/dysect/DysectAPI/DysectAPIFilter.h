@@ -34,7 +34,6 @@ namespace DysectAPI {
     bool controlPacketsAdded;
     int* controlStatus;
     int controlTagTemplate;
-    std::vector<int> controlPacketOrder;
 
   public:
     UpstreamFilter(int streamId);
@@ -45,7 +44,7 @@ namespace DysectAPI {
     bool isControlTag(int tag);
     int  indexFromControlTag(int tag);
     bool aggregateControlPacket(int tag, int count);
-    bool getControlPackets(std::vector<MRN::PacketPtr>& packets);
+    bool getControlPackets(std::map<int, MRN::PacketPtr>& packets);
     bool anyControlPackets();
   };
 }

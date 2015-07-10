@@ -55,7 +55,7 @@ int main (int argc, char *argv[])
 
     do_SendOrStall(next, tag, rank, &buf[1], &reqs[1], numtasks);
     MPI_Waitall(2, reqs, stats);
-sleep(1);
+
     MPI_Barrier(MPI_COMM_WORLD);
   }
     MPI_Finalize();

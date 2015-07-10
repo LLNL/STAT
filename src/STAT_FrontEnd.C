@@ -1641,11 +1641,12 @@ StatError_t STAT_FrontEnd::startLog(unsigned int logType, char *logOutDir, bool 
 
 StatError_t STAT_FrontEnd::receiveAck(bool blocking)
 {
+    //TODO: break this into receiveAck and processAck?
     int tag, intRet;
     unsigned int streamId = 0;
     StatError_t statError;
     PacketPtr packet;
-    vector<Stream *> expectedStreams;
+    vector<Stream *> expectedStreams; //TODO: make this part of the FE class?
 
     if (isPendingAck_ == false)
         return STAT_OK;
