@@ -29,6 +29,13 @@ using namespace MRN;
 
 extern "C" {
 
+struct packetAgg {
+  struct packet* packet;
+  int packetLen;
+  int count;
+};
+
+
   const char *dysectAPIUpStream_format_string = "%d %auc";
 
   void dysectAPIUpStream(vector<PacketPtr> &packetsIn,
@@ -41,13 +48,12 @@ extern "C" {
     //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "dysectAPIUpStream entry\n");
 
     int streamId = packetsIn[0]->get_StreamId();
-    int tag = packetsIn[0]->get_Tag();
+    map<int, struct packetAgg *> newPackets;
+    map<int, struct packetAgg *>::iterator iter;
 
     UpstreamFilter upstreamFilter(streamId);
 
-    struct packet* newPacket = 0;
     int newPacketLen = 0;
-    int newCount = 0;
 
     struct timeval startTime, endTime;
     double elapsedTime = 0.0;
@@ -69,24 +75,23 @@ extern "C" {
         continue;
       }
 
-      //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Incoming packet unpack count '%d' payload size %d\n", count, payloadLen);
+      //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Incoming packet tag %d, unpack count '%d' payload size %d\n", tag, count, payloadLen);
 
       if(payloadLen > 1) {
         //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Handle probe packet with payload\n");
 
-        if(newPacket == 0) {
-          newCount = count;
-          
+        if(newPackets.find(tag) == newPackets.end()) {
           //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting probe packet with base\n");
-          newPacket = (struct packet*)payload;
-          newPacketLen = payloadLen;
+          newPackets[tag] = (struct packetAgg *)malloc(sizeof(packetAgg));
+          newPackets[tag]->packet = (struct packet *)payload;
+          newPackets[tag]->count = count;
+          newPackets[tag]->packetLen = payloadLen;
         } else {
-          newCount += count;
+          newPackets[tag]->count += count;
           // Merge packets
           struct packet* mergedPacket = 0;
-          AggregateFunction::mergePackets(newPacket, (struct packet*)payload, mergedPacket, newPacketLen);
-
-          newPacket = mergedPacket;
+          AggregateFunction::mergePackets(newPackets[tag]->packet, (struct packet*)payload, mergedPacket, newPackets[tag]->packetLen);
+          newPackets[tag]->packet = mergedPacket;
         }
       } else if(upstreamFilter.isControlTag(tag) && (payloadLen <= 1)) {
         cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Handle control packet\n");
@@ -95,9 +100,10 @@ extern "C" {
 
     }
 
-    if(newPacket != 0) {
-      //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting probe packet with base (npl: %d)\n", newPacketLen);
-      PacketPtr packet(new Packet(streamId, tag, "%d %auc", newCount, (unsigned char*)newPacket, newPacketLen));
+    for(iter = newPackets.begin(); iter != newPackets.end(); iter++) {
+      packetAgg *newPacket = iter->second;
+      //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting probe packet tag %d with base (npl: %d)\n", iter->first, newPacket->packetLen);
+      PacketPtr packet(new Packet(streamId, iter->first, "%d %auc", newPacket->count, (unsigned char*)newPacket->packet, newPacket->packetLen));
       packetsOut.push_back(packet);
     }
 
@@ -158,6 +164,7 @@ bool UpstreamFilter::aggregateControlPacket(int tag, int count) {
     return false;
   }
 
+  vector<int>::iterator iter;
   int controlTag = indexFromControlTag(tag);
   controlPacketsAdded = true;
 
@@ -171,19 +178,27 @@ bool UpstreamFilter::aggregateControlPacket(int tag, int count) {
 
   controlStatus[controlTag] += count;
 
+  // we process tags in receive order, but based on when the last packet from that tag is received
+  iter = find(controlPacketOrder.begin(), controlPacketOrder.end(), controlTag);
+  if(iter != controlPacketOrder.end())
+    controlPacketOrder.erase(iter);
+  controlPacketOrder.push_back(controlTag);
+
+  //cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Aggregated control packet tag %d, count %d, controlTag %d controlTagTemplate %d\n", tag, count, controlTag, controlTagTemplate);
+
   controlPacketsAdded = true;
 
   return true;
 }
 
 bool UpstreamFilter::getControlPackets(std::vector<MRN::PacketPtr>& packets) {
-  for(int i = 0; i < numControlTags; i++) {
+  int i;
+  for (vector<int>::iterator iter = controlPacketOrder.begin(); iter != controlPacketOrder.end(); iter++) {
+    i = *iter;
     int count = controlStatus[i];
 
     if(count != inactive) {
       int newControlTag = controlTagTemplate | i;
-
-
       cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Producing control packet\n");
       PacketPtr packet(new Packet(streamId, newControlTag, "%d %auc", count, "", 1));
       packets.push_back(packet);

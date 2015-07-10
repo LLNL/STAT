@@ -23,7 +23,7 @@ set -ex
 # Note, cmake must be in your $PATH
 
 # This is the installation directory for Stat and all the underlying libraries. Please change!
-export INSTALLDIR=/usr/local/tools/stat
+export INSTALLDIR=/nfs/tmp2/lee218/delete/stat-script-install-test/prefix
 
 
 echo "This will download, compile and install the following softwares: "
@@ -94,18 +94,22 @@ echo "Done."
 echo
 
 echo "Step 3 of 6: Downloading StackWalker"
-wget -q http://www.dyninst.org/sites/default/files/downloads/dyninst/8.1.2/StackwalkerAPI-8.1.2.tgz
-tar xzf StackwalkerAPI-8.1.2.tgz
-mv StackwalkerAPI-8.1.2 3-StackwalkerAPI
-cd 3-StackwalkerAPI
+wget -q http://www.dyninst.org/sites/default/files/downloads/dyninst/8.2.1/DyninstAPI-8.2.1.tgz
+tar xzf DyninstAPI-8.2.1.tgz
+mv Dyninst-8.2.1 3-Dyninst
+cd 3-Dyninst
+mkdir build
+cd build
 echo "Configuring..."
-./configure CC=gcc CXX=g++ -prefix=$INSTALLDIR --with-libdwarf=$INSTALLDIR --with-libelf=/usr --with-launchmon=$INSTALLDIR --with-default-component=StackwalkerAPI --disable-testsuite >> $STAT_BUILD_LOG 2>&1
+echo "Cmake configure"
+cmake -D CMAKE_INSTALL_PREFIX=$INSTALLDIR -D CMAKE_C_COMPILER=gcc -D CMAKE_CXX_COMPILER=g++ -D LIBDWARF_INCLUDE_DIR=$INSTALLDIR/include -D LIBDWARF_LIBRARIES=$INSTALLDIR/lib/libdwarf.so -D LIBELF_INCLUDE_DIR=/usr/include -D LIBELF_LIBRARIES=/usr/lib64/libelf.so .. >> $STAT_BUILD_LOG 2>&1
+#--with-default-component=StackwalkerAPI --disable-testsuite >> $STAT_BUILD_LOG 2>&1
 echo "Compiling... "
 make >> $STAT_BUILD_LOG 2>&1
 #make test-full
 echo "Installing..."
 make install >> $STAT_BUILD_LOG 2>&1
-cd ..
+cd ../..
 echo "Done."
 echo
 
@@ -140,10 +144,10 @@ cd ../..
 echo "Done."
 echo
 
-echo "Step 6 of 6: Downloading STAT 2.1.0"
-wget -q --no-check-certificate https://github.com/lee218llnl/STAT/archive/v2.1.0.tar.gz
-tar xzf v2.1.0 >> $STAT_BUILD_LOG 2>&1
-mv STAT-2.1.0 6-STAT
+echo "Step 6 of 6: Downloading STAT 2.2.0"
+wget -q --no-check-certificate https://github.com/lee218llnl/STAT/archive/v2.2.0.tar.gz
+tar xzf v2.2.0 >> $STAT_BUILD_LOG 2>&1
+mv STAT-2.2.0 6-STAT
 cd 6-STAT/
 echo "Configuring..."
 ./configure --with-launchmon=$INSTALLDIR --with-mrnet=$INSTALLDIR --with-graphlib=$INSTALLDIR --enable-gui --with-bluegene --prefix=$INSTALLDIR --with-libdwarf=$INSTALLDIR --with-stackwalker=$INSTALLDIR >> $STAT_BUILD_LOG 2>&1

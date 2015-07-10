@@ -50,12 +50,12 @@ int main (int argc, char *argv[])
         next = 0;
 
     if(sleeptime < 0 && rank == 6) raise(SIGSEGV); 
-  for (i = 0; i < 1; i++) {
+  for (i = 0; i < 2; i++) {
     do_Receive(prev, tag, &buf[0], &reqs[0]);
 
     do_SendOrStall(next, tag, rank, &buf[1], &reqs[1], numtasks);
     MPI_Waitall(2, reqs, stats);
-
+sleep(1);
     MPI_Barrier(MPI_COMM_WORLD);
   }
     MPI_Finalize();

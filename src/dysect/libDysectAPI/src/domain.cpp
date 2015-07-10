@@ -133,7 +133,7 @@ DysectAPI::DysectErrorCode Domain::createStreamGeneric() {
 
   int dataEventDescriptor = stream->get_DataNotificationFd();
   
-  DYSECTVERBOSE(true, "Domain %x has stream %d", getId(), stream->get_Id());
+  DYSECTVERBOSE(true, "Domain %x has stream %d, waitTime %d", getId(), stream->get_Id(), effectiveWaitTime);
 
   fdMap.insert(pair<int, Domain*>(dataEventDescriptor, this));
 

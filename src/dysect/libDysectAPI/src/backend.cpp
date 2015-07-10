@@ -237,12 +237,15 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               }
             }
 
-            if(probe->waitForOthers() && (probe->getProcessCount() >= lprocset->size())) {
-              DYSECTVERBOSE(true, "%d/%d group members reported, triggering action", probe->getProcessCount(), lprocset->size());
-              if (!DysectAPI::SafeTimer::resetSyncTimer(probe)) {
-                DYSECTWARN(false, "Failed to reset timer (%ld) and invoke: %x", dom->getWaitTime(), dom->getId());
-              }
-            }
+// TODO: the code below casues a problem when some daemons timeout while others get full set triggering
+// on the other hand, we waste a lot of time when full set triggered by everyone!
+//            if(probe->waitForOthers() && (probe->getProcessCount() >= lprocset->size())) {
+//              DYSECTVERBOSE(true, "%d/%d group members reported, triggering action", probe->getProcessCount(), lprocset->size());
+//              if (!DysectAPI::SafeTimer::resetSyncTimer(probe)) {
+//                DYSECTWARN(false, "Failed to reset timer (%ld) and invoke: %x", dom->getWaitTime(), dom->getId());
+//              }
+//            }
+
 #if 0
           } else if(result == CollectiveResolvable) {
             // Block process and await resolution of collective operations

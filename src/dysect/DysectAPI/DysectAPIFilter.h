@@ -34,6 +34,7 @@ namespace DysectAPI {
     bool controlPacketsAdded;
     int* controlStatus;
     int controlTagTemplate;
+    std::vector<int> controlPacketOrder;
 
   public:
     UpstreamFilter(int streamId);

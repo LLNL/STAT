@@ -114,6 +114,10 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
     }
 
     for(int i = 0; i < doms.size(); i++) {
+      //TODO: when multiple packets from different domains present, this doesn't processes in time order
+      // also a problem when collect and finish packets received (processing finish before collect)
+      // could do network->recv()
+      // we could use getDomainFromTag?
       Domain* dom = doms[i];
 
       PacketPtr packet;
@@ -139,6 +143,7 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
         if(packet->unpack("%d %auc", &count, &payload, &len) == -1) {
           return DYSECTWARN(Error, "Unpack error");
         }
+        DYSECTLOG(OK, "received packet with tag %d, count %d, len %d on domain %x", tag, count, len, dom->getId());
 
         if(Domain::isProbeEnabledTag(tag) || Domain::isProbeNotifyTag(tag)) {
           Domain* dom = 0;
