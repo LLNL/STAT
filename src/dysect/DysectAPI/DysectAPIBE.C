@@ -31,6 +31,7 @@ STAT_BackEnd *BE::statBE;
 extern FILE *gStatOutFp;
 
 BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
+  int dysectVerbosity = DYSECT_VERBOSE_DEFAULT;
   assert(be != 0);
   assert(libPath != 0);
 
@@ -61,9 +62,11 @@ BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
   statBE = be;
 
   bool useStatOutFpPrintf = false;
-  if (be->logType_ & STAT_LOG_BE)
+  if (be->logType_ & STAT_LOG_BE) {
     useStatOutFpPrintf = true;
-  Err::init(be->errOutFp_, gStatOutFp, NULL, useStatOutFpPrintf);
+    dysectVerbosity = DYSECT_VERBOSE_FULL;
+  }
+  Err::init(be->errOutFp_, gStatOutFp, dysectVerbosity, NULL, useStatOutFpPrintf);
 
   // Setup session
   lib_proc_start();

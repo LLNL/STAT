@@ -101,8 +101,6 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
 
     // Look for owners
     vector<Domain*> doms = Domain::getFdsFromSet(fdRead);
-    if (iter_count % 10 == 0)
-        DYSECTLOG(true, "Listening over %d domains", doms.size());
 
     if(doms.size() == 0) {
       if(Frontend::breakOnTimeout && (--Frontend::numEvents < 0)) {

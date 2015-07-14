@@ -36,7 +36,7 @@ set<DysectAPI::Event*>& Time::getTimeSubscribers() {
 }
 
 bool Time::enable() {
-  DYSECTINFO(true, "Enable Time Event");
+  DYSECTLOG(true, "Enable Time Event");
   assert(owner != 0);
 
   //if(codeLocations.empty()) {
@@ -59,7 +59,7 @@ bool Time::enable() {
 }
 
 bool Time::enable(ProcessSet::ptr lprocset) {
-  DYSECTINFO(true, "Enable time event for procset size %d with timeout %d", lprocset->size(), timeout);
+  DYSECTLOG(true, "Enable time event for procset size %d with timeout %d", lprocset->size(), timeout);
   triggerTime = SafeTimer::getTimeStamp();
   if(!lprocset) {
     return DYSECTWARN(false, "Process set not present");
@@ -79,7 +79,7 @@ bool Time::enable(ProcessSet::ptr lprocset) {
 }
 
 bool Time::disable() {
-  DYSECTINFO(true, "Disable Time Event");
+  DYSECTLOG(true, "Disable Time Event");
   if(procset && !procset->empty()) {
     procset->clear();
   }
@@ -88,7 +88,7 @@ bool Time::disable() {
 }
 
 bool Time::disable(ProcessSet::ptr lprocset) {
-  DYSECTINFO(true, "Disable time event for procset size %d with timeout %d", lprocset->size(), timeout);
+  DYSECTLOG(true, "Disable time event for procset size %d with timeout %d", lprocset->size(), timeout);
 
   set<Event*>::iterator evIter = timeSubscribers.find(this);
   if(evIter != timeSubscribers.end()) {

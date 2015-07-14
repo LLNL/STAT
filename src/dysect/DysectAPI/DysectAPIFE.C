@@ -29,6 +29,7 @@ extern FILE *gStatOutFp;
 // XXX: Refactoring work: move logic to API
 
 FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
+  int dysectVerbosity = DYSECT_VERBOSE_DEFAULT;
   assert(fe != 0);
   assert(libPath != 0);
 
@@ -44,9 +45,11 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
   filterPath = fe->filterPath_;
 
   bool useStatOutFpPrintf = false;
-  if (fe->logging_ & STAT_LOG_FE)
+  if (fe->logging_ & STAT_LOG_FE) {
+    dysectVerbosity = DYSECT_VERBOSE_FULL;
     useStatOutFpPrintf = true;
-  Err::init(stderr, gStatOutFp, fe->outDir_, useStatOutFpPrintf);
+  }
+  Err::init(stderr, gStatOutFp, dysectVerbosity, fe->outDir_, useStatOutFpPrintf);
 
   sessionLib = new SessionLibrary(libPath);
 

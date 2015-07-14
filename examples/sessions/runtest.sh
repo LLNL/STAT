@@ -48,7 +48,7 @@ do
         cmd="sleep 5"
         echo $cmd
         $cmd
-        cmd="$statcl_command -X $session_so -L $testdir/logs $logmode $topologymode $!"
+        cmd="$statcl_command -X $session_so -L $testdir/logs $logmode $topologymode $srun_pid"
         echo $cmd
         $cmd
         wait $srun_pid
