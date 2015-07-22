@@ -19,6 +19,14 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DYSECTAPI_AGGREGATE_FUNCTION_H
 #define __DYSECTAPI_AGGREGATE_FUNCTION_H
 
+#include <string>
+#include <map>
+#include <vector>
+#include <stdarg.h>
+
+#include "DysectAPI/Aggregates/Aggregate.h"
+#include "DysectAPI/Aggregates/Packet.h"
+
 namespace DysectAPI {
   class Probe;
   class DataRef;

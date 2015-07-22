@@ -1,3 +1,7 @@
+2015-07-22 Gregory L. Lee <lee218@llnl.gov>
+	* : Created mock DynInst header file for FE
+	* : Some cleaning of header files and includes
+
 2015-07-10 Gregory L. Lee <lee218@llnl.gov>
 	* err.[C,h] : better control of DySectAPI verbosity and logging
 

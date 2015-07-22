@@ -448,9 +448,9 @@ SUBDIRS = $(MAYBE_DYSECT)
 # what flags you want to pass to the C compiler & linker
 AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
 AM_LDFLAGS = 
-include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h STAT_shared.h
+include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h
 @ENABLE_DYSECTAPI_TRUE@stat_cppflags_add_dysectapi = -I$(abs_top_srcdir)/src -I$(abs_top_srcdir)/src/dysect -I$(abs_top_srcdir)/src/dysect/libDysectAPI/include
-@ENABLE_DYSECTAPI_TRUE@stat_fe_ldadd_add_dysectapi = @LIBDYSECTAPIFE@ @LIBDYSECTFE@ @BELIBS@
+@ENABLE_DYSECTAPI_TRUE@stat_fe_ldadd_add_dysectapi = @LIBDYSECTAPIFE@ @LIBDYSECTFE@
 @ENABLE_DYSECTAPI_TRUE@stat_be_ldadd_add_dysectapi = @LIBDYSECTAPIBE@ @LIBDYSECTBE@
 @ENABLE_DYSECTAPI_TRUE@stat_fd_ldadd_add_dysectapi = @LIBDYSECTAPIFD@
 @ENABLE_DYSECTAPI_TRUE@stat_ldflags_add_dysectapi = -L@LIBDYSECTAPILOC@ -L@LIBDYSECTLOC@

@@ -19,17 +19,23 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __CONDITION_H
 #define __CONDITION_H
 
+#include <string>
+
+#include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Aggregates/Data.h>
+
 namespace DysectAPI {
   class Cond;
   class Local;
   class Global;
   class Range;
   class Probe;
-  class Cond;
   class Data;
   class ExprTree;
   class Event;
   class TargetVar;
+  class Function;
+  class Value;
   
   typedef enum ConditionResult {
     Unresolved,

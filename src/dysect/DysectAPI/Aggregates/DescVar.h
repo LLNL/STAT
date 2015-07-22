@@ -19,6 +19,13 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DYSECTAPI_DESC_VAR_H
 #define __DYSECTAPI_DESC_VAR_H
 
+#include <string>
+#include <vector>
+#include <map>
+
+#include "DysectAPI/Aggregates/AggregateFunction.h"
+#include "DysectAPI/Aggregates/Location.h"
+
 namespace DysectAPI {
   class Probe;
 

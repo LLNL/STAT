@@ -1,5 +1,6 @@
 %{
 #include <LibDysectAPI.h>
+#include <DysectAPI/Expr.h>
 #include <expr-parser.h>
 #include <stdarg.h>
 

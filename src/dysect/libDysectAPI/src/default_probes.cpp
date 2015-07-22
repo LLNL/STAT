@@ -16,7 +16,15 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+#include <signal.h>
+
 #include <LibDysectAPI.h>
+#include <DysectAPI/Event.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Probe.h>
+#include <DysectAPI/Action.h>
+#include <DysectAPI/ProbeTree.h>
+#include <DysectAPI/DysectAPI.h>
 
 DysectStatus DysectAPI::defaultProbes() {
 

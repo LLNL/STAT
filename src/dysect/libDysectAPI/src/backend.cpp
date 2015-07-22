@@ -17,6 +17,12 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Event.h>
+#include <DysectAPI/SafeTimer.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Probe.h>
+#include <DysectAPI/ProbeTree.h>
 #include <DysectAPI/Backend.h>
 
 using namespace std;
@@ -42,6 +48,7 @@ vector<Probe *> Backend::probesPendingAction;
 pthread_mutex_t Backend::probesPendingActionMutex;
 ProcessSet::ptr Backend::enqueuedDetach;
 map<string, SymtabAPI::Symtab *> Backend::symtabs;
+char *DaemonHostname;
 
 DysectAPI::DysectErrorCode Backend::bindStream(int tag, Stream* stream) {
   int index = Domain::tagToId(tag);
@@ -416,7 +423,7 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
 
     Domain::setBEContext(context);
 
-    DysectAPI::DaemonHostname = context->hostname;
+    DaemonHostname = context->hostname;
   }
 
   if(processingPending)

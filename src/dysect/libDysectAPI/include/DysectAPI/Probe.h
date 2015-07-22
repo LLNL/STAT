@@ -19,6 +19,14 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __PROBE_H
 #define __PROBE_H
 
+#include <map>
+#include <vector>
+
+#include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Aggregates/AggregateFunction.h>
+#include <DysectAPI/Condition.h>
+#include <DysectAPI/DysectAPIProcessMgr.h>
+
 namespace DysectAPI {
   class Probe;
   class Cond;

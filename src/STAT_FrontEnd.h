@@ -64,7 +64,7 @@ extern "C"
 #define STAT_MAX_FANOUT 64
 
 #ifdef DYSECTAPI
-  #include "STAT_shared.h"
+  #define __DYSECT_IS_FRONTEND
   #include "DysectAPI/DysectAPIFE.h"
 #endif
 

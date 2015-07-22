@@ -2,6 +2,7 @@
 AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
 AM_LDFLAGS =
 
+include_HEADERS=DysectAPI.h
 lib_LTLIBRARIES = libDysectAPIFE.la libDysectAPIBE.la libDysectAPIFD.la
 
 dysectapi_includes = -I$(abs_top_srcdir)/src -I$(abs_top_srcdir)/src/dysect -I$(abs_top_srcdir)/src/dysect/libDysectAPI/include

@@ -1,5 +1,4 @@
-#include <LibDysectAPI.h>
-#include <stdio.h>
+#include <DysectAPI.h>
 
 DysectStatus DysectAPI::onProcStart() {
 

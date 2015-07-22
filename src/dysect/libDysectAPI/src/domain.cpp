@@ -17,6 +17,10 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Group.h>
+#include <DysectAPI/Probe.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -239,6 +243,18 @@ std::map<int, Dyninst::ProcControlAPI::Process::ptr>* Domain::getMpiRankToProces
   return mpiRankToProcessMap;
 }
 
+#ifdef __DYSECT_IS_BACKEND
+bool Domain::setBEContext(struct DysectBEContext_t* context) {
+  assert(context != 0);
+
+  processTable = context->processTable;
+  processTableSize = context->processTableSize;
+  allWalkers = context->walkerSet;
+  mpiRankToProcessMap = context->mpiRankToProcessMap;
+
+  return true;
+}
+#else
 bool Domain::setFEContext(struct DysectFEContext_t* context) {
   assert(context != 0);
 
@@ -250,17 +266,7 @@ bool Domain::setFEContext(struct DysectFEContext_t* context) {
 
   return true;
 }
-
-bool Domain::setBEContext(struct DysectBEContext_t* context) {
-  assert(context != 0);
-
-  processTable = context->processTable;
-  processTableSize = context->processTableSize;
-  allWalkers = context->walkerSet;
-  mpiRankToProcessMap = context->mpiRankToProcessMap;
-
-  return true;
-}
+#endif
 
 void Domain::clearDomains() {
   network = 0;

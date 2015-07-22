@@ -8,10 +8,10 @@ SUBDIRS = $(MAYBE_DYSECT)
 AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
 AM_LDFLAGS =
 
-include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h STAT_shared.h
+include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h
 if ENABLE_DYSECTAPI
 stat_cppflags_add_dysectapi = -I$(abs_top_srcdir)/src -I$(abs_top_srcdir)/src/dysect -I$(abs_top_srcdir)/src/dysect/libDysectAPI/include
-stat_fe_ldadd_add_dysectapi = @LIBDYSECTAPIFE@ @LIBDYSECTFE@ @BELIBS@
+stat_fe_ldadd_add_dysectapi = @LIBDYSECTAPIFE@ @LIBDYSECTFE@
 stat_be_ldadd_add_dysectapi = @LIBDYSECTAPIBE@ @LIBDYSECTBE@
 stat_fd_ldadd_add_dysectapi = @LIBDYSECTAPIFD@
 stat_ldflags_add_dysectapi = -L@LIBDYSECTAPILOC@ -L@LIBDYSECTLOC@

@@ -19,6 +19,11 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __EXPR_H
 #define __EXPR_H
 
+#include <string>
+#include <vector>
+
+#include <DysectAPI/Condition.h>
+
 namespace DysectAPI {
   class ExprTree;
   class ExprNode;
@@ -35,7 +40,7 @@ namespace DysectAPI {
 
     ExprTree(ExprNode* root);
 
-    DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, THR_ID tid);
+    DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
   };
 
   class TargetVar {

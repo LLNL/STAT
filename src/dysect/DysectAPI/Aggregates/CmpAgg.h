@@ -19,6 +19,12 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DYSECTAPI_CMP_AGG_H
 #define __DYSECTAPI_CMP_AGG_H
 
+#include <string>
+#include <vector>
+
+#include "DysectAPI/Aggregates/AggregateFunction.h"
+#include "DysectAPI/Aggregates/Data.h"
+
 namespace DysectAPI {
   class CmpAgg : public AggregateFunction {
   protected:

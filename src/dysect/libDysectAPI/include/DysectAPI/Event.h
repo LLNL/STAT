@@ -19,6 +19,12 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __EVENT_H
 #define __EVENT_H
 
+#include <string>
+#include <vector>
+#include <map>
+
+#include <DysectAPI/Symbol.h>
+
 namespace DysectAPI {
   class Probe;
   class Location;

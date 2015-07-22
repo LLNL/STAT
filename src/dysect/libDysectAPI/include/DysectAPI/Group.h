@@ -19,6 +19,11 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __GROUP_H
 #define __GROUP_H
 
+#include <string>
+#include <map>
+
+#include <DysectAPI/Domain.h>
+
 namespace DysectAPI {
   typedef long mrnet_rank_t;
   typedef long mpi_rank_t;

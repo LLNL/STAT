@@ -1,4 +1,4 @@
-#include <LibDysectAPI.h>
+#include <DysectAPI.h>
 #include <stdio.h>
 
 // Single entry for debug daemon

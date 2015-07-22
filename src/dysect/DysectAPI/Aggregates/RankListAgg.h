@@ -19,6 +19,11 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DYSECTAPI_INTLISTAGG_H
 #define __DYSECTAPI_INTLISTAGG_H
 
+#include <string>
+#include <vector>
+
+#include "DysectAPI/Aggregates/AggregateFunction.h"
+
 namespace DysectAPI {
   class RankListAgg : public AggregateFunction {
   protected:

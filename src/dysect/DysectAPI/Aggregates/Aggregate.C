@@ -16,7 +16,15 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+#include <stdio.h>
+#include <iostream>
+#include <stdlib.h>
+
 #include "DysectAPI/Aggregates/Aggregate.h"
+#include "DysectAPI/Aggregates/AggregateFunction.h"
+#include "DysectAPI/Aggregates/CmpAgg.h"
+#include "DysectAPI/Aggregates/Location.h"
+#include "DysectAPI/Aggregates/RankListAgg.h"
 
 using namespace std;
 using namespace DysectAPI;

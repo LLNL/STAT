@@ -16798,7 +16798,7 @@ fi
   # Check whether --enable-dysectapi was given.
 if test "${enable_dysectapi+set}" = set; then
   enableval=$enable_dysectapi; ENABLE_DYSECT="yes"
-      CXXFLAGS="$CXXFLAGS -DDYSECTAPI -DGROUP_OPS"
+      CXXFLAGS="$CXXFLAGS -DDYSECTAPI"
        if true; then
   ENABLE_DYSECTAPI_TRUE=
   ENABLE_DYSECTAPI_FALSE='#'

@@ -17,12 +17,19 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #ifndef __BACKEND_H
-
 #define __BACKEND_H
 
-#include "STAT_BackEnd.h"
+#include <string>
+#include <vector>
+#include <map>
+#include <set>
+#include <pthread.h>
+
+#include <DysectAPI/Domain.h>
 
 namespace DysectAPI {
+    class Probe;
+
 	class Backend {
     static enum BackendState {
       start,

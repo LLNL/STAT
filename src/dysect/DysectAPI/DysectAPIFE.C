@@ -16,10 +16,10 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+#include "DysectAPI/DysectAPI.h"
 #include "DysectAPI/DysectAPIFE.h" 
-#include "STAT_FrontEnd.h"
-
 #include "DysectAPI/Frontend.h"
+#include "STAT_FrontEnd.h"
 
 using namespace std;
 using namespace DysectAPI;
@@ -75,7 +75,7 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
   // Map front-end related library methods
   //
 
-  DysectAPI::defaultProbes();
+  defaultProbes();
 
   if(sessionLib->mapMethod<proc_start_t>("on_proc_start", &lib_proc_start) != OK) {
     loaded = false;

@@ -16,10 +16,12 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "DysectAPI/DysectAPIBE.h"
-#include "STAT_BackEnd.h"
-#include "DysectAPI/Backend.h"
 #include <unistd.h>
+
+#include "DysectAPI/DysectAPI.h"
+#include "DysectAPI/DysectAPIBE.h"
+#include "DysectAPI/Backend.h"
+#include "STAT_BackEnd.h"
 
 using namespace std;
 using namespace DysectAPI;
@@ -44,7 +46,7 @@ BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
     return ;
   }
 
-  DysectAPI::defaultProbes();
+  defaultProbes();
 
   if(sessionLib->mapMethod<proc_start_t>("on_proc_start", &lib_proc_start) != OK) {
     loaded = false;

@@ -19,6 +19,9 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DYSECTAPI_DATA_h
 #define __DYSECTAPI_DATA_h
 
+#include <string>
+#include <stdio.h>
+
 namespace DysectAPI {
   class Value {
     friend class DataLocation;

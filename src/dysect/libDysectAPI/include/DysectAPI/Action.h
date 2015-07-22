@@ -19,6 +19,14 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __ACTION_H
 #define __ACTION_H
 
+#include <string>
+#include <vector>
+#include <map>
+
+#include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Aggregates/AggregateFunction.h>
+#include <DysectAPI/Aggregates/Location.h>
+
 namespace DysectAPI {
   class Act;
   class Probe;
@@ -80,7 +88,7 @@ namespace DysectAPI {
     static Act* depositCore();
     static Act* signal(int sigNum);
     static Act* loadLibrary(std::string library);
-    static Act* irpc(std::string libraryPath, std::string functionNAme, void *value, int size);
+    static Act* irpc(std::string libraryPath, std::string functionName, void *value, int size);
     static Act* writeModuleVariable(std::string libraryPath, std::string variableName, void *value, int size);
     static Act* stat(AggScope scope = SatisfyingProcs, int traces = 5, int frequency = 300, bool threads = false);
     static Act* detachAll(AggScope scope = AllProcs);

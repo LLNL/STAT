@@ -71,7 +71,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 #ifdef DYSECTAPI
-  #include "DysectAPI/DysectAPIProcessMgr.h"
   #include "DysectAPI/DysectAPIBE.h"
 #endif
 

@@ -24,24 +24,6 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <dlfcn.h>
 #include <stdio.h>
 
-#include "STAT_shared.h"
-#include <DysectAPI/Err.h>
-
-#include "mrnet/MRNet.h"
-#include "lmon_api/lmon_fe.h"
-
-#include "Symtab.h"
-#include "walker.h"
-#include "procstate.h"
-#include "frame.h"
-#include "swk_errors.h"
-#include "Type.h"
-#include "Event.h"
-#include "PlatFeatures.h"
-#include "ProcessSet.h"
-#include "PCErrors.h"
-#include "local_var.h"
-
 namespace DysectAPI {
   class ProcessMgr {
     static Dyninst::ProcControlAPI::ProcessSet::ptr allProcs;

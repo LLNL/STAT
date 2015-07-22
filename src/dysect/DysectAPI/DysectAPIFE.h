@@ -23,13 +23,8 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <error.h>
 #include <dlfcn.h>
 #include <stdio.h>
-
-#include "mrnet/MRNet.h"
-#include "lmon_api/lmon_fe.h"
-#include "STAT_shared.h"
-#include "DysectAPI/DysectAPI.h"
-
 #include "LibDysectAPI.h"
+#include "DysectAPI/DysectAPIProcessMgr.h"
 
 class STAT_FrontEnd;
 

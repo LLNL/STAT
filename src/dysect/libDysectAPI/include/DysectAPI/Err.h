@@ -19,6 +19,10 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __ERR_H
 #define __ERR_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string>
+
 #define DYSECTVERBOSE(...) Err::verbose(__LINE__, __FILE__, __VA_ARGS__)
 #define DYSECTLOG(...) Err::log(__LINE__, __FILE__, __VA_ARGS__)
 #define DYSECTINFO(...) Err::info(__LINE__, __FILE__, __VA_ARGS__)

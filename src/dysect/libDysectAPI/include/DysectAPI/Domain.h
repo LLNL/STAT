@@ -19,6 +19,10 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DOMAIN_H
 #define __DOMAIN_H
 
+#include <string>
+#include <vector>
+#include <map>
+
 namespace DysectAPI {
   class World;
   class Group;

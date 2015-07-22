@@ -15,8 +15,10 @@ WARRANTY; without even the IMPLIED WARRANTY OF MERCHANTABILITY or FITNESS FOR A 
 You should have received a copy of the GNU Lesser General Public License along with this program; if not, write to the Free Software Foundation, Inc., 59 Temple
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
+#include <stdio.h>
 
 #include "DysectAPI/Aggregates/Aggregate.h"
+#include "DysectAPI/Aggregates/Location.h"
 
 using namespace std;
 using namespace DysectAPI;

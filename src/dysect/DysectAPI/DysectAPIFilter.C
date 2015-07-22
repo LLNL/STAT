@@ -16,12 +16,12 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "STAT.h"
-#include "graphlib.h"
 #include <sys/stat.h>
 
+#include "STAT.h"
 #include <DysectAPI/DysectAPIFilter.h>
 #include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Aggregates/AggregateFunction.h>
 
 using namespace std;
 using namespace DysectAPI;

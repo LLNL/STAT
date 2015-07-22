@@ -17,6 +17,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -27,6 +28,9 @@ FILE* Err::outFile;
 extern FILE *gStatOutFp;
 bool Err::useStatOutFp_ = false;
 int Err::verbosityLevel_ = DYSECT_VERBOSE_DEFAULT;
+#ifdef __DYSECT_IS_BACKEND
+extern char * DaemonHostname;
+#endif
 
 #define DYSECT_LOG
 #define DYSECT_INFO
@@ -330,11 +334,14 @@ void Err::write(const std::string fmt, va_list args, enum msgType type) {
 
     char environmentStr[bufSize];
     if(environment == BackendEnvironment) {
-      if(DysectAPI::DaemonHostname != 0) {
-        snprintf(environmentStr, bufSize, "Backend(%s)", DysectAPI::DaemonHostname);
-      } else {
+#ifdef __DYSECT_IS_BACKEND
+//      if(DysectAPI::DaemonHostname != 0) {
+        snprintf(environmentStr, bufSize, "Backend(%s)", DaemonHostname);
+#else
+//      } else {
         snprintf(environmentStr, bufSize, "Backend(?)");
-      }
+#endif
+//      }
     } else if(environment == FrontendEnvironment) {
       snprintf(environmentStr, bufSize, "Frontend");
     } else {

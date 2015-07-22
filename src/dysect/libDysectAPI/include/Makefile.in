@@ -261,7 +261,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-nobase_include_HEADERS = LibDysectAPI.h DysectAPI/Action.h DysectAPI/Domain.h DysectAPI/Event.h DysectAPI/Probe.h DysectAPI/Condition.h DysectAPI/Parser.h DysectAPI/Backend.h DysectAPI/Frontend.h DysectAPI/ProbeTree.h DysectAPI/Err.h DysectAPI/Group.h DysectAPI/Expr.h DysectAPI/Symbol.h DysectAPI/SafeTimer.h
+nobase_include_HEADERS = LibDysectAPI.h DysectAPI/Action.h DysectAPI/Domain.h DysectAPI/Event.h DysectAPI/Probe.h DysectAPI/Condition.h DysectAPI/Parser.h DysectAPI/Backend.h DysectAPI/Frontend.h DysectAPI/ProbeTree.h DysectAPI/Err.h DysectAPI/Group.h DysectAPI/Expr.h DysectAPI/Symbol.h DysectAPI/SafeTimer.h DysectAPI/FEDummyDyninst.h
 all: all-am
 
 .SUFFIXES:

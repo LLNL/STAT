@@ -17,6 +17,9 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include "DysectAPI/Aggregates/Aggregate.h"
+#include "DysectAPI/Aggregates/DescVar.h"
+#include "DysectAPI/Aggregates/StrAgg.h"
+#include "DysectAPI/Aggregates/CmpAgg.h"
 #include "DysectAPI.h"
 
 using namespace std;
