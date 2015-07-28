@@ -7,6 +7,10 @@ endif
 python_PYTHON = stat_merge_base.py STATmerge.py core_file_merger.py bg_core_backtrace.py
 if ENABLE_GUI
 python_PYTHON += STATGUI.py STATview.py xdot.py STAThelper.py
+if ENABLE_DYSECTAPI
+python_PYTHON += DysectView.py
+bin_SCRIPTS += dysect-view
+endif
 bin_SCRIPTS += STATGUI STATview stat-gui stat-view
 endif
 if ENABLE_STATBENCH

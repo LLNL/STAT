@@ -36,7 +36,13 @@ namespace DysectAPI {
   class TargetVar;
   class Function;
   class Value;
-  
+
+  typedef enum ConditionType {
+    UnknownCondition,
+    DataCondition,
+    SyntheticCondition
+  } ConditionType;
+
   typedef enum ConditionResult {
     Unresolved,
     Resolved,
@@ -56,15 +62,11 @@ namespace DysectAPI {
     Data* dataExpr;
 
     Cond(Data* dataExpr);
-
-    enum ConditionType {
-      UnknownCondition,
-      DataCondition,
-      SyntheticCondition
-    } conditionType;
+    ConditionType conditionType;
 
   public:
     Cond();
+    std::string str();
 
     Cond(ConditionType type);
 
@@ -82,7 +84,7 @@ namespace DysectAPI {
     std::string name;
 
     TargetVar* var;
-    
+
   public:
     DataRef() { }
 
@@ -116,6 +118,7 @@ namespace DysectAPI {
   public:
     Data(std::string expr);
 
+    std::string getExpr();
     static Cond* eval(std::string expr);
     DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
 

@@ -74,6 +74,7 @@ namespace DysectAPI {
     int id;
     int count;
     bool actionPending;
+    std::string stringRepr;
 
     bool getFromByteArray(std::vector<Act*>& aggregates);
 
@@ -82,6 +83,7 @@ namespace DysectAPI {
     Act();
 
   public:
+    std::string str();
     static Act* trace(std::string str);
     static Act* null();
     static Act* totalview();

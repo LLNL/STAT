@@ -31,6 +31,7 @@ using namespace ProcControlAPI;
 //
 
 Location::Location(string locationExpr, bool pendingEnabled) : locationExpr(locationExpr), pendingEnabled(pendingEnabled) {
+  stringRepr = locationExpr;
 }
 
 bool Location::enable() {

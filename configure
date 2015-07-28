@@ -20780,6 +20780,11 @@ if test "$ENABLE_DYSECT" = "yes"
 then
   ac_config_files="$ac_config_files scripts/dysectc"
 
+  if test "$WITH_GUI" = "yes"
+  then
+    ac_config_files="$ac_config_files scripts/dysect-view"
+
+  fi
 fi
 
 ac_config_files="$ac_config_files scripts/stat-core-merger"
@@ -21912,6 +21917,7 @@ do
     "scripts/STATBench") CONFIG_FILES="$CONFIG_FILES scripts/STATBench" ;;
     "scripts/stat-bench") CONFIG_FILES="$CONFIG_FILES scripts/stat-bench" ;;
     "scripts/dysectc") CONFIG_FILES="$CONFIG_FILES scripts/dysectc" ;;
+    "scripts/dysect-view") CONFIG_FILES="$CONFIG_FILES scripts/dysect-view" ;;
     "scripts/stat-core-merger") CONFIG_FILES="$CONFIG_FILES scripts/stat-core-merger" ;;
 
   *) { { $as_echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5

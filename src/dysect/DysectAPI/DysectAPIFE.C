@@ -100,6 +100,8 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
     return ;
   }
 
+  Frontend::createDotFile();
+
   loaded = true;
 }
 

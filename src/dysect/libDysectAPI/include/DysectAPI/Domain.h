@@ -28,7 +28,7 @@ namespace DysectAPI {
   class Group;
   class Domain;
   class Inherit;
-  
+
   namespace Wait {
     enum WaitTime {
       inherit = - 2,
@@ -55,7 +55,7 @@ namespace DysectAPI {
   protected:
     static MRN::Network *network;
     static int upstreamFilterId;
-    
+
     static MPIR_PROCDESC_EXT *processTable;
     static long processTableSize;
 
@@ -83,7 +83,7 @@ namespace DysectAPI {
 
     MRN::Communicator *comm;
     MRN::Stream *stream;
-    
+
     tag_t initTag;
     tag_t initAckTag;
     tag_t exitTag;
@@ -102,6 +102,7 @@ namespace DysectAPI {
 
   public:
 
+    std::string str();
     static tag_t tagToId(tag_t tag);
     static bool addToMap(Domain* dom);
     static std::map<tag_t, Domain*>& getDomainMap();

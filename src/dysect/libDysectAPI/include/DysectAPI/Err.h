@@ -65,7 +65,7 @@ enum DysectVerbosityOptions_t {
 
   public:
     static void init(FILE* estream, FILE* ostream, int verbosityLevel, const char *outDir = NULL, bool useStatOutFp = false);
-    
+
     static void verbose(int line, const char *file, const std::string fmt, ...);
     static DysectErrorCode verbose(int line, const char *file, DysectErrorCode code, const std::string fmt, ...);
     static bool verbose(int line, const char *file, bool result, const std::string fmt, ...);

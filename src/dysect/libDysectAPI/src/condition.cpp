@@ -29,6 +29,34 @@ using namespace ProcControlAPI;
 
 int Synthetic::filterIdCounter = 0;
 
+string Cond::str() {
+  string returnString = "Condition";
+  Data *data = NULL;
+  Synthetic *synthetic = NULL;
+
+  switch (conditionType)
+  {
+    case DataCondition:
+      returnString = "Data(";
+      data = dynamic_cast<Data*>(this);
+      if (data != NULL)
+        returnString += data->getExpr();
+      returnString += ")";
+      break;
+    case SyntheticCondition:
+      returnString = "Synthetic(";
+      synthetic = dynamic_cast<Synthetic*>(this);
+      if (synthetic != NULL)
+        returnString += data->getExpr();
+      returnString += ")";
+      break;
+    default:
+      returnString = "Unknown()";
+      break;
+  }
+  return returnString;
+}
+
 Cond* Data::eval(string expr) {
  Data* dobj = new Data(expr);
 
@@ -85,6 +113,10 @@ Data::Data(string expr) : expr(expr), Cond(this) {
   etree = ExprTree::generate(expr);
 }
 
+string Data::getExpr() {
+  return expr;
+}
+
 bool Data::prepare() {
   DYSECTVERBOSE(true, "Prepare data expression: %s", expr.c_str());
   return true;
@@ -123,7 +155,6 @@ DysectAPI::DysectErrorCode Synthetic::evaluate(ConditionResult& result, Process:
   }
 
   procsIn++;
-  
 
   return OK;
 }

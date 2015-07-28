@@ -29,6 +29,7 @@ using namespace ProcControlAPI;
 // Look-up tables for domain expression resolving
 Group::Group(string groupExpr, long waitTime, bool lblocking) : groupExpr(groupExpr), 
                                                 Domain(waitTime, lblocking, GroupDomain) {
+  domainType = GroupDomain;
 }
 
 

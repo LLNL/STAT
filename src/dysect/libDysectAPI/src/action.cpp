@@ -35,6 +35,55 @@ using namespace DysectAPI;
 int DysectAPI::Act::aggregateIdCounter = 0;
 //map<int, DysectAPI::Act*> DysectAPI::Act::aggregateMap;
 
+string Act::str() {
+  string returnString = "";
+
+  switch(type) {
+    case unknownAggType:
+      returnString += "Unknown";
+      break;
+    case traceType:
+      returnString += "Trace";
+      break;
+    case statType:
+      returnString += "STAT";
+      break;
+    case detachAllType:
+      returnString += "Detach All";
+      break;
+    case stackTraceType:
+      returnString += "Stack Trace";
+      break;
+    case detachType:
+      returnString += "Detach";
+      break;
+    case totalviewType:
+      returnString += "TotalView";
+      break;
+    case depositCoreType:
+      returnString += "Deposit Core";
+      break;
+    case loadLibraryType:
+      returnString += "Load Library";
+      break;
+    case writeModuleVariableType:
+      returnString += "Write Module Variable";
+      break;
+    case signalType:
+      returnString += "Signal";
+      break;
+    case irpcType:
+      returnString += "Irpc";
+      break;
+    case nullType:
+      returnString += "No Op";
+      break;
+  }
+  returnString += "(";
+  returnString += stringRepr;
+  returnString += ")";
+  return returnString;
+}
 
 DysectAPI::Act* Act::loadLibrary(string library) {
   return new LoadLibrary(library);
@@ -121,6 +170,9 @@ bool LoadLibrary::prepare() {
 
 WriteModuleVariable::WriteModuleVariable(string libraryPath, string variableName, void *value, int size) : variableName(variableName), libraryPath(libraryPath), value(value), size(size) {
   type = writeModuleVariableType;
+  stringRepr += libraryPath;
+  stringRepr += ", ";
+  stringRepr += variableName;
 }
 
 bool WriteModuleVariable::prepare() {
@@ -130,6 +182,9 @@ bool WriteModuleVariable::prepare() {
 
 Irpc::Irpc(string libraryPath, string functionName, void *value, int size) : functionName(functionName), libraryPath(libraryPath), value(value), size(size) {
   type = irpcType;
+  stringRepr += libraryPath;
+  stringRepr += ", ";
+  stringRepr += functionName;
 }
 
 bool Irpc::prepare() {
@@ -193,6 +248,12 @@ bool Totalview::findAggregates() {
 Stat::Stat(AggScope scope, int traces, int frequency, bool threads) : traces(traces), frequency(frequency), threads(threads) {
   type = statType;
   lscope = scope;
+  char buf[1024];
+  snprintf(buf, 1024, "%d, %d,", traces, frequency);
+  stringRepr += buf;
+  if (!threads)
+    stringRepr += " no";
+  stringRepr += " threads";
 }
 
 bool Stat::prepare() {
@@ -212,11 +273,12 @@ bool StackTrace::prepare() {
 Trace::Trace(string str) : str(str) {
   type = traceType;
   lscope = SatisfyingProcs;
+  stringRepr += str;
 }
 
 
 bool Trace::prepare() {
-  
+
   DYSECTVERBOSE(true, "Preparing trace message: '%s'", str.c_str());
 
   findAggregates();
@@ -236,7 +298,7 @@ bool Trace::findAggregates() {
     aggName,
     dataExpr
   } parser_state = text;
-  
+
   string aggNameStr = "";
   string dataExprStr = "";
   string nonAggStr = "";
@@ -248,7 +310,7 @@ bool Trace::findAggregates() {
       if(parser_state != text) {
         return DYSECTWARN(false, "Trace string parser error: '@' denotes aggregate function");
       }
-      
+
       strParts.push_back(pair<bool, string>(true, string(nonAggStr)));
       nonAggStr = "";
 
@@ -261,7 +323,7 @@ bool Trace::findAggregates() {
       if(aggNameStr.size() <= 0) {
         return DYSECTWARN(false, "Aggregate function name cannot be empty");
       }
-      
+
       dataExprStr = "";
       parser_state = dataExpr;
       continue;
@@ -271,14 +333,14 @@ bool Trace::findAggregates() {
     }
 
     if((parser_state == dataExpr) && (c == ')')) {
-      
+
       if(aggNameStr.size() <= 0) {
         return DYSECTWARN(false, "Aggregate function name cannot be empty");
       }
 
-      strParts.push_back(pair<bool, string>(false, "")); 
+      strParts.push_back(pair<bool, string>(false, ""));
       foundAggregates.push_back(pair<string, string>(string(aggNameStr), string(dataExprStr)));
-      
+
       parser_state = text;
       continue;
 
@@ -293,11 +355,11 @@ bool Trace::findAggregates() {
   }
 
   // Deal with left over
-  if(nonAggStr.size() >= 1) { 
+  if(nonAggStr.size() >= 1) {
     strParts.push_back(pair<bool, string>(true, string(nonAggStr)));
   }
 
-  // Create aggregate function instances 
+  // Create aggregate function instances
   DYSECTVERBOSE(true, "Found aggregates: ");
   vector< pair<string, string> >::iterator aggIter = foundAggregates.begin();
   for(int i = 0; aggIter != foundAggregates.end(); aggIter++, i++) {

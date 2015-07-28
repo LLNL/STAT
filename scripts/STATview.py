@@ -127,7 +127,7 @@ next_label_id = -1
 #
 #  \n
 def get_task_list(label):
-    if label == '':
+    if label == '' or label == None:
         return []
     if label[0] != '[':
         # this is just a count and representative
@@ -150,7 +150,7 @@ def get_task_list(label):
 #
 #  \n
 def get_num_tasks(label):
-    if label == '':
+    if label == '' or label == None:
         return 0
     ret = 0
     if label[0] != '[':
@@ -2551,6 +2551,8 @@ class STATXDotParser(xdot.XDotParser):
         node = self.node_by_name[new_id]
         label = attrs.get('originallabel', None)
         if label == None:
+            if not "label" in attrs:
+                return False
             label = attrs["label"]
         stat_node = STATNode(node.x, node.y, node.x1, node.y1, node.x2, node.y2, node.shapes, label)
         stat_node.node_name = new_id
@@ -2571,7 +2573,7 @@ class STATXDotParser(xdot.XDotParser):
         stat_edge.dst.in_edge = stat_edge
         new_dst_label = attrs.get('originallabel', None)
         if new_dst_label == None:
-            new_dst_label = attrs["label"]
+            new_dst_label = label# attrs["label"]
         if src_id == '0':
             self.node_by_name[new_src_id].edge_label = ''
             self.node_by_name[new_src_id].num_tasks = get_num_tasks(new_dst_label)

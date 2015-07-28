@@ -32,21 +32,24 @@ namespace DysectAPI {
   class Function;
   class Frame;
   class CodeLocation;
-  
+
     class Event {
     friend class Probe;
-  
+
+
   protected:
+    std::string stringRepr;
     Probe* owner;
 
     Event* parent;
 
-    std::map< Dyninst::ProcControlAPI::Process::const_ptr, 
+    std::map< Dyninst::ProcControlAPI::Process::const_ptr,
               std::set<Dyninst::ProcControlAPI::Thread::const_ptr> > triggeredMap;
 
     Event();
 
   public:
+    std::string str();
     static Event* And(Event* first, Event* second);
     static Event* Or (Event* first, Event* second);
     static Event* Not(Event* ev);
@@ -65,10 +68,10 @@ namespace DysectAPI {
     virtual void setOwner(Probe* probe) = 0;
 
     Probe* getOwner();
-    virtual void triggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+    virtual void triggered(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread);
 
-    virtual bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+    virtual bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process,
                               Dyninst::ProcControlAPI::Thread::const_ptr thread);
 
 
@@ -104,13 +107,13 @@ namespace DysectAPI {
     void setOwner(Probe* probe) { owner = probe; first->setOwner(probe); if(relation != NotRel) {second->setOwner(probe); } }
 
     CombinedEvent(Event* first, Event* second, EventRelation relation);
-    
-    void triggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+
+    void triggered(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread);
 
-    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process,
                       Dyninst::ProcControlAPI::Thread::const_ptr thread);
-    
+
     bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process);
 
   };
@@ -185,9 +188,9 @@ namespace DysectAPI {
     int getTimeout();
 
 
-    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process,
                       Dyninst::ProcControlAPI::Thread::const_ptr thread);
-    
+
     bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process);
 
 

@@ -31,8 +31,8 @@ int main (int argc, char *argv[])
     MPI_Request reqs[2];
     MPI_Status stats[2];
 
-    //int timeout = 3;
-    //sleep(timeout);
+    int timeout = 3;
+    sleep(timeout);
 
     MPI_Init(&argc,&argv);
 

@@ -33,6 +33,9 @@ if HAVE_PYGMENTS:
     from STAThelper import STATviewFormatter
 import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO, run_gtk_main_loop
+
+import DysectView
+from DysectView import DysectDotWindow
 import sys
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
@@ -85,10 +88,12 @@ class STATGUI(STATDotWindow):
         self.properties_window = None
         self.proctab_file_path = None
         self.proctab = None
+        self.marked_line_number = None
         self.attached = False
         self.reattach = False
         self.serial_process_list = None
         self.serial_attach = False
+        self.visualizer_window = None
         self.sample_task_list = ['Sample Stack Traces', 'Gather Stack Traces', 'Render Stack Traces']
         self.attach_task_list = ['Launch Daemons', 'Connect to Daemons', 'Attach to Application']
         self.attach_task_list += self.sample_task_list
@@ -139,6 +144,7 @@ class STATGUI(STATDotWindow):
                    'Run Time Before Sample (sec)':     0,
                    'Enable DySectAPI':                 False,
                    'DySectAPI Session':                '',
+                   'DySectAPI Show Default Probes':    False,
                    'Sample Type':                      'function only',
                    'Edge Type':                        'full list',
                    'DDT Path':                         STAThelper.which('ddt'),
@@ -1007,6 +1013,7 @@ host[1-10,12,15-20];otherhost[30]
 
     def destroy_dysect_dialog(self, dialog):
         self.dysect_dialog = None
+        self.close_visualizer(None)
         self.on_detach(dialog)
 
     def update_dysect_active_bar(self):
@@ -1014,6 +1021,44 @@ host[1-10,12,15-20];otherhost[30]
         if self.dysect_timer != None:
             self.dysect_progress_bar.pulse()
         return True
+
+    def close_visualizer(self, action):
+        if self.visualizer_window:
+            self.visualizer_window.destroy()
+            self.visualizer_window = None
+
+    def open_visualizer(self):
+        """ Open a visualization window """
+        DysectView.show_default_probes = self.options["DySectAPI Show Default Probes"]
+        if self.visualizer_window == None:
+            if hasattr(self, "out_dir"):
+                self.visualizer_window = DysectDotWindow(os.path.join(self.out_dir, 'dysect_session.dot'), self)
+            elif self.STAT != None:
+                self.visualizer_window = DysectDotWindow(os.path.join(self.STAT.getOutDir(), 'dysect_session.dot'), self)
+            else:
+                sys.stderr.write('could not determine dysect session dot file path\n')
+                return False
+            self.visualizer_window.connect('destroy', self.close_visualizer)
+        else:
+            self.visualizer_window.present()
+
+    def scroll_probe_window(self, filename, line):
+        if line == None:
+            return
+        (session_file_directory, session_filename) = os.path.split(self.options['DySectAPI Session'])
+        if filename != session_filename and filename != self.options['DySectAPI Session']:
+            return
+        text_buffer = self.probe_text_view.get_buffer()
+        if text_buffer == None:
+            return
+        if self.marked_line_number != None:
+            (marked_line_start, marked_line_end) = self.marked_line_number
+            text_buffer.remove_tag_by_name("bold_tag", marked_line_start, marked_line_end)
+        probe_line_start = text_buffer.get_iter_at_line(int(line) - 1)
+        self.probe_text_view.scroll_to_iter(probe_line_start, 0.0, True, 0.0, 0.7)
+        probe_line_end = text_buffer.get_iter_at_line_offset(int(line) - 1, self.line_number_width + 2)
+        text_buffer.apply_tag_by_name("bold_tag", probe_line_start, probe_line_end)
+        self.marked_line_number = (probe_line_start, probe_line_end)
 
     def stop_dysect_session(self, button):
         self.dysect_session = False
@@ -1578,7 +1623,7 @@ host[1-10,12,15-20];otherhost[30]
         self.dysect_session = True
 
         self.dysect_dialog = gtk.Dialog("DySectAPI Console", self)
-        self.dysect_dialog.set_default_size(1048, 600)
+        self.dysect_dialog.set_default_size(1048, 630)
         self.dysect_dialog.set_destroy_with_parent(True)
         self.dysect_dialog.connect('destroy', lambda w: self.destroy_dysect_dialog(w))
         vpaned = gtk.VPaned()
@@ -1586,6 +1631,7 @@ host[1-10,12,15-20];otherhost[30]
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         text_view = gtk.TextView()
+        self.probe_text_view = text_view
         text_view.set_editable(False)
         text_view.set_cursor_visible(False)
         text_view_buffer = text_view.get_buffer()
@@ -1602,6 +1648,7 @@ host[1-10,12,15-20];otherhost[30]
                 lines = STAThelper.pygments_lines
                 iterator = text_view_buffer.get_iter_at_offset(0)
                 width = len(str(len(lines)))
+                self.line_number_width = width
                 for i, line in enumerate(lines):
                     source_string = "%0*d| " % (width, i + 1)
                     text_view_buffer.insert_with_tags_by_name(iterator, source_string, "monospace")
@@ -1628,8 +1675,8 @@ host[1-10,12,15-20];otherhost[30]
         self.separator = gtk.HSeparator()
         self.dysect_dialog.vbox.pack_start(self.separator, False, True, 5)
 
-        out_dir = self.STAT.getOutDir()
-        dysect_outfile = os.path.join(out_dir, 'dysect_output.txt')
+        self.out_dir = self.STAT.getOutDir()
+        dysect_outfile = os.path.join(self.out_dir, 'dysect_output.txt')
         my_frame = gtk.Frame("Output %s:" % dysect_outfile)
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -1646,6 +1693,13 @@ host[1-10,12,15-20];otherhost[30]
         self.dysect_dialog.vbox.pack_start(vpaned, True, True, 5)
         self.separator = gtk.HSeparator()
         self.dysect_dialog.vbox.pack_start(self.separator, False, True, 5)
+
+        # Visualization button
+        vis_box = gtk.HButtonBox()
+        vis_button = gtk.Button("_Visualize Probe Tree")
+        vis_button.connect("clicked", lambda w: self.open_visualizer())
+        vis_box.pack_end(vis_button, False, True, 5)
+
         box2 = gtk.HButtonBox()
         stop_button = gtk.Button(stock=gtk.STOCK_STOP)
         stop_button.connect("clicked", lambda w: self.stop_dysect_session(w))
@@ -1660,6 +1714,7 @@ host[1-10,12,15-20];otherhost[30]
         dyysect_ok_button.set_sensitive(False)
         box2.pack_end(dyysect_ok_button, False, True, 5)
         self.dysect_dialog.vbox.pack_end(box2, False, False, 0)
+        self.dysect_dialog.vbox.pack_end(vis_box, False, False, 5)
         self.dysect_dialog.show_all()
 
         if not os.path.exists(dysect_outfile):
@@ -1670,15 +1725,15 @@ host[1-10,12,15-20];otherhost[30]
             prev = ''
             dot_file_list = []
             break_next_iter = False
-            while 1 and self.dysect_session is True:
+            while 1 and self.dysect_session is True and self.STAT != None:
                 filename = self.STAT.getLastDotFilename()
                 if filename != "NULL" and filename != prev:
                     prev = filename
-                    for file in os.listdir(out_dir):
-                        if file.find('.dot') == -1 or file in dot_file_list:
+                    for file in os.listdir(self.out_dir):
+                        if file.find('.dot') == -1 or file in dot_file_list or file == "dysect_session.dot":
                             continue
                         dot_file_list.append(file)
-                        filename = os.path.join(out_dir, file)
+                        filename = os.path.join(self.out_dir, file)
                         if len(dot_file_list) > 1:
                             page = self.notebook.get_current_page()
                             self.create_new_tab(page + 1)
@@ -1699,7 +1754,7 @@ host[1-10,12,15-20];otherhost[30]
                 run_gtk_main_loop()
                 if break_next_iter is True:
                     break
-                if self.dysect_session:
+                if self.dysect_session and self.STAT:
                     ret = self.STAT.dysectListen(False)
                     if ret != DysectAPI_SessionCont and ret != STAT_PENDING_ACK:
                         break_next_iter = True

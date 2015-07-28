@@ -159,6 +159,10 @@ fi
 if test "$ENABLE_DYSECT" = "yes"
 then
   AC_CONFIG_FILES([scripts/dysectc])
+  if test "$WITH_GUI" = "yes"
+  then
+    AC_CONFIG_FILES([scripts/dysect-view])
+  fi
 fi
   
 AC_CONFIG_FILES([scripts/stat-core-merger])
