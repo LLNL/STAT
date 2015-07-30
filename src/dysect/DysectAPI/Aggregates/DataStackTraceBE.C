@@ -72,6 +72,7 @@ bool DataStackTrace::collect(void* process, void* thread) {
     return false;
   }
 
+  // Walk stack and read values
   string trace = "";
   const int bufSize = 512;
   char buf[bufSize];
@@ -104,18 +105,129 @@ bool DataStackTrace::collect(void* process, void* thread) {
               trace.append("\n      ");
             }
 
-            trace.append(parameters[curParm]->getType()->getName());
-            trace.append(" ");
-            trace.append(parameters[curParm]->getName());
+	    string& typeName(parameters[curParm]->getType()->getName());
+	    if (typeName.compare("") == 0) {
+	      trace.append("*unknown* ");
+	    } else {
+	      trace.append(typeName);
+	      trace.append(" ");
+	    }
+	    
+	    trace.append(parameters[curParm]->getName());
 
-            //delete parameters[curParm];
+	    // Try to read and print the variable value
+	    char buffer[64];
+	    Type* type = parameters[curParm]->getType();
+	    if (type->getSize() <= 64) {
+	      if (glvv_Success == getLocalVariableValue(parameters[curParm],
+							stackWalk, i,
+							&buffer, 64)) {
+		if (type->getDataClass() == dataPointer) {
+		  void** val = (void**)buffer;
+
+		  trace.append(" := ");
+		  snprintf(buf, bufSize, "%p", *val);
+		  trace.append(buf);
+		} else if (!strcmp(type->getName().c_str(), "int")) {
+		  int* val = (int*)buffer;
+
+		  trace.append(" := ");
+		  snprintf(buf, bufSize, "%d (0x%08X)", *val, *val);
+		  trace.append(buf);
+		} else if (!strcmp(type->getName().c_str(), "long")) {
+		  long* val = (long*)buffer;
+
+		  trace.append(" := ");
+		  snprintf(buf, bufSize, "%ld (%llx)", *val, *val);
+		  trace.append(buf);
+		} else if (!strcmp(type->getName().c_str(), "float")) {
+		  float* val = (float*)buffer;
+
+		  trace.append(" := ");
+		  snprintf(buf, bufSize, "%f", *val);
+		  trace.append(buf);
+		} else if (!strcmp(type->getName().c_str(), "double")) {
+		  double* val = (double*)buffer;
+
+		  trace.append(" := ");
+		  snprintf(buf, bufSize, "%f", *val);
+		  trace.append(buf);
+		}
+	      }
+	    }
           }
 
-          trace.append("\n\n");
+          trace.append("\n");
         }
       }
 
-      //delete function;
+      // Find the arguments to the function
+      vector<SymtabAPI::localVar*> locals;
+      if (function->getLocalVariables(locals)) {
+        if (locals.size() != 0) {
+          for (int curLocal = 0; curLocal < locals.size(); curLocal++) {
+            if (curLocal == 0) {
+              trace.append("\nLocals: ");
+            } else {
+              trace.append("\n        ");
+            }
+
+	    string& typeName(locals[curLocal]->getType()->getName());
+	    if (typeName.compare("") == 0) {
+	      trace.append("*unknown* ");
+	    } else {
+	      trace.append(typeName);
+	      trace.append(" ");
+	    }
+	    
+            trace.append(locals[curLocal]->getName());
+
+	    // Try to read and print the variable value
+	    char buffer[64];
+	    Type* type = locals[curLocal]->getType();
+	    if (type->getSize() <= 64) {
+	      if (glvv_Success == getLocalVariableValue(locals[curLocal],
+							stackWalk, i,
+							&buffer, 64)) {
+		if (type->getDataClass() == dataPointer) {
+		  void** val = (void**)buffer;
+
+		  trace.append(" := ");
+		  snprintf(buf, bufSize, "%p", *val);
+		  trace.append(buf);
+		} else if (!strcmp(type->getName().c_str(), "int")) {
+		  int* val = (int*)buffer;
+
+		  trace.append(" := ");
+		  snprintf(buf, bufSize, "%d (0x%08X)", *val, *val);
+		  trace.append(buf);
+		} else if (!strcmp(type->getName().c_str(), "long")) {
+		  long* val = (long*)buffer;
+
+		  trace.append(" := ");
+		  snprintf(buf, bufSize, "%ld (%llx)", *val, *val);
+		  trace.append(buf);
+		} else if (!strcmp(type->getName().c_str(), "float")) {
+		  float* val = (float*)buffer;
+
+		  trace.append(" := ");
+		  snprintf(buf, bufSize, "%f", *val);
+		  trace.append(buf);
+		} else if (!strcmp(type->getName().c_str(), "double")) {
+		  double* val = (double*)buffer;
+
+		  trace.append(" := ");
+		  snprintf(buf, bufSize, "%f", *val);
+		  trace.append(buf);
+		}
+
+	      }
+	    }
+          }
+	  
+          trace.append("\n\n");
+        }
+      }
     }
   }
 

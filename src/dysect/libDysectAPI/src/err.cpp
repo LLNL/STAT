@@ -302,7 +302,7 @@ void Err::write(const std::string fmt, va_list args, enum msgType type) {
     struct tm *localTime = localtime(&currentTime);
     const char *timeFormat = "%b %d %T";
 
-    const int bufSize = 512;
+    const int bufSize = 2048;
 
     char timeString[bufSize];
     char strBuf[bufSize];

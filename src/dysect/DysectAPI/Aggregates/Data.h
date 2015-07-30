@@ -139,12 +139,11 @@ namespace DysectAPI {
     char *getFmt();
 
     Value& operator=(Value& rhs);
-    Value operator+(Value& rhs);
     bool operator<(Value &rhs);
     bool operator>(Value &rhs);
+    Value operator+(Value& rhs);
     bool operator<=(Value& rhs);
     bool operator>=(Value& rhs);
-
   private:
     enum content_t content;
   };

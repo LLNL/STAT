@@ -103,6 +103,7 @@ Max::Max(std::string fmt, ...) : CmpAgg(maxAgg, fmt) {
   getParams(fmt, params_, args_);
 }
 
+
 First::First(std::string fmt, ...) : CmpAgg(firstAgg, fmt) {
   va_list args;
   va_start(args, fmt);

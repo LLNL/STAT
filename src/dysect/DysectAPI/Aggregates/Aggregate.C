@@ -197,9 +197,6 @@ int AggregateFunction::getAggregate(char *p, AggregateFunction*& aggFunc) {
     case tracesAgg:
       aggFunc = new StackTraces(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
       break;
-    case dataTracesAgg:
-      aggFunc = new DataStackTrace(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
-      break;
     case rankListAgg:
       aggFunc = new RankListAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
       break;
@@ -211,6 +208,9 @@ int AggregateFunction::getAggregate(char *p, AggregateFunction*& aggFunc) {
       break;
     case rankBucketAgg:
       aggFunc = new RankBucketAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
+      break;
+    case dataTracesAgg:
+      aggFunc = new DataStackTrace(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
       break;
     default:
       fprintf(stderr, "Unknown aggregate '%d'\n", ptr->type);
@@ -253,9 +253,6 @@ bool Agg::aggregateIdFromName(std::string name, int& id) {
   } else if(name.compare("stackTraces") == 0) {
     id = tracesAgg;
     found = true;
-  } else if(name.compare("fullStackTraces") == 0) {
-    id = dataTracesAgg;
-    found = true;
   } else if(name.compare("desc") == 0) {
     id = descAgg;
     found = true;
@@ -270,6 +267,9 @@ bool Agg::aggregateIdFromName(std::string name, int& id) {
     found = true;
   } else if(name.compare("rankBucket") == 0) {
     id = rankBucketAgg;
+    found = true;
+  } else if(name.compare("fullStackTraces") == 0) {
+    id = dataTracesAgg;
     found = true;
   }
 

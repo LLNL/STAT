@@ -21,7 +21,8 @@ libdysect_sources = action.cpp \
                     default_probes.cpp \
                     group.cpp \
                     err.cpp \
-                    expr.cpp
+                    expr.cpp 
+##                    TraceAPI.cpp 
 
 
 libDysectFE_la_SOURCES = $(libdysect_sources) location_fe.cpp frontend.cpp group_fe.cpp probe_fe.cpp expr_fe.cpp action_fe.cpp event_fe.cpp domain_fe.cpp time_fe.cpp

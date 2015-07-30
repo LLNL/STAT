@@ -371,6 +371,41 @@ bool StackTrace::finishBE(struct packet*& p, int& len) {
   return false;
 }
 
+
+#ifdef WIERDBUG
+bool StartTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "StartTrace::collect");
+
+  return true;
+}
+
+bool StartTrace::finishFE(int count) {
+  DYSECTVERBOSE(true, "StartTrace::finishFE %d", count);
+}
+
+bool StartTrace::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+bool StopTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "StopTrace::collect");
+
+  return true;
+}
+
+bool StopTrace::finishFE(int count) {
+  DYSECTVERBOSE(true, "StopTrace::finishFE %d", count);
+}
+
+bool StopTrace::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+#endif
+
 bool FullStackTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
 

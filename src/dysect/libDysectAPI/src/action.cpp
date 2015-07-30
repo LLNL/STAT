@@ -145,6 +145,15 @@ DysectAPI::Act* Act::fullStackTrace() {
   return new FullStackTrace();
 }
 
+#ifdef WIERDBUG
+DysectAPI::Act* Act::startTrace(DataTrace* trace) {
+  return new StartTrace(trace);
+}
+DysectAPI::Act* Act::stopTrace(DataTrace* trace) {
+  return new StopTrace(trace);
+}
+#endif
+
 DysectAPI::Act* Act::detachAll(AggScope scope) {
   return new DetachAll(scope);
 }
@@ -273,6 +282,24 @@ bool StackTrace::prepare() {
   traces = new StackTraces();
   return true;
 }
+
+#ifdef WIERDBUG
+StartTrace::StartTrace(DataTrace* trace) : trace(trace) {
+
+}
+
+bool StartTrace::prepare() {
+  return true;
+}
+
+StopTrace::StopTrace(DataTrace* trace) : trace(trace) {
+
+}
+
+bool StopTrace::prepare() {
+  return true;
+}
+#endif
 
 FullStackTrace::FullStackTrace() {
   type = fullStackTraceType;
@@ -415,9 +442,6 @@ bool Trace::findAggregates() {
       case tracesAgg:
         aggFunc = new StackTraces();
       break;
-      case dataTracesAgg:
-        aggFunc = new DataStackTrace();
-      break;
       case descAgg:
         aggFunc = new DescribeVariable(curDataExpr);
       break;
@@ -432,6 +456,9 @@ bool Trace::findAggregates() {
       break;
       case rankBucketAgg:
         aggFunc = new RankBucketAgg(owner, curDataExpr.c_str());
+      break;
+      case dataTracesAgg:
+        aggFunc = new DataStackTrace();
       break;
       default:
         DYSECTWARN(false, "Unsupported aggregate function '%s'", curAggName.c_str());

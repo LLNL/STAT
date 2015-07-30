@@ -9,7 +9,7 @@ dysectapi_includes = -I$(abs_top_srcdir)/src -I$(abs_top_srcdir)/src/dysect -I$(
 dysectapi_sources = DysectAPI.h DysectAPI.C
 dysectapi_aggregate_sources = Aggregates/Data.C Aggregates/Aggregate.C Aggregates/Location.C Aggregates/CmpAgg.C Aggregates/DescVar.C Aggregates/StrAgg.C Aggregates/RankListAgg.C Aggregates/TimeListAgg.C Aggregates/BucketAgg.C Aggregates/RankBucketAgg.C Aggregates/RankBitmap.C Aggregates/DataStackTrace.C
 
-libDysectAPIFE_la_SOURCES = DysectAPIFE.C DysectAPIFE.h Aggregates/LocationFE.C Aggregates/DescVarFE.C Aggregates/CmpAggFE.C Aggregates/RankListAggFE.C Aggregates/TimeListAggFE.C Aggregates/BucketAggFE.C Aggregates/RankBucketAggFE.C Aggregates/DataStackTraceFE.C $(dysectapi_sources) $(dysectapi_aggregate_sources)
+libDysectAPIFE_la_SOURCES = DysectAPIFE.C DysectAPIFE.h Aggregates/LocationFE.C Aggregates/DescVarFE.C Aggregates/CmpAggFE.C Aggregates/RankListAggFE.C  $(dysectapi_sources) $(dysectapi_aggregate_sources) Aggregates/TimeListAggFE.C Aggregates/BucketAggFE.C Aggregates/RankBucketAggFE.C Aggregates/DataStackTraceFE.C
 libDysectAPIFE_la_CPPFLAGS = -g -O2 -fPIC $(dysectapi_includes) -D__DYSECT_IS_FRONTEND
 libDysectAPIFE_la_LDFLAGS = --export-dynamic
 
@@ -17,7 +17,7 @@ libDysectAPIBE_la_SOURCES = DysectAPIBE.C DysectAPIBE.h ProcWait.C ProcWait.h Pr
 libDysectAPIBE_la_CPPFLAGS = -g -O2 -fPIC $(dysectapi_includes) -D__DYSECT_IS_BACKEND
 libDysectAPIBE_la_LDFLAGS = --export-dynamic -lrt
 
-libDysectAPIFD_la_SOURCES = DysectAPIFilter.C DysectAPIFilter.h Aggregates/LocationFE.C Aggregates/DescVarCP.C Aggregates/CmpAggFE.C Aggregates/RankListAggFE.C Aggregates/TimeListAggFE.C Aggregates/BucketAggFE.C Aggregates/RankBucketAggFE.C Aggregates/DataStackTraceFE.C $(dysectapi_aggregate_sources)
+libDysectAPIFD_la_SOURCES = DysectAPIFilter.C DysectAPIFilter.h Aggregates/LocationFE.C Aggregates/DescVarCP.C Aggregates/CmpAggFE.C Aggregates/RankListAggFE.C $(dysectapi_aggregate_sources) Aggregates/TimeListAggFE.C  Aggregates/BucketAggFE.C Aggregates/RankBucketAggFE.C Aggregates/DataStackTraceFE.C
 libDysectAPIFD_la_CPPFLAGS = -g -O2 -fPIC $(dysectapi_includes)
 libDysectAPIFD_la_LDFLAGS = --export-dynamic -lrt
 

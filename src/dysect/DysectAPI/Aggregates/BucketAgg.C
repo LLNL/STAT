@@ -17,7 +17,11 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include "DysectAPI/Aggregates/Aggregate.h"
+#include <cmath>
+
+#ifdef TOP_BUG
 #include "DysectAPI.h"
+#endif
 
 using namespace std;
 using namespace DysectAPI;
@@ -35,10 +39,11 @@ BucketAgg::BucketAgg(Probe* owner, string description) : AggregateFunction(owner
   type = bucketAgg;
 
   if (!parseDescription(description)) {
+#if TOP_BUG
     DYSECTWARN(false, "Unknown bucket description: '%s'", description.c_str());
+#endif
   }
 }
-
 bool BucketAgg::parseDescription(string description) {
   // The format of descritions are variableName,rangeStart:step:rangeEnd
   const char* desc = description.c_str();
@@ -71,25 +76,37 @@ bool BucketAgg::parseDescription(string description) {
 
   // Parse the bucket range start
   if (!parseNumber(description, curPos, rangeStart) || desc[curPos] != ':') {
+#if TOP_BUG
     return DYSECTWARN(false, "Invalid range start in '%s'", description.c_str());
+#endif
+    return false;
   }
   curPos += 1;
 
   // Parse the bucket range start
   if (!parseNumber(description, curPos, stepSize) || desc[curPos] != ':') {
+#if TOP_BUG
     return DYSECTWARN(false, "Invalid stepSize in '%s'", description.c_str());
+#endif
+    return false;
   }
   curPos += 1;
 
   // Parse the bucket range start
   if (!parseNumber(description, curPos, rangeEnd) || desc[curPos] != 0) {
+#if TOP_BUG
     return DYSECTWARN(false, "Invalid range end in '%s'", description.c_str());
+#endif
+    return false;
   }
 
   // The types must match
   if ((rangeStart.getType() != rangeEnd.getType()) ||
       (rangeStart.getType() != stepSize.getType())) {
+#if TOP_BUG
     return DYSECTWARN(false, "The range types does not match in '%s'", description.c_str());
+#endif
+    return false;
   }
 
   // Calculate the number of buckets
@@ -120,9 +137,11 @@ bool BucketAgg::parseDescription(string description) {
   stepSize.getStr(stepSizeStr);
   rangeEnd.getStr(rangeEndStr);
 
+#if TOP_BUG
   DYSECTVERBOSE(false, "The variable %s, will be placed in %d buckets by %s:%s:%s", 
        variableName.c_str(), bucketCount, rangeStartStr.c_str(), stepSizeStr.c_str(), rangeEndStr.c_str());
-
+#endif
+  
   return true;
 }
 
@@ -365,7 +384,7 @@ int BucketAgg::getBucketFromValue(Value& val) {
     long value = val.asLong();
     long lRangeStart = rangeStart.asLong();
     long lStepSize   = stepSize.asLong();
-
+    
     return (int)((value - lRangeStart) / lStepSize);
 
   } else if (val.isDoubleLike()) {
@@ -376,8 +395,10 @@ int BucketAgg::getBucketFromValue(Value& val) {
     return (int)((value - dRangeStart) / dStepSize);
 
   } else {
+#if TOP_BUG
     DYSECTWARN("Invalid value type cannot be placed in bucket");
-
+#endif
+    
     return 0;
   }
 }

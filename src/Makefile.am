@@ -15,6 +15,7 @@ stat_fe_ldadd_add_dysectapi = @LIBDYSECTAPIFE@ @LIBDYSECTFE@
 stat_be_ldadd_add_dysectapi = @LIBDYSECTAPIBE@ @LIBDYSECTBE@
 stat_fd_ldadd_add_dysectapi = @LIBDYSECTAPIFD@
 stat_ldflags_add_dysectapi = -L@LIBDYSECTAPILOC@ -L@LIBDYSECTLOC@
+##-L/collab/usr/global/tools/dyninst/stackwalker/chaos_5_x86_64_ib/sw8.2-1/lib
 endif
 
 if ENABLE_STATBENCH

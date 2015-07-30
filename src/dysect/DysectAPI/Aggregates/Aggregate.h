@@ -24,24 +24,24 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 enum agg_type {
   minAgg = 1,
   maxAgg = 2,
-  // Dummy aggregate
-  firstAgg = 3,
-  lastAgg = 4,
-  timeListAgg = 5,
-  bucketAgg = 6,
-  rankBucketAgg = 7,
   // String aggregates
-  funcLocAgg = 8,
-  fileLocAgg = 9,
-  paramNamesAgg = 10,
-  tracesAgg = 11,
-  dataTracesAgg = 12,
-  staticStrAgg = 13,
+  funcLocAgg = 3,
+  fileLocAgg = 4,
+  paramNamesAgg = 5,
+  tracesAgg = 6,
+  staticStrAgg = 7,
 
   // Folds to aggregates
-  descAgg = 14,
+  descAgg = 8,
+  rankListAgg = 9,
 
-  rankListAgg = 15
+  // Dummy aggregate
+  firstAgg = 10,
+  lastAgg = 11,
+  bucketAgg = 13,
+  timeListAgg = 12,
+  rankBucketAgg = 14,
+  dataTracesAgg = 15
 };
 
 #include <typeinfo>
@@ -59,13 +59,14 @@ enum agg_type {
 #include "DysectAPI/Aggregates/CmpAgg.h"
 #include "DysectAPI/Aggregates/StrAgg.h"
 #include "DysectAPI/Aggregates/RankListAgg.h"
-#include "DysectAPI/Aggregates/TimeListAgg.h"
-#include "DysectAPI/Aggregates/BucketAgg.h"
-#include "DysectAPI/Aggregates/RankBucketAgg.h"
 #include "DysectAPI/Aggregates/Location.h"
-#include "DysectAPI/Aggregates/DataStackTrace.h"
 #include "DysectAPI/Aggregates/DescVar.h"
 #include "DysectAPI/Aggregates/Packet.h"
+
+#include "DysectAPI/Aggregates/BucketAgg.h"
+#include "DysectAPI/Aggregates/TimeListAgg.h"
+#include "DysectAPI/Aggregates/RankBucketAgg.h"
+#include "DysectAPI/Aggregates/DataStackTrace.h"
 
 namespace DysectAPI {
   class Agg {

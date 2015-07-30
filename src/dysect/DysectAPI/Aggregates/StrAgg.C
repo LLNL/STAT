@@ -244,7 +244,7 @@ bool StrAgg::clear() {
 }
 
 bool StrAgg::getStr(string& str) {
-  const int bufSize = 512;
+  const int bufSize = 1024;
   char buf[bufSize];
 
   map<string, int>::iterator countMapIter;

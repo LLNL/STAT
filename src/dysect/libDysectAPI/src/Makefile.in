@@ -349,7 +349,7 @@ libdysect_sources = action.cpp \
                     default_probes.cpp \
                     group.cpp \
                     err.cpp \
-                    expr.cpp
+                    expr.cpp 
 
 libDysectFE_la_SOURCES = $(libdysect_sources) location_fe.cpp frontend.cpp group_fe.cpp probe_fe.cpp expr_fe.cpp action_fe.cpp event_fe.cpp domain_fe.cpp time_fe.cpp
 libDysectFE_la_CPPFLAGS = -g -O2 -fPIC $(libdysect_includes) -D__DYSECT_IS_FRONTEND

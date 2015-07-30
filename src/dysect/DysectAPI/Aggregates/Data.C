@@ -348,12 +348,6 @@ double Value::asDouble() {
   }
 }
 
-
-Value& Value::operator=(Value& rhs) {
-  copy(rhs);
-  return rhs;
-}
-
 Value Value::operator+(Value& rhs) {
   Value res;
 
@@ -396,6 +390,11 @@ bool Value::operator<=(Value& rhs) {
 
 bool Value::operator>=(Value& rhs) {
   return isGreaterThanEqual(rhs);
+}
+
+Value& Value::operator=(Value& rhs) {
+  copy(rhs);
+  return rhs;
 }
 
 bool Value::operator<(Value& rhs) {

@@ -30,6 +30,7 @@ bool BucketAgg::collect(void* process, void *thread) {
 
   if(!process_ptr) {
     return DYSECTVERBOSE(false, "Process object not available");
+    return false;
   }
 
   // Get the rank of the process
