@@ -17,6 +17,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include "DysectAPI/DysectAPI.h"
+#include "BPatch.h"
 
 using namespace std;
 using namespace DysectAPI;
@@ -162,4 +163,25 @@ void ProcessMgr::setWasStopped() {
 
 ProcessSet::ptr ProcessMgr::getWasStopped() {
   return wasStopped;
+}
+
+bool ProcessMgr::stopProcs(ProcessSet::ptr procs) {
+  bool ret = true;
+  for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    Process::ptr pcProc = *procIter;
+    BPatch_process *bpatch_process  = (static_cast<std::pair<BPatch_process*, Walker*> *> (pcProc->getData()))->first;
+    if(!bpatch_process->stopExecution())
+      ret = false;
+  }
+  return ret;}
+
+bool ProcessMgr::continueProcs(ProcessSet::ptr procs) {
+  bool ret = true;
+  for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    Process::ptr pcProc = *procIter;
+    BPatch_process *bpatch_process  = (static_cast<std::pair<BPatch_process*, Walker*> *> (pcProc->getData()))->first;
+    if(!bpatch_process->continueExecution())
+      ret = false;
+  }
+  return ret;
 }

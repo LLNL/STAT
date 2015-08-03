@@ -71,7 +71,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 #ifdef DYSECTAPI
+  #include "BPatch.h"
   #include "DysectAPI/DysectAPIBE.h"
+
 #endif
 
 //! An enum type to determine who launched the daemon

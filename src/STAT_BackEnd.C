@@ -1358,6 +1358,10 @@ StatError_t STAT_BackEnd::attach()
     Walker *proc = NULL;
     map<int, Walker *>::iterator processMapIter;
 #if defined(GROUP_OPS)
+  #ifdef DYSECTAPI
+     BPatch bpatch;
+     vector<BPatch_process *> tmpProcSet_;
+  #endif
     vector<ProcessSet::AttachInfo> aInfo;
     ProcessSet::AttachInfo pAttach;
     Process::ptr pcProc;
@@ -1386,9 +1390,16 @@ StatError_t STAT_BackEnd::attach()
             pAttach.pid = proctab_[i].pd.pid;
             pAttach.executable = proctab_[i].pd.executable_name;
             pAttach.error_ret = ProcControlAPI::err_none;
+    #ifdef DYSECTAPI
+            BPatch_process * bpatch_process = bpatch.processAttach(NULL, pAttach.pid);
+            tmpProcSet_.push_back(bpatch_process);
+    #else
             aInfo.push_back(pAttach);
+    #endif
         }
+    #ifndef DYSECTAPI
         procSet_ = ProcessSet::attachProcessSet(aInfo);
+    #endif
         walkerSet_ = WalkerSet::newWalkerSet();
     }
 #endif
@@ -1405,16 +1416,26 @@ StatError_t STAT_BackEnd::attach()
 #if defined(GROUP_OPS)
         if (doGroupOps_)
         {
+  #ifdef DYSECTAPI
+            BPatch_process *bpatch_process = tmpProcSet_.at(i);
+            if (!bpatch_process)
+            {
+  #else
             pcProc = aInfo[i].proc;
             if (!pcProc)
             {
+  #endif
                 stringstream ss;
-                ss << "[PC Attach Error - 0x" << std::hex << aInfo[i].error_ret << std::dec << "]";
+                ss << "[PC Attach Error - 0x" << std::hex << /*aInfo[i].error_ret <<*/ std::dec << "]";
                 mpiRankToErrMsg.insert(make_pair(proctab_[i].mpirank, ss.str()));
             }
             else
             {
+  #ifdef DysectAPI
+                proc = static_cast<Walker *>(bpatch_process->get_walker());
+  #else
                 proc = Walker::newWalker(pcProc);
+  #endif
                 if (!proc)
                 {
                     stringstream ss;
@@ -1423,10 +1444,14 @@ StatError_t STAT_BackEnd::attach()
                 }
                 else
                 {
-                    pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
                     walkerSet_->insert(proc);
 #ifdef DYSECTAPI
+                    ProcDebug *pDebug = static_cast<ProcDebug *>(proc->getProcessState());
+                    Process::ptr pcProc = pDebug->getProc();
                     mpiRankToProcessMap_.insert(pair<int, Process::ptr>(proctab_[i].mpirank, pcProc));
+#else
+                    pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
+
 #endif
                 }
             }
@@ -1484,10 +1509,10 @@ StatError_t STAT_BackEnd::pause()
             DysectAPI::ProcessMgr::setWasRunning();
             ProcessSet::ptr allProcs = DysectAPI::ProcessMgr::getAllProcs();
             if(allProcs && !allProcs->empty())
-                allProcs->stopProcs();
+                DysectAPI::ProcessMgr::stopProcs(allProcs);
         }
         else
-            procSet_->stopProcs();
+            DysectAPI::ProcessMgr::stopProcs(procSet_);
     }
   #else
         procSet_->stopProcs();
@@ -1517,12 +1542,12 @@ StatError_t STAT_BackEnd::resume()
         {
             ProcessSet::ptr stopped = DysectAPI::ProcessMgr::getWasRunning();
             if(stopped && !stopped->empty())
-                stopped->continueProcs();
+                DysectAPI::ProcessMgr::continueProcs(stopped);
 
         }
         else {
             if(procSet_->anyThreadStopped()) {
-                procSet_->continueProcs();
+                DysectAPI::ProcessMgr::continueProcs(procSet_);
             }
         }
     }
@@ -2369,6 +2394,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
             stringstream ss;
             ss << "[Task Detached]";
             Walker *walker = static_cast<Walker *>((*i)->getData());
+
             map<Walker *, int>::iterator j = procsToRanks_.find(walker);
             if (j != procsToRanks_.end())
                 exitedProcesses_[ss.str()].insert(j->second);
@@ -3665,5 +3691,4 @@ StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned i
 
     return STAT_OK;
 }
-
 

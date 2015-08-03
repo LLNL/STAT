@@ -51,6 +51,9 @@ namespace DysectAPI {
     static bool detachAll();
 
     static bool isActive();
+
+    static bool stopProcs(Dyninst::ProcControlAPI::ProcessSet::ptr procs);
+    static bool continueProcs(Dyninst::ProcControlAPI::ProcessSet::ptr procs);
   };
 }
 
