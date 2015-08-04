@@ -588,6 +588,7 @@ class STAT_BackEnd
         std::map<std::string, std::set<int> > exitedProcesses_;
   #ifdef DYSECTAPI
         std::map<int, Dyninst::ProcControlAPI::Process::ptr> mpiRankToProcessMap_;
+	vector<BPatch_process *> tmpProcSet_;
   #endif
 #endif
 

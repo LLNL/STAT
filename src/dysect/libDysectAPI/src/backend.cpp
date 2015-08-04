@@ -140,8 +140,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
 
   // Let event know that it was triggered.
   // Used for event composition
-  Walker* proc = (Walker*)curProcess->getData();
-
+  Walker* proc = (static_cast<std::pair<void*, Walker*> *> (curProcess->getData()))->second;
   if(!proc) {
     DYSECTWARN(true, "Missing payload in process object: could not get walker for PID %d", curProcess->getPid());
   } else {
@@ -310,7 +309,7 @@ DysectAPI::DysectErrorCode Backend::pauseApplication() {
   if(allProcs->empty())
     return OK;
 
-  if(allProcs->stopProcs()) {
+  if(ProcessMgr::stopProcs(allProcs)) {
     DYSECTLOG(true, "stop all processes");
     return OK;
   } else {
@@ -334,7 +333,7 @@ DysectAPI::DysectErrorCode Backend::resumeApplication() {
   if(allProcs->empty())
     return OK;
 
-  if(allProcs->continueProcs()) {
+  if(ProcessMgr::continueProcs(allProcs)) {
     DYSECTLOG(true, "continue all processes");
     return OK;
   } else {
@@ -909,7 +908,7 @@ DysectAPI::DysectErrorCode Backend::handleTimerActions() {
         probe->enableChildren(lprocset);
         if(probe->getLifeSpan() == fireOnce)
           probe->disable(lprocset);
-        lprocset->continueProcs();
+        ProcessMgr::continueProcs(lprocset);
         probe->releaseWaitingProcs();
       }
     }
@@ -980,7 +979,7 @@ Process::cb_ret_t Backend::handleTimeEvent() {
       Process::ptr procPtr = *procIter;
       if(event && event->isEnabled(procPtr)) {
         Thread::ptr threadPtr = procPtr->threads().getInitialThread();
-        Walker *proc = (Walker *)procPtr->getData();
+        Walker *proc = (static_cast<std::pair<void*, Walker*> *> (procPtr->getData()))->second;
         handleEvent(procPtr, threadPtr, event);
       }
     }

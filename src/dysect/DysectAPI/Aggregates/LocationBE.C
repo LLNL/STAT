@@ -37,7 +37,7 @@ bool FuncLocation::collect(void* process, void *thread) {
     return DYSECTVERBOSE(false, "Process object not available");
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
+  Walker* proc = (static_cast<std::pair<void*, Walker*> *> (process_ptr->getData()))->second;
 
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
@@ -111,7 +111,7 @@ bool FileLocation::collect(void* process, void *thread) {
     return DYSECTVERBOSE(false, "Cannot get program counter without thread object");
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
+  Walker* proc = (static_cast<std::pair<void*, Walker*> *> (process_ptr->getData()))->second;
 
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
@@ -209,7 +209,7 @@ bool FuncParamNames::collect(void* process, void* thread) {
     return DYSECTVERBOSE(false, "Cannot get program counter without thread object");
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
+  Walker* proc = (static_cast<std::pair<void*, Walker*> *> (process_ptr->getData()))->second;
 
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
@@ -286,7 +286,7 @@ bool StackTraces::collect(void* process, void* thread) {
     return DYSECTVERBOSE(false, "Cannot get program counter without thread object");
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
+  Walker* proc = (static_cast<std::pair<void*, Walker*> *> (process_ptr->getData()))->second;
 
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");

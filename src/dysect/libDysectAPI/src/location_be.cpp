@@ -78,7 +78,7 @@ bool Location::disable(ProcessSet::ptr lprocset) {
     Process::ptr procPtr = *procIter;
     ProcDebug *pDebug;
 
-    Walker* proc = (Walker*)procPtr->getData();
+    Walker* proc = (static_cast<std::pair<void*, Walker*> *> (procPtr->getData()))->second;
 
     if (procPtr->allThreadsRunning()) {
       wasRunning = true;
@@ -176,7 +176,7 @@ bool Location::enable(ProcessSet::ptr lprocset) {
     Process::ptr procPtr = *procIter;
     ProcDebug *pDebug;
 
-    Walker* proc = (Walker*)procPtr->getData();
+    Walker* proc = (static_cast<std::pair<void*, Walker*> *> (procPtr->getData()))->second;
 
     if (procPtr->allThreadsRunning()) {
       wasRunning = true;

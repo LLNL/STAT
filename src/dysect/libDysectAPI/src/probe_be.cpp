@@ -582,7 +582,7 @@ bool Probe::processRequests() {
     if(stopSet && stopSet->size() > 0) {
       DYSECTVERBOSE(true, "Stopping %d processes", stopSet->size());
       
-      stopSet->stopProcs();
+      ProcessMgr::stopProcs(stopSet);
     }
 
     //
@@ -619,7 +619,7 @@ bool Probe::processRequests() {
       DYSECTVERBOSE(true, "Continuing process %d", process->getPid());
     }
     
-    continueSet->continueProcs();
+    ProcessMgr::continueProcs(continueSet);
   }
 
   DYSECTVERBOSE(true, "Done handling requests");

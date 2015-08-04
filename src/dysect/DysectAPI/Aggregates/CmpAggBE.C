@@ -36,8 +36,7 @@ bool CmpAgg::collect(void *process, void *thread) {
     return false;
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
-
+  Walker* proc = (static_cast<std::pair<void*, Walker*> *> (process_ptr->getData()))->second;
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
   }
