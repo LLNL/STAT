@@ -73,7 +73,8 @@ struct packetAgg {
       int tag = currentPacket->get_Tag();
       int count;
       int payloadLen;
-      char *payload;
+      char *payload
+	;
 
       if(currentPacket->unpack("%d %auc", &count, &payload, &payloadLen) == -1) {
         cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Could not unpack packet!\n");

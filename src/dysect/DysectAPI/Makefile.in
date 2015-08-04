@@ -112,7 +112,8 @@ am_libDysectAPIBE_la_OBJECTS = libDysectAPIBE_la-DysectAPIBE.lo \
 	$(am__objects_2) libDysectAPIBE_la-TimeListAggBE.lo \
 	libDysectAPIBE_la-BucketAggBE.lo \
 	libDysectAPIBE_la-RankBucketAggBE.lo \
-	libDysectAPIBE_la-DataStackTraceBE.lo
+	libDysectAPIBE_la-DataStackTraceBE.lo \
+	libDysectAPIBE_la-TraceAPIInstr.lo
 libDysectAPIBE_la_OBJECTS = $(am_libDysectAPIBE_la_OBJECTS)
 libDysectAPIBE_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
@@ -380,7 +381,7 @@ dysectapi_aggregate_sources = Aggregates/Data.C Aggregates/Aggregate.C Aggregate
 libDysectAPIFE_la_SOURCES = DysectAPIFE.C DysectAPIFE.h Aggregates/LocationFE.C Aggregates/DescVarFE.C Aggregates/CmpAggFE.C Aggregates/RankListAggFE.C  $(dysectapi_sources) $(dysectapi_aggregate_sources) Aggregates/TimeListAggFE.C Aggregates/BucketAggFE.C Aggregates/RankBucketAggFE.C Aggregates/DataStackTraceFE.C
 libDysectAPIFE_la_CPPFLAGS = -g -O2 -fPIC $(dysectapi_includes) -D__DYSECT_IS_FRONTEND
 libDysectAPIFE_la_LDFLAGS = --export-dynamic
-libDysectAPIBE_la_SOURCES = DysectAPIBE.C DysectAPIBE.h DysectAPIProcessMgr.C Aggregates/AggregateBE.C Aggregates/LocationBE.C Aggregates/DescVarBE.C Aggregates/CmpAggBE.C Aggregates/RankListAggBE.C $(dysectapi_sources) $(dysectapi_aggregate_sources) Aggregates/TimeListAggBE.C  Aggregates/BucketAggBE.C Aggregates/RankBucketAggBE.C Aggregates/DataStackTraceBE.C
+libDysectAPIBE_la_SOURCES = DysectAPIBE.C DysectAPIBE.h DysectAPIProcessMgr.C Aggregates/AggregateBE.C Aggregates/LocationBE.C Aggregates/DescVarBE.C Aggregates/CmpAggBE.C Aggregates/RankListAggBE.C $(dysectapi_sources) $(dysectapi_aggregate_sources) Aggregates/TimeListAggBE.C  Aggregates/BucketAggBE.C Aggregates/RankBucketAggBE.C Aggregates/DataStackTraceBE.C TraceAPIInstr.C
 libDysectAPIBE_la_CPPFLAGS = -g -O2 -fPIC $(dysectapi_includes) -D__DYSECT_IS_BACKEND
 libDysectAPIBE_la_LDFLAGS = --export-dynamic -lrt
 libDysectAPIFD_la_SOURCES = DysectAPIFilter.C DysectAPIFilter.h Aggregates/LocationFE.C Aggregates/DescVarCP.C Aggregates/CmpAggFE.C Aggregates/RankListAggFE.C $(dysectapi_aggregate_sources) Aggregates/TimeListAggFE.C  Aggregates/BucketAggFE.C Aggregates/RankBucketAggFE.C Aggregates/DataStackTraceFE.C
@@ -493,6 +494,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-StrAgg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-TimeListAgg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-TimeListAggBE.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIBE_la-TraceAPIInstr.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-Aggregate.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-BucketAgg.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectAPIFD_la-BucketAggFE.Plo@am__quote@
@@ -726,6 +728,13 @@ libDysectAPIBE_la-DataStackTraceBE.lo: Aggregates/DataStackTraceBE.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Aggregates/DataStackTraceBE.C' object='libDysectAPIBE_la-DataStackTraceBE.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-DataStackTraceBE.lo `test -f 'Aggregates/DataStackTraceBE.C' || echo '$(srcdir)/'`Aggregates/DataStackTraceBE.C
+
+libDysectAPIBE_la-TraceAPIInstr.lo: TraceAPIInstr.C
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIBE_la-TraceAPIInstr.lo -MD -MP -MF $(DEPDIR)/libDysectAPIBE_la-TraceAPIInstr.Tpo -c -o libDysectAPIBE_la-TraceAPIInstr.lo `test -f 'TraceAPIInstr.C' || echo '$(srcdir)/'`TraceAPIInstr.C
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectAPIBE_la-TraceAPIInstr.Tpo $(DEPDIR)/libDysectAPIBE_la-TraceAPIInstr.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TraceAPIInstr.C' object='libDysectAPIBE_la-TraceAPIInstr.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectAPIBE_la-TraceAPIInstr.lo `test -f 'TraceAPIInstr.C' || echo '$(srcdir)/'`TraceAPIInstr.C
 
 libDysectAPIFD_la-DysectAPIFilter.lo: DysectAPIFilter.C
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectAPIFD_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectAPIFD_la-DysectAPIFilter.lo -MD -MP -MF $(DEPDIR)/libDysectAPIFD_la-DysectAPIFilter.Tpo -c -o libDysectAPIFD_la-DysectAPIFilter.lo `test -f 'DysectAPIFilter.C' || echo '$(srcdir)/'`DysectAPIFilter.C

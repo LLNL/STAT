@@ -21,15 +21,15 @@ libdysect_sources = action.cpp \
                     default_probes.cpp \
                     group.cpp \
                     err.cpp \
-                    expr.cpp 
-##                    TraceAPI.cpp 
+                    expr.cpp \
+                    TraceAPI.cpp 
 
 
-libDysectFE_la_SOURCES = $(libdysect_sources) location_fe.cpp frontend.cpp group_fe.cpp probe_fe.cpp expr_fe.cpp action_fe.cpp event_fe.cpp domain_fe.cpp time_fe.cpp
+libDysectFE_la_SOURCES = $(libdysect_sources) location_fe.cpp frontend.cpp group_fe.cpp probe_fe.cpp expr_fe.cpp action_fe.cpp event_fe.cpp domain_fe.cpp time_fe.cpp TraceAPI_fe.cpp
 libDysectFE_la_CPPFLAGS = -g -O2 -fPIC $(libdysect_includes) -D__DYSECT_IS_FRONTEND
 libDysectFE_la_LDFLAGS = --export-dynamic
 
-libDysectBE_la_SOURCES = $(libdysect_sources) location_be.cpp backend.cpp group_be.cpp probe_be.cpp expr_be.cpp symbol.cpp safe_timer.cpp action_be.cpp event_be.cpp domain_be.cpp condition_be.cpp time_be.cpp
+libDysectBE_la_SOURCES = $(libdysect_sources) location_be.cpp backend.cpp group_be.cpp probe_be.cpp expr_be.cpp symbol.cpp safe_timer.cpp action_be.cpp event_be.cpp domain_be.cpp condition_be.cpp time_be.cpp TraceAPI_be.cpp
 libDysectBE_la_CPPFLAGS = -g -O2 -fPIC $(libdysect_includes) -D__DYSECT_IS_BACKEND
 libDysectBE_la_LDFLAGS = --export-dynamic -lrt
 

@@ -1,6 +1,6 @@
 
-#ifndef __TRACEAPI_H
-#define __TRACEAPI_H
+#ifndef __TRACEAPIINSTR_H
+#define __TRACEAPIINSTR_H
 
 #include "BPatch.h"
 #include "BPatch_function.h"
@@ -15,19 +15,19 @@ struct instTarget {
   BPatch_image* appImage;
 };
 
-class Analysis {
+class AnalysisInstr {
 public:
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) = 0;
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) = 0;
   virtual void finishAnalysis(struct instTarget& target) = 0;
   
-  static Analysis* printChanges(string variableName);
-  static Analysis* extractFeatures(string variableName);
-  static Analysis* generateInvariant(string variableName);
-  static Analysis* collectValues(string variableName);
+  static AnalysisInstr* printChanges(string variableName);
+  static AnalysisInstr* extractFeatures(string variableName);
+  static AnalysisInstr* generateInvariant(string variableName);
+  static AnalysisInstr* collectValues(string variableName);
 };
 
-class CollectValues : public Analysis {
+class CollectValuesInstr : public AnalysisInstr {
   string variableName;
   const int bufSize;
   const bool allValues;
@@ -39,13 +39,13 @@ class CollectValues : public Analysis {
   BPatch_variableExpr* bufferSize;
   
 public:
-  CollectValues(string variableName, int bufSize = 2048, bool allValues = false);
+  CollectValuesInstr(string variableName, int bufSize = 2048, bool allValues = false);
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
   virtual void finishAnalysis(struct instTarget& target);
 };
 
-class InvariantGenerator : public Analysis {
+class InvariantGeneratorInstr : public AnalysisInstr {
   string variableName;
   BPatch_function* collector;
   BPatch_variableExpr* variable;
@@ -54,13 +54,13 @@ class InvariantGenerator : public Analysis {
   BPatch_variableExpr* initialized;
   
 public:
-  InvariantGenerator(string variableName);
+  InvariantGeneratorInstr(string variableName);
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
   virtual void finishAnalysis(struct instTarget& target);
 };
 
-class ExtractFeatures : public Analysis {
+class ExtractFeaturesInstr : public AnalysisInstr {
   string variableName;
   BPatch_function* collector;
   BPatch_variableExpr* variable;
@@ -78,54 +78,55 @@ class ExtractFeatures : public Analysis {
   };  
 
 public:
-  ExtractFeatures(string variableName);
+  ExtractFeaturesInstr(string variableName);
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
   virtual void finishAnalysis(struct instTarget& target);
 };
 
-class PrintChanges : public Analysis {
+class PrintChangesInstr : public AnalysisInstr {
   string variableName;
   BPatch_variableExpr* variable;
   BPatch_function* logAddrFunc;
   BPatch_variableExpr* lastVal;
   
 public:
-  PrintChanges(string variableName);
+  PrintChangesInstr(string variableName);
   virtual void finishAnalysis(struct instTarget& target);
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
 };
 
-class Scope {
+class ScopeInstr {
 public:
   virtual bool shouldInstrument(vector<BPatch_function*>& instrumentedFunctions,
 				BPatch_function* function) = 0;
 
-  static Scope* singleFunction();
-  static Scope* reachableFunctions(int calls = numeric_limits<int>::max());
-  static Scope* callPath(string f1 = "", string f2 = "", string f3 = "",
-			 string f4 = "", string f5 = "", string f6 = "",
-			 string f7 = "", string f8 = "", string f9 = "");
+  static ScopeInstr* singleFunction();
+  static ScopeInstr* reachableFunctions(int calls = numeric_limits<int>::max());
+  static ScopeInstr* callPath(string f1 = "", string f2 = "", string f3 = "",
+			      string f4 = "", string f5 = "", string f6 = "",
+			      string f7 = "", string f8 = "", string f9 = "");
+  static ScopeInstr* callPath(vector<string> callPath);
 };
 
-class FunctionScope : public Scope {
+class FunctionScopeInstr : public ScopeInstr {
   int maxCallPath;
   
 public:
-  FunctionScope(int maxCallPath);
+  FunctionScopeInstr(int maxCallPath);
   bool shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
 };
 
-class CallPathScope : public Scope {
+class CallPathScopeInstr : public ScopeInstr {
   vector<string> callPath;
   
 public:
-  CallPathScope(vector<string> callPath);
+  CallPathScopeInstr(vector<string> callPath);
   virtual bool shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
 };
 
-class SamplingPoints {
+class SamplingPointsInstr {
 public:
   virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function) = 0;
 
@@ -133,68 +134,69 @@ public:
     beginning, end, before, after
   };
   
-  static SamplingPoints* stores(SamplingTime time = before);
-  static SamplingPoints* loop(SamplingTime time = end);
-  static SamplingPoints* function(SamplingTime time = after);
-  static SamplingPoints* functionCall(SamplingTime time = before);
-  static SamplingPoints* basicBlocks(SamplingTime time = end);
-  static SamplingPoints* multiple(SamplingPoints* sp1, SamplingPoints* sp2 = 0, SamplingPoints* sp3 = 0,
-				  SamplingPoints* sp4 = 0, SamplingPoints* sp5 = 0, SamplingPoints* sp6 = 0,
-				  SamplingPoints* sp7 = 0, SamplingPoints* sp8 = 0, SamplingPoints* sp9 = 0);
+  static SamplingPointsInstr* stores(SamplingTime time = before);
+  static SamplingPointsInstr* loop(SamplingTime time = end);
+  static SamplingPointsInstr* function(SamplingTime time = after);
+  static SamplingPointsInstr* functionCall(SamplingTime time = before);
+  static SamplingPointsInstr* basicBlocks(SamplingTime time = end);
+  static SamplingPointsInstr* multiple(
+			           SamplingPointsInstr* sp1,     SamplingPointsInstr* sp2 = 0, SamplingPointsInstr* sp3 = 0,
+			           SamplingPointsInstr* sp4 = 0, SamplingPointsInstr* sp5 = 0, SamplingPointsInstr* sp6 = 0,
+			           SamplingPointsInstr* sp7 = 0, SamplingPointsInstr* sp8 = 0, SamplingPointsInstr* sp9 = 0);
 };
 
-class MultipleSamplingPoints : public SamplingPoints {
-  vector<SamplingPoints*> pointGenerators;
+class MultipleSamplingPointsInstr : public SamplingPointsInstr {
+  vector<SamplingPointsInstr*> pointGenerators;
 
 public:
-  MultipleSamplingPoints(vector<SamplingPoints*> pointGenerators);
+  MultipleSamplingPointsInstr(vector<SamplingPointsInstr*> pointGenerators);
   virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
-class StoreSamplingPoints : public SamplingPoints {
+class StoreSamplingPointsInstr : public SamplingPointsInstr {
   SamplingTime time;
 
 public:
-  StoreSamplingPoints(SamplingTime time);
+  StoreSamplingPointsInstr(SamplingTime time);
   virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
-class LoopSamplingPoints : public SamplingPoints {
+class LoopSamplingPointsInstr : public SamplingPointsInstr {
   SamplingTime time;
 
 public:
-  LoopSamplingPoints(SamplingTime time);
+  LoopSamplingPointsInstr(SamplingTime time);
   virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
-class FunctionSamplingPoints : public SamplingPoints {
+class FunctionSamplingPointsInstr : public SamplingPointsInstr {
   SamplingTime time;
 
 public:
-  FunctionSamplingPoints(SamplingTime time);
+  FunctionSamplingPointsInstr(SamplingTime time);
   virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
-class FunctionCallSamplingPoints : public SamplingPoints {
+class FunctionCallSamplingPointsInstr : public SamplingPointsInstr {
   SamplingTime time;
 
 public:
-  FunctionCallSamplingPoints(SamplingTime time);
+  FunctionCallSamplingPointsInstr(SamplingTime time);
   virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
-class BasicBlockSamplingPoints : public SamplingPoints {
+class BasicBlockSamplingPointsInstr : public SamplingPointsInstr {
   SamplingTime time;
 
 public:
-  BasicBlockSamplingPoints(SamplingTime time);
+  BasicBlockSamplingPointsInstr(SamplingTime time);
   virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
-class DataTrace {
-  Analysis* analysis;
-  Scope* scope;
-  SamplingPoints* points;
+class DataTraceInstr {
+  AnalysisInstr* analysis;
+  ScopeInstr* scope;
+  SamplingPointsInstr* points;
   
   set<string> instrumentedFunctions;
 
@@ -202,14 +204,14 @@ class DataTrace {
 			 BPatch_function* currentFunction);
   
 public:
-  DataTrace(Analysis* analysis, Scope* scope, SamplingPoints* points);
+  DataTraceInstr(AnalysisInstr* analysis, ScopeInstr* scope, SamplingPointsInstr* points);
   void install(struct instTarget& target, BPatch_function* root_function);
   void finishAnalysis(struct instTarget& target);
 };
 
-class TraceAPI {
+#ifdef PORT_LATER
+class TraceAPIInstr {
   static BPatch bpatch;
-  static map<Dyninst::ProcControlAPI::Process::const_ptr, instTarget*> procTable;
 
  public:
   static bool addProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, int pid, string executable);
@@ -217,6 +219,7 @@ class TraceAPI {
   static bool instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
   static bool finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
 };
+#endif // PORT_LATER
 
 
-#endif
+#endif // __TRACEAPIINSTR_H

@@ -97,14 +97,15 @@ am__objects_1 = libDysectBE_la-action.lo libDysectBE_la-condition.lo \
 	libDysectBE_la-probe.lo libDysectBE_la-parser.lo \
 	libDysectBE_la-probe_tree.lo libDysectBE_la-default_probes.lo \
 	libDysectBE_la-group.lo libDysectBE_la-err.lo \
-	libDysectBE_la-expr.lo
+	libDysectBE_la-expr.lo libDysectBE_la-TraceAPI.lo
 am_libDysectBE_la_OBJECTS = $(am__objects_1) \
 	libDysectBE_la-location_be.lo libDysectBE_la-backend.lo \
 	libDysectBE_la-group_be.lo libDysectBE_la-probe_be.lo \
 	libDysectBE_la-expr_be.lo libDysectBE_la-symbol.lo \
 	libDysectBE_la-safe_timer.lo libDysectBE_la-action_be.lo \
 	libDysectBE_la-event_be.lo libDysectBE_la-domain_be.lo \
-	libDysectBE_la-condition_be.lo libDysectBE_la-time_be.lo
+	libDysectBE_la-condition_be.lo libDysectBE_la-time_be.lo \
+	libDysectBE_la-TraceAPI_be.lo
 libDysectBE_la_OBJECTS = $(am_libDysectBE_la_OBJECTS)
 libDysectBE_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
@@ -116,13 +117,13 @@ am__objects_2 = libDysectFE_la-action.lo libDysectFE_la-condition.lo \
 	libDysectFE_la-probe.lo libDysectFE_la-parser.lo \
 	libDysectFE_la-probe_tree.lo libDysectFE_la-default_probes.lo \
 	libDysectFE_la-group.lo libDysectFE_la-err.lo \
-	libDysectFE_la-expr.lo
+	libDysectFE_la-expr.lo libDysectFE_la-TraceAPI.lo
 am_libDysectFE_la_OBJECTS = $(am__objects_2) \
 	libDysectFE_la-location_fe.lo libDysectFE_la-frontend.lo \
 	libDysectFE_la-group_fe.lo libDysectFE_la-probe_fe.lo \
 	libDysectFE_la-expr_fe.lo libDysectFE_la-action_fe.lo \
 	libDysectFE_la-event_fe.lo libDysectFE_la-domain_fe.lo \
-	libDysectFE_la-time_fe.lo
+	libDysectFE_la-time_fe.lo libDysectFE_la-TraceAPI_fe.lo
 libDysectFE_la_OBJECTS = $(am_libDysectFE_la_OBJECTS)
 libDysectFE_la_LINK = $(LIBTOOL) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
@@ -349,12 +350,13 @@ libdysect_sources = action.cpp \
                     default_probes.cpp \
                     group.cpp \
                     err.cpp \
-                    expr.cpp 
+                    expr.cpp \
+                    TraceAPI.cpp 
 
-libDysectFE_la_SOURCES = $(libdysect_sources) location_fe.cpp frontend.cpp group_fe.cpp probe_fe.cpp expr_fe.cpp action_fe.cpp event_fe.cpp domain_fe.cpp time_fe.cpp
+libDysectFE_la_SOURCES = $(libdysect_sources) location_fe.cpp frontend.cpp group_fe.cpp probe_fe.cpp expr_fe.cpp action_fe.cpp event_fe.cpp domain_fe.cpp time_fe.cpp TraceAPI_fe.cpp
 libDysectFE_la_CPPFLAGS = -g -O2 -fPIC $(libdysect_includes) -D__DYSECT_IS_FRONTEND
 libDysectFE_la_LDFLAGS = --export-dynamic
-libDysectBE_la_SOURCES = $(libdysect_sources) location_be.cpp backend.cpp group_be.cpp probe_be.cpp expr_be.cpp symbol.cpp safe_timer.cpp action_be.cpp event_be.cpp domain_be.cpp condition_be.cpp time_be.cpp
+libDysectBE_la_SOURCES = $(libdysect_sources) location_be.cpp backend.cpp group_be.cpp probe_be.cpp expr_be.cpp symbol.cpp safe_timer.cpp action_be.cpp event_be.cpp domain_be.cpp condition_be.cpp time_be.cpp TraceAPI_be.cpp
 libDysectBE_la_CPPFLAGS = -g -O2 -fPIC $(libdysect_includes) -D__DYSECT_IS_BACKEND
 libDysectBE_la_LDFLAGS = --export-dynamic -lrt
 all: $(BUILT_SOURCES)
@@ -434,6 +436,8 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectBE_la-TraceAPI.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectBE_la-TraceAPI_be.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectBE_la-action.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectBE_la-action_be.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectBE_la-backend.Plo@am__quote@
@@ -459,6 +463,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectBE_la-safe_timer.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectBE_la-symbol.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectBE_la-time_be.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectFE_la-TraceAPI.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectFE_la-TraceAPI_fe.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectFE_la-action.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectFE_la-action_fe.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libDysectFE_la-condition.Plo@am__quote@
@@ -594,6 +600,13 @@ libDysectBE_la-expr.lo: expr.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectBE_la-expr.lo `test -f 'expr.cpp' || echo '$(srcdir)/'`expr.cpp
 
+libDysectBE_la-TraceAPI.lo: TraceAPI.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectBE_la-TraceAPI.lo -MD -MP -MF $(DEPDIR)/libDysectBE_la-TraceAPI.Tpo -c -o libDysectBE_la-TraceAPI.lo `test -f 'TraceAPI.cpp' || echo '$(srcdir)/'`TraceAPI.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectBE_la-TraceAPI.Tpo $(DEPDIR)/libDysectBE_la-TraceAPI.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TraceAPI.cpp' object='libDysectBE_la-TraceAPI.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectBE_la-TraceAPI.lo `test -f 'TraceAPI.cpp' || echo '$(srcdir)/'`TraceAPI.cpp
+
 libDysectBE_la-location_be.lo: location_be.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectBE_la-location_be.lo -MD -MP -MF $(DEPDIR)/libDysectBE_la-location_be.Tpo -c -o libDysectBE_la-location_be.lo `test -f 'location_be.cpp' || echo '$(srcdir)/'`location_be.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectBE_la-location_be.Tpo $(DEPDIR)/libDysectBE_la-location_be.Plo
@@ -677,6 +690,13 @@ libDysectBE_la-time_be.lo: time_be.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='time_be.cpp' object='libDysectBE_la-time_be.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectBE_la-time_be.lo `test -f 'time_be.cpp' || echo '$(srcdir)/'`time_be.cpp
+
+libDysectBE_la-TraceAPI_be.lo: TraceAPI_be.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectBE_la-TraceAPI_be.lo -MD -MP -MF $(DEPDIR)/libDysectBE_la-TraceAPI_be.Tpo -c -o libDysectBE_la-TraceAPI_be.lo `test -f 'TraceAPI_be.cpp' || echo '$(srcdir)/'`TraceAPI_be.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectBE_la-TraceAPI_be.Tpo $(DEPDIR)/libDysectBE_la-TraceAPI_be.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TraceAPI_be.cpp' object='libDysectBE_la-TraceAPI_be.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectBE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectBE_la-TraceAPI_be.lo `test -f 'TraceAPI_be.cpp' || echo '$(srcdir)/'`TraceAPI_be.cpp
 
 libDysectFE_la-action.lo: action.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectFE_la-action.lo -MD -MP -MF $(DEPDIR)/libDysectFE_la-action.Tpo -c -o libDysectFE_la-action.lo `test -f 'action.cpp' || echo '$(srcdir)/'`action.cpp
@@ -769,6 +789,13 @@ libDysectFE_la-expr.lo: expr.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectFE_la-expr.lo `test -f 'expr.cpp' || echo '$(srcdir)/'`expr.cpp
 
+libDysectFE_la-TraceAPI.lo: TraceAPI.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectFE_la-TraceAPI.lo -MD -MP -MF $(DEPDIR)/libDysectFE_la-TraceAPI.Tpo -c -o libDysectFE_la-TraceAPI.lo `test -f 'TraceAPI.cpp' || echo '$(srcdir)/'`TraceAPI.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectFE_la-TraceAPI.Tpo $(DEPDIR)/libDysectFE_la-TraceAPI.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TraceAPI.cpp' object='libDysectFE_la-TraceAPI.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectFE_la-TraceAPI.lo `test -f 'TraceAPI.cpp' || echo '$(srcdir)/'`TraceAPI.cpp
+
 libDysectFE_la-location_fe.lo: location_fe.cpp
 @am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectFE_la-location_fe.lo -MD -MP -MF $(DEPDIR)/libDysectFE_la-location_fe.Tpo -c -o libDysectFE_la-location_fe.lo `test -f 'location_fe.cpp' || echo '$(srcdir)/'`location_fe.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectFE_la-location_fe.Tpo $(DEPDIR)/libDysectFE_la-location_fe.Plo
@@ -831,6 +858,13 @@ libDysectFE_la-time_fe.lo: time_fe.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='time_fe.cpp' object='libDysectFE_la-time_fe.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectFE_la-time_fe.lo `test -f 'time_fe.cpp' || echo '$(srcdir)/'`time_fe.cpp
+
+libDysectFE_la-TraceAPI_fe.lo: TraceAPI_fe.cpp
+@am__fastdepCXX_TRUE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libDysectFE_la-TraceAPI_fe.lo -MD -MP -MF $(DEPDIR)/libDysectFE_la-TraceAPI_fe.Tpo -c -o libDysectFE_la-TraceAPI_fe.lo `test -f 'TraceAPI_fe.cpp' || echo '$(srcdir)/'`TraceAPI_fe.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/libDysectFE_la-TraceAPI_fe.Tpo $(DEPDIR)/libDysectFE_la-TraceAPI_fe.Plo
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='TraceAPI_fe.cpp' object='libDysectFE_la-TraceAPI_fe.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(LIBTOOL)  --tag=CXX $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libDysectFE_la_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libDysectFE_la-TraceAPI_fe.lo `test -f 'TraceAPI_fe.cpp' || echo '$(srcdir)/'`TraceAPI_fe.cpp
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

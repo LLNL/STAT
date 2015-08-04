@@ -11,11 +11,12 @@
 
 #include "walker.h"
 
-#include <DysectAPI/TraceAPI.h>
+#include <DysectAPI/TraceAPIInstr.h>
 
 using namespace std;
 
-CollectValues::CollectValues(string variableName, int bufSize, bool allValues)
+/************ Actions ************/
+CollectValuesInstr::CollectValuesInstr(string variableName, int bufSize, bool allValues)
   : variableName(variableName), bufSize(bufSize), allValues(allValues) {
   collector = 0;
   variable = 0;
@@ -23,7 +24,7 @@ CollectValues::CollectValues(string variableName, int bufSize, bool allValues)
   bufferIndex = 0;
 }
 
-bool CollectValues::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
+bool CollectValuesInstr::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
   // Prepare the instrumented function call
   vector<BPatch_variableExpr*> variables;
   function->findVariable(variableName.c_str(), variables);
@@ -66,7 +67,7 @@ bool CollectValues::prepareInstrumentedFunction(struct instTarget& target, BPatc
   return true;
 }
 
-BPatch_snippet* CollectValues::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
+BPatch_snippet* CollectValuesInstr::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
   // Create instrumentation snippet
   vector<BPatch_snippet*> logArgs;
   logArgs.push_back(variable);
@@ -77,7 +78,7 @@ BPatch_snippet* CollectValues::getInstrumentationSnippet(struct instTarget& targ
   return new BPatch_funcCallExpr(*collector, logArgs);
 }
 
-void CollectValues::finishAnalysis(struct instTarget& target) {
+void CollectValuesInstr::finishAnalysis(struct instTarget& target) {
   int* localBuffer = new int[bufSize];
   int writtenBytes;
 
@@ -100,14 +101,14 @@ void CollectValues::finishAnalysis(struct instTarget& target) {
   delete[] localBuffer;
 }
 
-InvariantGenerator::InvariantGenerator(string variableName) : variableName(variableName) {
+InvariantGeneratorInstr::InvariantGeneratorInstr(string variableName) : variableName(variableName) {
   collector = 0;
   variable = 0;
   orgVal = 0;
   modifications = 0;
 }
 
-bool InvariantGenerator::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
+bool InvariantGeneratorInstr::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
   // Prepare the instrumented function call
   vector<BPatch_variableExpr*> variables;
   function->findVariable(variableName.c_str(), variables);
@@ -147,7 +148,7 @@ bool InvariantGenerator::prepareInstrumentedFunction(struct instTarget& target, 
   return true;
 }
   
-BPatch_snippet* InvariantGenerator::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
+BPatch_snippet* InvariantGeneratorInstr::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
   // Create instrumentation snippet
   vector<BPatch_snippet*> logArgs;
   logArgs.push_back(variable);
@@ -158,7 +159,7 @@ BPatch_snippet* InvariantGenerator::getInstrumentationSnippet(struct instTarget&
   return new BPatch_funcCallExpr(*collector, logArgs);
 }
   
-void InvariantGenerator::finishAnalysis(struct instTarget& target) {
+void InvariantGeneratorInstr::finishAnalysis(struct instTarget& target) {
   int oval;
   int mods;
   char valid;
@@ -176,14 +177,14 @@ void InvariantGenerator::finishAnalysis(struct instTarget& target) {
   cout << "   The chages made are 0x" << mods << dec << endl;
 }
   
-ExtractFeatures::ExtractFeatures(string variableName) : variableName(variableName) {
+ExtractFeaturesInstr::ExtractFeaturesInstr(string variableName) : variableName(variableName) {
   collector = 0;
   features = 0;
   min = 0;
   max = 0;
 }
 
-bool ExtractFeatures::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
+bool ExtractFeaturesInstr::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
   // Prepare the instrumented function call
   vector<BPatch_variableExpr*> variables;
   function->findVariable(variableName.c_str(), variables);
@@ -223,7 +224,7 @@ bool ExtractFeatures::prepareInstrumentedFunction(struct instTarget& target, BPa
   return true;
 }
 
-BPatch_snippet* ExtractFeatures::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
+BPatch_snippet* ExtractFeaturesInstr::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
   // Create instrumentation snippet
   vector<BPatch_snippet*> logArgs;
   logArgs.push_back(variable);
@@ -234,7 +235,7 @@ BPatch_snippet* ExtractFeatures::getInstrumentationSnippet(struct instTarget& ta
   return new BPatch_funcCallExpr(*collector, logArgs);
 }
 
-void ExtractFeatures::finishAnalysis(struct instTarget& target) {
+void ExtractFeaturesInstr::finishAnalysis(struct instTarget& target) {
   char feat;
   int minVal, maxVal;
 
@@ -280,15 +281,15 @@ void ExtractFeatures::finishAnalysis(struct instTarget& target) {
   cout << variableName << " was in [" << minVal << ":" << maxVal << "]" << endl;
 }
 
-PrintChanges::PrintChanges(string variableName) : variableName(variableName) {
+PrintChangesInstr::PrintChangesInstr(string variableName) : variableName(variableName) {
   lastVal = 0;
 }
 
-void PrintChanges::finishAnalysis(struct instTarget& target) {
+void PrintChangesInstr::finishAnalysis(struct instTarget& target) {
   // Analysis results are already printed on the run
 }
   
-bool PrintChanges::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
+bool PrintChangesInstr::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
   // Prepare the instrumented function call
   vector<BPatch_variableExpr*> variables;
   function->findVariable(variableName.c_str(), variables);
@@ -323,7 +324,7 @@ bool PrintChanges::prepareInstrumentedFunction(struct instTarget& target, BPatch
   return true;
 }
   
-BPatch_snippet* PrintChanges::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
+BPatch_snippet* PrintChangesInstr::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
   // Create instrumentation snippet
   vector<BPatch_snippet*> logArgs;
   logArgs.push_back(new BPatch_constExpr(variableName.c_str()));
@@ -334,35 +335,36 @@ BPatch_snippet* PrintChanges::getInstrumentationSnippet(struct instTarget& targe
   return new BPatch_funcCallExpr(*logAddrFunc, logArgs);
 }
 
-Analysis* Analysis::printChanges(string variable) {
-  return new PrintChanges(variable);
+AnalysisInstr* AnalysisInstr::printChanges(string variable) {
+  return new PrintChangesInstr(variable);
 }
 
-Analysis* Analysis::extractFeatures(string variable) {
-  return new ExtractFeatures(variable);
+AnalysisInstr* AnalysisInstr::extractFeatures(string variable) {
+  return new ExtractFeaturesInstr(variable);
 }
 
-Analysis* Analysis::generateInvariant(string variable) {
-  return new InvariantGenerator(variable);
+AnalysisInstr* AnalysisInstr::generateInvariant(string variable) {
+  return new InvariantGeneratorInstr(variable);
 }
 
-Analysis* Analysis:: collectValues(string variableName) {
-  return new CollectValues(variableName);
+AnalysisInstr* AnalysisInstr:: collectValues(string variableName) {
+  return new CollectValuesInstr(variableName);
 }
 
-FunctionScope::FunctionScope(int maxCallPath) : maxCallPath(maxCallPath) {
+/************ Scope ************/
+FunctionScopeInstr::FunctionScopeInstr(int maxCallPath) : maxCallPath(maxCallPath) {
     
 }
   
-bool FunctionScope::shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function) {
+bool FunctionScopeInstr::shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function) {
   return instrumentedFunctions.size() < maxCallPath;
 }
 
-CallPathScope::CallPathScope(vector<string> callPath) : callPath(callPath) {
+CallPathScopeInstr::CallPathScopeInstr(vector<string> callPath) : callPath(callPath) {
 
 }
 
-bool CallPathScope::shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function) {
+bool CallPathScopeInstr::shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function) {
   for (int i = 0; i < instrumentedFunctions.size(); i++) {
     if ((i == callPath.size()) ||
 	(instrumentedFunctions[i]->getName().compare(callPath[i]))) {
@@ -373,17 +375,17 @@ bool CallPathScope::shouldInstrument(vector<BPatch_function*>& instrumentedFunct
   return (callPath[instrumentedFunctions.size()].compare(function->getName()) == 0);
 }
 
-Scope* Scope::singleFunction() {
-  return new FunctionScope(1);
+ScopeInstr* ScopeInstr::singleFunction() {
+  return new FunctionScopeInstr(1);
 }
 
-Scope* Scope::reachableFunctions(int calls) {
-  return new FunctionScope(calls);
+ScopeInstr* ScopeInstr::reachableFunctions(int calls) {
+  return new FunctionScopeInstr(calls);
 }
 
-Scope* Scope::callPath(string f1, string f2, string f3,
-		       string f4, string f5, string f6,
-		       string f7, string f8, string f9) {
+ScopeInstr* ScopeInstr::callPath(string f1, string f2, string f3,
+				 string f4, string f5, string f6,
+				 string f7, string f8, string f9) {
   string functions [] = { f1, f2, f3, f4, f5, f6, f7, f8, f9 };
   vector<string> callPath;
 
@@ -395,18 +397,22 @@ Scope* Scope::callPath(string f1, string f2, string f3,
     }
   }
 
-  return new CallPathScope(callPath);
+  return ScopeInstr::callPath(callPath);
 }
 
+ScopeInstr* ScopeInstr::callPath(vector<string> callPath) {
+  return new CallPathScopeInstr(callPath);
+}
 
-MultipleSamplingPoints::MultipleSamplingPoints(vector<SamplingPoints*> pointGenerators) : pointGenerators(pointGenerators) {
+/************ Sampling points ************/
+MultipleSamplingPointsInstr::MultipleSamplingPointsInstr(vector<SamplingPointsInstr*> pointGenerators) : pointGenerators(pointGenerators) {
   
 }
 
-vector<BPatch_point*> MultipleSamplingPoints::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
+vector<BPatch_point*> MultipleSamplingPointsInstr::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
   vector<BPatch_point*> points;
 
-  for (vector<SamplingPoints*>::iterator it = pointGenerators.begin(); it != pointGenerators.end(); ++it) {
+  for (vector<SamplingPointsInstr*>::iterator it = pointGenerators.begin(); it != pointGenerators.end(); ++it) {
     vector<BPatch_point*> p = (*it)->getInstrumentationPoints(target, function);
       
     points.insert(points.end(), p.begin(), p.end());
@@ -415,29 +421,29 @@ vector<BPatch_point*> MultipleSamplingPoints::getInstrumentationPoints(struct in
   return points;
 }
 
-StoreSamplingPoints::StoreSamplingPoints(SamplingTime time) : time(time) {
+StoreSamplingPointsInstr::StoreSamplingPointsInstr(SamplingTime time) : time(time) {
 
 }
 
-vector<BPatch_point*> StoreSamplingPoints::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
+vector<BPatch_point*> StoreSamplingPointsInstr::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
   // Not yet implemented
   throw exception();
 }
 
-LoopSamplingPoints::LoopSamplingPoints(SamplingTime time) : time(time) {
+LoopSamplingPointsInstr::LoopSamplingPointsInstr(SamplingTime time) : time(time) {
   
 }
 
-vector<BPatch_point*> LoopSamplingPoints::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
+vector<BPatch_point*> LoopSamplingPointsInstr::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
   // Not yet implemented
   throw exception();
 }
 
-FunctionSamplingPoints::FunctionSamplingPoints(SamplingTime time) : time(time) {
+FunctionSamplingPointsInstr::FunctionSamplingPointsInstr(SamplingTime time) : time(time) {
 
 }
 
-vector<BPatch_point*> FunctionSamplingPoints::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
+vector<BPatch_point*> FunctionSamplingPointsInstr::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
   vector<BPatch_point*> points;
   vector<BPatch_point*>* functionPoints = new vector<BPatch_point*>();
 
@@ -461,11 +467,11 @@ vector<BPatch_point*> FunctionSamplingPoints::getInstrumentationPoints(struct in
   return points;
 }
 
-FunctionCallSamplingPoints::FunctionCallSamplingPoints(SamplingTime time) : time(time) {
+FunctionCallSamplingPointsInstr::FunctionCallSamplingPointsInstr(SamplingTime time) : time(time) {
 
 }
 
-vector<BPatch_point*> FunctionCallSamplingPoints::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
+vector<BPatch_point*> FunctionCallSamplingPointsInstr::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
   vector<BPatch_point*> points;
   vector<BPatch_point*>* subCalls = function->findPoint(BPatch_subroutine);
     
@@ -487,11 +493,11 @@ vector<BPatch_point*> FunctionCallSamplingPoints::getInstrumentationPoints(struc
   return points;
 }
 
-BasicBlockSamplingPoints::BasicBlockSamplingPoints(SamplingTime time) : time(time) {
+BasicBlockSamplingPointsInstr::BasicBlockSamplingPointsInstr(SamplingTime time) : time(time) {
   
 }
 
-vector<BPatch_point*> BasicBlockSamplingPoints::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
+vector<BPatch_point*> BasicBlockSamplingPointsInstr::getInstrumentationPoints(struct instTarget& target, BPatch_function* function) {
   vector<BPatch_point*> points;
     
   BPatch_flowGraph* cfg = function->getCFG();
@@ -528,31 +534,32 @@ vector<BPatch_point*> BasicBlockSamplingPoints::getInstrumentationPoints(struct 
   return points;
 }
 
-SamplingPoints* SamplingPoints::stores(SamplingTime time) {
-  return new StoreSamplingPoints(time);
+SamplingPointsInstr* SamplingPointsInstr::stores(SamplingTime time) {
+  return new StoreSamplingPointsInstr(time);
 }
 
-SamplingPoints* SamplingPoints::loop(SamplingTime time) {
-  return new LoopSamplingPoints(time);
+SamplingPointsInstr* SamplingPointsInstr::loop(SamplingTime time) {
+  return new LoopSamplingPointsInstr(time);
 }
 
-SamplingPoints* SamplingPoints::function(SamplingTime time) {
-  return new FunctionSamplingPoints(time);
+SamplingPointsInstr* SamplingPointsInstr::function(SamplingTime time) {
+  return new FunctionSamplingPointsInstr(time);
 }
 
-SamplingPoints* SamplingPoints::functionCall(SamplingTime time) {
-  return new FunctionCallSamplingPoints(time);
+SamplingPointsInstr* SamplingPointsInstr::functionCall(SamplingTime time) {
+  return new FunctionCallSamplingPointsInstr(time);
 }
 
-SamplingPoints* SamplingPoints::basicBlocks(SamplingTime time) {
-  return new BasicBlockSamplingPoints(time);
+SamplingPointsInstr* SamplingPointsInstr::basicBlocks(SamplingTime time) {
+  return new BasicBlockSamplingPointsInstr(time);
 }
 
-SamplingPoints* SamplingPoints::multiple(SamplingPoints* sp1, SamplingPoints* sp2, SamplingPoints* sp3,
-					 SamplingPoints* sp4, SamplingPoints* sp5, SamplingPoints* sp6,
-					 SamplingPoints* sp7, SamplingPoints* sp8, SamplingPoints* sp9) {
-  SamplingPoints* generators [] = { sp1, sp2, sp3, sp4, sp5, sp6, sp7, sp8, sp9 };
-  vector<SamplingPoints*> pointGenerators;
+SamplingPointsInstr* SamplingPointsInstr::multiple(
+		         SamplingPointsInstr* sp1, SamplingPointsInstr* sp2, SamplingPointsInstr* sp3,
+		         SamplingPointsInstr* sp4, SamplingPointsInstr* sp5, SamplingPointsInstr* sp6,
+		         SamplingPointsInstr* sp7, SamplingPointsInstr* sp8, SamplingPointsInstr* sp9) {
+  SamplingPointsInstr* generators [] = { sp1, sp2, sp3, sp4, sp5, sp6, sp7, sp8, sp9 };
+  vector<SamplingPointsInstr*> pointGenerators;
 
   for (int i = 0; i < 9; i++) {
     if (generators[i] != 0) {
@@ -562,12 +569,12 @@ SamplingPoints* SamplingPoints::multiple(SamplingPoints* sp1, SamplingPoints* sp
     }
   }
 
-  return new MultipleSamplingPoints(pointGenerators);
+  return new MultipleSamplingPointsInstr(pointGenerators);
 }
 
-
-void DataTrace::install_recursive(struct instTarget& target, vector<BPatch_function*>& instrumentedFuncStack,
-				  BPatch_function* currentFunction) {
+/************ DataTrace ************/
+void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_function*>& instrumentedFuncStack,
+		                       BPatch_function* currentFunction) {
   if (instrumentedFunctions.count(currentFunction->getName()) != 0) {
     return;
   }
@@ -609,21 +616,22 @@ void DataTrace::install_recursive(struct instTarget& target, vector<BPatch_funct
   }
 }
   
-DataTrace::DataTrace(Analysis* analysis, Scope* scope, SamplingPoints* points)
+DataTraceInstr::DataTraceInstr(AnalysisInstr* analysis, ScopeInstr* scope, SamplingPointsInstr* points)
   : analysis(analysis), scope(scope), points(points) {
   
 }
 
-void DataTrace::install(struct instTarget& target, BPatch_function* root_function) {
+void DataTraceInstr::install(struct instTarget& target, BPatch_function* root_function) {
   vector<BPatch_function*> instrumentedFunctions;
 
   install_recursive(target, instrumentedFunctions, root_function);
 }
 
-void DataTrace::finishAnalysis(struct instTarget& target) {
+void DataTraceInstr::finishAnalysis(struct instTarget& target) {
   analysis->finishAnalysis(target);
 }
 
+#ifdef PORT_LATER
 BPatch TraceAPI::bpatch;
 map<Dyninst::ProcControlAPI::Process::const_ptr, instTarget*> TraceAPI::procTable;
 
@@ -695,3 +703,5 @@ bool TraceAPI::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, 
 
   return true;
 }
+#endif // PORT_LATER
+
