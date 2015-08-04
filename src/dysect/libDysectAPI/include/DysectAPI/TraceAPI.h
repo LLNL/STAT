@@ -2,12 +2,16 @@
 #ifndef __TRACEAPI_H
 #define __TRACEAPI_H
 
+#include <string>
+#include <limits>
+#include <vector>
+
 class Analysis {
 public:
-  static Analysis* printChanges(string variableName);
-  static Analysis* extractFeatures(string variableName);
-  static Analysis* generateInvariant(string variableName);
-  static Analysis* collectValues(string variableName);
+  static Analysis* printChanges(std::string variableName);
+  static Analysis* extractFeatures(std::string variableName);
+  static Analysis* generateInvariant(std::string variableName);
+  static Analysis* collectValues(std::string variableName);
 
   virtual ~Analysis() {}
 };
@@ -15,48 +19,48 @@ public:
 class CollectValues : public Analysis {
   friend class DataTrace;
   
-  string variableName;
+  std::string variableName;
   const int bufSize;
   const bool allValues;
   
 public:
-  CollectValues(string variableName, int bufSize = 2048, bool allValues = false);
+  CollectValues(std::string variableName, int bufSize = 2048, bool allValues = false);
 };
 
 class InvariantGenerator : public Analysis {
   friend class DataTrace;
   
-  string variableName;
+  std::string variableName;
   
 public:
-  InvariantGenerator(string variableName);
+  InvariantGenerator(std::string variableName);
 };
 
 class ExtractFeatures : public Analysis {
   friend class DataTrace;
   
-  string variableName;
+  std::string variableName;
 
 public:
-  ExtractFeatures(string variableName);
+  ExtractFeatures(std::string variableName);
 };
 
 class PrintChanges : public Analysis {
   friend class DataTrace;
   
-  string variableName;
+  std::string variableName;
   
 public:
-  PrintChanges(string variableName);
+  PrintChanges(std::string variableName);
 };
 
 class Scope {
 public:
   static Scope* singleFunction();
-  static Scope* reachableFunctions(int calls = numeric_limits<int>::max());
-  static Scope* callPath(string f1 = "", string f2 = "", string f3 = "",
-			 string f4 = "", string f5 = "", string f6 = "",
-			 string f7 = "", string f8 = "", string f9 = "");
+  static Scope* reachableFunctions(int calls = std::numeric_limits<int>::max());
+  static Scope* callPath(std::string f1 = "", std::string f2 = "", std::string f3 = "",
+			 std::string f4 = "", std::string f5 = "", std::string f6 = "",
+			 std::string f7 = "", std::string f8 = "", std::string f9 = "");
 
   virtual ~Scope() {}
 };
@@ -73,10 +77,10 @@ public:
 class CallPathScope : public Scope {
   friend class DataTrace;
   
-  vector<string> callPath;
+  std::vector<std::string> callPath;
   
 public:
-  CallPathScope(vector<string> callPath);
+  CallPathScope(std::vector<std::string> callPath);
 };
 
 class SamplingPoints {
@@ -100,10 +104,11 @@ public:
 class MultipleSamplingPoints : public SamplingPoints {
   friend class DataTrace;
   
-  vector<SamplingPoints*> pointGenerators;
+  std::vector<SamplingPoints*> pointGenerators;
 
 public:
-  MultipleSamplingPoints(vector<SamplingPoints*> pointGenerators);
+  MultipleSamplingPoints(std::
+			 vector<SamplingPoints*> pointGenerators);
 };
 
 class StoreSamplingPoints : public SamplingPoints {
@@ -170,8 +175,10 @@ public:
 
 class TraceAPI {
  public:
+#ifdef PORT_LATER
   static bool instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
   static bool finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
+#endif // PORT_LATER
 };
 
 

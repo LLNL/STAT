@@ -17,7 +17,8 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
-#include "DysectAPI/TraceAPIInstr.h"
+#include <DysectAPI/TraceAPI.h>
+#include <DysectAPI/TraceAPIInstr.h>
 
 using namespace std;
 

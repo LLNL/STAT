@@ -108,8 +108,6 @@ namespace DysectAPI {
   bool isDysectTag(int tag);
 
 
-#include <DysectAPI/TraceAPI.h>
-
 enum environmentType_t {
   BackendEnvironment,
   FrontendEnvironment,

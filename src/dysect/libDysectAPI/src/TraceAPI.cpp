@@ -142,6 +142,7 @@ DataTrace::DataTrace(Analysis* analysis, Scope* scope, SamplingPoints* points)
   createInstrumentor();
 }
 
+#ifdef PORT_LATER
 bool TraceAPI::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
   // TODO: Instrument the function from here
 
@@ -153,3 +154,4 @@ bool TraceAPI::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, 
 
   return true;
 }
+#endif // PORT_LATER

@@ -17,10 +17,12 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
-#include "DysectAPI/TraceAPIInstr.h"
+#include <DysectAPI/TraceAPI.h>
 
 using namespace std;
 
 void DataTrace::createInstrumentor() {
+#if PORT_LATER
   assert(!"Instrumentors should not be created anywhere but the backend");
+#endif
 }
