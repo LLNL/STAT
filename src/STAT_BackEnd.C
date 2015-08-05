@@ -1370,10 +1370,6 @@ StatError_t STAT_BackEnd::attach()
     Walker *proc = NULL;
     map<int, Walker *>::iterator processMapIter;
 #if defined(GROUP_OPS)
-  #ifdef DYSECTAPI
-     BPatch bpatch;
-
-  #endif
     vector<ProcessSet::AttachInfo> aInfo;
     ProcessSet::AttachInfo pAttach;
     Process::ptr pcProc;
@@ -1411,6 +1407,8 @@ StatError_t STAT_BackEnd::attach()
         }
     #ifndef DYSECTAPI
         procSet_ = ProcessSet::attachProcessSet(aInfo);
+    #else
+	procSet_ = ProcessSet::newProcessSet();
     #endif
         walkerSet_ = WalkerSet::newWalkerSet();
     }
@@ -1483,10 +1481,12 @@ StatError_t STAT_BackEnd::attach()
 
                     /* Add both the BPatch_process and walker to the ProcControlAPI::Process as data
                      * allowing us to always retrieve for using Dyninst::Process commands */
-                    std::pair<BPatch_process *, Walker *> newPair = make_pair(bpatch_process,proc);
-                    pcProc->setData(&newPair);
+		    pcProc->setData(new std::pair<BPatch_process *, Walker *>(bpatch_process,proc));
 
                     mpiRankToProcessMap_.insert(pair<int, Process::ptr>(proctab_[i].mpirank, pcProc));
+
+		    /* Add the Dyninst::Process to the ProcessSet */
+		    procSet_->insert(pcProc);
 #else
                     pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
 
