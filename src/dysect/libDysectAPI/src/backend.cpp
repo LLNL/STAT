@@ -518,8 +518,6 @@ DysectAPI::DysectErrorCode Backend::enablePending() {
 
 
 DysectAPI::DysectErrorCode Backend::registerEventHandlers() {
-  return OK;
-  
   Process::registerEventCallback(ProcControlAPI::EventType::Breakpoint, Backend::handleBreakpoint);
   Process::registerEventCallback(ProcControlAPI::EventType::Signal, Backend::handleSignal);
   Process::registerEventCallback(ProcControlAPI::EventType::ThreadCreate, Backend::handleGenericEvent);
