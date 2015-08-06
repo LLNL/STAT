@@ -525,9 +525,11 @@ DysectAPI::DysectErrorCode Backend::registerEventHandlers() {
   Process::registerEventCallback(ProcControlAPI::EventType::Fork, Backend::handleGenericEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Exec, Backend::handleGenericEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Library, Backend::handleLibraryEvent);
-  Process::registerEventCallback(ProcControlAPI::EventType::Exit, Backend::handleProcessExit);
   Process::registerEventCallback(ProcControlAPI::EventType::Crash, Backend::handleCrash);
-
+  Process::registerEventCallback(ProcControlAPI::EventType(ProcControlAPI::EventType::Pre,
+							   ProcControlAPI::EventType::Exit),
+				 Backend::handleProcessExit);
+  
   return OK;
 }
 

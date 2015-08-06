@@ -57,15 +57,35 @@ bool ProcessMgr::detach(ProcessSet::ptr detachedSet) {
     return DYSECTWARN(false, "detach from empty detachSet");
   }
 
-  bool ret = detachedSet->temporaryDetach();
-  if (ret == false) {
-    return DYSECTWARN(false, "detach from detachSet failed: %s", ProcControlAPI::getLastErrorMsg());
+  ProcessSet::ptr already_detached = detached->set_intersection(detachedSet);
+  ProcessSet::ptr detached_now;
+    
+  if (already_detached->size() != 0) {
+    DYSECTWARN(false, "ProcessMgr::detach: %d processes were already detached", already_detached->size());
+    detached_now = detachedSet->set_difference(already_detached);
+  } else {
+    detached_now = detachedSet;
   }
 
-  allProcs = allProcs->set_difference(detachedSet);
-  detached = detached->set_union(detachedSet);
+  if (detached_now->size() == 0) {
+    return false;
+  }
 
-  return true;
+  bool res = true;
+  for(ProcessSet::iterator procIter = detached_now->begin(); procIter != detached_now->end(); ++procIter) {
+    Process::ptr pcProc = *procIter;
+    BPatch_process *bpatch_process = ProcMap::get()->getDyninstProcess(pcProc);
+    if (!bpatch_process->isDetached()) {
+      bpatch_process->detach(true);
+    } else {
+      res = false;
+    }
+  }
+  
+  allProcs = allProcs->set_difference(detached_now);
+  detached = detached->set_union(detached_now);
+
+  return res;
 }
 
 bool ProcessMgr::detachAll() {
@@ -99,7 +119,7 @@ bool ProcessMgr::detachAll() {
 
   if(allProcs && allProcs->size() > 0) {
     DYSECTVERBOSE(true, "Detaching from %d processes...", allProcs->size());
-    allProcs->temporaryDetach();
+    detach(allProcs);
   }
 
   DYSECTVERBOSE(true, "Done");
