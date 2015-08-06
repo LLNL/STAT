@@ -18,6 +18,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include "DysectAPI/Aggregates/Aggregate.h"
 #include "DysectAPI/Aggregates/CmpAgg.h"
+#include "DysectAPI/ProcMap.h"
 #include "DysectAPI.h"
 
 using namespace std;
@@ -36,7 +37,8 @@ bool CmpAgg::collect(void *process, void *thread) {
     return false;
   }
 
-  Walker* proc = (static_cast<std::pair<void*, Walker*> *> (process_ptr->getData()))->second;
+  ///PM Walker* proc = (static_cast<std::pair<void*, Walker*> *> (process_ptr->getData()))->second;
+  Walker *proc = ProcMap::get()->getWalker(process_ptr);
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
   }

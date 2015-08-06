@@ -23,6 +23,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Domain.h>
 #include <DysectAPI/Probe.h>
 #include <DysectAPI/Backend.h>
+#include <DysectAPI/ProcMap.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -78,7 +79,8 @@ bool Location::disable(ProcessSet::ptr lprocset) {
     Process::ptr procPtr = *procIter;
     ProcDebug *pDebug;
 
-    Walker* proc = (static_cast<std::pair<void*, Walker*> *> (procPtr->getData()))->second;
+    ///PM Walker* proc = (static_cast<std::pair<void*, Walker*> *> (procPtr->getData()))->second;
+    Walker *proc = ProcMap::get()->getWalker(procPtr);
 
     if (procPtr->allThreadsRunning()) {
       wasRunning = true;
@@ -176,7 +178,8 @@ bool Location::enable(ProcessSet::ptr lprocset) {
     Process::ptr procPtr = *procIter;
     ProcDebug *pDebug;
 
-    Walker* proc = (static_cast<std::pair<void*, Walker*> *> (procPtr->getData()))->second;
+    ///PM Walker* proc = (static_cast<std::pair<void*, Walker*> *> (procPtr->getData()))->second;
+    Walker *proc = ProcMap::get()->getWalker(procPtr);
 
     if (procPtr->allThreadsRunning()) {
       wasRunning = true;

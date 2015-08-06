@@ -1481,8 +1481,11 @@ StatError_t STAT_BackEnd::attach()
 
                     /* Add both the BPatch_process and walker to the ProcControlAPI::Process as data
                      * allowing us to always retrieve for using Dyninst::Process commands */
-		    pcProc->setData(new std::pair<BPatch_process *, Walker *>(bpatch_process,proc));
-
+		    ///PM printMsg(STAT_OK, __FILE__, __LINE__, "Process associated data before update: %p\n", pcProc->getData());
+		    ///PM pcProc->setData(new std::pair<BPatch_process *, Walker *>(bpatch_process,proc));
+		    ///PM printMsg(STAT_OK, __FILE__, __LINE__, "Process associated data after update: %p\n", pcProc->getData());
+		    ProcMap::get()->addProcess(pcProc, proc, bpatch_process);
+		    
                     mpiRankToProcessMap_.insert(pair<int, Process::ptr>(proctab_[i].mpirank, pcProc));
 
 		    /* Add the Dyninst::Process to the ProcessSet */
@@ -2432,7 +2435,8 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
             stringstream ss;
             ss << "[Task Detached]";
 #ifdef DYSECTAPI
-            Walker *walker = (static_cast<std::pair<BPatch_process*, Walker*> *> ((*i)->getData()))->second;
+            ///PM Walker *walker = (static_cast<std::pair<BPatch_process*, Walker*> *> ((*i)->getData()))->second;
+	    Walker *walker = ProcMap::get()->getWalker(*i);
 #else
             Walker *walker = static_cast<Walker *>((*i)->getData());
 #endif
@@ -2460,7 +2464,8 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
             stringstream ss;
             ss << "[Task Exited with " << (*i)->getExitCode() << "]";
 #ifdef DYSECTAPI
-            Walker *walker = (static_cast<std::pair<BPatch_process*, Walker*> *> ((*i)->getData()))->second;
+            ///PM Walker *walker = (static_cast<std::pair<BPatch_process*, Walker*> *> ((*i)->getData()))->second;
+	    Walker *walker = ProcMap::get()->getWalker(*i);
 #else
             Walker *walker = static_cast<Walker *>((*i)->getData());
 #endif
@@ -2488,7 +2493,8 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
             stringstream ss;
             ss << "[Task Crashed with Signal " << (*i)->getCrashSignal() << "]";
 #ifdef DYSECTAPI
-            Walker *walker = (static_cast<std::pair<BPatch_process*, Walker*> *> ((*i)->getData()))->second;
+            ///PM Walker *walker = (static_cast<std::pair<BPatch_process*, Walker*> *> ((*i)->getData()))->second;
+	    Walker *walker = ProcMap::get()->getWalker(*i);
 #else
             Walker *walker = static_cast<Walker *>((*i)->getData());
 #endif
@@ -2516,7 +2522,8 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
             stringstream ss;
             ss << "[Task Terminated]";
 #ifdef DYSECTAPI
-            Walker *walker = (static_cast<std::pair<BPatch_process*, Walker*> *> ((*i)->getData()))->second;
+            ///PM Walker *walker = (static_cast<std::pair<BPatch_process*, Walker*> *> ((*i)->getData()))->second;
+	    Walker *walker = ProcMap::get()->getWalker(*i);
 #else
             Walker *walker = static_cast<Walker *>((*i)->getData());
 #endif
@@ -2561,7 +2568,8 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
                 ss << "[Stackwalk Error - 0x" << std::hex << err_proc->getLastError() << "]";
                 string err_string = ss.str();
 #ifdef DYSECTAPI
-            Walker *walker = (static_cast<std::pair<BPatch_process*, Walker*> *> (err_proc->getData()))->second;
+		///PM Walker *walker = (static_cast<std::pair<BPatch_process*, Walker*> *> (err_proc->getData()))->second;
+		Walker *walker = ProcMap::get()->getWalker(err_proc);
 #else
                 Walker *walker = static_cast<Walker *>(err_proc->getData());
 #endif

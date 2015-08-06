@@ -24,6 +24,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Probe.h>
 #include <DysectAPI/ProbeTree.h>
 #include <DysectAPI/Backend.h>
+#include <DysectAPI/ProcMap.h>
 
 using namespace std;
 using namespace MRN;
@@ -140,7 +141,8 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
 
   // Let event know that it was triggered.
   // Used for event composition
-  Walker* proc = (static_cast<std::pair<void*, Walker*> *> (curProcess->getData()))->second;
+  ///PM Walker* proc = (static_cast<std::pair<void*, Walker*> *> (curProcess->getData()))->second;
+  Walker* proc = ProcMap::get()->getWalker(curProcess);
   if(!proc) {
     DYSECTWARN(true, "Missing payload in process object: could not get walker for PID %d", curProcess->getPid());
   } else {
@@ -516,6 +518,8 @@ DysectAPI::DysectErrorCode Backend::enablePending() {
 
 
 DysectAPI::DysectErrorCode Backend::registerEventHandlers() {
+  return OK;
+  
   Process::registerEventCallback(ProcControlAPI::EventType::Breakpoint, Backend::handleBreakpoint);
   Process::registerEventCallback(ProcControlAPI::EventType::Signal, Backend::handleSignal);
   Process::registerEventCallback(ProcControlAPI::EventType::ThreadCreate, Backend::handleGenericEvent);
@@ -979,7 +983,8 @@ Process::cb_ret_t Backend::handleTimeEvent() {
       Process::ptr procPtr = *procIter;
       if(event && event->isEnabled(procPtr)) {
         Thread::ptr threadPtr = procPtr->threads().getInitialThread();
-        Walker *proc = (static_cast<std::pair<void*, Walker*> *> (procPtr->getData()))->second;
+        ///PM Walker *proc = (static_cast<std::pair<void*, Walker*> *> (procPtr->getData()))->second;
+	Walker *proc = ProcMap::get()->getWalker(procPtr);
         handleEvent(procPtr, threadPtr, event);
       }
     }
