@@ -190,7 +190,6 @@ bool ProcessMgr::stopProcs(ProcessSet::ptr procs) {
   bool ret = true;
   for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
     Process::ptr pcProc = *procIter;
-    ///PM BPatch_process *bpatch_process  = (static_cast<std::pair<BPatch_process*, Walker*> *> (pcProc->getData()))->first;
     BPatch_process *bpatch_process = ProcMap::get()->getDyninstProcess(pcProc);
     if(!bpatch_process->stopExecution())
       ret = false;
@@ -201,7 +200,6 @@ bool ProcessMgr::continueProcs(ProcessSet::ptr procs) {
   bool ret = true;
   for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
     Process::ptr pcProc = *procIter;
-    ///PM BPatch_process *bpatch_process  = (static_cast<std::pair<BPatch_process*, Walker*> *> (pcProc->getData()))->first;
     BPatch_process *bpatch_process = ProcMap::get()->getDyninstProcess(pcProc);
     if(!bpatch_process->continueExecution())
       ret = false;

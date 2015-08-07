@@ -61,7 +61,6 @@ DysectAPI::DysectErrorCode TargetVar::getValue(ConditionResult& result, Value& c
   vector<THR_ID> threads;
   int ret;
 
-  ///PM Walker* proc = (static_cast<std::pair<void*, Walker*> *> (process->getData()))->second;
   Walker *proc = ProcMap::get()->getWalker(process);
   if(!proc) {
     return DYSECTWARN(Error, "Walker not found for process: %d", process->getPid());

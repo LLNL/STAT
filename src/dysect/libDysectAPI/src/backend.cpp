@@ -141,7 +141,6 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
 
   // Let event know that it was triggered.
   // Used for event composition
-  ///PM Walker* proc = (static_cast<std::pair<void*, Walker*> *> (curProcess->getData()))->second;
   Walker* proc = ProcMap::get()->getWalker(curProcess);
   if(!proc) {
     DYSECTWARN(true, "Missing payload in process object: could not get walker for PID %d", curProcess->getPid());
@@ -983,7 +982,6 @@ Process::cb_ret_t Backend::handleTimeEvent() {
       Process::ptr procPtr = *procIter;
       if(event && event->isEnabled(procPtr)) {
         Thread::ptr threadPtr = procPtr->threads().getInitialThread();
-        ///PM Walker *proc = (static_cast<std::pair<void*, Walker*> *> (procPtr->getData()))->second;
 	Walker *proc = ProcMap::get()->getWalker(procPtr);
         handleEvent(procPtr, threadPtr, event);
       }

@@ -37,7 +37,6 @@ bool DescribeVariable::collect(void* process, void *thread) {
     return DYSECTVERBOSE(false, "Process object not available");
   }
 
-  ///PM Walker* proc = (static_cast<std::pair<void*, Walker*> *> (process_ptr->getData()))->second;
   Walker *proc = ProcMap::get()->getWalker(process_ptr);
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
