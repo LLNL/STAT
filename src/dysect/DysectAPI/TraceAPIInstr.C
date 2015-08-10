@@ -621,87 +621,24 @@ DataTraceInstr::DataTraceInstr(AnalysisInstr* analysis, ScopeInstr* scope, Sampl
   
 }
 
-void DataTraceInstr::install(struct instTarget& target, BPatch_function* root_function) {
+bool DataTraceInstr::install(struct instTarget& target, std::string rootFuncName) {
   vector<BPatch_function*> instrumentedFunctions;
+  
+  vector<BPatch_function*> rootFunctions;
+  target.appImage->findFunction(rootFuncName.c_str(), rootFunctions);
 
-  install_recursive(target, instrumentedFunctions, root_function);
+  if (rootFunctions.size() != 1) {
+    return false;
+  }
+
+  install_recursive(target, instrumentedFunctions, rootFunctions[0]);
+
+  return true;
 }
 
 void DataTraceInstr::finishAnalysis(struct instTarget& target) {
   analysis->finishAnalysis(target);
 }
 
-#ifdef PORT_LATER
-BPatch TraceAPI::bpatch;
-map<Dyninst::ProcControlAPI::Process::const_ptr, instTarget*> TraceAPI::procTable;
 
-instTarget* TraceAPI::findProcess(Dyninst::ProcControlAPI::Process::const_ptr proc) {
-  map<Dyninst::ProcControlAPI::Process::const_ptr, instTarget*>::iterator it;
-
-  it = procTable.find(proc);
-
-  if (it == procTable.end()) {
-    return 0;
-  } else {
-    return it->second;
-  }
-}
-
-bool TraceAPI::addProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, int pid, string executable) {
-  BPatch_process* procHandle = bpatch.processAttach(executable.c_str(), pid);
-
-  if (procHandle == 0) {
-    return false;
-  }
-
-  instTarget* target = new instTarget();
-  target->addrHandle = dynamic_cast<BPatch_addressSpace*>(procHandle);
-  target->appImage = target->addrHandle->getImage();
-
-  procTable[proc] = target;
-
-  return true;
-}
-
-bool TraceAPI::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
-  instTarget* target = TraceAPI::findProcess(proc);
-  
-  if (target == 0) {
-    return false;
-  }
-  
-  Stackwalker::Walker* walker = (Stackwalker::Walker*)(proc->getData());
-  vector<Stackwalker::Frame> stackWalk;
-
-  if (!walker->walkStack(stackWalk)) {
-    return false;
-  }
-
-  string curFuncName;
-  stackWalk[stackWalk.size() - 1].getName(curFuncName);
-
-  vector<BPatch_function*> instrFunction;
-  target->appImage->findFunction(curFuncName.c_str(), instrFunction);
-
-  if (instrFunction.size() != 1) {
-    return false;
-  }
-
-  trace->install(*target, instrFunction[0]);
-
-  return true;
-}
-
-bool TraceAPI::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
-  instTarget* target = TraceAPI::findProcess(proc);
-  
-  if (target == 0) {
-    return false;
-  }
-  
-  trace->finishAnalysis(*target);
-
-  return true;
-}
-#endif // PORT_LATER
 

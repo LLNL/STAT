@@ -205,21 +205,9 @@ class DataTraceInstr {
   
 public:
   DataTraceInstr(AnalysisInstr* analysis, ScopeInstr* scope, SamplingPointsInstr* points);
-  void install(struct instTarget& target, BPatch_function* root_function);
+
+  bool install(struct instTarget& target, std::string rootFuncName);
   void finishAnalysis(struct instTarget& target);
 };
-
-#ifdef PORT_LATER
-class TraceAPIInstr {
-  static BPatch bpatch;
-
- public:
-  static bool addProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, int pid, string executable);
-  static instTarget* findProcess(Dyninst::ProcControlAPI::Process::const_ptr proc);
-  static bool instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
-  static bool finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
-};
-#endif // PORT_LATER
-
 
 #endif // __TRACEAPIINSTR_H

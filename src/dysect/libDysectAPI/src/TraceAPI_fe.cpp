@@ -22,7 +22,13 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 using namespace std;
 
 void DataTrace::createInstrumentor() {
-#if PORT_LATER
-  assert(!"Instrumentors should not be created anywhere but the backend");
-#endif
+  
+}
+
+bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc) {
+  return false;
+}
+
+void DataTrace::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc) {
+  
 }

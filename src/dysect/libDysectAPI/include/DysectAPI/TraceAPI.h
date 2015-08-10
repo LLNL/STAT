@@ -171,15 +171,9 @@ class DataTrace {
   
 public:
   DataTrace(Analysis* analysis, Scope* scope, SamplingPoints* points);
-};
 
-class TraceAPI {
- public:
-#ifdef PORT_LATER
-  static bool instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
-  static bool finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
-#endif // PORT_LATER
+  bool instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc);
+  void finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc);
 };
-
 
 #endif

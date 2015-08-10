@@ -26,6 +26,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Aggregates/Aggregate.h>
 #include <DysectAPI/Aggregates/AggregateFunction.h>
 #include <DysectAPI/Aggregates/Location.h>
+#include <DysectAPI/TraceAPI.h>
 
 namespace DysectAPI {
   class Act;
@@ -98,10 +99,8 @@ namespace DysectAPI {
     static Act* detach();
     static Act* stackTrace();
     static Act* fullStackTrace();
-#ifdef WIERDBUG
     static Act* startTrace(DataTrace* trace);
     static Act* stopTrace(DataTrace* trace);
-#endif
     static void resetAggregateIdCounter();
 
     int getId() { return id; }
@@ -278,7 +277,6 @@ namespace DysectAPI {
     bool finishFE(int count);
   };
 
-#ifdef WIERDBUG
   class StartTrace : public Act {
     std::vector<Dyninst::ProcControlAPI::Process::const_ptr> triggeredProcs;
     DataTrace* trace;
@@ -310,7 +308,6 @@ namespace DysectAPI {
     bool finishBE(struct packet*& p, int& len);
     bool finishFE(int count);
   };
-#endif
   
   class FullStackTrace : public Act {
     std::string str;

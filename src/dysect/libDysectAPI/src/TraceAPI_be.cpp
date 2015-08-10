@@ -17,10 +17,13 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
 #include <DysectAPI/TraceAPI.h>
 #include <DysectAPI/TraceAPIInstr.h>
+#include <DysectAPI/ProcMap.h>
 
 using namespace std;
+using namespace DysectAPI;
 
 /* Conversion functions */
 SamplingPointsInstr::SamplingTime convertTime(SamplingPoints::SamplingTime time);
@@ -128,4 +131,66 @@ SamplingPointsInstr::SamplingTime convertTime(SamplingPoints::SamplingTime time)
   default:
     assert(!"Unknown sampling time!");
   }
+}
+
+
+bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc) {
+  ProcDebug* pDebug;
+  bool wasRunning = false;
+  Stackwalker::Walker* walker = ProcMap::get()->getWalker(proc);
+  
+  if (proc->allThreadsRunning()) {
+    wasRunning = true;
+    pDebug = dynamic_cast<ProcDebug*>(walker->getProcessState());
+    //    pDebug->pause();
+  }
+  
+  vector<Stackwalker::Frame> stackWalk;
+
+  if (!walker->walkStack(stackWalk)) {
+    if (wasRunning) {
+      pDebug->resume();
+    }
+		    
+    return false;
+  }
+
+  string curFuncName;
+  stackWalk[0].getName(curFuncName);
+
+  instTarget target;
+  BPatch_process* dyninst_proc = ProcMap::get()->getDyninstProcess(proc);
+  target.addrHandle = dynamic_cast<BPatch_addressSpace*>(dyninst_proc);
+  target.appImage = target.addrHandle->getImage();
+
+  if (dyninst_proc->stopExecution()) {
+    DYSECTVERBOSE(false, "Could not stop process!");
+  }
+  
+  DataTraceInstr* instr = (DataTraceInstr*)instrumentor;
+  bool res = instr->install(target, curFuncName);
+
+  if (dyninst_proc->continueExecution()) {
+    DYSECTVERBOSE(false, "Could not continue process!");
+  }
+
+  if (wasRunning) {
+    pDebug->resume();
+  }
+
+  return res;
+}
+
+void DataTrace::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc) {
+  instTarget target;
+  BPatch_process* dyninst_proc = ProcMap::get()->getDyninstProcess(proc);
+  target.addrHandle = dynamic_cast<BPatch_addressSpace*>(dyninst_proc);
+  target.appImage = target.addrHandle->getImage();
+
+  dyninst_proc->stopExecution();
+  
+  DataTraceInstr* instr = (DataTraceInstr*)instrumentor;
+  instr->finishAnalysis(target);
+
+  dyninst_proc->continueExecution();
 }

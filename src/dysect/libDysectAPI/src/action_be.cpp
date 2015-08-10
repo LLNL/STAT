@@ -404,34 +404,23 @@ bool StackTrace::finishBE(struct packet*& p, int& len) {
   return true;
 }
 
-#ifdef WIERDBUG
 bool StartTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   DYSECTVERBOSE(true, "StartTrace::collect %d", owner->getProcessCount());
 
-  triggeredProcs.push_back(process);
+  if (!trace->instrumentProcess(process)) {
+    return false;
+  }
 
   return true;
 }
 
 bool StartTrace::finishFE(int count) {
-  assert(!"Finish Front-end should not be run on backend-end!");
+  assert(!"Finish Front-end should not be run on bacakend-end!");
   return false;
 }
 
 bool StartTrace::finishBE(struct packet*& p, int& len) {
-  vector<Dyninst::ProcControlAPI::Process::const_ptr>::iterator procIter;
-
-  DYSECTVERBOSE(true, "Installing trace into %d processes", owner->getProcessCount());
-  
-  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
-    if (!TraceAPI::instrumentProcess(*procIter, trace)) {
-      return false;
-    }
-  }
-
-  triggeredProcs.clear();
-
   return true;
 }
 
@@ -439,8 +428,8 @@ bool StopTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   DYSECTVERBOSE(true, "StopTrace::collect %d", owner->getProcessCount());
 
-  triggeredProcs.push_back(process);
-
+  trace->finishAnalysis(process);
+  
   return true;
 }
 
@@ -450,21 +439,8 @@ bool StopTrace::finishFE(int count) {
 }
 
 bool StopTrace::finishBE(struct packet*& p, int& len) {
-  vector<Dyninst::ProcControlAPI::Process::const_ptr>::iterator procIter;
-
-  DYSECTVERBOSE(true, "Installing trace into %d processes", owner->getProcessCount());
-  
-  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
-    if (!TraceAPI::finishAnalysis(*procIter, trace)) {
-      return false;
-    }
-  }
-
-  triggeredProcs.clear();
-
   return true;
 }
-#endif
 
 bool FullStackTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {

@@ -145,14 +145,13 @@ DysectAPI::Act* Act::fullStackTrace() {
   return new FullStackTrace();
 }
 
-#ifdef WIERDBUG
 DysectAPI::Act* Act::startTrace(DataTrace* trace) {
   return new StartTrace(trace);
 }
+
 DysectAPI::Act* Act::stopTrace(DataTrace* trace) {
   return new StopTrace(trace);
 }
-#endif
 
 DysectAPI::Act* Act::detachAll(AggScope scope) {
   return new DetachAll(scope);
@@ -283,7 +282,6 @@ bool StackTrace::prepare() {
   return true;
 }
 
-#ifdef WIERDBUG
 StartTrace::StartTrace(DataTrace* trace) : trace(trace) {
 
 }
@@ -299,7 +297,6 @@ StopTrace::StopTrace(DataTrace* trace) : trace(trace) {
 bool StopTrace::prepare() {
   return true;
 }
-#endif
 
 FullStackTrace::FullStackTrace() {
   type = fullStackTraceType;

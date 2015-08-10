@@ -372,7 +372,6 @@ bool StackTrace::finishBE(struct packet*& p, int& len) {
 }
 
 
-#ifdef WIERDBUG
 bool StartTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   DYSECTVERBOSE(true, "StartTrace::collect");
@@ -404,7 +403,6 @@ bool StopTrace::finishBE(struct packet*& p, int& len) {
   assert(!"Finish Backend-end should not be run on front-end!");
   return false;
 }
-#endif
 
 bool FullStackTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
