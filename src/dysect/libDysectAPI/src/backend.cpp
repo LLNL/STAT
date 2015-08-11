@@ -893,29 +893,33 @@ DysectAPI::DysectErrorCode Backend::handleTimerEvents() {
 
 
 DysectAPI::DysectErrorCode Backend::handleTimerActions() {
-  pthread_mutex_lock(&probesPendingActionMutex);
-  if (probesPendingAction.size() > 0) {
-    DYSECTVERBOSE(true, "Handle timer actions");
-    vector<Probe*>::iterator probeIter = probesPendingAction.begin();
-    for(;probeIter != probesPendingAction.end(); probeIter++) {
-      Probe* probe = *probeIter;
-      Domain* dom = probe->getDomain();
+  while (true) {
+    Probe* probe;
 
-      DYSECTVERBOSE(true, "Sending enqueued actions for timed probe: %x", dom->getId());
-      probe->sendEnqueuedActions();
-
-      if(probe->numWaitingProcs() > 0) {
-        ProcessSet::ptr lprocset = probe->getWaitingProcs();
-        probe->enableChildren(lprocset);
-        if(probe->getLifeSpan() == fireOnce)
-          probe->disable(lprocset);
-        lprocset->continueProcs();
-        probe->releaseWaitingProcs();
-      }
+    pthread_mutex_lock(&probesPendingActionMutex);
+    if(probesPendingAction.size() == 0) {
+      pthread_mutex_unlock(&probesPendingActionMutex);
+      break;
     }
-    probesPendingAction.clear();
-  }
-  pthread_mutex_unlock(&probesPendingActionMutex);
+    probe = probesPendingAction.back();
+    probesPendingAction.pop_back();
+    pthread_mutex_unlock(&probesPendingActionMutex);
+
+    Domain* dom = probe->getDomain();
+
+    DYSECTVERBOSE(true, "Sending enqueued actions for timed probe: %x", dom->getId());
+    probe->sendEnqueuedActions();
+
+    if(probe->numWaitingProcs() > 0) {
+      ProcessSet::ptr lprocset = probe->getWaitingProcs();
+      probe->enableChildren(lprocset);
+      if(probe->getLifeSpan() == fireOnce)
+        probe->disable(lprocset);
+      lprocset->continueProcs();
+//      ProcessMgr::continueProcs(lprocset); //this is implemented in dyninst branch
+      probe->releaseWaitingProcs();
+     }
+   }
   return OK;
 }
 
