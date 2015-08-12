@@ -408,9 +408,7 @@ bool StartTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   DYSECTVERBOSE(true, "StartTrace::collect %d", owner->getProcessCount());
 
-  if (!trace->instrumentProcess(process)) {
-    return false;
-  }
+  TraceAPI::addPendingInstrumentation(process, trace);
 
   return true;
 }
@@ -439,6 +437,16 @@ bool StopTrace::finishFE(int count) {
 }
 
 bool StopTrace::finishBE(struct packet*& p, int& len) {
+  vector<AggregateFunction*>* aggregates = trace->getAggregates();
+
+  if (aggregates->size() == 0) {
+    return true;
+  }
+  
+  if(!AggregateFunction::getPacket(*aggregates, len, p)) {
+    return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
+  }
+  
   return true;
 }
 

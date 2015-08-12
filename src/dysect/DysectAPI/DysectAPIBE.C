@@ -143,8 +143,9 @@ DysectErrorCode BE::handleAll() {
   int count1, count2;
   if (returnControlToDysect == true)
   {
-      handleTimerActions();
-      handleQueuedOperations();
+    TraceAPI::performPendingInstrumentations();
+    handleTimerActions();
+    handleQueuedOperations();
   }
   count1 = getPendingExternalAction();
   handleTimerEvents();
@@ -155,6 +156,7 @@ DysectErrorCode BE::handleAll() {
   }
 
   count1 = getPendingExternalAction();
+
   ///TODO: Fix this mess. We no longer poll ProcControl for changes,
   ///  as this is part of bpatch.pollForStatusChange() (Dyninst).
   ///  Add a flag to the DySect event handler and check this flag here.
@@ -168,6 +170,10 @@ DysectErrorCode BE::handleAll() {
       returnControlToDysect = false;
     }
   }
+
+  // if event requested instrumentation we must do so before continue
+  TraceAPI::performPendingInstrumentations();
+  
   return OK;
 }
 

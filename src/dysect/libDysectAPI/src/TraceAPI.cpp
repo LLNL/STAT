@@ -2,13 +2,44 @@
 #include <LibDysectAPI.h>
 
 #include <DysectAPI/TraceAPI.h>
+#include <DysectAPI/Err.h>
 
 using namespace std;
+using namespace DysectAPI;
 
 /************ Analysis ************/
+void Analysis::getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs) {
+  
+}
+
+bool Analysis::evaluateAggregate(DysectAPI::AggregateFunction* aggregate) {
+  return true;
+}
+
 CollectValues::CollectValues(string variableName, int bufSize, bool allValues)
   : variableName(variableName), bufSize(bufSize), allValues(allValues) {
 
+}
+
+void CollectValues::getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs) {
+  aggs.push_back(&aggregator);
+}
+
+bool CollectValues::evaluateAggregate(AggregateFunction* aggregate) {
+  CollectValuesAgg* agg = dynamic_cast<CollectValuesAgg*>(aggregate);
+  if (agg == 0) {
+    return false;
+  }
+
+  string desc;
+  agg->getStr(desc);
+  DYSECTINFO(true, "The variable %s took the values %s", variableName.c_str(), desc.c_str());
+
+  return true;
+}
+
+DysectAPI::CollectValuesAgg* CollectValues::getAggregator() {
+  return &aggregator;
 }
 
 InvariantGenerator::InvariantGenerator(string variableName) : variableName(variableName) {
@@ -138,7 +169,44 @@ SamplingPoints* SamplingPoints::multiple(SamplingPoints* sp1, SamplingPoints* sp
 /************ DataTrace ************/
 DataTrace::DataTrace(Analysis* analysis, Scope* scope, SamplingPoints* points)
   : analysis(analysis), scope(scope), points(points) {
-
+  analysis->getAggregateRefs(aggregates);
+  
   createInstrumentor();
+}
+
+std::vector<DysectAPI::AggregateFunction*>* DataTrace::getAggregates() {
+  return &aggregates;
+}
+
+bool DataTrace::evaluateAggregate(DysectAPI::AggregateFunction* aggregate) {
+  analysis->evaluateAggregate(aggregate);
+}
+
+
+/************ TraceAPI ************/
+multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> TraceAPI::pendingInstrumentations;
+
+void TraceAPI::addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
+  DYSECTVERBOSE(true, "Enqueueing trace for process %p", &(*proc));
+  
+  pendingInstrumentations.insert(pair<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>(proc, trace));
+}
+
+void TraceAPI::performPendingInstrumentations() {
+  if (pendingInstrumentations.size() == 0) {
+    return;
+  }
+  
+  multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>::iterator it;
+  for (it = pendingInstrumentations.begin(); it != pendingInstrumentations.end(); ++it) {
+    Dyninst::ProcControlAPI::Process::const_ptr process = it->first;
+    DataTrace* trace = it->second;
+
+    DYSECTVERBOSE(true, "Installing trace for process %p", &(*process));
+
+    trace->instrumentProcess(process);
+  }
+
+  pendingInstrumentations.clear();
 }
 

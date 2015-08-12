@@ -396,7 +396,23 @@ bool StopTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
 }
 
 bool StopTrace::finishFE(int count) {
-  DYSECTVERBOSE(true, "StopTrace::finishFE %d", count);
+  DYSECTVERBOSE(true, "StopTrace::finishFE %d %d", count, lscope);
+
+  vector<AggregateFunction*>* aggs = trace->getAggregates();
+
+  for (vector<AggregateFunction*>::iterator it = aggs->begin(); it != aggs->end(); ++it) {
+    AggregateFunction* agg = *it;
+    int id = agg->getId();
+
+    DYSECTVERBOSE(true, "StopTrace::finishFE, evaluating aggregate %d", id);
+    
+    AggregateFunction* receivedAgg = owner->getAggregate(id);
+    if (!trace->evaluateAggregate(receivedAgg)) {
+      return DYSECTWARN(false, "Could not evaluate aggregate %d!", id);
+    }
+  }
+  
+  return true;
 }
 
 bool StopTrace::finishBE(struct packet*& p, int& len) {

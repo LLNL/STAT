@@ -21,8 +21,8 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 using namespace std;
 
-void DataTrace::createInstrumentor() {
-  
+void* DataTrace::createInstrumentor() {
+  return 0;
 }
 
 bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc) {

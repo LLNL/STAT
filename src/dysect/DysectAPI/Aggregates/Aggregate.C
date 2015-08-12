@@ -212,6 +212,9 @@ int AggregateFunction::getAggregate(char *p, AggregateFunction*& aggFunc) {
     case dataTracesAgg:
       aggFunc = new DataStackTrace(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
       break;
+    case collectValuesAgg:
+      aggFunc = new CollectValuesAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
+      break;
     default:
       fprintf(stderr, "Unknown aggregate '%d'\n", ptr->type);
       aggFunc = 0;

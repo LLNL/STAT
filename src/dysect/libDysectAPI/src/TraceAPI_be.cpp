@@ -28,7 +28,7 @@ using namespace DysectAPI;
 /* Conversion functions */
 SamplingPointsInstr::SamplingTime convertTime(SamplingPoints::SamplingTime time);
 
-void DataTrace::createInstrumentor() {
+void* DataTrace::createInstrumentor() {
   AnalysisInstr* analysisInstr = 0;
   ScopeInstr* scopeInstr = 0;
   SamplingPointsInstr* pointsInstr = 0;
@@ -42,13 +42,13 @@ void DataTrace::createInstrumentor() {
     PrintChanges* prtChg;
 
     if (colVal = dynamic_cast<CollectValues*>(analysis)) {
-      analysisInstr = new CollectValuesInstr(colVal->variableName);
+      analysisInstr = new CollectValuesInstr(colVal, colVal->variableName, colVal->bufSize, colVal->allValues);
     } else if (invGen = dynamic_cast<InvariantGenerator*>(analysis)) {
-      analysisInstr = new InvariantGeneratorInstr(invGen->variableName);
+      analysisInstr = new InvariantGeneratorInstr(invGen, invGen->variableName);
     } else if (extFeat = dynamic_cast<ExtractFeatures*>(analysis)) {
-      analysisInstr = new ExtractFeaturesInstr(extFeat->variableName);
+      analysisInstr = new ExtractFeaturesInstr(extFeat, extFeat->variableName);
     } else if (prtChg = dynamic_cast<PrintChanges*>(analysis)) {
-      analysisInstr = new PrintChangesInstr(prtChg->variableName);
+      analysisInstr = new PrintChangesInstr(prtChg, prtChg->variableName);
     } else {
       assert(!"Unknown analysis!");
     }
@@ -79,7 +79,7 @@ void DataTrace::createInstrumentor() {
   /* Create the new trace and save it */
   dataTraceInstr = new DataTraceInstr(analysisInstr, scopeInstr, pointsInstr);
   
-  instrumentor = (void*)dataTraceInstr;
+  return (void*)dataTraceInstr;
 }
 
 /* The function must be a member of DataTrace to access private members
@@ -136,7 +136,7 @@ SamplingPointsInstr::SamplingTime convertTime(SamplingPoints::SamplingTime time)
 
 bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc) {
   ProcDebug* pDebug;
-  bool wasRunning = false;
+  bool wasRunning = false, wasStopped = false;
   Stackwalker::Walker* walker = ProcMap::get()->getWalker(proc);
   
   if (proc->allThreadsRunning()) {
@@ -144,14 +144,14 @@ bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr pr
     pDebug = dynamic_cast<ProcDebug*>(walker->getProcessState());
     //    pDebug->pause();
   }
-  
+
   vector<Stackwalker::Frame> stackWalk;
 
   if (!walker->walkStack(stackWalk)) {
     if (wasRunning) {
       pDebug->resume();
     }
-		    
+    
     return false;
   }
 
@@ -163,20 +163,28 @@ bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr pr
   target.addrHandle = dynamic_cast<BPatch_addressSpace*>(dyninst_proc);
   target.appImage = target.addrHandle->getImage();
 
-  if (dyninst_proc->stopExecution()) {
-    DYSECTVERBOSE(false, "Could not stop process!");
+  dyninst_proc->stopExecution();
+
+  DataTraceInstr* instr;
+  int pid = dyninst_proc->getPid();
+  
+  map<int, void*>::iterator it = instrumentors.find(pid);
+  if (it == instrumentors.end()) {
+    DYSECTVERBOSE(true, "Creating instrumentor for process %d", pid);
+    
+    instr = (DataTraceInstr*)createInstrumentor();
+    instrumentors[pid] = (void*)instr;
+  } else {
+    instr = (DataTraceInstr*)(it->second);
   }
   
-  DataTraceInstr* instr = (DataTraceInstr*)instrumentor;
   bool res = instr->install(target, curFuncName);
-
-  if (dyninst_proc->continueExecution()) {
-    DYSECTVERBOSE(false, "Could not continue process!");
-  }
 
   if (wasRunning) {
     pDebug->resume();
   }
+
+  dyninst_proc->continueExecution();
 
   return res;
 }
@@ -189,7 +197,18 @@ void DataTrace::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc)
 
   dyninst_proc->stopExecution();
   
-  DataTraceInstr* instr = (DataTraceInstr*)instrumentor;
+  DataTraceInstr* instr;
+  int pid = dyninst_proc->getPid();
+  
+  map<int, void*>::iterator it = instrumentors.find(pid);
+  if (it == instrumentors.end()) {
+    DYSECTFATAL(false, "Could not find instrumentor for process %d", pid);
+    
+    return;
+  } else {
+    instr = (DataTraceInstr*)(it->second);
+  }
+  
   instr->finishAnalysis(target);
 
   dyninst_proc->continueExecution();

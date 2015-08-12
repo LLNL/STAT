@@ -210,13 +210,31 @@ bool Location::enable(ProcessSet::ptr lprocset) {
 
         if(addr == 0x2aaaaad02e7f)
           addr = 0x2aaaaad02e28;
-        
+#if 1        
         if(!procPtr->addBreakpoint(addr, bp)) {
           return DYSECTVERBOSE(false, "Breakpoint not installed at %lx: %s", addr, ProcControlAPI::getLastErrorMsg());
         } else {
           DYSECTVERBOSE(true, "Breakpoint installed at %lx for %d", addr, procPtr->getPid());
         }
+#else
+	/* Dyninst can also be used to insert breakpoints */
+	BPatch_process* dyninst_process = ProcMap::get()->getDyninstProcess(procPtr);
+	BPatch_addressSpace* addrspace = dynamic_cast<BPatch_addressSpace*>(dyninst_process);
+	BPatch_image* appImage = addrspace->getImage();
 
+	vector<BPatch_point*>* instr_points = new vector<BPatch_point*>();
+	if (!appImage->findPoints(addr, *instr_points)) {
+	  return DYSECTWARN(false, "Failed to find address in image");
+	}
+
+	if (instr_points->size() != 1) {
+	  return DYSECTWARN(false, "Unexpected number of instrumentation points");
+	}
+
+	BPatch_breakPointExpr* breakpoint = new BPatch_breakPointExpr();
+	addrspace->insertSnippet(*breakpoint, *(instr_points->at(0)));
+#endif
+	
         //addrset->insert(addr, procPtr);
       }
 

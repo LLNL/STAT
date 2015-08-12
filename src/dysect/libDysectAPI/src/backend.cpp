@@ -552,6 +552,8 @@ WalkerSet* Backend::getWalkerset() {
 }
 
 Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev) {
+  //return Process::cbProcStop;
+
   Process::cb_ret_t retState = Process::cbThreadContinue;
 
   EventBreakpoint::const_ptr bpEvent = ev->getEventBreakpoint();

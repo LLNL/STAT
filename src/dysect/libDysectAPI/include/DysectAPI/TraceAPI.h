@@ -2,9 +2,13 @@
 #ifndef __TRACEAPI_H
 #define __TRACEAPI_H
 
+#include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Aggregates/AggregateFunction.h>
+
 #include <string>
 #include <limits>
 #include <vector>
+#include <map>
 
 class Analysis {
 public:
@@ -13,6 +17,9 @@ public:
   static Analysis* generateInvariant(std::string variableName);
   static Analysis* collectValues(std::string variableName);
 
+  virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
+  virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
+  
   virtual ~Analysis() {}
 };
 
@@ -22,9 +29,15 @@ class CollectValues : public Analysis {
   std::string variableName;
   const int bufSize;
   const bool allValues;
+
+  DysectAPI::CollectValuesAgg aggregator;
   
 public:
   CollectValues(std::string variableName, int bufSize = 2048, bool allValues = false);
+
+  DysectAPI::CollectValuesAgg* getAggregator();
+  virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
+  virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
 };
 
 class InvariantGenerator : public Analysis {
@@ -164,16 +177,33 @@ class DataTrace {
   // Pointer to the DataTraceInstr objet used to perform instrumentation
   //  The front ent cannot be linked against DyninstAPI which DataTraceInstr
   //  is, therefore a void pointer is used. 
-  void* instrumentor;
+  //void* instrumentor;
 
-  void createInstrumentor();
+  void* createInstrumentor();
   void* convertSamplingPoints(SamplingPoints* points);
+
+  std::vector<DysectAPI::AggregateFunction*> aggregates;
+
+  std::map<int, void*> instrumentors;
   
 public:
   DataTrace(Analysis* analysis, Scope* scope, SamplingPoints* points);
 
   bool instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc);
   void finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc);
+
+  std::vector<DysectAPI::AggregateFunction*>* getAggregates();
+
+  bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
+};
+
+class TraceAPI {
+  static std::multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> pendingInstrumentations;
+  
+public:
+  static void addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
+  static void performPendingInstrumentations();
+    
 };
 
 #endif

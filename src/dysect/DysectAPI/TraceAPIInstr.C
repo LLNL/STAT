@@ -12,12 +12,17 @@
 #include "walker.h"
 
 #include <DysectAPI/TraceAPIInstr.h>
+#include <DysectAPI/Err.h>
+
+#include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Aggregates/AggregateFunction.h>
 
 using namespace std;
+using namespace DysectAPI;
 
 /************ Actions ************/
-CollectValuesInstr::CollectValuesInstr(string variableName, int bufSize, bool allValues)
-  : variableName(variableName), bufSize(bufSize), allValues(allValues) {
+CollectValuesInstr::CollectValuesInstr(CollectValues* original, string variableName, int bufSize, bool allValues)
+  : original(original), variableName(variableName), bufSize(bufSize), allValues(allValues) {
   collector = 0;
   variable = 0;
   buffer = 0;
@@ -30,12 +35,14 @@ bool CollectValuesInstr::prepareInstrumentedFunction(struct instTarget& target, 
   function->findVariable(variableName.c_str(), variables);
 
   if (variables.size() == 0) {
-    cout << "Could not find '" << variableName << "' in function " << function->getName() << "!" << endl;
-    return false;
+    ///OO cout << "Could not find '" << variableName << "' in function " << function->getName() << "!" << endl;
+    return DYSECTWARN(false, "Could not find '%s' in function %s!", variableName.c_str(), function->getName().c_str());
   }
 
   // TODO: Multiple variables with the same name should all be instrumented
-  cout << "Found variable '" << variableName << "'!" << endl;
+  ///OO cout << "Found variable '" << variableName << "'!" << endl;
+  DYSECTVERBOSE(true, "Found variable '%s'!", variableName.c_str());
+		
   variable = variables[0];
 
   // Check the global variables have been allocated yet
@@ -55,10 +62,11 @@ bool CollectValuesInstr::prepareInstrumentedFunction(struct instTarget& target, 
     target.appImage->findFunction(collectorName.c_str(), collectValueFuncs);
   
     if (collectValueFuncs.size() != 1) {
-      cout << "Could not find" << collectorName << "! " << collectValueFuncs.size() << endl;
-      return false;
+      ///OO cout << "Could not find" << collectorName << "! " << collectValueFuncs.size() << endl;
+      return DYSECTWARN(false, "Could not find %s! %d", collectorName.c_str(), collectValueFuncs.size());
     } else {
-      cout << "Found " << collectorName << "!" << endl;
+      ///OO cout << "Found " << collectorName << "!" << endl;
+      DYSECTVERBOSE(true, "Found %s!", collectorName.c_str());
     }
 
     collector = collectValueFuncs[0];
@@ -79,29 +87,33 @@ BPatch_snippet* CollectValuesInstr::getInstrumentationSnippet(struct instTarget&
 }
 
 void CollectValuesInstr::finishAnalysis(struct instTarget& target) {
+  CollectValuesAgg* aggregator = original->getAggregator();
   int* localBuffer = new int[bufSize];
   int writtenBytes;
 
   bufferIndex->readValue(&writtenBytes, sizeof(int));
   if (writtenBytes == 0) {
-    cout << "The variable " << variableName << " was never read!" << endl;
+    ///OO cout << "The variable " << variableName << " was never read!" << endl;
     return;
   }
     
   buffer->readValue(localBuffer, writtenBytes);
-  cout << "The variable " << variableName << " took the values: " << endl << "    ";
+  ///OO cout << "The variable " << variableName << " took the values: " << endl << "    ";
 
   int writtenInts = writtenBytes / sizeof(int);
   for (int i = 0; i < writtenInts; i++) {
-    cout << localBuffer[i] << " ";
+    ///OO cout << localBuffer[i] << " ";
+
+    aggregator->addValue(localBuffer[i]);
   }
 
-  cout << endl;
+  ///OO cout << endl;
     
   delete[] localBuffer;
 }
 
-InvariantGeneratorInstr::InvariantGeneratorInstr(string variableName) : variableName(variableName) {
+InvariantGeneratorInstr::InvariantGeneratorInstr(InvariantGenerator* original, string variableName)
+  : original(original), variableName(variableName) {
   collector = 0;
   variable = 0;
   orgVal = 0;
@@ -177,7 +189,8 @@ void InvariantGeneratorInstr::finishAnalysis(struct instTarget& target) {
   cout << "   The chages made are 0x" << mods << dec << endl;
 }
   
-ExtractFeaturesInstr::ExtractFeaturesInstr(string variableName) : variableName(variableName) {
+ExtractFeaturesInstr::ExtractFeaturesInstr(ExtractFeatures* original, string variableName)
+  : original(original), variableName(variableName) {
   collector = 0;
   features = 0;
   min = 0;
@@ -281,7 +294,8 @@ void ExtractFeaturesInstr::finishAnalysis(struct instTarget& target) {
   cout << variableName << " was in [" << minVal << ":" << maxVal << "]" << endl;
 }
 
-PrintChangesInstr::PrintChangesInstr(string variableName) : variableName(variableName) {
+PrintChangesInstr::PrintChangesInstr(PrintChanges* original, string variableName)
+  : original(original), variableName(variableName) {
   lastVal = 0;
 }
 
@@ -335,21 +349,6 @@ BPatch_snippet* PrintChangesInstr::getInstrumentationSnippet(struct instTarget& 
   return new BPatch_funcCallExpr(*logAddrFunc, logArgs);
 }
 
-AnalysisInstr* AnalysisInstr::printChanges(string variable) {
-  return new PrintChangesInstr(variable);
-}
-
-AnalysisInstr* AnalysisInstr::extractFeatures(string variable) {
-  return new ExtractFeaturesInstr(variable);
-}
-
-AnalysisInstr* AnalysisInstr::generateInvariant(string variable) {
-  return new InvariantGeneratorInstr(variable);
-}
-
-AnalysisInstr* AnalysisInstr:: collectValues(string variableName) {
-  return new CollectValuesInstr(variableName);
-}
 
 /************ Scope ************/
 FunctionScopeInstr::FunctionScopeInstr(int maxCallPath) : maxCallPath(maxCallPath) {
@@ -375,34 +374,6 @@ bool CallPathScopeInstr::shouldInstrument(vector<BPatch_function*>& instrumented
   return (callPath[instrumentedFunctions.size()].compare(function->getName()) == 0);
 }
 
-ScopeInstr* ScopeInstr::singleFunction() {
-  return new FunctionScopeInstr(1);
-}
-
-ScopeInstr* ScopeInstr::reachableFunctions(int calls) {
-  return new FunctionScopeInstr(calls);
-}
-
-ScopeInstr* ScopeInstr::callPath(string f1, string f2, string f3,
-				 string f4, string f5, string f6,
-				 string f7, string f8, string f9) {
-  string functions [] = { f1, f2, f3, f4, f5, f6, f7, f8, f9 };
-  vector<string> callPath;
-
-  for (int i = 0; i < 9; i++) {
-    if (functions[i].compare("") != 0) {
-      callPath.push_back(functions[i]);
-    } else {
-      break;
-    }
-  }
-
-  return ScopeInstr::callPath(callPath);
-}
-
-ScopeInstr* ScopeInstr::callPath(vector<string> callPath) {
-  return new CallPathScopeInstr(callPath);
-}
 
 /************ Sampling points ************/
 MultipleSamplingPointsInstr::MultipleSamplingPointsInstr(vector<SamplingPointsInstr*> pointGenerators) : pointGenerators(pointGenerators) {
@@ -505,12 +476,13 @@ vector<BPatch_point*> BasicBlockSamplingPointsInstr::getInstrumentationPoints(st
 
   cfg->getAllBasicBlocks(basicBlocks);
   if (basicBlocks.size() == 0) {
-    // Error: 
-    cout << "Found no basic blocks!" << endl;
+    ///OO cout << "Found no basic blocks!" << endl;
+    DYSECTWARN(false, "Found no basic blocks!");
     return points;
   } else {
-    cout << "Found " << basicBlocks.size() << " basic blocks in "
-	 << function->getName() << "!" << endl;
+    ///OO cout << "Found " << basicBlocks.size() << " basic blocks in "
+    ///OO      << function->getName() << "!" << endl;
+    DYSECTVERBOSE("Found %d basic blocks in %s!", basicBlocks.size(), function->getName().c_str());
   }
 
   for (set<BPatch_basicBlock*>::iterator it = basicBlocks.begin(); it != basicBlocks.end(); ++it) {
@@ -534,43 +506,6 @@ vector<BPatch_point*> BasicBlockSamplingPointsInstr::getInstrumentationPoints(st
   return points;
 }
 
-SamplingPointsInstr* SamplingPointsInstr::stores(SamplingTime time) {
-  return new StoreSamplingPointsInstr(time);
-}
-
-SamplingPointsInstr* SamplingPointsInstr::loop(SamplingTime time) {
-  return new LoopSamplingPointsInstr(time);
-}
-
-SamplingPointsInstr* SamplingPointsInstr::function(SamplingTime time) {
-  return new FunctionSamplingPointsInstr(time);
-}
-
-SamplingPointsInstr* SamplingPointsInstr::functionCall(SamplingTime time) {
-  return new FunctionCallSamplingPointsInstr(time);
-}
-
-SamplingPointsInstr* SamplingPointsInstr::basicBlocks(SamplingTime time) {
-  return new BasicBlockSamplingPointsInstr(time);
-}
-
-SamplingPointsInstr* SamplingPointsInstr::multiple(
-		         SamplingPointsInstr* sp1, SamplingPointsInstr* sp2, SamplingPointsInstr* sp3,
-		         SamplingPointsInstr* sp4, SamplingPointsInstr* sp5, SamplingPointsInstr* sp6,
-		         SamplingPointsInstr* sp7, SamplingPointsInstr* sp8, SamplingPointsInstr* sp9) {
-  SamplingPointsInstr* generators [] = { sp1, sp2, sp3, sp4, sp5, sp6, sp7, sp8, sp9 };
-  vector<SamplingPointsInstr*> pointGenerators;
-
-  for (int i = 0; i < 9; i++) {
-    if (generators[i] != 0) {
-      pointGenerators.push_back(generators[i]);
-    } else {
-      break;
-    }
-  }
-
-  return new MultipleSamplingPointsInstr(pointGenerators);
-}
 
 /************ DataTrace ************/
 void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_function*>& instrumentedFuncStack,
@@ -580,7 +515,8 @@ void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_
   }
     
   if (scope->shouldInstrument(instrumentedFuncStack, currentFunction)) {
-    cout << "[" << instrumentedFuncStack.size() << "] Instrumenting " << currentFunction->getName() << endl;
+    ///OO cout << "[" << instrumentedFuncStack.size() << "] Instrumenting " << currentFunction->getName() << endl;
+    DYSECTVERBOSE(true, "[%d] Instrumenting %s", instrumentedFuncStack.size(), currentFunction->getName().c_str());
 	
     // Instrument the current function
     if (analysis->prepareInstrumentedFunction(target, currentFunction)) {
