@@ -16799,6 +16799,8 @@ fi
 if test "${enable_dysectapi+set}" = set; then
   enableval=$enable_dysectapi; ENABLE_DYSECT="yes"
       CXXFLAGS="$CXXFLAGS -DDYSECTAPI"
+      LDFLAGS="$LDFLAGS -ldyninstAPI"
+      BELIBS="-ldyninstAPI $BELIBS"
        if true; then
   ENABLE_DYSECTAPI_TRUE=
   ENABLE_DYSECTAPI_FALSE='#'
