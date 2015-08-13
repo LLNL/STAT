@@ -199,11 +199,14 @@ public:
 
 class TraceAPI {
   static std::multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> pendingInstrumentations;
+  static std::multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> pendingAnalysis;
   
 public:
   static void addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
   static void performPendingInstrumentations();
-    
+
+  static void addPendingAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
+  static void performPendingAnalysis();
 };
 
 #endif

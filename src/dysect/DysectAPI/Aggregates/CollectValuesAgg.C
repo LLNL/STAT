@@ -56,15 +56,15 @@ bool CollectValuesAgg::aggregate(AggregateFunction* agg) {
     return false;
   }
 
-  vector<int>& otherValues = collectValuesInstance->getValues();
-  values.insert(values.end(), otherValues.begin(), otherValues.end());
+  set<int>& otherValues = collectValuesInstance->getValues();
+  values.insert(otherValues.begin(), otherValues.end());
   otherValues.clear();
   count_ += agg->getCount();
   
   return true;
 }
 
-std::vector<int>& CollectValuesAgg::getValues() {
+std::set<int>& CollectValuesAgg::getValues() {
   return values;
 }
 
@@ -81,7 +81,7 @@ bool CollectValuesAgg::deserialize(void* payload) {
   for (i = 0; i < numInts; i++) {
     int curNum = *(int *)ptr;
     ptr += sizeof(int);
-    values.push_back(curNum);
+    addValue(curNum);
   }
 
   return true;
@@ -117,9 +117,9 @@ int CollectValuesAgg::writeSubpacket(char *p) {
 
   curpos += sizeof(int);
 
-  int i;
-  for(i = 0; i < values.size(); i++) {
-    int curNum = values[i];
+  set<int>::iterator it;
+  for(it = values.begin(); it != values.end(); ++it) {
+    int curNum = *it;
     memcpy(curpos, &curNum, sizeof(int));
     curpos += sizeof(int);
   }
@@ -136,10 +136,10 @@ bool CollectValuesAgg::clear() {
 bool CollectValuesAgg::getStr(string& str) {
   const int bufSize = 512;
   char buf[bufSize];
-  int i;
 
-  for (i = 0; i < values.size(); i++) {
-    snprintf(buf, bufSize, "%d,", values[i]);
+  set<int>::iterator it;
+  for(it = values.begin(); it != values.end(); ++it) {
+    snprintf(buf, bufSize, "%d,", *it);
     str.append(buf);
   }
 
@@ -160,7 +160,7 @@ bool CollectValuesAgg::print() {
 }
 
 void CollectValuesAgg::addValue(int value) {
-  values.push_back(value);
+  values.insert(value);
 }
 
 bool CollectValuesAgg::collect(void* process, void *thread) {
@@ -170,7 +170,7 @@ bool CollectValuesAgg::collect(void* process, void *thread) {
   return true;
 }
 
-void CollectValuesAgg::getValues(std::vector<int>& outValues) {
+void CollectValuesAgg::getValues(std::set<int>& outValues) {
   outValues = this->values;
 }
 

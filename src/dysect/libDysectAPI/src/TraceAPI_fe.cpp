@@ -32,3 +32,11 @@ bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr pr
 void DataTrace::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc) {
   
 }
+
+void TraceAPI::addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
+
+}
+
+void TraceAPI::performPendingInstrumentations() {
+
+}

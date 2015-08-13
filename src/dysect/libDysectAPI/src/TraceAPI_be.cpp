@@ -21,9 +21,12 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/TraceAPI.h>
 #include <DysectAPI/TraceAPIInstr.h>
 #include <DysectAPI/ProcMap.h>
+#include <DysectAPI/DysectAPIProcessMgr.h>
 
 using namespace std;
 using namespace DysectAPI;
+using namespace Dyninst;
+using namespace ProcControlAPI;
 
 /* Conversion functions */
 SamplingPointsInstr::SamplingTime convertTime(SamplingPoints::SamplingTime time);
@@ -212,4 +215,64 @@ void DataTrace::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc)
   instr->finishAnalysis(target);
 
   dyninst_proc->continueExecution();
+}
+
+void TraceAPI::addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
+  ProcessMgr::waitFor(ProcWait::instrumentation, proc);
+  
+  pendingInstrumentations.insert(pair<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>(proc, trace));
+}
+
+void TraceAPI::performPendingInstrumentations() {
+  if (pendingInstrumentations.size() == 0) {
+    return;
+  }
+
+  set<Process::const_ptr> instrumented_procs;
+  
+  multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>::iterator it;
+  for (it = pendingInstrumentations.begin(); it != pendingInstrumentations.end(); ++it) {
+    Dyninst::ProcControlAPI::Process::const_ptr process = it->first;
+    DataTrace* trace = it->second;
+
+    ProcessMgr::handled(ProcWait::instrumentation, process);
+
+    trace->instrumentProcess(process);
+    instrumented_procs.insert(process);
+  }
+
+  ProcessSet::ptr instrumented_procset = ProcessSet::newProcessSet(instrumented_procs);
+  ProcessMgr::continueProcsIfReady(instrumented_procset);
+
+  pendingInstrumentations.clear();
+}
+
+void TraceAPI::addPendingAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
+  ProcessMgr::waitFor(ProcWait::analysis, proc);
+  
+  pendingAnalysis.insert(pair<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>(proc, trace));
+}
+
+void TraceAPI::performPendingAnalysis() {
+  if (pendingAnalysis.size() == 0) {
+    return;
+  }
+
+  set<Process::const_ptr> analyzed_procs;
+  
+  multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>::iterator it;
+  for (it = pendingAnalysis.begin(); it != pendingAnalysis.end(); ++it) {
+    Dyninst::ProcControlAPI::Process::const_ptr process = it->first;
+    DataTrace* trace = it->second;
+
+    ProcessMgr::handled(ProcWait::analysis, process);
+
+    trace->finishAnalysis(process);
+    analyzed_procs.insert(process);
+  }
+
+  ProcessSet::ptr analyzed_procset = ProcessSet::newProcessSet(analyzed_procs);
+  ProcessMgr::continueProcsIfReady(analyzed_procset);
+
+  pendingAnalysis.clear();
 }

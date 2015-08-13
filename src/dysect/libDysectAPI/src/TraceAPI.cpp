@@ -1,6 +1,7 @@
 
 #include <LibDysectAPI.h>
 
+#include <DysectAPI/DysectAPIProcessMgr.h>
 #include <DysectAPI/TraceAPI.h>
 #include <DysectAPI/Err.h>
 
@@ -14,6 +15,12 @@ void Analysis::getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs
 
 bool Analysis::evaluateAggregate(DysectAPI::AggregateFunction* aggregate) {
   return true;
+}
+
+bool Analysis::formatGlobalResult(char*& packet, int& size) {
+  size = 0;
+
+  return false;
 }
 
 CollectValues::CollectValues(string variableName, int bufSize, bool allValues)
@@ -34,6 +41,15 @@ bool CollectValues::evaluateAggregate(AggregateFunction* aggregate) {
   string desc;
   agg->getStr(desc);
   DYSECTINFO(true, "The variable %s took the values %s", variableName.c_str(), desc.c_str());
+
+  return true;
+}
+
+bool CollectValues::formatGlobalResult(char*& packet, int& size) {
+  size = aggregator.getSize();
+
+  packet = (char*)malloc(size);
+  aggregator.writeSubpacket(packet);
 
   return true;
 }
@@ -185,28 +201,6 @@ bool DataTrace::evaluateAggregate(DysectAPI::AggregateFunction* aggregate) {
 
 /************ TraceAPI ************/
 multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> TraceAPI::pendingInstrumentations;
+multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> TraceAPI::pendingAnalysis;
 
-void TraceAPI::addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
-  DYSECTVERBOSE(true, "Enqueueing trace for process %p", &(*proc));
-  
-  pendingInstrumentations.insert(pair<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>(proc, trace));
-}
-
-void TraceAPI::performPendingInstrumentations() {
-  if (pendingInstrumentations.size() == 0) {
-    return;
-  }
-  
-  multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>::iterator it;
-  for (it = pendingInstrumentations.begin(); it != pendingInstrumentations.end(); ++it) {
-    Dyninst::ProcControlAPI::Process::const_ptr process = it->first;
-    DataTrace* trace = it->second;
-
-    DYSECTVERBOSE(true, "Installing trace for process %p", &(*process));
-
-    trace->instrumentProcess(process);
-  }
-
-  pendingInstrumentations.clear();
-}
 

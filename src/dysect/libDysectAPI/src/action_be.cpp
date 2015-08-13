@@ -426,7 +426,7 @@ bool StopTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   DYSECTVERBOSE(true, "StopTrace::collect %d", owner->getProcessCount());
 
-  trace->finishAnalysis(process);
+  TraceAPI::addPendingAnalysis(process, trace);
   
   return true;
 }

@@ -144,6 +144,7 @@ DysectErrorCode BE::handleAll() {
   if (returnControlToDysect == true)
   {
     TraceAPI::performPendingInstrumentations();
+    TraceAPI::performPendingAnalysis();
     handleTimerActions();
     handleQueuedOperations();
   }
@@ -173,6 +174,7 @@ DysectErrorCode BE::handleAll() {
 
   // if event requested instrumentation we must do so before continue
   TraceAPI::performPendingInstrumentations();
+  TraceAPI::performPendingAnalysis();
   
   return OK;
 }

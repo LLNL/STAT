@@ -28,12 +28,14 @@ namespace DysectAPI {
     ProcWait();
     
     enum Events {
-      nothing = 0,
-      probe = 1,
-      enableChildren = 2,
-      disable = 4,
-      detach = 8,
-      instrumentation = 16
+      nothing         = 0x00,
+      probe           = 0x01,
+      enableChildren  = 0x02,
+      disable         = 0x04,
+      detach          = 0x08,
+      instrumentation = 0x10,
+      analysis        = 0x20,
+      globalResult    = 0x40
     };
 
     bool ready();

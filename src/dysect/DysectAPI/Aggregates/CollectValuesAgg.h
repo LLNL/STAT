@@ -21,16 +21,16 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include <string>
 #include <vector>
+#include <set>
 
 #include "DysectAPI/Aggregates/AggregateFunction.h"
 
 namespace DysectAPI {
   class CollectValuesAgg : public AggregateFunction {
   protected:
-    std::vector<int> values;
+    std::set<int> values;
 
     bool deserialize(void *payload);
-    bool serialize(std::vector<int>& valueVec);
      
   public:
     CollectValuesAgg(int id, int count, std::string fmt, void* payload);
@@ -39,8 +39,8 @@ namespace DysectAPI {
 
     void addValue(int value);
 
-    std::vector<int>& getValues();
-    void getValues(std::vector<int>& outValues);
+    std::set<int>& getValues();
+    void getValues(std::set<int>& outValues);
     
     int getSize();
     int writeSubpacket(char *p);
