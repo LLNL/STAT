@@ -154,6 +154,8 @@ DysectAPI::DysectErrorCode Probe::enableChildren() {
 
 
 DysectAPI::DysectErrorCode Probe::enableChildren(Process::const_ptr process) {
+  ProcessMgr::handled(ProcWait::enableChildren, process);
+  
   if(linked.empty()) {
     return OK;
   }
@@ -164,6 +166,8 @@ DysectAPI::DysectErrorCode Probe::enableChildren(Process::const_ptr process) {
 }
 
 DysectAPI::DysectErrorCode Probe::enableChildren(ProcessSet::ptr procset) {
+  ProcessMgr::handled(ProcWait::enableChildren, procset);
+  
   if(linked.empty()) {
     return OK;
   }
@@ -235,6 +239,8 @@ bool Probe::releaseWaitingProcs() {
   if(waitingProcs && waitingProcs->size() > 0) {
     waitingProcs = ProcessMgr::filterDetached(waitingProcs);
 
+    ProcessMgr::handled(ProcWait::probe, waitingProcs);
+
     if(waitingProcs->size() > 0) {
       awaitingActions -= processCount;
       processCount = 0;
@@ -284,6 +290,7 @@ DysectAPI::DysectErrorCode Probe::triggerAction(Process::const_ptr process, Thre
     if(act) {
       act->collect(process, thread);
       act->actionPending = true;
+
       act->finishBE(p, len); // TODO: some actions cannot be run if we're in a CB, for example, if default probe for exit has Wait::NoWait, then detach will print warning
       act->actionPending = false;
     }
@@ -404,6 +411,8 @@ bool Probe::disable() {
 }
 
 bool Probe::disable(Dyninst::ProcControlAPI::Process::const_ptr process) {
+  ProcessMgr::handled(ProcWait::disable, process);
+
   assert(event != 0);
   assert(dom != 0);
 
@@ -417,6 +426,8 @@ bool Probe::disable(Dyninst::ProcControlAPI::Process::const_ptr process) {
 }
 
 bool Probe::disable(Dyninst::ProcControlAPI::ProcessSet::ptr procset) {
+  ProcessMgr::handled(ProcWait::enableChildren, procset);
+  
   assert(event != 0);
   assert(dom != 0);
 
@@ -619,7 +630,7 @@ bool Probe::processRequests() {
       DYSECTVERBOSE(true, "Continuing process %d", process->getPid());
     }
     
-    ProcessMgr::continueProcs(continueSet);
+    ProcessMgr::continueProcsIfReady(continueSet);
   }
 
   DYSECTVERBOSE(true, "Done handling requests");

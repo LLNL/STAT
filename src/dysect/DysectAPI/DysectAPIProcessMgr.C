@@ -30,6 +30,7 @@ ProcessSet::ptr ProcessMgr::detached = ProcessSet::newProcessSet();
 ProcessSet::ptr ProcessMgr::wasRunning = ProcessSet::newProcessSet();
 ProcessSet::ptr ProcessMgr::wasStopped = ProcessSet::newProcessSet();
 bool ProcessMgr::active = false;
+map<Process::const_ptr, ProcWait> ProcessMgr::procWait;
 
 bool ProcessMgr::init(ProcessSet::ptr allProcs) {
   if(!allProcs) {
@@ -56,6 +57,8 @@ bool ProcessMgr::detach(ProcessSet::ptr detachedSet) {
   if(!detachedSet) {
     return DYSECTWARN(false, "detach from empty detachSet");
   }
+
+  ProcessMgr::handled(ProcWait::detach, detachedSet);
 
   ProcessSet::ptr already_detached = detached->set_intersection(detachedSet);
   ProcessSet::ptr detached_now;
@@ -206,3 +209,59 @@ bool ProcessMgr::continueProcs(ProcessSet::ptr procs) {
   }
   return ret;
 }
+
+bool ProcessMgr::continueProcsIfReady(Dyninst::ProcControlAPI::ProcessSet::ptr procs) {
+  bool ret = true;
+
+  for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    Process::ptr pcProc = *procIter;
+
+    map<Process::const_ptr, ProcWait>::iterator it = procWait.find(pcProc);
+    if (it == procWait.end() || it->second.ready()) {
+      BPatch_process *bpatch_process = ProcMap::get()->getDyninstProcess(pcProc);
+      if(!bpatch_process->continueExecution()) {
+	ret = false;
+      }
+    }
+  }
+  
+  return ret;
+}
+
+void ProcessMgr::waitFor(ProcWait::Events event, Dyninst::ProcControlAPI::ProcessSet::ptr procs) {
+  for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    waitFor(event, *procIter);
+  }
+}
+
+void ProcessMgr::waitFor(ProcWait::Events event, Dyninst::ProcControlAPI::Process::const_ptr proc) {
+  ProcWait waitStatus;
+    
+  map<Process::const_ptr, ProcWait>::iterator it = procWait.find(proc);
+  if (it != procWait.end()) {
+    waitStatus = it->second;
+  }
+
+  waitStatus.waitFor(event);
+  procWait[proc] = waitStatus;
+}
+
+void ProcessMgr::handled(ProcWait::Events event, Dyninst::ProcControlAPI::ProcessSet::ptr procs) {
+  for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    handled(event, *procIter);
+  }
+}
+
+void ProcessMgr::handled(ProcWait::Events event, Dyninst::ProcControlAPI::Process::const_ptr proc) {
+  ProcWait waitStatus;
+
+  map<Process::const_ptr, ProcWait>::iterator it = procWait.find(proc);
+  if (it != procWait.end()) {
+    waitStatus = it->second;
+  }
+
+  waitStatus.handled(event);
+  procWait[proc] = waitStatus;
+}
+
+

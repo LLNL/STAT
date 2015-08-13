@@ -1588,12 +1588,12 @@ StatError_t STAT_BackEnd::resume()
         {
             ProcessSet::ptr stopped = DysectAPI::ProcessMgr::getWasRunning();
             if(stopped && !stopped->empty())
-                DysectAPI::ProcessMgr::continueProcs(stopped);
+                DysectAPI::ProcessMgr::continueProcsIfReady(stopped);
 
         }
         else {
             if(procSet_->anyThreadStopped()) {
-                DysectAPI::ProcessMgr::continueProcs(procSet_);
+                DysectAPI::ProcessMgr::continueProcsIfReady(procSet_);
             }
         }
     }

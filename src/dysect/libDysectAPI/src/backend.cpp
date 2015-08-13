@@ -228,6 +228,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                     probe->sendEnqueuedActions();
               }
 
+	      ProcessMgr::waitFor(ProcWait::probe, curProcess);
               retState = Process::cbThreadStop;
 
             } else {
@@ -235,11 +236,15 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               probe->enqueueEnable(curProcess);
 
               probe->addWaitingProc(curProcess);
+
+	      ProcessMgr::waitFor(ProcWait::enableChildren, curProcess);
               retState = Process::cbProcStop;
 
               if(probe->getLifeSpan() == fireOnce) {
                 DYSECTVERBOSE(true, "Requesting disablement of probe");
                 probe->enqueueDisable(curProcess);
+
+		ProcessMgr::waitFor(ProcWait::disable, curProcess);
                 retState = Process::cbProcStop;
               }
             }
@@ -261,6 +266,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
             Err::warn(false, "Condition stalls not yet supported");
 
             Err::verbose(true, "Stopping thread in process %d", curProcess->getPid());
+	    // Remember to add an appropriate wait event to process manager!
             retState = Process::cbProcStop;
 
             //retState = Process::cbThreadStop;
@@ -270,6 +276,8 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                 DYSECTVERBOSE(true, "Requesting disablement of unresolved probe");
                 // Get out of the way
                 probe->enqueueDisable(curProcess);
+
+		ProcessMgr::waitFor(ProcWait::disable, curProcess);
                 retState = Process::cbProcStop;
 
               } else {
@@ -289,6 +297,12 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
     }
   }
 
+  if (retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
+    // We must ask Dyninst "kindly" to cooperate on the process state
+    BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+    bproc->keepStopped();
+  }
+  
   return retState;
 }
 
@@ -334,7 +348,7 @@ DysectAPI::DysectErrorCode Backend::resumeApplication() {
   if(allProcs->empty())
     return OK;
 
-  if(ProcessMgr::continueProcs(allProcs)) {
+  if(ProcessMgr::continueProcsIfReady(allProcs)) {
     DYSECTLOG(true, "continue all processes");
     return OK;
   } else {
@@ -612,6 +626,7 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
       case SIGSEGV:
       case SIGFPE:
         DYSECTINFO(true, "Non recoverable signal %d - stopping process and enquing detach", signum);
+	ProcessMgr::waitFor(ProcWait::detach, curProcess);
         retState = Process::cbProcStop;
 
         // Enqueue termination
@@ -895,29 +910,39 @@ DysectAPI::DysectErrorCode Backend::handleTimerEvents() {
 
 
 DysectAPI::DysectErrorCode Backend::handleTimerActions() {
-  pthread_mutex_lock(&probesPendingActionMutex);
-  if (probesPendingAction.size() > 0) {
-    DYSECTVERBOSE(true, "Handle timer actions");
-    vector<Probe*>::iterator probeIter = probesPendingAction.begin();
-    for(;probeIter != probesPendingAction.end(); probeIter++) {
-      Probe* probe = *probeIter;
-      Domain* dom = probe->getDomain();
-
-      DYSECTVERBOSE(true, "Sending enqueued actions for timed probe: %x", dom->getId());
-      probe->sendEnqueuedActions();
-
-      if(probe->numWaitingProcs() > 0) {
-        ProcessSet::ptr lprocset = probe->getWaitingProcs();
-        probe->enableChildren(lprocset);
-        if(probe->getLifeSpan() == fireOnce)
-          probe->disable(lprocset);
-        ProcessMgr::continueProcs(lprocset);
-        probe->releaseWaitingProcs();
-      }
+  /* We cannot handle triggered probes while holding the mutex.
+     Handling probes may include calls to ProcControl, which
+     may call its internal event handler. If the event handler
+     finds new events, it will call DySect that will try to
+     enqueue them. To do this, the mutex must be available. */
+  
+  while (true) {
+    Probe* probe;
+    
+    pthread_mutex_lock(&probesPendingActionMutex);
+    if (probesPendingAction.size() == 0) {
+      pthread_mutex_unlock(&probesPendingActionMutex);
+      break;
     }
-    probesPendingAction.clear();
+    probe = probesPendingAction.back();
+    probesPendingAction.pop_back();
+    pthread_mutex_unlock(&probesPendingActionMutex);
+    
+    Domain* dom = probe->getDomain();
+
+    DYSECTVERBOSE(true, "Sending enqueued actions for timed probe: %x", dom->getId());
+    probe->sendEnqueuedActions();
+
+    if(probe->numWaitingProcs() > 0) {
+      ProcessSet::ptr lprocset = probe->getWaitingProcs();
+      probe->enableChildren(lprocset);
+      if(probe->getLifeSpan() == fireOnce)
+	probe->disable(lprocset);
+      ProcessMgr::continueProcsIfReady(lprocset);
+      probe->releaseWaitingProcs();
+    }
   }
-  pthread_mutex_unlock(&probesPendingActionMutex);
+
   return OK;
 }
 

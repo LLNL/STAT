@@ -16,23 +16,29 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "DysectAPI/ProcMap.h"
+#include "DysectAPI/ProcWait.h"
 
-ProcMap ProcMap::instance;
+using namespace DysectAPI;
 
-void ProcMap::addProcess(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::Stackwalker::Walker* walker, BPatch_process* dyninst_proc) {
-  walkers[process] = walker;
-  dyninst_procs[process] = dyninst_proc;
+ProcWait::ProcWait() {
+  waiting = nothing;
 }
 
-Dyninst::Stackwalker::Walker* ProcMap::getWalker(Dyninst::ProcControlAPI::Process::const_ptr process) {
-  return walkers[process];
+bool ProcWait::ready() {
+  return waiting == nothing;
 }
 
-BPatch_process* ProcMap::getDyninstProcess(Dyninst::ProcControlAPI::Process::const_ptr process) {
-  return dyninst_procs[process];
+bool ProcWait::waitFor(Events event) {
+  waiting = waiting | ((int)event);
+  
+  return ready();
 }
 
-ProcMap* ProcMap::get() {
-  return &ProcMap::instance;
+bool ProcWait::handled(Events event) {
+  waiting = waiting & ~((int)event);
+  
+  return ready();
 }
+
+
+

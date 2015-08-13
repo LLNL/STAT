@@ -155,7 +155,10 @@ DysectErrorCode BE::handleAll() {
   }
 
   count1 = getPendingExternalAction();
-  if (ProcControlAPI::Process::handleEvents(false)) {
+  ///TODO: Fix this mess. We no longer poll ProcControl for changes,
+  ///  as this is part of bpatch.pollForStatusChange() (Dyninst).
+  ///  Add a flag to the DySect event handler and check this flag here.
+  if (true) { // gProcControlAPI::Process::handleEvents(false)) {
     // if was library event, then need to enable any pending probe roots outside of callback
     Backend::enablePending();
     count2 = getPendingExternalAction();
