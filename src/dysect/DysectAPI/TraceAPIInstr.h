@@ -189,12 +189,23 @@ class DataTraceInstr {
 
   void install_recursive(struct instTarget& target, vector<BPatch_function*>& instrumentedFuncStack,
 			 BPatch_function* currentFunction);
+
+  void loadAnalyticsLibrary(struct instTarget& target);
   
 public:
   DataTraceInstr(AnalysisInstr* analysis, ScopeInstr* scope, SamplingPointsInstr* points);
 
   bool install(struct instTarget& target, std::string rootFuncName);
   void finishAnalysis(struct instTarget& target);
+};
+
+class TraceAPIInstr {
+  static std::map<BPatch_addressSpace*, BPatch_object*> analyticsLib;
+
+  static BPatch_object* loadAnalyticsLibrary(struct instTarget& target);
+  
+ public:
+  static BPatch_object* getAnalyticsLib(struct instTarget& target);
 };
 
 #endif // __TRACEAPIINSTR_H

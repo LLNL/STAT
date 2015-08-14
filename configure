@@ -20763,7 +20763,7 @@ $as_echo "$am_cv_python_pyexecdir" >&6; }
 
 
 
-ac_config_files="$ac_config_files Makefile src/Makefile src/dysect/Makefile src/dysect/DysectAPI/Makefile src/dysect/libDysectAPI/Makefile src/dysect/libDysectAPI/include/Makefile src/dysect/libDysectAPI/src/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile examples/sessions/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile etc/Makefile man/Makefile scripts/STAT scripts/stat-cl scripts/Makefile"
+ac_config_files="$ac_config_files Makefile src/Makefile src/dysect/Makefile src/dysect/DysectAPI/Makefile src/dysect/libDysectAPI/Makefile src/dysect/libDysectAPI/include/Makefile src/dysect/libDysectAPI/src/Makefile src/analyticslib/Makefile examples/Makefile examples/src/Makefile examples/scripts/Makefile examples/sessions/Makefile doc/Makefile doc/userguide/Makefile doc/quickstart/Makefile etc/Makefile man/Makefile scripts/STAT scripts/stat-cl scripts/Makefile"
 
 
 if test "$WITH_GUI" = "yes"
@@ -21899,6 +21899,7 @@ do
     "src/dysect/libDysectAPI/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/libDysectAPI/Makefile" ;;
     "src/dysect/libDysectAPI/include/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/libDysectAPI/include/Makefile" ;;
     "src/dysect/libDysectAPI/src/Makefile") CONFIG_FILES="$CONFIG_FILES src/dysect/libDysectAPI/src/Makefile" ;;
+    "src/analyticslib/Makefile") CONFIG_FILES="$CONFIG_FILES src/analyticslib/Makefile" ;;
     "examples/Makefile") CONFIG_FILES="$CONFIG_FILES examples/Makefile" ;;
     "examples/src/Makefile") CONFIG_FILES="$CONFIG_FILES examples/src/Makefile" ;;
     "examples/scripts/Makefile") CONFIG_FILES="$CONFIG_FILES examples/scripts/Makefile" ;;

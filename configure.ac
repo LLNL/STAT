@@ -128,6 +128,7 @@ AC_CONFIG_FILES([Makefile
                  src/dysect/libDysectAPI/Makefile
                  src/dysect/libDysectAPI/include/Makefile
                  src/dysect/libDysectAPI/src/Makefile
+		 src/analyticslib/Makefile
                  examples/Makefile
                  examples/src/Makefile
                  examples/scripts/Makefile

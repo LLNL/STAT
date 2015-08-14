@@ -19,6 +19,8 @@ public:
 
   virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
   virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
+
+  virtual bool formatGlobalResult(char*& packet, int& size);
   
   virtual ~Analysis() {}
 };
@@ -38,6 +40,8 @@ public:
   DysectAPI::CollectValuesAgg* getAggregator();
   virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
   virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
+
+  virtual bool formatGlobalResult(char*& packet, int& size);
 };
 
 class InvariantGenerator : public Analysis {

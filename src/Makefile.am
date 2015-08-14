@@ -1,5 +1,5 @@
 if ENABLE_DYSECTAPI
-  MAYBE_DYSECT = dysect
+  MAYBE_DYSECT = dysect analyticslib
 endif
 
 SUBDIRS = $(MAYBE_DYSECT)

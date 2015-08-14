@@ -8,6 +8,7 @@
 #include "BPatch_function.h"
 #include "BPatch_flowGraph.h"
 #include "BPatch_statement.h"
+#include "BPatch_object.h"
 
 #include "walker.h"
 
@@ -35,12 +36,10 @@ bool CollectValuesInstr::prepareInstrumentedFunction(struct instTarget& target, 
   function->findVariable(variableName.c_str(), variables);
 
   if (variables.size() == 0) {
-    ///OO cout << "Could not find '" << variableName << "' in function " << function->getName() << "!" << endl;
     return DYSECTWARN(false, "Could not find '%s' in function %s!", variableName.c_str(), function->getName().c_str());
   }
 
   // TODO: Multiple variables with the same name should all be instrumented
-  ///OO cout << "Found variable '" << variableName << "'!" << endl;
   DYSECTVERBOSE(true, "Found variable '%s'!", variableName.c_str());
 		
   variable = variables[0];
@@ -59,13 +58,12 @@ bool CollectValuesInstr::prepareInstrumentedFunction(struct instTarget& target, 
     vector<BPatch_function*> collectValueFuncs;
     string collectorName = (allValues ? "collectAnyValue" : "collectValue");
 
-    target.appImage->findFunction(collectorName.c_str(), collectValueFuncs);
+    BPatch_object* library = TraceAPIInstr::getAnalyticsLib(target);
+    library->findFunction(collectorName.c_str(), collectValueFuncs);
   
     if (collectValueFuncs.size() != 1) {
-      ///OO cout << "Could not find" << collectorName << "! " << collectValueFuncs.size() << endl;
       return DYSECTWARN(false, "Could not find %s! %d", collectorName.c_str(), collectValueFuncs.size());
     } else {
-      ///OO cout << "Found " << collectorName << "!" << endl;
       DYSECTVERBOSE(true, "Found %s!", collectorName.c_str());
     }
 
@@ -93,22 +91,16 @@ void CollectValuesInstr::finishAnalysis(struct instTarget& target) {
 
   bufferIndex->readValue(&writtenBytes, sizeof(int));
   if (writtenBytes == 0) {
-    ///OO cout << "The variable " << variableName << " was never read!" << endl;
     return;
   }
     
   buffer->readValue(localBuffer, writtenBytes);
-  ///OO cout << "The variable " << variableName << " took the values: " << endl << "    ";
 
   int writtenInts = writtenBytes / sizeof(int);
   for (int i = 0; i < writtenInts; i++) {
-    ///OO cout << localBuffer[i] << " ";
-
     aggregator->addValue(localBuffer[i]);
   }
 
-  ///OO cout << endl;
-    
   delete[] localBuffer;
 }
 
@@ -130,7 +122,6 @@ bool InvariantGeneratorInstr::prepareInstrumentedFunction(struct instTarget& tar
     return false;
   }
 
-  // TODO: Multiple variables with the same name should all be instrumented
   cout << "Found variable '" << variableName << "'!" << endl;
   variable = variables[0];
 
@@ -145,7 +136,8 @@ bool InvariantGeneratorInstr::prepareInstrumentedFunction(struct instTarget& tar
     
     // Prepare the instrumentation snippet
     vector<BPatch_function*> updateInvariantFuncs;
-    target.appImage->findFunction("updateInvariant", updateInvariantFuncs);
+    BPatch_object* library = TraceAPIInstr::getAnalyticsLib(target);
+    library->findFunction("updateInvariant", updateInvariantFuncs);
   
     if (updateInvariantFuncs.size() != 1) {
       cout << "Could not find updateInvariant! " << updateInvariantFuncs.size() << endl;
@@ -207,7 +199,6 @@ bool ExtractFeaturesInstr::prepareInstrumentedFunction(struct instTarget& target
     return false;
   }
 
-  // TODO: Multiple variables with the same name should all be instrumented
   cout << "Found variable '" << variableName << "'!" << endl;
   variable = variables[0];
 
@@ -222,7 +213,8 @@ bool ExtractFeaturesInstr::prepareInstrumentedFunction(struct instTarget& target
     
     // Prepare the instrumentation snippet
     vector<BPatch_function*> collectFeaturesFuncs;
-    target.appImage->findFunction("collectFeatures", collectFeaturesFuncs);
+    BPatch_object* library = TraceAPIInstr::getAnalyticsLib(target);
+    library->findFunction("collectFeatures", collectFeaturesFuncs);
   
     if (collectFeaturesFuncs.size() != 1) {
       cout << "Could not find collectFeatures! " << collectFeaturesFuncs.size() << endl;
@@ -313,7 +305,6 @@ bool PrintChangesInstr::prepareInstrumentedFunction(struct instTarget& target, B
     return false;
   }
 
-  // TODO: Multiple variables with the same name should all be instrumented
   cout << "Found variable '" << variableName << "'!" << endl;
   variable = variables[0];
 
@@ -323,7 +314,8 @@ bool PrintChangesInstr::prepareInstrumentedFunction(struct instTarget& target, B
 
     // Prepare the instrumentation snippet
     vector<BPatch_function*> logAddrFunctions;
-    target.appImage->findFunction("logValueAddr", logAddrFunctions);
+    BPatch_object* library = TraceAPIInstr::getAnalyticsLib(target);
+    library->findFunction("logValueAddr", logAddrFunctions);
   
     if (logAddrFunctions.size() != 1) {
       cout << "Could not find logValueAddr! " << logAddrFunctions.size() << endl;
@@ -476,12 +468,9 @@ vector<BPatch_point*> BasicBlockSamplingPointsInstr::getInstrumentationPoints(st
 
   cfg->getAllBasicBlocks(basicBlocks);
   if (basicBlocks.size() == 0) {
-    ///OO cout << "Found no basic blocks!" << endl;
     DYSECTWARN(false, "Found no basic blocks!");
     return points;
   } else {
-    ///OO cout << "Found " << basicBlocks.size() << " basic blocks in "
-    ///OO      << function->getName() << "!" << endl;
     DYSECTVERBOSE("Found %d basic blocks in %s!", basicBlocks.size(), function->getName().c_str());
   }
 
@@ -515,7 +504,6 @@ void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_
   }
     
   if (scope->shouldInstrument(instrumentedFuncStack, currentFunction)) {
-    ///OO cout << "[" << instrumentedFuncStack.size() << "] Instrumenting " << currentFunction->getName() << endl;
     DYSECTVERBOSE(true, "[%d] Instrumenting %s", instrumentedFuncStack.size(), currentFunction->getName().c_str());
 	
     // Instrument the current function
@@ -558,8 +546,7 @@ DataTraceInstr::DataTraceInstr(AnalysisInstr* analysis, ScopeInstr* scope, Sampl
 }
 
 bool DataTraceInstr::install(struct instTarget& target, std::string rootFuncName) {
-  vector<BPatch_function*> instrumentedFunctions;
-  
+  vector<BPatch_function*> instrumentedFunctions;  
   vector<BPatch_function*> rootFunctions;
   target.appImage->findFunction(rootFuncName.c_str(), rootFunctions);
 
@@ -577,4 +564,28 @@ void DataTraceInstr::finishAnalysis(struct instTarget& target) {
 }
 
 
+/************ TraceAPI ************/
+map<BPatch_addressSpace*, BPatch_object*> TraceAPIInstr::analyticsLib;
 
+BPatch_object* TraceAPIInstr::loadAnalyticsLibrary(struct instTarget& target) {
+  BPatch_object* analyticsLib = target.addrHandle->loadLibrary("libanalytics.so");
+
+  if (analyticsLib == 0) {
+    DYSECTFATAL(false, "Could not load analytics library");
+  }
+
+  return analyticsLib;
+}
+
+BPatch_object* TraceAPIInstr::getAnalyticsLib(struct instTarget& target) {
+  map<BPatch_addressSpace*, BPatch_object*>::iterator it = analyticsLib.find(target.addrHandle);
+
+  if (it != analyticsLib.end()) {
+    return it->second;
+  }
+
+  BPatch_object* library = loadAnalyticsLibrary(target);
+  analyticsLib[target.addrHandle] = library;
+
+  return library;
+}

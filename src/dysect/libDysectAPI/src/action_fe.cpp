@@ -411,6 +411,12 @@ bool StopTrace::finishFE(int count) {
       return DYSECTWARN(false, "Could not evaluate aggregate %d!", id);
     }
   }
+
+  //char* packet;
+  //int size;
+  //if (trace->formatGlobalResult(packet, size)) {
+  //  ///TODO: Broadcast the packet to all nodes
+  //}
   
   return true;
 }
