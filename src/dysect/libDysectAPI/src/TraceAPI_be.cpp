@@ -197,8 +197,6 @@ void DataTrace::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc)
   BPatch_process* dyninst_proc = ProcMap::get()->getDyninstProcess(proc);
   target.addrHandle = dynamic_cast<BPatch_addressSpace*>(dyninst_proc);
   target.appImage = target.addrHandle->getImage();
-
-  dyninst_proc->stopExecution();
   
   DataTraceInstr* instr;
   int pid = dyninst_proc->getPid();
@@ -213,8 +211,6 @@ void DataTrace::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc)
   }
   
   instr->finishAnalysis(target);
-
-  dyninst_proc->continueExecution();
 }
 
 void TraceAPI::addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
@@ -249,8 +245,12 @@ void TraceAPI::performPendingInstrumentations() {
 
 void TraceAPI::addPendingAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
   ProcessMgr::waitFor(ProcWait::analysis, proc);
-  
   pendingAnalysis.insert(pair<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>(proc, trace));
+  
+  if (trace->usesGlobalResult()) {
+    ProcessMgr::waitFor(ProcWait::globalResult, proc);
+    pendingGlobalRes.insert(pair<DataTrace*, Dyninst::ProcControlAPI::Process::const_ptr>(trace, proc));
+  }
 }
 
 void TraceAPI::performPendingAnalysis() {
@@ -275,4 +275,24 @@ void TraceAPI::performPendingAnalysis() {
   ProcessMgr::continueProcsIfReady(analyzed_procset);
 
   pendingAnalysis.clear();
+}
+
+void TraceAPI::processedGlobalRes(DataTrace* trace) {
+  typedef multimap<DataTrace*, Dyninst::ProcControlAPI::Process::const_ptr>::iterator mapIter;
+
+  set<Process::const_ptr> processedProcs;
+  
+  pair<mapIter, mapIter> range = pendingGlobalRes.equal_range(trace);
+  for (mapIter it = range.first; it != range.second; ++it) {
+    Dyninst::ProcControlAPI::Process::const_ptr process = it->second;
+    
+    ProcessMgr::handled(ProcWait::globalResult, process);
+
+    processedProcs.insert(process);
+  }
+
+  ProcessSet::ptr processedProcset = ProcessSet::newProcessSet(processedProcs);
+  ProcessMgr::continueProcsIfReady(processedProcset);
+
+  pendingGlobalRes.erase(trace);
 }

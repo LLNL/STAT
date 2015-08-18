@@ -4,11 +4,17 @@
 
 #include <DysectAPI/Aggregates/Aggregate.h>
 #include <DysectAPI/Aggregates/AggregateFunction.h>
+#include <DysectAPI/Condition.h>
 
 #include <string>
 #include <limits>
 #include <vector>
 #include <map>
+
+/* Forward declare to avoid cyclic dependency */
+namespace DysectAPI {
+  class CollectValuesIncludes;
+};
 
 class Analysis {
 public:
@@ -20,28 +26,36 @@ public:
   virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
   virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
 
+  virtual bool usesGlobalResult();
   virtual bool formatGlobalResult(char*& packet, int& size);
+  virtual void processGlobalResult(char* packet, int size);
   
   virtual ~Analysis() {}
 };
 
 class CollectValues : public Analysis {
   friend class DataTrace;
-  
+    
   std::string variableName;
   const int bufSize;
   const bool allValues;
 
   DysectAPI::CollectValuesAgg aggregator;
+  DysectAPI::CollectValuesAgg globalResult;
   
 public:
   CollectValues(std::string variableName, int bufSize = 2048, bool allValues = false);
 
   DysectAPI::CollectValuesAgg* getAggregator();
+  DysectAPI::CollectValuesAgg* getGlobalResult();
   virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
   virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
 
+  virtual bool usesGlobalResult();
   virtual bool formatGlobalResult(char*& packet, int& size);
+  virtual void processGlobalResult(char* packet, int size);
+
+  DysectAPI::CollectValuesIncludes* includes(int value);
 };
 
 class InvariantGenerator : public Analysis {
@@ -199,11 +213,15 @@ public:
   std::vector<DysectAPI::AggregateFunction*>* getAggregates();
 
   bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
+  bool usesGlobalResult();
+  bool formatGlobalResult(char*& packet, int& size);
+  void processGlobalResult(char* packet, int size);
 };
 
 class TraceAPI {
   static std::multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> pendingInstrumentations;
   static std::multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> pendingAnalysis;
+  static std::multimap<DataTrace*, Dyninst::ProcControlAPI::Process::const_ptr> pendingGlobalRes;
   
 public:
   static void addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
@@ -211,6 +229,8 @@ public:
 
   static void addPendingAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
   static void performPendingAnalysis();
+
+  static void processedGlobalRes(DataTrace* trace);
 };
 
 #endif

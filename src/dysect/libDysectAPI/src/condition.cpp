@@ -99,6 +99,14 @@ DysectAPI::DysectErrorCode Cond::evaluate(ConditionResult& result, Process::cons
         return DYSECTWARN(Error, "Could not evaluate synchetic expression");
     }
 
+  } else if(conditionType == CVICondition) {
+
+    CollectValuesIncludes* cvi = dynamic_cast<CollectValuesIncludes*>(this);
+
+    if(cvi->evaluate(result, process, tid) != DysectAPI::OK) {
+        return DYSECTWARN(Error, "Could not evaluate synchetic expression");
+    }
+    
   }
 
   return OK;
@@ -158,3 +166,29 @@ DysectAPI::DysectErrorCode Synthetic::evaluate(ConditionResult& result, Process:
 
   return OK;
 }
+
+CollectValuesIncludes::CollectValuesIncludes(CollectValues* analysis, int value)
+  : analysis(analysis), value(value), Cond(CVICondition) {
+  
+}
+
+bool CollectValuesIncludes::prepare() {
+  DYSECTVERBOSE(true, "Prepare CollectValuesIncludes with value: %d", value);
+  return true;
+}
+
+DysectAPI::DysectErrorCode CollectValuesIncludes::evaluate(ConditionResult& result, Process::const_ptr process, THR_ID tid) {
+  assert(analysis != 0);
+
+  DYSECTVERBOSE(true, "Searching global result for value %d", value);
+  
+  set<int>& globalVals = analysis->getGlobalResult()->getValues();
+  if (globalVals.find(value) == globalVals.end()) {
+    result = ResolvedFalse;
+  } else {
+    result = ResolvedTrue;
+  }
+
+  return OK;
+}
+

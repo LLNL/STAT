@@ -153,6 +153,7 @@ struct DysectFEContext_t {
 
 const int DysectGlobalReadyTag     = 0x7e000009;
 const int DysectGlobalReadyRespTag = 0x7e00000A;
-const int DysectGlobalStartTag =     0x7e00000B;
+const int DysectGlobalStartTag     = 0x7e00000B;
+const int DysectGlobalActionTag    = 0x7e00000C;
 
 #endif

@@ -43,6 +43,10 @@ CollectValuesAgg::CollectValuesAgg(int id, int count, std::string fmt, void* pay
   deserialize(payload);
 }
 
+void CollectValuesAgg::copy(CollectValuesAgg* other) {
+  values = other->values;
+}
+
 bool CollectValuesAgg::aggregate(AggregateFunction* agg) {
   if(agg->getType() != type)
     return false;
@@ -85,6 +89,12 @@ bool CollectValuesAgg::deserialize(void* payload) {
   }
 
   return true;
+}
+
+bool CollectValuesAgg::readSubpacket(char* p) {
+  struct subPacket* packet = (struct subPacket*)p;
+
+  return deserialize(&packet->payload);
 }
 
 int CollectValuesAgg::getSize() {

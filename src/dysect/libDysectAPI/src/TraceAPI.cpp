@@ -17,10 +17,18 @@ bool Analysis::evaluateAggregate(DysectAPI::AggregateFunction* aggregate) {
   return true;
 }
 
+bool Analysis::usesGlobalResult() {
+  return false;
+}
+
 bool Analysis::formatGlobalResult(char*& packet, int& size) {
   size = 0;
 
   return false;
+}
+
+void Analysis::processGlobalResult(char* packet, int size) {
+
 }
 
 CollectValues::CollectValues(string variableName, int bufSize, bool allValues)
@@ -38,10 +46,17 @@ bool CollectValues::evaluateAggregate(AggregateFunction* aggregate) {
     return false;
   }
 
+  // Copy the analysis result into our aggregate 
+  aggregator.copy(agg);
+  
   string desc;
-  agg->getStr(desc);
+  aggregator.getStr(desc);
   DYSECTINFO(true, "The variable %s took the values %s", variableName.c_str(), desc.c_str());
 
+  return true;
+}
+
+bool CollectValues::usesGlobalResult() {
   return true;
 }
 
@@ -54,8 +69,22 @@ bool CollectValues::formatGlobalResult(char*& packet, int& size) {
   return true;
 }
 
+void CollectValues::processGlobalResult(char* packet, int size) {
+  globalResult.readSubpacket(packet);
+
+  globalResult.print();
+}
+
 DysectAPI::CollectValuesAgg* CollectValues::getAggregator() {
   return &aggregator;
+}
+
+DysectAPI::CollectValuesAgg* CollectValues::getGlobalResult() {
+  return &globalResult;
+}
+
+DysectAPI::CollectValuesIncludes* CollectValues::includes(int value) {
+  return new DysectAPI::CollectValuesIncludes(this, value);
 }
 
 InvariantGenerator::InvariantGenerator(string variableName) : variableName(variableName) {
@@ -198,9 +227,20 @@ bool DataTrace::evaluateAggregate(DysectAPI::AggregateFunction* aggregate) {
   analysis->evaluateAggregate(aggregate);
 }
 
+bool DataTrace::usesGlobalResult() {
+  return analysis->usesGlobalResult();
+}
+
+bool DataTrace::formatGlobalResult(char*& packet, int& size) {
+  return analysis->formatGlobalResult(packet, size);
+}
+
+void DataTrace::processGlobalResult(char* packet, int size) {
+  analysis->processGlobalResult(packet, size);
+}
 
 /************ TraceAPI ************/
 multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> TraceAPI::pendingInstrumentations;
 multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> TraceAPI::pendingAnalysis;
-
+multimap<DataTrace*, Dyninst::ProcControlAPI::Process::const_ptr> TraceAPI::pendingGlobalRes;
 

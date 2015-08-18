@@ -589,3 +589,4 @@ BPatch_object* TraceAPIInstr::getAnalyticsLib(struct instTarget& target) {
 
   return library;
 }
+

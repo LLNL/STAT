@@ -60,7 +60,8 @@ namespace DysectAPI {
     static bool stopProcs(Dyninst::ProcControlAPI::ProcessSet::ptr procs);
     static bool continueProcs(Dyninst::ProcControlAPI::ProcessSet::ptr procs);
 
-    static bool continueProcsIfReady(Dyninst::ProcControlAPI::ProcessSet::ptr procs);
+    static bool continueProcsIfReady(Dyninst::ProcControlAPI::ProcessSet::const_ptr procs);
+    static bool continueProcIfReady(Dyninst::ProcControlAPI::Process::const_ptr pcProc);
     static void waitFor(ProcWait::Events event, Dyninst::ProcControlAPI::ProcessSet::ptr procs);
     static void waitFor(ProcWait::Events event, Dyninst::ProcControlAPI::Process::const_ptr proc);
     static void handled(ProcWait::Events event, Dyninst::ProcControlAPI::ProcessSet::ptr procs);

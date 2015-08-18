@@ -145,6 +145,7 @@ DysectErrorCode BE::handleAll() {
   {
     TraceAPI::performPendingInstrumentations();
     TraceAPI::performPendingAnalysis();
+    
     handleTimerActions();
     handleQueuedOperations();
   }
@@ -165,7 +166,7 @@ DysectErrorCode BE::handleAll() {
     // if was library event, then need to enable any pending probe roots outside of callback
     Backend::enablePending();
     count2 = getPendingExternalAction();
-    DYSECTVERBOSE(true, "Event handled... %d %d", count1, count2);
+    
     if (count2 > count1 && count2 != 0) {
       DYSECTVERBOSE(true, "STAT2 action detected %d %d, deferring control...", count1, count2);
       returnControlToDysect = false;
@@ -175,7 +176,7 @@ DysectErrorCode BE::handleAll() {
   // if event requested instrumentation we must do so before continue
   TraceAPI::performPendingInstrumentations();
   TraceAPI::performPendingAnalysis();
-  
+
   return OK;
 }
 

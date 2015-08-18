@@ -21,6 +21,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Probe.h>
 #include <DysectAPI/Action.h>
 #include <DysectAPI/Frontend.h>
+#include <DysectAPI/Domain.h>
 #include <DysectAPI/Aggregates/RankListAgg.h>
 #include "STAT.h"
 #include "STAT_FrontEnd.h"
@@ -30,7 +31,6 @@ using namespace DysectAPI;
 using namespace Dyninst;
 using namespace ProcControlAPI;
 using namespace MRN;
-
 
 bool LoadLibrary::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
@@ -412,11 +412,11 @@ bool StopTrace::finishFE(int count) {
     }
   }
 
-  //char* packet;
-  //int size;
-  //if (trace->formatGlobalResult(packet, size)) {
-  //  ///TODO: Broadcast the packet to all nodes
-  //}
+  char* packet;
+  int size;
+  if (trace->formatGlobalResult(packet, size)) {
+    owner->getDomain()->getStream()->send(DysectGlobalActionTag, "%ac", packet, size);
+  }
   
   return true;
 }

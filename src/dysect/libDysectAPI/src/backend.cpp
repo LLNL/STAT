@@ -25,6 +25,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/ProbeTree.h>
 #include <DysectAPI/Backend.h>
 #include <DysectAPI/ProcMap.h>
+#include <DysectAPI/Action.h>
 
 using namespace std;
 using namespace MRN;
@@ -367,8 +368,14 @@ void  Backend::setPendingExternalAction(int pending) {
 }
 
 DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stream* stream) {
+  if (tag == DysectGlobalActionTag) {
+    int streamId = (*packet)->get_StreamId();
+    DYSECTVERBOSE(true, "Got the action pack at stream id %d (%p)", streamId, stream);
 
-  if(tag == DysectGlobalReadyTag){
+    StopTrace::handleResultPackage(*packet, stream);
+
+    return OK;
+  } else if(tag == DysectGlobalReadyTag){
     // Stream to respond when all streams have been bound
     if(controlStream != 0) {
       return DYSECTWARN(Error, "Control stream already set");
@@ -940,8 +947,8 @@ DysectAPI::DysectErrorCode Backend::handleTimerActions() {
       probe->enableChildren(lprocset);
       if(probe->getLifeSpan() == fireOnce)
 	probe->disable(lprocset);
-      ProcessMgr::continueProcsIfReady(lprocset);
       probe->releaseWaitingProcs();
+      ProcessMgr::continueProcsIfReady(lprocset);
     }
   }
 

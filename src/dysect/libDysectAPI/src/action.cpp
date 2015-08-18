@@ -290,6 +290,8 @@ bool StartTrace::prepare() {
   return true;
 }
 
+std::map<MRN::Stream*, StopTrace*> StopTrace::waitingForResults;
+
 StopTrace::StopTrace(DataTrace* trace) : trace(trace) {
 
 }

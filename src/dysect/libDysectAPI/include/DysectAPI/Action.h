@@ -297,6 +297,8 @@ namespace DysectAPI {
     std::vector<Dyninst::ProcControlAPI::Process::const_ptr> triggeredProcs;
     DataTrace* trace;
 
+    static std::map<MRN::Stream*, StopTrace*> waitingForResults;
+
   public:
     StopTrace(DataTrace* trace);
 
@@ -307,6 +309,8 @@ namespace DysectAPI {
 
     bool finishBE(struct packet*& p, int& len);
     bool finishFE(int count);
+
+    static bool handleResultPackage(MRN::PacketPtr packet, MRN::Stream* stream);
   };
   
   class FullStackTrace : public Act {

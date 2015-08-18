@@ -446,7 +446,38 @@ bool StopTrace::finishBE(struct packet*& p, int& len) {
   if(!AggregateFunction::getPacket(*aggregates, len, p)) {
     return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
   }
+
+  if (trace->usesGlobalResult()) {
+    //TODO: This will not allow multiple StopTrace to share
+    //  the same domain, e.g. the same probe
+    Stream* stream = owner->getDomain()->getStream();
+    waitingForResults[stream] = this;
+  }
   
+  return true;
+}
+
+bool StopTrace::handleResultPackage(MRN::PacketPtr packet, MRN::Stream* stream) {
+  map<MRN::Stream*, StopTrace*>::iterator it = waitingForResults.find(stream);
+
+  if (it == waitingForResults.end()) {
+    return DYSECTWARN(false, "Unexpected packet on result stream!");
+  }
+
+  StopTrace* action = it->second;
+  char* data;
+  int dataSize;
+  if (packet->unpack("%ac", &data, &dataSize) != 0) {
+    return DYSECTFATAL(false, "Unexpected global result package content!");
+  }
+
+  action->trace->processGlobalResult(data, dataSize);
+
+  waitingForResults.erase(it);
+  TraceAPI::processedGlobalRes(action->trace);
+  
+  free(data);
+
   return true;
 }
 

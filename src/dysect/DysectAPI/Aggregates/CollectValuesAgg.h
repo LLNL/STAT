@@ -30,12 +30,11 @@ namespace DysectAPI {
   protected:
     std::set<int> values;
 
-    bool deserialize(void *payload);
-     
   public:
     CollectValuesAgg(int id, int count, std::string fmt, void* payload);
     CollectValuesAgg(Probe *inOwner);
     CollectValuesAgg();
+    void copy(CollectValuesAgg* other);
 
     void addValue(int value);
 
@@ -43,7 +42,9 @@ namespace DysectAPI {
     void getValues(std::set<int>& outValues);
     
     int getSize();
+    bool deserialize(void *payload);
     int writeSubpacket(char *p);
+    bool readSubpacket(char* p);
     virtual bool collect(void* process, void* thread);
     bool clear();
     

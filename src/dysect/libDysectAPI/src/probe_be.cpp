@@ -426,7 +426,7 @@ bool Probe::disable(Dyninst::ProcControlAPI::Process::const_ptr process) {
 }
 
 bool Probe::disable(Dyninst::ProcControlAPI::ProcessSet::ptr procset) {
-  ProcessMgr::handled(ProcWait::enableChildren, procset);
+  ProcessMgr::handled(ProcWait::disable, procset);
   
   assert(event != 0);
   assert(dom != 0);

@@ -210,22 +210,26 @@ bool ProcessMgr::continueProcs(ProcessSet::ptr procs) {
   return ret;
 }
 
-bool ProcessMgr::continueProcsIfReady(Dyninst::ProcControlAPI::ProcessSet::ptr procs) {
+bool ProcessMgr::continueProcsIfReady(Dyninst::ProcControlAPI::ProcessSet::const_ptr procs) {
   bool ret = true;
 
-  for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
-    Process::ptr pcProc = *procIter;
-
-    map<Process::const_ptr, ProcWait>::iterator it = procWait.find(pcProc);
-    if (it == procWait.end() || it->second.ready()) {
-      BPatch_process *bpatch_process = ProcMap::get()->getDyninstProcess(pcProc);
-      if(!bpatch_process->continueExecution()) {
-	ret = false;
-      }
-    }
+  for(ProcessSet::const_iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    continueProcIfReady(*procIter);
   }
   
   return ret;
+}
+
+bool ProcessMgr::continueProcIfReady(Dyninst::ProcControlAPI::Process::const_ptr pcProc) {
+  map<Process::const_ptr, ProcWait>::iterator it = procWait.find(pcProc);
+  if (it == procWait.end() || it->second.ready()) {
+    BPatch_process *bpatch_process = ProcMap::get()->getDyninstProcess(pcProc);
+    if(!bpatch_process->continueExecution()) {
+      return false;
+    }
+  }
+    
+  return true;
 }
 
 void ProcessMgr::waitFor(ProcWait::Events event, Dyninst::ProcControlAPI::ProcessSet::ptr procs) {
@@ -260,8 +264,15 @@ void ProcessMgr::handled(ProcWait::Events event, Dyninst::ProcControlAPI::Proces
     waitStatus = it->second;
   }
 
-  waitStatus.handled(event);
+  bool ready = waitStatus.handled(event);
   procWait[proc] = waitStatus;
+
+  //TODO: Even if we are ready, we cannot resume the processes yet.
+  //  Right now the semantics of the handled method will only
+  //  schedule the process next time continueIfReady is called.
+  //  This should probably be changed, but right now the handled
+  //  method is called before the process is ready to resume
+  //  many places in the code base.
 }
 
 
