@@ -18,6 +18,12 @@
 #include <DysectAPI/Aggregates/Aggregate.h>
 #include <DysectAPI/Aggregates/AggregateFunction.h>
 
+#define PERF_INSERT_SNIPPET
+
+#ifdef PERF_INSERT_SNIPPET
+#include <sys/time.h>
+#endif // PERF_INSERT_SNIPPET
+
 using namespace std;
 using namespace DysectAPI;
 
@@ -510,6 +516,17 @@ void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_
     if (analysis->prepareInstrumentedFunction(target, currentFunction)) {
       vector<BPatch_point*> analysisPoints = points->getInstrumentationPoints(target, currentFunction);
 
+#ifdef PERF_INSERT_SNIPPET
+      char* maxPointsStr = std::getenv("DYS_PERF_MAX_INST_POINTS");
+      int maxPoints = atoi(maxPointsStr);
+      int curPoint = 1;
+      
+      struct timeval before, after;
+      if (gettimeofday(&before, NULL) != 0) {
+	DYSECTWARN(false, "Could not read start time of instrumentation");
+      }
+#endif // PERF_INSERT_SNIPPET
+      
       for (vector<BPatch_point*>::iterator it = analysisPoints.begin(); it != analysisPoints.end(); ++it) {
 	BPatch_snippet* analysisSnippet = analysis->getInstrumentationSnippet(target, *it);
 
@@ -517,7 +534,27 @@ void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_
 	analysisPoint.push_back(*it);
 
 	target.addrHandle->insertSnippet(*analysisSnippet, analysisPoint);
+
+#ifdef PERF_INSERT_SNIPPET
+	if (curPoint == maxPoints) {
+	  break;
+	} else {
+	  curPoint += 1;
+	}
+#endif // PERF_INSERT_SNIPPET
       }
+
+#ifdef PERF_INSERT_SNIPPET
+      if (gettimeofday(&after, NULL) != 0) {
+	DYSECTWARN(false, "Could not read end time of instrumentation");
+      }
+
+      long elapsedMs = (after.tv_sec - before.tv_sec) * 1000;
+      elapsedMs += (after.tv_usec - before.tv_usec) / 1000;
+
+      DYSECTVERBOSE(true, "PERF `%d` instrumentation points", curPoint);
+      DYSECTVERBOSE(true, "PERF `%ld` milliseconds to instrument", elapsedMs);
+#endif // PERF_INSERT_SNIPPET
     }
 
     instrumentedFunctions.insert(currentFunction->getName());
