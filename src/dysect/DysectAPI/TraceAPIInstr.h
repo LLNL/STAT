@@ -22,6 +22,7 @@ public:
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) = 0;
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) = 0;
   virtual void finishAnalysis(struct instTarget& target) = 0;
+  virtual bool pointAwareAnalysis() { return false; }
 };
 
 class CollectValuesInstr : public AnalysisInstr {
@@ -99,6 +100,7 @@ public:
   virtual void finishAnalysis(struct instTarget& target);
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
+  virtual bool pointAwareAnalysis() { return true; }
 };
 
 class ScopeInstr {
