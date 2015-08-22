@@ -1,7 +1,7 @@
 /*
 Copyright (c) 2013-2014, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory.
-Written by Jesper Puge Nielsen, Niklas Nielsen, Gregory Lee [lee218@llnl.gov], Dong Ahn.
+Written by Niklas Nielsen, Gregory Lee [lee218@llnl.gov], Dong Ahn.
 LLNL-CODE-645136.
 All rights reserved.
 
@@ -16,46 +16,33 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#ifndef __DYSECTAPI_RANKBUCKETAGG_H
-#define __DYSECTAPI_RANKBUCKETAGG_H
+#ifndef __DYSECTAPI_COUNTINVOCATIONSAGG_H
+#define __DYSECTAPI_COUNTINVOCATIONSAGG_H
 
-#include "DysectAPI/Aggregates/RankBitmap.h"
+#include <string>
+#include <vector>
+#include <set>
+
+#include "DysectAPI/Aggregates/AggregateFunction.h"
 
 namespace DysectAPI {
-  class RankBucketAgg : public AggregateFunction {
-  protected: 
-    std::vector<RankBitmap*> buckets;
-
-    std::string variableName;
-    Value::content_t variableType;
-
-    Value rangeStart;
-    Value rangeEnd;
-    Value stepSize;
-    int bucketCount;
-
-    int getBucketFromValue(Value& val);
-
-    bool readSubpacket(char* payload);
-
-    bool parseDescription(std::string description);
-
-    bool parseNumber(std::string& str, int& curPos, Value& val);
-
-    std::string generateDescription();
+  class CountInvocationsAgg : public AggregateFunction {
+  protected:
+    int counter;
 
   public:
-    RankBucketAgg(int id, int count, std::string fmt, void* payload);
-    RankBucketAgg(Probe* owner, std::string description);
-    RankBucketAgg(int start, int end, int step, int count);
-    ~RankBucketAgg();
+    CountInvocationsAgg(int id, int count, std::string fmt, void* payload);
+    CountInvocationsAgg(Probe *inOwner);
+    CountInvocationsAgg();
+    void copy(CountInvocationsAgg* other);
 
-    void copy(RankBucketAgg* agg);
+    void addValue(int value);
+    int getCounter();
     
-    std::vector<RankBitmap*>& getBuckets();
-
     int getSize();
+    bool deserialize(void *payload);
     int writeSubpacket(char *p);
+    bool readSubpacket(char* p);
     virtual bool collect(void* process, void* thread);
     bool clear();
     

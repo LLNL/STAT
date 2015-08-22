@@ -19,10 +19,6 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include "DysectAPI/Aggregates/Aggregate.h"
 #include <cmath>
 
-#ifdef TOP_BUG
-#include "DysectAPI.h"
-#endif
-
 using namespace std;
 using namespace DysectAPI;
 
@@ -39,9 +35,25 @@ RankBucketAgg::RankBucketAgg(Probe* owner, string description) : AggregateFuncti
   type = rankBucketAgg;
 
   if (!parseDescription(description)) {
-#ifdef TOP_BUG
-    DYSECTWARN(false, "Unknown bucket description: '%s'", description.c_str());
-#endif
+
+  }
+}
+
+RankBucketAgg::RankBucketAgg(int start, int end, int step, int count) : AggregateFunction() {
+  id_ = genId();
+  
+  variableType = Value::longType;
+  type = rankBucketAgg;
+
+  rangeStart.copy(Value(start));
+  rangeEnd.copy(Value(end));
+  stepSize.copy(Value(step));
+  bucketCount = count;
+
+  // Prepare the buckets, add an extra for values out of range
+  buckets.resize(bucketCount + 2);
+  for (int i = 0; i <= bucketCount + 1; i++) {
+    buckets[i] = new RankBitmap();
   }
 }
 
@@ -49,6 +61,18 @@ RankBucketAgg::~RankBucketAgg() {
   for (int i = 0; i < bucketCount + 1; i++) {
     delete buckets[i];
   }
+}
+
+void RankBucketAgg::copy(RankBucketAgg* agg) {
+  buckets = agg->buckets;
+
+  variableName = agg->variableName;
+  variableType = agg->variableType;
+
+  rangeStart = agg->rangeStart;
+  rangeEnd = agg->rangeEnd;
+  stepSize = agg->stepSize;
+  bucketCount = agg->bucketCount;
 }
 
 bool RankBucketAgg::parseDescription(string description) {
@@ -83,36 +107,24 @@ bool RankBucketAgg::parseDescription(string description) {
 
   // Parse the bucket range start
   if (!parseNumber(description, curPos, rangeStart) || desc[curPos] != ':') {
-#ifdef TOP_BUG
-    return DYSECTWARN(false, "Invalid range start in '%s'", description.c_str());
-#endif
     return false;
   }
   curPos += 1;
 
   // Parse the bucket range start
   if (!parseNumber(description, curPos, stepSize) || desc[curPos] != ':') {
-#ifdef TOP_BUG
-    return DYSECTWARN(false, "Invalid stepSize in '%s'", description.c_str());
-#endif
     return false;
   }
   curPos += 1;
 
   // Parse the bucket range start
   if (!parseNumber(description, curPos, rangeEnd) || desc[curPos] != 0) {
-#ifdef TOP_BUG
-    return DYSECTWARN(false, "Invalid range end in '%s'", description.c_str());
-#endif
     return false;
   }
 
   // The types must match
   if ((rangeStart.getType() != rangeEnd.getType()) ||
       (rangeStart.getType() != stepSize.getType())) {
-#ifdef TOP_BUG
-    return DYSECTWARN(false, "The range types does not match in '%s'", description.c_str());
-#endif
     return false;
   }
 
@@ -147,11 +159,6 @@ bool RankBucketAgg::parseDescription(string description) {
   stepSize.getStr(stepSizeStr);
   rangeEnd.getStr(rangeEndStr);
 
-#ifdef TOP_BUG
-  DYSECTVERBOSE(false, "The variable %s, will be placed in %d buckets by %s:%s:%s", 
-       variableName.c_str(), bucketCount, rangeStartStr.c_str(), stepSizeStr.c_str(), rangeEndStr.c_str());
-#endif
-  
   return true;
 }
 
@@ -424,10 +431,6 @@ int RankBucketAgg::getBucketFromValue(Value& val) {
     return (int)((value - dRangeStart) / dStepSize);
 
   } else {
-#ifdef TOP_BUG
-    DYSECTWARN("Invalid value type cannot be placed in bucket");
-#endif
-    
     return 0;
   }
 }

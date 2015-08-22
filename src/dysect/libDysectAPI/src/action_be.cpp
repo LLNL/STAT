@@ -22,6 +22,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Action.h>
 #include "DysectAPI/Backend.h"
 #include <DysectAPI/Aggregates/RankListAgg.h>
+#include <DysectAPI/ProcMap.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -408,7 +409,18 @@ bool StartTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   DYSECTVERBOSE(true, "StartTrace::collect %d", owner->getProcessCount());
 
-  TraceAPI::addPendingInstrumentation(process, trace);
+  Stackwalker::Walker* walker = ProcMap::get()->getWalker(process);
+  
+  vector<Stackwalker::Frame> stackWalk;
+
+  if (!walker->walkStack(stackWalk)) {
+    return false;
+  }
+
+  string curFuncName;
+  stackWalk[0].getName(curFuncName);
+  
+  TraceAPI::addPendingInstrumentation(process, trace, curFuncName);
 
   return true;
 }

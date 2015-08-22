@@ -242,7 +242,14 @@ bool Probe::releaseWaitingProcs() {
     ProcessMgr::handled(ProcWait::probe, waitingProcs);
 
     if(waitingProcs->size() > 0) {
-      awaitingActions -= processCount;
+      vector<Act*>::iterator actIter = actions.begin();
+      for(;actIter != actions.end(); actIter++) {
+	Act* act = *actIter;
+	if(act) {
+	  awaitingActions -= processCount;
+	}
+      }
+      
       processCount = 0;
     }
 

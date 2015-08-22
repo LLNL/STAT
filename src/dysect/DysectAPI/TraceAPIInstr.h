@@ -45,6 +45,45 @@ public:
   virtual void finishAnalysis(struct instTarget& target);
 };
 
+class CountInvocationsInstr : public AnalysisInstr {
+  CountInvocations* original;
+  
+  BPatch_function* collector;
+  BPatch_variableExpr* counter;
+  
+public:
+  CountInvocationsInstr(CountInvocations* original);
+  virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
+  virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
+  virtual void finishAnalysis(struct instTarget& target);
+};
+
+class BucketsInstr : public AnalysisInstr {
+  Buckets* original;
+
+  struct buckets {
+    char* bitmap;
+    int rangeStart;
+    int rangeEnd;
+    int count;
+    int stepSize;
+  };
+  
+  BPatch_function* collector;
+  BPatch_variableExpr* variable;
+  BPatch_variableExpr* bitmap;
+  BPatch_variableExpr* procBkts;
+
+  string variableName;
+  struct buckets bkts;
+
+ public:
+  BucketsInstr(Buckets* original, std::string variableName, int rangeStart, int rangeEnd, int count, int stepSize);
+  virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
+  virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
+  virtual void finishAnalysis(struct instTarget& target);
+};
+
 class InvariantGeneratorInstr : public AnalysisInstr {
   InvariantGenerator* original;
   string variableName;
@@ -105,8 +144,15 @@ public:
 
 class ScopeInstr {
 public:
-  virtual bool shouldInstrument(vector<BPatch_function*>& instrumentedFunctions,
+  enum ShouldInstrument {
+    Instrument,
+    Skip,
+    StopSearch
+  };
+  
+  virtual ShouldInstrument shouldInstrument(vector<BPatch_function*>& instrumentedFunctions,
 				BPatch_function* function) = 0;
+  virtual bool limitToCallPath();
 };
 
 class FunctionScopeInstr : public ScopeInstr {
@@ -114,7 +160,7 @@ class FunctionScopeInstr : public ScopeInstr {
   
 public:
   FunctionScopeInstr(int maxCallPath);
-  bool shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
+  ShouldInstrument shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
 };
 
 class CallPathScopeInstr : public ScopeInstr {
@@ -122,7 +168,16 @@ class CallPathScopeInstr : public ScopeInstr {
   
 public:
   CallPathScopeInstr(vector<string> callPath);
-  virtual bool shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
+  virtual ShouldInstrument shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
+};
+
+class CalledFunctionInstr : public ScopeInstr {
+  std::string fname;
+
+ public:
+  CalledFunctionInstr(std::string fname);
+  virtual ShouldInstrument shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
+  virtual bool limitToCallPath();
 };
 
 class SamplingPointsInstr {

@@ -103,3 +103,34 @@ void collectAnyValue(int val, char* buffer, int* index, int* size) {
     *index += sizeof(int);
   }
 }
+
+void countInvocations(int* counter) {
+  *counter += 1;
+}
+
+struct buckets {
+  char* bitmap;
+  int rangeStart;
+  int rangeEnd;
+  int count;
+  int stepSize;
+};
+
+void setBit(int bit, char* bitmap) {
+  int index = bit / (sizeof(char) * 8);
+  int mask = 1 << (bit & 0x7);
+
+  bitmap[index] |= mask;
+}
+
+void bucketValues(int val, struct buckets* buckets) {
+  if (val < buckets->rangeStart) {
+    setBit(buckets->count, buckets->bitmap);
+  } else if (val >= buckets->rangeEnd) {
+    setBit(buckets->count + 1, buckets->bitmap);
+  } else {
+    int bitNr = (val - buckets->rangeStart) / buckets->stepSize;
+    setBit(bitNr, buckets->bitmap);
+  }
+}
+

@@ -22,7 +22,9 @@ public:
   static Analysis* extractFeatures(std::string variableName);
   static Analysis* generateInvariant(std::string variableName);
   static Analysis* collectValues(std::string variableName);
-
+  static Analysis* countInvocations(bool synchronize = false);
+  static Analysis* buckets(std::string variableName, int rangeStart, int rangeEnd, int count);
+  
   virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
   virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
 
@@ -56,6 +58,52 @@ public:
   virtual void processGlobalResult(char* packet, int size);
 
   DysectAPI::CollectValuesIncludes* includes(int value);
+};
+
+class CountInvocations : public Analysis {
+  friend class DataTrace;
+    
+  const bool synchronize;
+
+  DysectAPI::CountInvocationsAgg aggregator;
+  DysectAPI::CountInvocationsAgg globalResult;
+  
+public:
+  CountInvocations(bool synchronize = false);
+
+  DysectAPI::CountInvocationsAgg* getAggregator();
+  DysectAPI::CountInvocationsAgg* getGlobalResult();
+  virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
+  virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
+
+  virtual bool usesGlobalResult();
+  virtual bool formatGlobalResult(char*& packet, int& size);
+  virtual void processGlobalResult(char* packet, int size);
+};
+
+class Buckets : public Analysis {
+  friend class DataTrace;
+
+  std::string variableName;
+  int rangeStart;
+  int rangeEnd;
+  int count;
+  int stepSize;
+  
+  DysectAPI::RankBucketAgg aggregator;
+  DysectAPI::RankBucketAgg globalResult;
+  
+public:
+  Buckets(std::string variableName, int rangeStart, int rangeEnd, int count);
+
+  DysectAPI::RankBucketAgg* getAggregator();
+  DysectAPI::RankBucketAgg* getGlobalResult();
+  virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
+  virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
+
+  virtual bool usesGlobalResult();
+  virtual bool formatGlobalResult(char*& packet, int& size);
+  virtual void processGlobalResult(char* packet, int size);
 };
 
 class InvariantGenerator : public Analysis {
@@ -92,6 +140,7 @@ public:
   static Scope* callPath(std::string f1 = "", std::string f2 = "", std::string f3 = "",
 			 std::string f4 = "", std::string f5 = "", std::string f6 = "",
 			 std::string f7 = "", std::string f8 = "", std::string f9 = "");
+  static Scope* calledFunction(std::string fname);
 
   virtual ~Scope() {}
 };
@@ -112,6 +161,15 @@ class CallPathScope : public Scope {
   
 public:
   CallPathScope(std::vector<std::string> callPath);
+};
+
+class CalledFunction : public Scope {
+  friend class DataTrace;
+
+  std::string fname;
+
+ public:
+  CalledFunction(std::string fname);
 };
 
 class SamplingPoints {
@@ -207,7 +265,7 @@ class DataTrace {
 public:
   DataTrace(Analysis* analysis, Scope* scope, SamplingPoints* points);
 
-  bool instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc);
+  bool instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, std::string rootFunc);
   void finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc);
 
   std::vector<DysectAPI::AggregateFunction*>* getAggregates();
@@ -219,12 +277,17 @@ public:
 };
 
 class TraceAPI {
-  static std::multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> pendingInstrumentations;
+  struct pendingInst {
+    DataTrace* trace;
+    std::string rootFunc;
+  };
+  
+  static std::multimap<Dyninst::ProcControlAPI::Process::const_ptr, struct pendingInst> pendingInstrumentations;
   static std::multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*> pendingAnalysis;
   static std::multimap<DataTrace*, Dyninst::ProcControlAPI::Process::const_ptr> pendingGlobalRes;
   
 public:
-  static void addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);
+  static void addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace, std::string rootFunc);
   static void performPendingInstrumentations();
 
   static void addPendingAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace);

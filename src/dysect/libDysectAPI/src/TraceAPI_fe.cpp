@@ -25,7 +25,7 @@ void* DataTrace::createInstrumentor() {
   return 0;
 }
 
-bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc) {
+bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, string rootFunc) {
   return false;
 }
 
@@ -33,7 +33,7 @@ void DataTrace::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc)
   
 }
 
-void TraceAPI::addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
+void TraceAPI::addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace, string rootFunc) {
 
 }
 

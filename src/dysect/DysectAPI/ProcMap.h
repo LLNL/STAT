@@ -18,6 +18,7 @@ public:
 
   Dyninst::Stackwalker::Walker* getWalker(Dyninst::ProcControlAPI::Process::const_ptr process);
   BPatch_process* getDyninstProcess(Dyninst::ProcControlAPI::Process::const_ptr process);
+  Dyninst::ProcControlAPI::Process::const_ptr getProcControlProcess(BPatch_process* dyninst_proc);
 
   static ProcMap* get();
 };

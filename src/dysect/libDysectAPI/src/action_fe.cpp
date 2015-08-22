@@ -414,7 +414,8 @@ bool StopTrace::finishFE(int count) {
 
   char* packet;
   int size;
-  if (trace->formatGlobalResult(packet, size)) {
+  if (trace->usesGlobalResult() &&
+      trace->formatGlobalResult(packet, size)) {
     owner->getDomain()->getStream()->send(DysectGlobalActionTag, "%ac", packet, size);
   }
   

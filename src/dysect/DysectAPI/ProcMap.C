@@ -18,6 +18,8 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include "DysectAPI/ProcMap.h"
 
+using namespace std;
+
 ProcMap ProcMap::instance;
 
 void ProcMap::addProcess(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::Stackwalker::Walker* walker, BPatch_process* dyninst_proc) {
@@ -35,4 +37,15 @@ BPatch_process* ProcMap::getDyninstProcess(Dyninst::ProcControlAPI::Process::con
 
 ProcMap* ProcMap::get() {
   return &ProcMap::instance;
+}
+
+Dyninst::ProcControlAPI::Process::const_ptr ProcMap::getProcControlProcess(BPatch_process* dyninst_proc) {
+  map<Dyninst::ProcControlAPI::Process::const_ptr, BPatch_process*>::iterator iter;
+  for (iter = dyninst_procs.begin(); iter != dyninst_procs.end(); ++iter) {
+    if (iter->second == dyninst_proc) {
+      return iter->first;
+    }
+  }
+
+  throw exception();
 }

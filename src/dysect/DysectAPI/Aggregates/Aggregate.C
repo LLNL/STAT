@@ -215,6 +215,9 @@ int AggregateFunction::getAggregate(char *p, AggregateFunction*& aggFunc) {
     case collectValuesAgg:
       aggFunc = new CollectValuesAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
       break;
+    case countInvocationsAgg:
+      aggFunc = new CountInvocationsAgg(ptr->id, ptr->count, ptr->fmt, (void*)&(ptr->payload));
+      break;
     default:
       fprintf(stderr, "Unknown aggregate '%d'\n", ptr->type);
       aggFunc = 0;

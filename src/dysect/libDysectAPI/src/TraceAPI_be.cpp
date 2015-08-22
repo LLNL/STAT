@@ -40,18 +40,25 @@ void* DataTrace::createInstrumentor() {
   /* Create analysis */
   {
     CollectValues* colVal;
+    CountInvocations* cntInv;
     InvariantGenerator* invGen;
     ExtractFeatures* extFeat;
     PrintChanges* prtChg;
-
+    Buckets* bkts;
+    
     if (colVal = dynamic_cast<CollectValues*>(analysis)) {
       analysisInstr = new CollectValuesInstr(colVal, colVal->variableName, colVal->bufSize, colVal->allValues);
+    } else if (cntInv = dynamic_cast<CountInvocations*>(analysis)) {
+      analysisInstr = new CountInvocationsInstr(cntInv);
     } else if (invGen = dynamic_cast<InvariantGenerator*>(analysis)) {
       analysisInstr = new InvariantGeneratorInstr(invGen, invGen->variableName);
     } else if (extFeat = dynamic_cast<ExtractFeatures*>(analysis)) {
       analysisInstr = new ExtractFeaturesInstr(extFeat, extFeat->variableName);
     } else if (prtChg = dynamic_cast<PrintChanges*>(analysis)) {
       analysisInstr = new PrintChangesInstr(prtChg, prtChg->variableName);
+    } else if (bkts = dynamic_cast<Buckets*>(analysis)) {
+      analysisInstr = new BucketsInstr(bkts, bkts->variableName, bkts->rangeStart,
+				       bkts->rangeEnd, bkts->count, bkts->stepSize);
     } else {
       assert(!"Unknown analysis!");
     }
@@ -61,11 +68,14 @@ void* DataTrace::createInstrumentor() {
   {
     FunctionScope* functionScp;
     CallPathScope* callPathScp;
+    CalledFunction* calledFuncScp;
 
     if (functionScp = dynamic_cast<FunctionScope*>(scope)) {
       scopeInstr = new FunctionScopeInstr(functionScp->maxCallPath);
     } else if (callPathScp = dynamic_cast<CallPathScope*>(scope)) {
       scopeInstr = new CallPathScopeInstr(callPathScp->callPath);
+    } else if (calledFuncScp = dynamic_cast<CalledFunction*>(scope)) {
+      scopeInstr = new CalledFunctionInstr(calledFuncScp->fname);
     } else {
       assert(!"Unkown scope!");
     }
@@ -137,36 +147,11 @@ SamplingPointsInstr::SamplingTime convertTime(SamplingPoints::SamplingTime time)
 }
 
 
-bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc) {
-  ProcDebug* pDebug;
-  bool wasRunning = false, wasStopped = false;
-  Stackwalker::Walker* walker = ProcMap::get()->getWalker(proc);
-  
-  if (proc->allThreadsRunning()) {
-    wasRunning = true;
-    pDebug = dynamic_cast<ProcDebug*>(walker->getProcessState());
-    //    pDebug->pause();
-  }
-
-  vector<Stackwalker::Frame> stackWalk;
-
-  if (!walker->walkStack(stackWalk)) {
-    if (wasRunning) {
-      pDebug->resume();
-    }
-    
-    return false;
-  }
-
-  string curFuncName;
-  stackWalk[0].getName(curFuncName);
-
+bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr proc, string rootFunc) {
   instTarget target;
   BPatch_process* dyninst_proc = ProcMap::get()->getDyninstProcess(proc);
   target.addrHandle = dynamic_cast<BPatch_addressSpace*>(dyninst_proc);
   target.appImage = target.addrHandle->getImage();
-
-  dyninst_proc->stopExecution();
 
   DataTraceInstr* instr;
   int pid = dyninst_proc->getPid();
@@ -181,13 +166,7 @@ bool DataTrace::instrumentProcess(Dyninst::ProcControlAPI::Process::const_ptr pr
     instr = (DataTraceInstr*)(it->second);
   }
   
-  bool res = instr->install(target, curFuncName);
-
-  if (wasRunning) {
-    pDebug->resume();
-  }
-
-  dyninst_proc->continueExecution();
+  bool res = instr->install(target, rootFunc);
 
   return res;
 }
@@ -213,10 +192,14 @@ void DataTrace::finishAnalysis(Dyninst::ProcControlAPI::Process::const_ptr proc)
   instr->finishAnalysis(target);
 }
 
-void TraceAPI::addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace) {
+void TraceAPI::addPendingInstrumentation(Dyninst::ProcControlAPI::Process::const_ptr proc, DataTrace* trace, string rootFunc) {
   ProcessMgr::waitFor(ProcWait::instrumentation, proc);
+
+  struct pendingInst pInst;
+  pInst.trace = trace;
+  pInst.rootFunc = rootFunc;
   
-  pendingInstrumentations.insert(pair<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>(proc, trace));
+  pendingInstrumentations.insert(pair<Dyninst::ProcControlAPI::Process::const_ptr, struct pendingInst>(proc, pInst));
 }
 
 void TraceAPI::performPendingInstrumentations() {
@@ -226,14 +209,15 @@ void TraceAPI::performPendingInstrumentations() {
 
   set<Process::const_ptr> instrumented_procs;
   
-  multimap<Dyninst::ProcControlAPI::Process::const_ptr, DataTrace*>::iterator it;
+  multimap<Dyninst::ProcControlAPI::Process::const_ptr, struct pendingInst>::iterator it;
   for (it = pendingInstrumentations.begin(); it != pendingInstrumentations.end(); ++it) {
     Dyninst::ProcControlAPI::Process::const_ptr process = it->first;
-    DataTrace* trace = it->second;
+    DataTrace* trace = it->second.trace;
+    string rootFunc = it->second.rootFunc;
 
     ProcessMgr::handled(ProcWait::instrumentation, process);
 
-    trace->instrumentProcess(process);
+    trace->instrumentProcess(process, rootFunc);
     instrumented_procs.insert(process);
   }
 

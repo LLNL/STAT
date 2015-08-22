@@ -18,6 +18,9 @@
 #include <DysectAPI/Aggregates/Aggregate.h>
 #include <DysectAPI/Aggregates/AggregateFunction.h>
 
+#include <DysectAPI/ProcMap.h>
+#include <DysectAPI/Domain.h>
+
 using namespace std;
 using namespace DysectAPI;
 
@@ -103,6 +106,190 @@ void CollectValuesInstr::finishAnalysis(struct instTarget& target) {
 
   delete[] localBuffer;
 }
+
+CountInvocationsInstr::CountInvocationsInstr(CountInvocations* original) : original(original) {
+  collector = 0;
+  counter = 0;
+}
+
+
+bool CountInvocationsInstr::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
+  // Check the global variables have been allocated yet
+  if (collector == 0) {
+    counter = target.addrHandle->malloc(sizeof(int));      
+
+    int initIndex = 0;
+    counter->writeValue((void*)&initIndex, (int)sizeof(int));
+    
+    // Prepare the instrumentation snippet
+    vector<BPatch_function*> collectValueFuncs;
+    string collectorName = "countInvocations";
+
+    BPatch_object* library = TraceAPIInstr::getAnalyticsLib(target);
+    library->findFunction(collectorName.c_str(), collectValueFuncs);
+  
+    if (collectValueFuncs.size() != 1) {
+      return DYSECTWARN(false, "Could not find %s! %d", collectorName.c_str(), collectValueFuncs.size());
+    } else {
+      DYSECTVERBOSE(true, "Found %s!", collectorName.c_str());
+    }
+
+    collector = collectValueFuncs[0];
+  }
+
+  return true;
+}
+
+BPatch_snippet* CountInvocationsInstr::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
+  // Create instrumentation snippet
+  vector<BPatch_snippet*> logArgs;
+  logArgs.push_back(new BPatch_constExpr(counter->getBaseAddr()));
+  
+  return new BPatch_funcCallExpr(*collector, logArgs);
+}
+
+void CountInvocationsInstr::finishAnalysis(struct instTarget& target) {
+  CountInvocationsAgg* aggregator = original->getAggregator();
+  int counterVal;
+
+  counter->readValue(&counterVal, sizeof(int));
+
+  aggregator->addValue(counterVal);
+}
+
+
+BucketsInstr::BucketsInstr(Buckets* original, string variableName, int rangeStart, int rangeEnd, int count, int stepSize)
+  : variableName(variableName), original(original) {
+  collector = 0;
+
+  bkts.rangeStart = rangeStart;
+  bkts.rangeEnd = rangeEnd;
+  bkts.count = count;
+  bkts.stepSize = stepSize;
+}
+
+
+bool BucketsInstr::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
+  // Prepare the instrumented function call
+  vector<BPatch_variableExpr*> variables;
+  function->findVariable(variableName.c_str(), variables);
+
+  if (variables.size() == 0) {
+    return DYSECTWARN(false, "Could not find '%s' in function %s!", variableName.c_str(), function->getName().c_str());
+  }
+
+  // TODO: Multiple variables with the same name should all be instrumented
+  DYSECTVERBOSE(true, "Found variable '%s'!", variableName.c_str());
+		
+  variable = variables[0];
+
+  // Check the global variables have been allocated yet
+  if (collector == 0) {
+    // Take the buckets for values below and above range into account
+    int bmSize = (2 + bkts.count);
+    bmSize = bmSize / 8 + (bmSize % 8 ? 1 : 0);
+
+    // Create an array of zeros to initialize the bitmap
+    char* bmDummy = new char[bmSize];
+    for (int i = 0; i < bmSize; i++) bmDummy[i] = 0;
+    
+    bitmap = target.addrHandle->malloc(bmSize);
+    bitmap->writeValue((void*)bmDummy, bmSize);
+    delete[] bmDummy;
+    
+    bkts.bitmap = (char*)(bitmap->getBaseAddr());
+
+    procBkts = target.addrHandle->malloc(sizeof(struct buckets));
+    procBkts->writeValue((void*)&bkts, (int)sizeof(struct buckets));
+    
+    // Prepare the instrumentation snippet
+    vector<BPatch_function*> collectValueFuncs;
+    string collectorName = "bucketValues";
+
+    BPatch_object* library = TraceAPIInstr::getAnalyticsLib(target);
+    library->findFunction(collectorName.c_str(), collectValueFuncs);
+  
+    if (collectValueFuncs.size() != 1) {
+      return DYSECTWARN(false, "Could not find %s! %d", collectorName.c_str(), collectValueFuncs.size());
+    } else {
+      DYSECTVERBOSE(true, "Found %s!", collectorName.c_str());
+    }
+
+    collector = collectValueFuncs[0];
+  }
+
+  return true;
+}
+
+BPatch_snippet* BucketsInstr::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
+  // Create instrumentation snippet
+  vector<BPatch_snippet*> logArgs;
+  logArgs.push_back(variable);
+  logArgs.push_back(new BPatch_constExpr(procBkts->getBaseAddr()));
+  
+  return new BPatch_funcCallExpr(*collector, logArgs);
+}
+
+void BucketsInstr::finishAnalysis(struct instTarget& target) {
+  RankBucketAgg* aggregator = original->getAggregator();
+
+  // Get the process rank
+  BPatch_process* dyninst_proc = dynamic_cast<BPatch_process*>(target.addrHandle);
+  Dyninst::ProcControlAPI::Process::const_ptr procCtrlProcess;
+  procCtrlProcess = ProcMap::get()->getProcControlProcess(dyninst_proc);
+  
+  std::map<int, Dyninst::ProcControlAPI::Process::ptr> *mpiRankToProcessMap;
+  mpiRankToProcessMap = Domain::getMpiRankToProcessMap();
+  if (!mpiRankToProcessMap) {
+    DYSECTVERBOSE(false, "Could not find MPI rank map");
+    return;
+  }
+  
+  int rank = -1;
+  std::map<int, Dyninst::ProcControlAPI::Process::ptr>::iterator iter;
+  for (iter = mpiRankToProcessMap->begin(); iter != mpiRankToProcessMap->end(); iter++) {
+    if (iter->second == procCtrlProcess) {
+      rank = iter->first;
+      break;
+    }
+  }
+
+  if (rank == -1) {
+    DYSECTVERBOSE(false, "Failed to determine Rank");
+    return;
+  }
+
+
+  // Read buckets from process
+  int bmSize = (2 + bkts.count);
+  bmSize = bmSize / 8 + (bmSize % 8 ? 1 : 0);
+
+  char* procBm = new char[bmSize];
+  bitmap->readValue(procBm, bmSize);
+
+  // Add the result to the aggregator
+  vector<RankBitmap*>& aggBucket = aggregator->getBuckets();
+  int curBucket = 0;
+  while (curBucket < bkts.count + 2) {
+    char curPart = procBm[curBucket / 8];
+    
+    for (int i = 0; i < 8; i++) {
+      if (!(curBucket < bkts.count + 2)) {
+	break;
+      }
+      
+      if (curPart & 0x1) {
+	aggBucket[curBucket]->addRank(rank);
+      }
+
+      curPart = curPart >> 1;
+      curBucket += 1;
+    }
+  }
+
+  delete[] procBm;
+}
+
 
 InvariantGeneratorInstr::InvariantGeneratorInstr(InvariantGenerator* original, string variableName)
   : original(original), variableName(variableName) {
@@ -343,27 +530,49 @@ BPatch_snippet* PrintChangesInstr::getInstrumentationSnippet(struct instTarget& 
 
 
 /************ Scope ************/
+bool ScopeInstr::limitToCallPath() {
+  return true;
+}
+  
 FunctionScopeInstr::FunctionScopeInstr(int maxCallPath) : maxCallPath(maxCallPath) {
     
 }
   
-bool FunctionScopeInstr::shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function) {
-  return instrumentedFunctions.size() < maxCallPath;
+ScopeInstr::ShouldInstrument FunctionScopeInstr::shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function) {
+  return (instrumentedFunctions.size() < maxCallPath ? Instrument : StopSearch);
 }
 
 CallPathScopeInstr::CallPathScopeInstr(vector<string> callPath) : callPath(callPath) {
 
 }
 
-bool CallPathScopeInstr::shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function) {
+ScopeInstr::ShouldInstrument CallPathScopeInstr::shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function) {
   for (int i = 0; i < instrumentedFunctions.size(); i++) {
     if ((i == callPath.size()) ||
 	(instrumentedFunctions[i]->getName().compare(callPath[i]))) {
-      return false;
+      return StopSearch;
     }
   }
 
-  return (callPath[instrumentedFunctions.size()].compare(function->getName()) == 0);
+  return (callPath[instrumentedFunctions.size()].compare(function->getName()) == 0 ? Instrument : StopSearch);
+}
+
+CalledFunctionInstr::CalledFunctionInstr(string fname) : fname(fname) {
+    
+}
+  
+ScopeInstr::ShouldInstrument CalledFunctionInstr::shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function) {
+  if (fname.compare(function->getName()) == 0) {
+    return Instrument;
+  } else if (instrumentedFunctions.size() > 5) {
+    return StopSearch;
+  } else {
+    return Skip;
+  }
+}
+
+bool CalledFunctionInstr::limitToCallPath() {
+  return false;
 }
 
 
@@ -502,12 +711,14 @@ void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_
   if (instrumentedFunctions.count(currentFunction->getName()) != 0) {
     return;
   }
-    
-  if (scope->shouldInstrument(instrumentedFuncStack, currentFunction)) {
+
+  ScopeInstr::ShouldInstrument shouldInstr = scope->shouldInstrument(instrumentedFuncStack, currentFunction);
+  if (shouldInstr != ScopeInstr::StopSearch) {
     DYSECTVERBOSE(true, "[%d] Instrumenting %s", instrumentedFuncStack.size(), currentFunction->getName().c_str());
 	
     // Instrument the current function
-    if (analysis->prepareInstrumentedFunction(target, currentFunction)) {
+    if (shouldInstr == ScopeInstr::Instrument &&
+	analysis->prepareInstrumentedFunction(target, currentFunction)) {
       vector<BPatch_point*> analysisPoints = points->getInstrumentationPoints(target, currentFunction);
 
       if (analysisPoints.size() != 0) {
@@ -550,6 +761,7 @@ void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_
 }
   
 DataTraceInstr::DataTraceInstr(AnalysisInstr* analysis, ScopeInstr* scope, SamplingPointsInstr* points)
+
   : analysis(analysis), scope(scope), points(points) {
   
 }
