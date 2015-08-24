@@ -1,3 +1,9 @@
+2015-08-24 Jesper Nielsen
+	* probe_be.cpp : decrement awaitingActions count for each action
+
+2015-08-11 Jesper Nielsen
+	* backend.cpp : modified handleTimerActions to avoid mutex deadlock
+
 2015-07-28 Gregory L. Lee <lee218@llnl.gov>, Jesper Nielsen
 	* : added DySectAPI probe tree visualizer
 	* : DySectAPI FE create .dot file with probe tree
