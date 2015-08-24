@@ -134,3 +134,17 @@ void bucketValues(int val, struct buckets* buckets) {
   }
 }
 
+void addToAverage(double value, double* average, double *count) {
+  // Count is initialized to one, average to zero
+  *average += (value - *average) / *count;
+  *count += 1.0;
+}
+
+void average(double* value, double* lastValue, double* average, double* count) {
+  if ((*count == 1.0) || (*lastValue != *value)) {
+    addToAverage(*value, average, count);
+
+    *lastValue = *value;
+  }
+}
+

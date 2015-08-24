@@ -45,7 +45,8 @@ enum agg_type {
 
   // TraceAPI aggregates
   collectValuesAgg = 16,
-  countInvocationsAgg = 17
+  countInvocationsAgg = 17,
+  averageAgg = 18
 };
 
 #include <typeinfo>
@@ -74,6 +75,7 @@ enum agg_type {
 
 #include "DysectAPI/Aggregates/CollectValuesAgg.h"
 #include "DysectAPI/Aggregates/CountInvocationsAgg.h"
+#include "DysectAPI/Aggregates/AverageAgg.h"
 
 namespace DysectAPI {
   class Agg {

@@ -290,6 +290,83 @@ void BucketsInstr::finishAnalysis(struct instTarget& target) {
   delete[] procBm;
 }
 
+AverageInstr::AverageInstr(Average* original, string variableName)
+  : original(original), variableName(variableName)  {
+  collector = 0;
+  variable = 0;
+  lastVal = 0;
+  average = 0;
+  count = 0;
+}
+
+bool AverageInstr::prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function) {
+  // Prepare the instrumented function call
+  vector<BPatch_variableExpr*> variables;
+  function->findVariable(variableName.c_str(), variables);
+
+  if (variables.size() == 0) {
+    return DYSECTWARN(false, "Could not find '%s' in function %s!", variableName.c_str(), function->getName().c_str());
+  }
+
+  // TODO: Multiple variables with the same name should all be instrumented
+  DYSECTVERBOSE(true, "Found variable '%s'!", variableName.c_str());
+		
+  variable = variables[0];
+
+  // Check the global variables have been allocated yet
+  if (collector == 0) {
+    double dummy0 = 0.0, dummy1 = 1.0;
+    
+    lastVal  = target.addrHandle->malloc(sizeof(double));
+    average  = target.addrHandle->malloc(sizeof(double));
+    count    = target.addrHandle->malloc(sizeof(double));
+    
+    lastVal->writeValue((void*)&dummy0, (int)sizeof(double));
+    average->writeValue((void*)&dummy0, (int)sizeof(double));
+    count->writeValue((void*)&dummy1, (int)sizeof(double));
+    
+    // Prepare the instrumentation snippet
+    vector<BPatch_function*> collectValueFuncs;
+    string collectorName = "average";
+
+    BPatch_object* library = TraceAPIInstr::getAnalyticsLib(target);
+    library->findFunction(collectorName.c_str(), collectValueFuncs);
+  
+    if (collectValueFuncs.size() != 1) {
+      return DYSECTWARN(false, "Could not find %s! %d", collectorName.c_str(), collectValueFuncs.size());
+    } else {
+      DYSECTVERBOSE(true, "Found %s!", collectorName.c_str());
+    }
+
+    collector = collectValueFuncs[0];
+  }
+
+  return true;
+}
+
+BPatch_snippet* AverageInstr::getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint) {
+  // Create instrumentation snippet
+  vector<BPatch_snippet*> logArgs;
+  logArgs.push_back(variable);
+  logArgs.push_back(new BPatch_constExpr(lastVal->getBaseAddr()));
+  logArgs.push_back(new BPatch_constExpr(average->getBaseAddr()));
+  logArgs.push_back(new BPatch_constExpr(count->getBaseAddr()));
+
+  return new BPatch_funcCallExpr(*collector, logArgs);
+}
+
+void AverageInstr::finishAnalysis(struct instTarget& target) {
+  double localAverage, localCount;
+
+  average->readValue(&localAverage, sizeof(double));
+  count->readValue(&localCount, sizeof(double));
+
+  // The instrumented snippet counts from 1
+  localCount -= 1;
+  
+  original->getAggregator()->addValue(localAverage, localCount);
+}
+
 
 InvariantGeneratorInstr::InvariantGeneratorInstr(InvariantGenerator* original, string variableName)
   : original(original), variableName(variableName) {

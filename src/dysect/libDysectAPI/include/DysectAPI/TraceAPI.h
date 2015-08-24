@@ -24,6 +24,7 @@ public:
   static Analysis* collectValues(std::string variableName);
   static Analysis* countInvocations(bool synchronize = false);
   static Analysis* buckets(std::string variableName, int rangeStart, int rangeEnd, int count);
+  static Analysis* average(std::string variableName);
   
   virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
   virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
@@ -105,6 +106,28 @@ public:
   virtual bool formatGlobalResult(char*& packet, int& size);
   virtual void processGlobalResult(char* packet, int size);
 };
+
+class Average : public Analysis {
+  friend class DataTrace;
+    
+  std::string variableName;
+
+  DysectAPI::AverageAgg aggregator;
+  DysectAPI::AverageAgg globalResult;
+  
+public:
+  Average(std::string variableName);
+
+  DysectAPI::AverageAgg* getAggregator();
+  DysectAPI::AverageAgg* getGlobalResult();
+  virtual void getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs);
+  virtual bool evaluateAggregate(DysectAPI::AggregateFunction* aggregate);
+
+  virtual bool usesGlobalResult();
+  virtual bool formatGlobalResult(char*& packet, int& size);
+  virtual void processGlobalResult(char* packet, int size);
+};
+
 
 class InvariantGenerator : public Analysis {
   friend class DataTrace;

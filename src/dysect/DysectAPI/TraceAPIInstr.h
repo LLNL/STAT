@@ -84,6 +84,25 @@ class BucketsInstr : public AnalysisInstr {
   virtual void finishAnalysis(struct instTarget& target);
 };
 
+
+class AverageInstr : public AnalysisInstr {
+  Average* original;
+  
+  string variableName;
+  
+  BPatch_function* collector;
+  BPatch_variableExpr* variable;
+  BPatch_variableExpr* lastVal;
+  BPatch_variableExpr* average;
+  BPatch_variableExpr* count;
+  
+public:
+  AverageInstr(Average* original, string variableName);
+  virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
+  virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
+  virtual void finishAnalysis(struct instTarget& target);
+};
+
 class InvariantGeneratorInstr : public AnalysisInstr {
   InvariantGenerator* original;
   string variableName;

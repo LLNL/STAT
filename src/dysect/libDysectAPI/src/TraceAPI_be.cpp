@@ -45,6 +45,7 @@ void* DataTrace::createInstrumentor() {
     ExtractFeatures* extFeat;
     PrintChanges* prtChg;
     Buckets* bkts;
+    Average* avg;
     
     if (colVal = dynamic_cast<CollectValues*>(analysis)) {
       analysisInstr = new CollectValuesInstr(colVal, colVal->variableName, colVal->bufSize, colVal->allValues);
@@ -59,6 +60,8 @@ void* DataTrace::createInstrumentor() {
     } else if (bkts = dynamic_cast<Buckets*>(analysis)) {
       analysisInstr = new BucketsInstr(bkts, bkts->variableName, bkts->rangeStart,
 				       bkts->rangeEnd, bkts->count, bkts->stepSize);
+    } else if (avg = dynamic_cast<Average*>(analysis)) {
+      analysisInstr = new AverageInstr(avg, avg->variableName);
     } else {
       assert(!"Unknown analysis!");
     }

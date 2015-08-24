@@ -193,6 +193,58 @@ DysectAPI::RankBucketAgg* Buckets::getGlobalResult() {
 }
 
 
+Average::Average(string variableName)
+  : variableName(variableName) {
+
+}
+
+void Average::getAggregateRefs(std::vector<DysectAPI::AggregateFunction*>& aggs) {
+  aggs.push_back(&aggregator);
+}
+
+bool Average::evaluateAggregate(AggregateFunction* aggregate) {
+  AverageAgg* agg = dynamic_cast<AverageAgg*>(aggregate);
+  if (agg == 0) {
+    return false;
+  }
+
+  // Copy the analysis result into our aggregate 
+  aggregator.copy(agg);
+  
+  string desc;
+  aggregator.getStr(desc);
+  DYSECTINFO(true, "The observed average of %s across nodes is %s", variableName.c_str(), desc.c_str());
+
+  return true;
+}
+
+bool Average::usesGlobalResult() {
+  return false;
+}
+
+bool Average::formatGlobalResult(char*& packet, int& size) {
+  size = aggregator.getSize();
+
+  packet = (char*)malloc(size);
+  aggregator.writeSubpacket(packet);
+
+  return true;
+}
+
+void Average::processGlobalResult(char* packet, int size) {
+  globalResult.readSubpacket(packet);
+}
+
+DysectAPI::AverageAgg* Average::getAggregator() {
+  return &aggregator;
+}
+
+DysectAPI::AverageAgg* Average::getGlobalResult() {
+  return &globalResult;
+}
+
+
+
 InvariantGenerator::InvariantGenerator(string variableName) : variableName(variableName) {
 
 }
@@ -227,6 +279,10 @@ Analysis* Analysis::countInvocations(bool synchronize) {
 
 Analysis* Analysis::buckets(std::string variableName, int rangeStart, int rangeEnd, int count) {
   return new Buckets(variableName, rangeStart, rangeEnd, count);
+}
+
+Analysis* Analysis::average(std::string variableName) {
+  return new Average(variableName);
 }
 
 /************ Scope ************/
