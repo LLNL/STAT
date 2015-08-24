@@ -1,3 +1,6 @@
+2015-08-24 Gregory L. Lee <lee218@llnl.gov>
+	* : don't replicate "prepare" of Actions when reused
+
 2015-08-24 Jesper Nielsen
 	* probe_be.cpp : decrement awaitingActions count for each action
 
