@@ -237,7 +237,10 @@ void BucketsInstr::finishAnalysis(struct instTarget& target) {
   BPatch_process* dyninst_proc = dynamic_cast<BPatch_process*>(target.addrHandle);
   Dyninst::ProcControlAPI::Process::const_ptr procCtrlProcess;
   procCtrlProcess = ProcMap::get()->getProcControlProcess(dyninst_proc);
-  
+
+  int rank = ProcMap::get()->getRank(procCtrlProcess);
+
+#ifdef OLD_CODE
   std::map<int, Dyninst::ProcControlAPI::Process::ptr> *mpiRankToProcessMap;
   mpiRankToProcessMap = Domain::getMpiRankToProcessMap();
   if (!mpiRankToProcessMap) {
@@ -258,7 +261,7 @@ void BucketsInstr::finishAnalysis(struct instTarget& target) {
     DYSECTVERBOSE(false, "Failed to determine Rank");
     return;
   }
-
+#endif
 
   // Read buckets from process
   int bmSize = (2 + bkts.count);
@@ -363,8 +366,14 @@ void AverageInstr::finishAnalysis(struct instTarget& target) {
 
   // The instrumented snippet counts from 1
   localCount -= 1;
-  
-  original->getAggregator()->addValue(localAverage, localCount);
+
+  // Get the process rank
+  BPatch_process* dyninst_proc = dynamic_cast<BPatch_process*>(target.addrHandle);
+  Dyninst::ProcControlAPI::Process::const_ptr procCtrlProcess;
+  procCtrlProcess = ProcMap::get()->getProcControlProcess(dyninst_proc);
+  int rank = ProcMap::get()->getRank(procCtrlProcess);
+
+  original->getAggregator()->addValue(localAverage, localCount, rank);
 }
 
 

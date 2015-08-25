@@ -219,7 +219,7 @@ bool Average::evaluateAggregate(AggregateFunction* aggregate) {
 }
 
 bool Average::usesGlobalResult() {
-  return false;
+  return true;
 }
 
 bool Average::formatGlobalResult(char*& packet, int& size) {
@@ -241,6 +241,10 @@ DysectAPI::AverageAgg* Average::getAggregator() {
 
 DysectAPI::AverageAgg* Average::getGlobalResult() {
   return &globalResult;
+}
+
+DysectAPI::AverageDeviates* Average::deviates(double deviation) {
+  return new DysectAPI::AverageDeviates(this, deviation);
 }
 
 

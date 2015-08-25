@@ -1489,7 +1489,7 @@ StatError_t STAT_BackEnd::attach()
                     assert(!pcProc2->isCrashed());
                     assert(!pcProc2->isTerminated());
 
-		    ProcMap::get()->addProcess(pcProc, proc, bpatch_process);
+		    ProcMap::get()->addProcess(pcProc, proc, bpatch_process, proctab_[i].mpirank);
 		    
                     mpiRankToProcessMap_.insert(pair<int, Process::ptr>(proctab_[i].mpirank, pcProc));
 

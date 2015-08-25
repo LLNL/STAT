@@ -21,7 +21,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include <string>
 #include <vector>
-#include <set>
+#include <map>
 
 #include "DysectAPI/Aggregates/AggregateFunction.h"
 
@@ -31,13 +31,17 @@ namespace DysectAPI {
     double average;
     double count;
 
+    std::map<int, double> procAvg;
+
   public:
     AverageAgg(int id, int count, std::string fmt, void* payload);
     AverageAgg(Probe *inOwner);
     AverageAgg();
     void copy(AverageAgg* other);
 
+    void addValue(double average, double count, int rank);
     void addValue(double average, double count);
+    double getAverage(int rank);
     double getAverage();
     double getCount();
     

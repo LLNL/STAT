@@ -22,9 +22,10 @@ using namespace std;
 
 ProcMap ProcMap::instance;
 
-void ProcMap::addProcess(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::Stackwalker::Walker* walker, BPatch_process* dyninst_proc) {
+void ProcMap::addProcess(Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::Stackwalker::Walker* walker, BPatch_process* dyninst_proc, int rank) {
   walkers[process] = walker;
   dyninst_procs[process] = dyninst_proc;
+  ranks[process] = rank;
 }
 
 Dyninst::Stackwalker::Walker* ProcMap::getWalker(Dyninst::ProcControlAPI::Process::const_ptr process) {
@@ -33,6 +34,10 @@ Dyninst::Stackwalker::Walker* ProcMap::getWalker(Dyninst::ProcControlAPI::Proces
 
 BPatch_process* ProcMap::getDyninstProcess(Dyninst::ProcControlAPI::Process::const_ptr process) {
   return dyninst_procs[process];
+}
+
+int ProcMap::getRank(Dyninst::ProcControlAPI::Process::const_ptr process) {
+  return ranks[process];
 }
 
 ProcMap* ProcMap::get() {

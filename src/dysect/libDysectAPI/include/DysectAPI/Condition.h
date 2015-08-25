@@ -27,6 +27,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 /* Forward declare to resolve cyclic dependency */
 class CollectValues;
+class Average;
 
 namespace DysectAPI {
   class Cond;
@@ -45,7 +46,8 @@ namespace DysectAPI {
     UnknownCondition,
     DataCondition,
     SyntheticCondition,
-    CVICondition
+    CVICondition,
+    AvgCondition
   } ConditionType;
 
   typedef enum ConditionResult {
@@ -163,6 +165,19 @@ namespace DysectAPI {
 
   public:
     CollectValuesIncludes(CollectValues* analysis, int value);
+
+    DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
+
+    bool prepare();
+  };
+
+  class AverageDeviates : public Cond {
+    Average* analysis;
+
+    double deviation;
+
+  public:
+    AverageDeviates(Average* analysis, double deviation);
 
     DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
 

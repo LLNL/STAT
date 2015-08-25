@@ -14,6 +14,7 @@
 /* Forward declare to avoid cyclic dependency */
 namespace DysectAPI {
   class CollectValuesIncludes;
+  class AverageDeviates;
 };
 
 class Analysis {
@@ -126,6 +127,8 @@ public:
   virtual bool usesGlobalResult();
   virtual bool formatGlobalResult(char*& packet, int& size);
   virtual void processGlobalResult(char* packet, int size);
+
+  DysectAPI::AverageDeviates* deviates(double deviation);
 };
 
 

@@ -67,12 +67,22 @@ bool AverageAgg::aggregate(AggregateFunction* agg) {
   return true;
 }
 
+void AverageAgg::addValue(double otrAverage, double otrCount, int rank) {
+  procAvg[rank] = otrAverage;
+
+  addValue(otrAverage, otrCount);
+}
+
 void AverageAgg::addValue(double otrAverage, double otrCount) {
   double myTotal = average * count;
   double otrTotal = otrAverage * otrCount;
 
   count += otrCount;
   average = (myTotal + otrTotal) / count;
+}
+
+double AverageAgg::getAverage(int rank) {
+  return procAvg[rank];
 }
 
 double AverageAgg::getAverage() {

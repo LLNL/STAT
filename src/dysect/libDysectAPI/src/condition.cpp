@@ -19,6 +19,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <LibDysectAPI.h>
 #include <DysectAPI/Err.h>
 #include <DysectAPI/Condition.h>
+#include <DysectAPI/Domain.h>
 #include <DysectAPI/Expr.h>
 
 using namespace std;
@@ -107,6 +108,14 @@ DysectAPI::DysectErrorCode Cond::evaluate(ConditionResult& result, Process::cons
         return DYSECTWARN(Error, "Could not evaluate synchetic expression");
     }
     
+  } else if(conditionType == AvgCondition) {
+
+    AverageDeviates* cvi = dynamic_cast<AverageDeviates*>(this);
+
+    if(cvi->evaluate(result, process, tid) != DysectAPI::OK) {
+        return DYSECTWARN(Error, "Could not evaluate synchetic expression");
+    }
+    
   }
 
   return OK;
@@ -187,6 +196,57 @@ DysectAPI::DysectErrorCode CollectValuesIncludes::evaluate(ConditionResult& resu
     result = ResolvedFalse;
   } else {
     result = ResolvedTrue;
+  }
+
+  return OK;
+}
+
+
+AverageDeviates::AverageDeviates(Average* analysis, double deviation)
+  : analysis(analysis), deviation(deviation), Cond(AvgCondition) {
+  
+}
+
+bool AverageDeviates::prepare() {
+  DYSECTVERBOSE(true, "Prepare AverageDeviates with value: %f", deviation);
+  return true;
+}
+
+DysectAPI::DysectErrorCode AverageDeviates::evaluate(ConditionResult& result, Process::const_ptr process, THR_ID tid) {
+  assert(analysis != 0);
+
+  //int rank = ProcMap::get()->getRank(process);
+  std::map<int, Dyninst::ProcControlAPI::Process::ptr> *mpiRankToProcessMap;
+  mpiRankToProcessMap = Domain::getMpiRankToProcessMap();
+  if (!mpiRankToProcessMap) {
+    DYSECTVERBOSE(false, "Could not find MPI rank map");
+    return Error;
+  }
+  
+  int rank = -1;
+  std::map<int, Dyninst::ProcControlAPI::Process::ptr>::iterator iter;
+  for (iter = mpiRankToProcessMap->begin(); iter != mpiRankToProcessMap->end(); iter++) {
+    if (iter->second == process) {
+      rank = iter->first;
+      break;
+    }
+  }
+
+  if (rank == -1) {
+    DYSECTVERBOSE(false, "Failed to determine Rank");
+    return Error;
+  }
+  
+  double globalAvg = analysis->getGlobalResult()->getAverage();
+  double localAvg = analysis->getAggregator()->getAverage(rank);
+  double difference = fabs(globalAvg - localAvg);
+  
+  DYSECTVERBOSE(true, "Comparing difference (%f - %f =) %f with deviation %f", globalAvg, localAvg, difference, deviation);
+  
+  if (difference > deviation) {
+    result = ResolvedTrue;
+  } else {
+    result = ResolvedFalse;
   }
 
   return OK;
