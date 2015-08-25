@@ -375,6 +375,10 @@ DysectAPI::DysectErrorCode Probe::prepareAction(treeCallBehavior callBehavior) {
     for(; actIter != actions.end(); actIter++) {
       Act* action = *actIter;
 
+      if (action->isPrepared()) {
+        DYSECTVERBOSE(true, "Action already prepared");
+        continue;
+      }
       if(!action->prepare()) {
         return Error;
       }

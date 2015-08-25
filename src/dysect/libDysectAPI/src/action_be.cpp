@@ -467,6 +467,7 @@ bool Trace::finishFE(int count) {
 }
 
 bool DetachAll::prepare() {
+  prepared = true;
   return true;
 }
 
@@ -487,6 +488,7 @@ bool DetachAll::finishFE(int count) {
 }
 
 bool Detach::prepare() {
+  prepared = true;
   detachProcs = ProcessSet::newProcessSet();
   return true;
 }

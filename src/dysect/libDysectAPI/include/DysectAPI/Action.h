@@ -75,6 +75,7 @@ namespace DysectAPI {
     int count;
     bool actionPending;
     std::string stringRepr;
+    bool prepared;
 
     bool getFromByteArray(std::vector<Act*>& aggregates);
 
@@ -99,6 +100,7 @@ namespace DysectAPI {
     static void resetAggregateIdCounter();
 
     int getId() { return id; }
+    bool isPrepared() { return prepared; }
     virtual bool prepare() = 0;
     virtual bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
                           Dyninst::ProcControlAPI::Thread::const_ptr thread) = 0;

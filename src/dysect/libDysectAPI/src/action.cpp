@@ -150,7 +150,8 @@ DysectAPI::Act* Act::detach() {
 }
 
 DysectAPI::Act::Act() : category(unknownCategory),
-                        type(unknownAggType) {
+                        type(unknownAggType),
+                        prepared(false){
 
   id = aggregateIdCounter++;
   //aggregateMap.insert(pair<int, Act*>(id, this));
@@ -165,6 +166,7 @@ LoadLibrary::LoadLibrary(string library) : library(library) {
 }
 
 bool LoadLibrary::prepare() {
+  prepared = true;
   return true;
 }
 
@@ -176,6 +178,7 @@ WriteModuleVariable::WriteModuleVariable(string libraryPath, string variableName
 }
 
 bool WriteModuleVariable::prepare() {
+  prepared = true;
   return true;
 }
 
@@ -188,6 +191,7 @@ Irpc::Irpc(string libraryPath, string functionName, void *value, int size) : fun
 }
 
 bool Irpc::prepare() {
+  prepared = true;
   return true;
 }
 
@@ -196,6 +200,7 @@ Signal::Signal(int sigNum) : sigNum(sigNum) {
 }
 
 bool Signal::prepare() {
+  prepared = true;
   return true;
 }
 
@@ -204,6 +209,7 @@ DepositCore::DepositCore() {
 }
 
 bool DepositCore::prepare() {
+  prepared = true;
   findAggregates();
   return true;
 }
@@ -223,6 +229,7 @@ Null::Null() {
 }
 
 bool Null::prepare() {
+  prepared = true;
   return true;
 }
 
@@ -232,6 +239,7 @@ Totalview::Totalview() {
 }
 
 bool Totalview::prepare() {
+  prepared = true;
   findAggregates();
   return true;
 }
@@ -257,6 +265,7 @@ Stat::Stat(AggScope scope, int traces, int frequency, bool threads) : traces(tra
 }
 
 bool Stat::prepare() {
+  prepared = true;
   return true;
 }
 
@@ -266,6 +275,7 @@ StackTrace::StackTrace() {
 }
 
 bool StackTrace::prepare() {
+  prepared = true;
   traces = new StackTraces();
   return true;
 }
@@ -278,6 +288,7 @@ Trace::Trace(string str) : str(str) {
 
 
 bool Trace::prepare() {
+  prepared = true;
 
   DYSECTVERBOSE(true, "Preparing trace message: '%s'", str.c_str());
 
