@@ -143,7 +143,7 @@ Buckets::Buckets(string variableName, int rangeStart, int rangeEndIn, int count)
     count(count),
     stepSize((rangeEnd - rangeStart) / count),
     aggregator(rangeStart, rangeEnd, stepSize, count),
-    globalResult(rangeStart, rangeEnd, stepSize, count) {
+    globalResult() {
   DYSECTVERBOSE(true, "The range end %d was changed to %d", rangeEndIn, rangeEnd); 
 }
 
@@ -168,7 +168,7 @@ bool Buckets::evaluateAggregate(AggregateFunction* aggregate) {
 }
 
 bool Buckets::usesGlobalResult() {
-  return false;
+  return usesResult;
 }
 
 bool Buckets::formatGlobalResult(char*& packet, int& size) {
@@ -181,7 +181,9 @@ bool Buckets::formatGlobalResult(char*& packet, int& size) {
 }
 
 void Buckets::processGlobalResult(char* packet, int size) {
-  DYSECTWARN(false, "Analysis does not use global result!");
+  globalResult.readSubpacket(packet);
+
+  DYSECTVERBOSE(true, "Buckets received global result");
 }
 
 DysectAPI::RankBucketAgg* Buckets::getAggregator() {
@@ -190,6 +192,30 @@ DysectAPI::RankBucketAgg* Buckets::getAggregator() {
 
 DysectAPI::RankBucketAgg* Buckets::getGlobalResult() {
   return &globalResult;
+}
+
+DysectAPI::BucketContains* Buckets::outsideRange() {
+  usesResult = true;
+  
+  return new BucketContains(this, count, count + 1);
+}
+
+DysectAPI::BucketContains* Buckets::aboveRange() {
+  usesResult = true;
+  
+  return new BucketContains(this, count + 1);
+}
+
+DysectAPI::BucketContains* Buckets::belowRange() {
+  usesResult = true;
+  
+  return new BucketContains(this, count);
+}
+
+DysectAPI::BucketContains* Buckets::processInBucket(int bucket) { 
+  usesResult = true;
+  
+ return new BucketContains(this, bucket);
 }
 
 

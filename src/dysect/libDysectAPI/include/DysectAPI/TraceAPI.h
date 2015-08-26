@@ -15,6 +15,7 @@
 namespace DysectAPI {
   class CollectValuesIncludes;
   class AverageDeviates;
+  class BucketContains;
 };
 
 class Analysis {
@@ -91,6 +92,8 @@ class Buckets : public Analysis {
   int rangeEnd;
   int count;
   int stepSize;
+
+  bool usesResult;
   
   DysectAPI::RankBucketAgg aggregator;
   DysectAPI::RankBucketAgg globalResult;
@@ -106,6 +109,11 @@ public:
   virtual bool usesGlobalResult();
   virtual bool formatGlobalResult(char*& packet, int& size);
   virtual void processGlobalResult(char* packet, int size);
+
+  DysectAPI::BucketContains* outsideRange();
+  DysectAPI::BucketContains* belowRange();
+  DysectAPI::BucketContains* aboveRange();
+  DysectAPI::BucketContains* processInBucket(int bucket);
 };
 
 class Average : public Analysis {

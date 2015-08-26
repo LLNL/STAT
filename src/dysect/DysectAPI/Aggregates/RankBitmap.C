@@ -116,6 +116,28 @@ void RankBitmap::BitmapPart::setBit(int bitNr) {
   next->tryMergeNext();
 }
 
+bool RankBitmap::BitmapPart::getBit(int bitNr) {
+  if (// Is this part of the bitmap uninitialized
+      (bits == 0) ||
+      // Does the bit belong before this part of the bitmap
+      (bitNr < startBitNr)) { 
+    return false;
+  }
+
+  // Check if the bit belong in this part of the bitmap
+  if (bitNr <= getLastBit()) {
+    return bits[getArrIndex(bitNr)] & getBitMask(bitNr);
+  }
+
+  // Check if this is the end of the chain
+  if (next == 0) {
+    return false;
+  }
+
+  // Check the next list item
+  return next->getBit(bitNr);
+}
+
 void RankBitmap::BitmapPart::expand() {
   expand(expandAmount);
 }
@@ -385,6 +407,10 @@ RankBitmap::RankBitmap(char *payload) {
 
 void RankBitmap::addRank(int rank) {
   bitmap->setBit(rank);
+}
+
+bool RankBitmap::hasRank(int rank) {
+  return bitmap->getBit(rank);
 }
 
 int RankBitmap::getSize() {

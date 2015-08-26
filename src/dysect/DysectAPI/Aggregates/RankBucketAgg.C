@@ -27,7 +27,7 @@ RankBucketAgg::RankBucketAgg(int id, int count, std::string fmt, void* payload) 
   type = rankBucketAgg;
   id_ = id;
   count_ = count;
-  readSubpacket((char*)payload);
+  deserialize((char*)payload);
 }
 
 RankBucketAgg::RankBucketAgg(Probe* owner, string description) : AggregateFunction(owner) {
@@ -55,6 +55,11 @@ RankBucketAgg::RankBucketAgg(int start, int end, int step, int count) : Aggregat
   for (int i = 0; i <= bucketCount + 1; i++) {
     buckets[i] = new RankBitmap();
   }
+}
+
+RankBucketAgg::RankBucketAgg() {
+  type = rankBucketAgg;
+  id_ = genId();
 }
 
 RankBucketAgg::~RankBucketAgg() {
@@ -309,7 +314,13 @@ int RankBucketAgg::writeSubpacket(char* p) {
   return bufPos - p;
 }
 
-bool RankBucketAgg::readSubpacket(char* payload) {
+bool RankBucketAgg::readSubpacket(char* p) {
+  struct subPacket* packet = (struct subPacket*)p;
+
+  return deserialize(&packet->payload);
+}
+  
+bool RankBucketAgg::deserialize(void* payload) {
   int* curpos = (int*)payload;
   long* curposl = (long*)&curpos[1];
   double* curposd = (double*)&curpos[1];

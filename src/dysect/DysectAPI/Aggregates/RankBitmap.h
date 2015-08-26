@@ -47,6 +47,7 @@ namespace DysectAPI {
       ~BitmapPart();
 
       void setBit(int bitNr);
+      bool getBit(int bitNr);
       void expand();
       void expand(int amount);
       bool shouldMerge(int atLength);
@@ -68,7 +69,8 @@ namespace DysectAPI {
     ~RankBitmap();
 
     void addRank(int rank);
-
+    bool hasRank(int rank);
+    
     int getSize();
     int serialize(char *p);
 

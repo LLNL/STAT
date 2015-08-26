@@ -36,18 +36,19 @@ namespace DysectAPI {
 
     int getBucketFromValue(Value& val);
 
-    bool readSubpacket(char* payload);
-
     bool parseDescription(std::string description);
 
     bool parseNumber(std::string& str, int& curPos, Value& val);
 
     std::string generateDescription();
 
+    bool deserialize(void* payload);
+
   public:
     RankBucketAgg(int id, int count, std::string fmt, void* payload);
     RankBucketAgg(Probe* owner, std::string description);
     RankBucketAgg(int start, int end, int step, int count);
+    RankBucketAgg();
     ~RankBucketAgg();
 
     void copy(RankBucketAgg* agg);
@@ -55,7 +56,8 @@ namespace DysectAPI {
     std::vector<RankBitmap*>& getBuckets();
 
     int getSize();
-    int writeSubpacket(char *p);
+    int writeSubpacket(char* p);
+    bool readSubpacket(char* p);
     virtual bool collect(void* process, void* thread);
     bool clear();
     

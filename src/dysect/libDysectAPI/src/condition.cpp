@@ -116,6 +116,14 @@ DysectAPI::DysectErrorCode Cond::evaluate(ConditionResult& result, Process::cons
         return DYSECTWARN(Error, "Could not evaluate synchetic expression");
     }
     
+  } else if(conditionType == BuckCondition) {
+
+    BucketContains* bktcts = dynamic_cast<BucketContains*>(this);
+
+    if(bktcts->evaluate(result, process, tid) != DysectAPI::OK) {
+        return DYSECTWARN(Error, "Could not evaluate synchetic expression");
+    }
+    
   }
 
   return OK;
@@ -244,6 +252,52 @@ DysectAPI::DysectErrorCode AverageDeviates::evaluate(ConditionResult& result, Pr
   DYSECTVERBOSE(true, "Comparing difference (%f - %f =) %f with deviation %f", globalAvg, localAvg, difference, deviation);
   
   if (difference > deviation) {
+    result = ResolvedTrue;
+  } else {
+    result = ResolvedFalse;
+  }
+
+  return OK;
+}
+
+BucketContains::BucketContains(Buckets* analysis, int bucket1, int bucket2)
+  : analysis(analysis), bucket1(bucket1), bucket2(bucket2), Cond(BuckCondition) {
+  
+}
+
+bool BucketContains::prepare() {
+  DYSECTVERBOSE(true, "Prepare BucketContains with value: %d (%d)", bucket1, bucket2);
+  return true;
+}
+
+DysectAPI::DysectErrorCode BucketContains::evaluate(ConditionResult& result, Process::const_ptr process, THR_ID tid) {
+  assert(analysis != 0);
+
+  //int rank = ProcMap::get()->getRank(process);
+  std::map<int, Dyninst::ProcControlAPI::Process::ptr> *mpiRankToProcessMap;
+  mpiRankToProcessMap = Domain::getMpiRankToProcessMap();
+  if (!mpiRankToProcessMap) {
+    DYSECTVERBOSE(false, "Could not find MPI rank map");
+    return Error;
+  }
+  
+  int rank = -1;
+  std::map<int, Dyninst::ProcControlAPI::Process::ptr>::iterator iter;
+  for (iter = mpiRankToProcessMap->begin(); iter != mpiRankToProcessMap->end(); iter++) {
+    if (iter->second == process) {
+      rank = iter->first;
+      break;
+    }
+  }
+
+  if (rank == -1) {
+    DYSECTVERBOSE(false, "Failed to determine Rank");
+    return Error;
+  }
+
+  vector<RankBitmap*>& buckets = analysis->getGlobalResult()->getBuckets();
+  if ((buckets[bucket1]->hasRank(rank)) ||
+      (bucket2 != -1 && buckets[bucket2]->hasRank(rank))) {
     result = ResolvedTrue;
   } else {
     result = ResolvedFalse;
