@@ -649,6 +649,12 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
     }
   }
 
+  if (retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
+    // We must ask Dyninst "kindly" to cooperate on the process state
+    BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+    bproc->keepStopped();
+  }
+
   return retState;
 }
 
@@ -666,6 +672,10 @@ Process::cb_ret_t Backend::handleCrash(ProcControlAPI::Event::const_ptr ev) {
       handleEvent(curProcess, curThread, event);
     }
   }
+
+  // We must ask Dyninst "kindly" to cooperate on the process state
+  BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+  bproc->keepStopped();
 
   return Process::cbProcStop;
 }
@@ -691,6 +701,11 @@ Process::cb_ret_t Backend::handleProcessExit(ProcControlAPI::Event::const_ptr ev
   }
 
   Backend::enqueueDetach(curProcess);
+  ProcessMgr::waitFor(ProcWait::detach, curProcess);
+  
+  // We must ask Dyninst "kindly" to cooperate on the process state
+  BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+  bproc->keepStopped();
 
   return Process::cbProcStop;
 }
