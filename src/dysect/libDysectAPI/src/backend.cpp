@@ -654,7 +654,7 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
     BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
     bproc->keepStopped();
   }
-
+  
   return retState;
 }
 
@@ -676,7 +676,7 @@ Process::cb_ret_t Backend::handleCrash(ProcControlAPI::Event::const_ptr ev) {
   // We must ask Dyninst "kindly" to cooperate on the process state
   BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
   bproc->keepStopped();
-
+  
   return Process::cbProcStop;
 }
 

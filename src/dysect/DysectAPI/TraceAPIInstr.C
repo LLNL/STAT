@@ -240,29 +240,6 @@ void BucketsInstr::finishAnalysis(struct instTarget& target) {
 
   int rank = ProcMap::get()->getRank(procCtrlProcess);
 
-#ifdef OLD_CODE
-  std::map<int, Dyninst::ProcControlAPI::Process::ptr> *mpiRankToProcessMap;
-  mpiRankToProcessMap = Domain::getMpiRankToProcessMap();
-  if (!mpiRankToProcessMap) {
-    DYSECTVERBOSE(false, "Could not find MPI rank map");
-    return;
-  }
-  
-  int rank = -1;
-  std::map<int, Dyninst::ProcControlAPI::Process::ptr>::iterator iter;
-  for (iter = mpiRankToProcessMap->begin(); iter != mpiRankToProcessMap->end(); iter++) {
-    if (iter->second == procCtrlProcess) {
-      rank = iter->first;
-      break;
-    }
-  }
-
-  if (rank == -1) {
-    DYSECTVERBOSE(false, "Failed to determine Rank");
-    return;
-  }
-#endif
-
   // Read buckets from process
   int bmSize = (2 + bkts.count);
   bmSize = bmSize / 8 + (bmSize % 8 ? 1 : 0);
@@ -800,11 +777,12 @@ void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_
 
   ScopeInstr::ShouldInstrument shouldInstr = scope->shouldInstrument(instrumentedFuncStack, currentFunction);
   if (shouldInstr != ScopeInstr::StopSearch) {
-    DYSECTVERBOSE(true, "[%d] Instrumenting %s", instrumentedFuncStack.size(), currentFunction->getName().c_str());
 	
     // Instrument the current function
     if (shouldInstr == ScopeInstr::Instrument &&
 	analysis->prepareInstrumentedFunction(target, currentFunction)) {
+      DYSECTVERBOSE(true, "[%d] Instrumenting %s", instrumentedFuncStack.size(), currentFunction->getName().c_str());
+
       vector<BPatch_point*> analysisPoints = points->getInstrumentationPoints(target, currentFunction);
 
       if (analysisPoints.size() != 0) {

@@ -58,11 +58,16 @@ bool ProcessMgr::detach(ProcessSet::ptr detachedSet) {
     return DYSECTWARN(false, "detach from empty detachSet");
   }
 
-  ProcessMgr::handled(ProcWait::detach, detachedSet);
-
   ProcessSet::ptr already_detached = detached->set_intersection(detachedSet);
   ProcessSet::ptr detached_now;
-    
+
+  for(ProcessSet::iterator procIter = detachedSet->begin(); procIter != detachedSet->end(); ++procIter) {
+    Process::ptr pcProc = *procIter;
+    int rank = ProcMap::get()->getRank(pcProc);
+
+    DYSECTVERBOSE(true, "Detaching from process %d", rank);
+  }
+  
   if (already_detached->size() != 0) {
     DYSECTWARN(false, "ProcessMgr::detach: %d processes were already detached", already_detached->size());
     detached_now = detachedSet->set_difference(already_detached);
@@ -74,6 +79,20 @@ bool ProcessMgr::detach(ProcessSet::ptr detachedSet) {
     return false;
   }
 
+  DYSECTVERBOSE(true, "Detaching from %d processes", detached_now->size());
+
+  // Calls to bpatch_process->detach might block and process incomming dyninst events
+  //  this can cause race conditions if we do not mark the processes we are going to
+  //  detach beforehand. The incomming events might invoke detach and will think that
+  //  all processes are still attached. 
+  allProcs = allProcs->set_difference(detached_now);
+  detached = detached->set_union(detached_now);
+
+  ProcessMgr::handled(ProcWait::detach, detachedSet);
+
+  DYSECTVERBOSE(true, "%d processes are detached", detached->size());
+  DYSECTVERBOSE(true, "%d processes remains running", allProcs->size());
+  
   bool res = true;
   for(ProcessSet::iterator procIter = detached_now->begin(); procIter != detached_now->end(); ++procIter) {
     Process::ptr pcProc = *procIter;
@@ -85,9 +104,6 @@ bool ProcessMgr::detach(ProcessSet::ptr detachedSet) {
     }
   }
   
-  allProcs = allProcs->set_difference(detached_now);
-  detached = detached->set_union(detached_now);
-
   return res;
 }
 
