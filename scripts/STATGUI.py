@@ -144,6 +144,7 @@ class STATGUI(STATDotWindow):
                    'Run Time Before Sample (sec)':     0,
                    'Enable DySectAPI':                 False,
                    'DySectAPI Session':                '',
+                   'DySectAPI Session Args':           '',
                    'DySectAPI Show Default Probes':    False,
                    'Sample Type':                      'function only',
                    'Edge Type':                        'full list',
@@ -902,6 +903,7 @@ host[1-10,12,15-20];otherhost[30]
             button = gtk.Button('Select DySectAPI Session')
             button.connect("clicked", lambda w: self.on_choose_dysect_session(attach_dialog, dysect_vbox))
             dysect_vbox.pack_start(button, False, False, 0)
+            self.pack_string_option(dysect_vbox, 'DySectAPI Session Args', attach_dialog)
             frame.add(dysect_vbox)
             vbox.pack_start(frame, False, False, 0)
             hbox = gtk.HBox()
@@ -1615,7 +1617,8 @@ host[1-10,12,15-20];otherhost[30]
             show_error_dialog('Compiled session %s not found' % session_so)
             self.on_fatal_error()
             return -1
-        ret = self.STAT.dysectSetup(session_so, -1)
+        dysect_args = self.options["DySectAPI Session Args"].split()
+        ret = self.STAT.dysectSetup(session_so, -1, len(dysect_args), dysect_args)
         if ret != STAT_OK:
             show_error_dialog('Failed to setup DySect Session %s:\n%s' % (session_so, self.STAT.getLastErrorMessage()), self)
             self.on_fatal_error()

@@ -32,7 +32,7 @@ using namespace ProcControlAPI;
 STAT_BackEnd *BE::statBE;
 extern FILE *gStatOutFp;
 
-BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
+BE::BE(const char* libPath, STAT_BackEnd* be, int argc, char **argv) : loaded(false) {
   int dysectVerbosity = DYSECT_VERBOSE_DEFAULT;
   assert(be != 0);
   assert(libPath != 0);
@@ -71,7 +71,7 @@ BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
   Err::init(be->errOutFp_, gStatOutFp, dysectVerbosity, NULL, useStatOutFpPrintf);
 
   // Setup session
-  lib_proc_start();
+  lib_proc_start(argc, argv);
 
   if(Backend::registerEventHandlers() != DysectAPI::OK) {
     loaded = false;

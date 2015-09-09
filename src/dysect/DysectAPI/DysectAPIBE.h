@@ -32,7 +32,7 @@ class STAT_BackEnd;
 namespace DysectAPI {
 
   class BE {
-    typedef int (*proc_start_t)();
+    typedef int (*proc_start_t)(int, char **);
 
     static STAT_BackEnd *statBE;
 
@@ -45,7 +45,7 @@ namespace DysectAPI {
     bool returnControlToDysect;
 
   public:
-    BE(const char *libPath, STAT_BackEnd *be);
+    BE(const char *libPath, STAT_BackEnd *be, int argc, char **argv);
     ~BE();
 
     bool isLoaded();

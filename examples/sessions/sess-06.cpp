@@ -1,6 +1,6 @@
 #include <DysectAPI.h>
 
-DysectStatus DysectAPI::onProcStart() {
+DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
 
   Probe* p1    = new Probe(Code::location("mpi_ringtopo2.cpp#97"),
                            //Domain::world(2000, true),

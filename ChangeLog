@@ -1,3 +1,6 @@
+2015-09-09 Gregory L. Lee <lee218@llnl.gov>
+	* : allow passing of argc and argv to probe sessions (Jira STAT-17)
+
 2015-08-24 Gregory L. Lee <lee218@llnl.gov>
 	* : don't replicate "prepare" of Actions when reused
 

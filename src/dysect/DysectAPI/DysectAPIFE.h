@@ -31,7 +31,7 @@ class STAT_FrontEnd;
 namespace DysectAPI {
   class FE {
   private:
-    typedef int (*proc_start_t)();
+    typedef int (*proc_start_t)(int, char **);
     proc_start_t    lib_proc_start;
 
     MRN::Network      *network;
@@ -44,10 +44,10 @@ namespace DysectAPI {
     STAT_FrontEnd *statFE;
 
   public: 
-    FE(const char *libPath, class STAT_FrontEnd* fe, int timeout);
+    FE(const char *libPath, class STAT_FrontEnd* fe, int timeout, int argc, char **argv);
     ~FE();
 
-    DysectErrorCode requestBackendSetup(const char *libPath);
+    DysectErrorCode requestBackendSetup(const char *libPath, int argc, char **argv);
 
     DysectErrorCode handleEvents(bool blocking = true);
 

@@ -48,17 +48,17 @@ namespace DysectAPI {
    * Initial probe code goes here to start event chains.
    * Debugger backs off from process if status code is DysectDetach.
    */
-  DysectStatus onProcStart();
+  DysectStatus onProcStart(int argc, char **argv);
   DysectStatus defaultProbes();
 }
 
 extern "C" {
-  int on_proc_start();
+  int on_proc_start(int argc, char **argv);
 }
 
 #ifdef __DYSECT_SESSION_BUILD
-int on_proc_start() {
-  return DysectAPI::onProcStart();
+int on_proc_start(int argc, char **argv) {
+  return DysectAPI::onProcStart(argc, argv);
 }
 #endif
 

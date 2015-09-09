@@ -1,7 +1,7 @@
 #include <DysectAPI.h>
 #include <stdio.h>
 
-DysectStatus DysectAPI::onProcStart() {
+DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
   
   Probe* foo    = new Probe(Code::location("WeightList::sum"),
                             Domain::group("0-5", 1500));

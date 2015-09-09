@@ -4830,21 +4830,21 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
 }
 
 #ifdef DYSECTAPI
-StatError_t STAT_FrontEnd::dysectSetup(const char *dysectApiSessionPath, int dysectTimeout)
+StatError_t STAT_FrontEnd::dysectSetup(const char *dysectApiSessionPath, int dysectTimeout, int argc, char **argv)
 {
     StatError_t statError;
 
     /* TODO: Refactoring work: Move sequence to Dysect::FE class */
     /* TODO: GUI will need to setenv("STAT_GROUP_OPS", "1", 1); prior to attach*/
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Setting up frontend session '%s'...\n", dysectApiSessionPath);
-    dysectFrontEnd_ = new DysectAPI::FE((const char*)dysectApiSessionPath, this, dysectTimeout);
+    dysectFrontEnd_ = new DysectAPI::FE((const char*)dysectApiSessionPath, this, dysectTimeout, argc, argv);
     if (dysectFrontEnd_->isLoaded() == false)
     {
         printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Failed to load Dysect session %s\n", dysectApiSessionPath);
         return STAT_DYSECT_ERROR;
     }
 
-    if (dysectFrontEnd_->requestBackendSetup((const char*)dysectApiSessionPath) != DysectAPI::OK)
+    if (dysectFrontEnd_->requestBackendSetup((const char*)dysectApiSessionPath, argc, argv) != DysectAPI::OK)
     {
         printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Failed to setup backends with session %s\n", dysectApiSessionPath);
         return STAT_DYSECT_ERROR;

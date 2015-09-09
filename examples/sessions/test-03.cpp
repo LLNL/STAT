@@ -1,6 +1,6 @@
 #include <DysectAPI.h>
 
-DysectStatus DysectAPI::onProcStart() {
+DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
 
   // test various domains
 

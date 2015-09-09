@@ -17,7 +17,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include "DysectAPI/DysectAPI.h"
-#include "DysectAPI/DysectAPIFE.h" 
+#include "DysectAPI/DysectAPIFE.h"
 #include "DysectAPI/Frontend.h"
 #include "STAT_FrontEnd.h"
 
@@ -28,7 +28,7 @@ extern FILE *gStatOutFp;
 
 // XXX: Refactoring work: move logic to API
 
-FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
+FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout, int argc, char **argv) : controlStream(0) {
   int dysectVerbosity = DYSECT_VERBOSE_DEFAULT;
   assert(fe != 0);
   assert(libPath != 0);
@@ -82,7 +82,7 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
     return ;
   }
   // Setup session
-  lib_proc_start();
+  lib_proc_start(argc, argv);
 
   int upstreamFilterId = network->load_FilterFunc(filterPath, "dysectAPIUpStream");
   if (upstreamFilterId == -1)
@@ -111,9 +111,26 @@ FE::~FE() {
   }
 }
 
-DysectErrorCode FE::requestBackendSetup(const char *libPath) {
+DysectErrorCode packArgs(int argc, char **argv, char **buf, int &bufSize) {
+  int i, offset = 0;
+
+  for (i = 0; i < argc; i++) {
+    bufSize += strlen(argv[i]) + 1;
+    *buf = (char *)realloc(*buf, bufSize);
+    if (buf == NULL) {
+      return Error;
+    }
+    strcpy(*buf + offset, argv[i]);
+    offset += strlen(argv[i]) + 1;
+  }
+  return OK;
+}
+
+DysectErrorCode FE::requestBackendSetup(const char *libPath, int argc, char **argv) {
 
   struct timeval start, end;
+  char *buf = NULL;
+  int bufSize = 0;
   gettimeofday(&start, NULL);
 
   MRN::Communicator* broadcastCommunicator = network->get_BroadcastCommunicator();
@@ -132,13 +149,16 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
   //
   // Send library path to all backends
   //
-  if (controlStream->send(PROT_LOAD_SESSION_LIB, "%s", libPath) == -1) {
+  if (packArgs(argc, argv, &buf, bufSize) != OK) {
     return Error;
   }
-
+  if (controlStream->send(PROT_LOAD_SESSION_LIB, "%s %d %ac", libPath, argc, buf, bufSize) == -1) {
+    return Error;
+  }
   if (controlStream->flush() == -1) {
     return Error;
   }
+  free(buf);
 
   //
   // Block and wait for all backends to acknowledge
@@ -221,7 +241,7 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
     fprintf(stderr, "Frontend: %d backends reported error while bindings streams\n", numIllBackends);
     return Error;
   }
-  
+
   //
   // Kick off session
   //
@@ -242,9 +262,9 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
   long endms = ((end.tv_sec) * 1000) + ((end.tv_usec) / 1000);
 
   long elapsedms = endms - startms;
-  
+
   DYSECTVERBOSE(true, "DysectAPI setup took %ld ms", elapsedms);
-  
+
   return OK;
 }
 

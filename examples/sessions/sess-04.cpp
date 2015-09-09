@@ -1,6 +1,6 @@
 #include <DysectAPI.h>
 
-DysectStatus DysectAPI::onProcStart() {
+DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
 
   Probe* p1    = new Probe(Code::location("do_SendOrStall"),
                            Domain::world(2000, true),

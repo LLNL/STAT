@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 // Single entry for debug daemon
-DysectStatus DysectAPI::onProcStart() {
+DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
   
   /* Probe creation */
   Probe* entry  = new Probe(Code::location("entry(foo)"),

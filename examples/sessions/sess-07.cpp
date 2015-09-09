@@ -1,6 +1,6 @@
 #include <DysectAPI.h>
 
-DysectStatus DysectAPI::onProcStart() {
+DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
   int value = 10;
 //  long value2 = 10;
   string libraryPath = "/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test/lib/libdepositcorewrap.so", variableName = "globalMpiRank", functionName = "depositcore_wrap_signal_handler";

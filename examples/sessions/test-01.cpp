@@ -1,6 +1,6 @@
 #include <DysectAPI.h>
 
-DysectStatus DysectAPI::onProcStart() {
+DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
 
     // test some basic functionality for all processes
     Probe *codeBreakpoint = new Probe(Code::location("dysect_test.cpp#81"),

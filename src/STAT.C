@@ -54,6 +54,10 @@ typedef struct
     StatLaunch_t applicationOption;         /*!< attach or launch case */
     unsigned int sampleType;                /*!< the sample level of detail */
     StatTopology_t topologyType;            /*!< the topology specification type */
+#ifdef DYSECTAPI
+    int dysectArgc;
+    char **dysectArgv;
+#endif
 } StatArgs_t;
 
 //! Prints the usage directions
@@ -216,7 +220,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "\n## Prototype DysectAPI enabled ##\n");
         statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "Notice: Traditional sampling is disabled troughout session!\n");
 
-        statError = statFrontEnd->dysectSetup(dysectApiSessionPath, dysectTimeout);
+        statError = statFrontEnd->dysectSetup(dysectApiSessionPath, dysectTimeout, statArgs->dysectArgc, statArgs->dysectArgv);
         if (statError != STAT_OK)
         {
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup Dysect session\n");
@@ -483,6 +487,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
 #ifdef DYSECTAPI
         {"dysectapi",           required_argument, 0, 'X'},
         {"dysectapi_batch",     required_argument, 0, 'b'},
+        {"dysectapi_arg",       required_argument, 0, 'Y'},
 #endif
         {0,                     0,                  0, 0}
     };
@@ -500,7 +505,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     while (1)
     {
 #ifdef DYSECTAPI
-        opt = getopt_long(argc, argv,"hVvPmicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPmicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:Y:", longOptions, &optionIndex);
 #else
         opt = getopt_long(argc, argv,"hVvPmicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
 #endif
@@ -670,6 +675,16 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
                 statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "'%s' is not a valid timeout, must be a positive integer\n", optarg);
                 return STAT_ARG_ERROR;
             }
+            break;
+        case 'Y':
+            statArgs->dysectArgc++;
+            statArgs->dysectArgv = (char **)realloc(statArgs->dysectArgv, statArgs->dysectArgc);
+            if (statArgs->dysectArgv == NULL)
+            {
+                statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to realloc dysectArgv %d for %s\n", statArgs->dysectArgc, optarg);
+                return STAT_ALLOCATE_ERROR;
+            }
+            statArgs->dysectArgv[statArgs->dysectArgc - 1] = strdup(optarg);
             break;
 #endif
         case '?':

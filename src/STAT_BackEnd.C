@@ -1237,10 +1237,11 @@ StatError_t STAT_BackEnd::mainLoop()
 
 #ifdef DYSECTAPI
             case PROT_LOAD_SESSION_LIB:
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to load session library\n");
+                char *libraryPath, *dysectBuf, **dysectArgv;
+                int dysectBufSize, dysectArgc, dysectBufOffset, i;
 
-                char *libraryPath;
-                if (packet->unpack("%s", &libraryPath) == -1)
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Received request to load session library\n");
+                if (packet->unpack("%s %d %ac", &libraryPath, &dysectArgc, &dysectBuf, &dysectBufSize) == -1)
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_LOAD_SESSION_LIB) failed\n");
 
@@ -1253,18 +1254,31 @@ StatError_t STAT_BackEnd::mainLoop()
                     return STAT_MRNET_ERROR;
                 }
 
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Library to load: %s\n", libraryPath);
-
-                dysectBE_ = new DysectAPI::BE(libraryPath, this);
-
-                DysectAPI::ProcessMgr::init(procSet_);
-
-                if(dysectBE_->isLoaded())
+                dysectBufOffset = 0;
+                dysectArgv = (char **)malloc(dysectArgc);
+                if (dysectArgv == NULL)
                 {
-                    intRet = 0;
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate %d elements for dysectArgv", strerror(errno), dysectArgc);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                for (i = 0; i < dysectArgc; i++)
+                {
+                    dysectArgv[i] = strdup(dysectBuf + dysectBufOffset);
+                    if (dysectArgv[i] == NULL)
+                    {
+                        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to strdup %s for dysectArgv[%d]", strerror(errno), dysectBuf + dysectBufOffset, i);
+                        return STAT_ALLOCATE_ERROR;
+                    }
+                    dysectBufOffset += strlen(dysectBuf + dysectBufOffset) + 1;
                 }
 
-                if (sendAck(stream, PROT_LOAD_SESSION_LIB_RESP, intRet) != STAT_OK) {
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Library to load: %s, with %d args\n", libraryPath, dysectArgv);
+                dysectBE_ = new DysectAPI::BE(libraryPath, this, dysectArgc, dysectArgv);
+                DysectAPI::ProcessMgr::init(procSet_);
+                if(dysectBE_->isLoaded())
+                    intRet = 0;
+                if (sendAck(stream, PROT_LOAD_SESSION_LIB_RESP, intRet) != STAT_OK)
+                {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "send(PROT_LOAD_SESSION_LIB_RESP) failed\n");
                     return STAT_MRNET_ERROR;
                 }
