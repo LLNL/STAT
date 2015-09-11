@@ -449,6 +449,7 @@ bool StopTrace::finishFE(int count) {
 }
 
 bool StopTrace::finishBE(struct packet*& p, int& len) {
+  DYSECTVERBOSE(true, "StopTrace::finishBE");
   vector<AggregateFunction*>* aggregates = trace->getAggregates();
 
   if (aggregates->size() == 0) {
@@ -458,6 +459,10 @@ bool StopTrace::finishBE(struct packet*& p, int& len) {
   if(!AggregateFunction::getPacket(*aggregates, len, p)) {
     return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
   }
+
+  // we need to clear the counter in the CountInvocations case, make sure this doesn't break others
+  for (int i = 0; i < aggregates->size(); i++)
+    (*aggregates)[i]->clear();
 
   if (trace->usesGlobalResult()) {
     //TODO: This will not allow multiple StopTrace to share

@@ -15,6 +15,9 @@ enum bitmap {
 };
 
 void collectFeatures(int val, int* min, int* max, char* features) {
+#ifdef DEBUG_ANALYTICS
+  cout<<"collectFeatures "<<val<<" "<<*min<<" "<<*max<<" "<<__FILE__<<" "<<__LINE__<<endl;
+#endif
   int newFeat = (int)(*features);
 
   if (newFeat == 0) {
@@ -67,6 +70,9 @@ void collectFeatures(int val, int* min, int* max, char* features) {
 }
 
 void updateInvariant(int val, int* orgVal, int* mods, char* initialized) {
+#ifdef DEBUG_ANALYTICS
+  cout<<"updateInvariant "<<val<<" "<<*orgVal<<" "<<__FILE__<<" "<<__LINE__<<endl;
+#endif
   if (!*initialized) {
     *orgVal = val;
     *mods = ~0;
@@ -84,6 +90,9 @@ void updateInvariant(int val, int* orgVal, int* mods, char* initialized) {
 }
 
 void collectValue(int val, char* buffer, int* index, int* size) {
+#ifdef DEBUG_ANALYTICS
+  cout<<"collectValue "<<val<<" "<<__FILE__<<" "<<__LINE__<<endl;
+#endif
   if (*index < (*size - sizeof(int))) {
     int* nextItem = (int*)&buffer[*index];
     int* lastItem = nextItem - 1;
@@ -96,6 +105,9 @@ void collectValue(int val, char* buffer, int* index, int* size) {
 }
 
 void collectAnyValue(int val, char* buffer, int* index, int* size) {
+#ifdef DEBUG_ANALYTICS
+  cout<<"collectAnyValue "<<val<<" "<<__FILE__<<" "<<__LINE__<<endl;
+#endif
   if (*index < (*size - sizeof(int))) {
     int* nextItem = (int*)&buffer[*index];
     
@@ -105,6 +117,9 @@ void collectAnyValue(int val, char* buffer, int* index, int* size) {
 }
 
 void countInvocations(int* counter) {
+#ifdef DEBUG_ANALYTICS
+  cout<<"countInvocations "<<*counter<<" "<<__FILE__<<" "<<__LINE__<<endl;
+#endif
   *counter += 1;
 }
 
@@ -117,6 +132,9 @@ struct buckets {
 };
 
 void setBit(int bit, char* bitmap) {
+#ifdef DEBUG_ANALYTICS
+  cout<<"setBit "<<bit<<" "<<__FILE__<<" "<<__LINE__<<endl;
+#endif
   int index = bit / (sizeof(char) * 8);
   int mask = 1 << (bit & 0x7);
 
@@ -124,6 +142,9 @@ void setBit(int bit, char* bitmap) {
 }
 
 void bucketValues(int val, struct buckets* buckets) {
+#ifdef DEBUG_ANALYTICS
+  cout<<"bucketValues "<<val<<" "<<__FILE__<<" "<<__LINE__<<endl;
+#endif
   if (val < buckets->rangeStart) {
     setBit(buckets->count, buckets->bitmap);
   } else if (val >= buckets->rangeEnd) {
@@ -135,12 +156,18 @@ void bucketValues(int val, struct buckets* buckets) {
 }
 
 void addToAverage(double value, double* average, double *count) {
+#ifdef DEBUG_ANALYTICS
+  cout<<"addToAverage "<<value<<" "<<*average<<" "<<*count<<" "<<__FILE__<<" "<<__LINE__<<endl;
+#endif
   // Count is initialized to one, average to zero
   *average += (value - *average) / *count;
   *count += 1.0;
 }
 
 void average(double* value, double* lastValue, double* average, double* count) {
+#ifdef DEBUG_ANALYTICS
+  cout<<"average "<<*value<<" "<<*lastValue<<" "<<*average<<" "<<*count<<" "<<__FILE__<<" "<<__LINE__<<endl;
+#endif
   if ((*count == 1.0) || (*lastValue != *value)) {
     addToAverage(*value, average, count);
 

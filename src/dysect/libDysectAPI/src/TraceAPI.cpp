@@ -337,8 +337,8 @@ Scope* Scope::reachableFunctions(int calls) {
 }
 
 Scope* Scope::callPath(string f1, string f2, string f3,
-		       string f4, string f5, string f6,
-		       string f7, string f8, string f9) {
+                       string f4, string f5, string f6,
+                       string f7, string f8, string f9) {
   string functions [] = { f1, f2, f3, f4, f5, f6, f7, f8, f9 };
   vector<string> callPath;
 
@@ -403,8 +403,8 @@ SamplingPoints* SamplingPoints::basicBlocks(SamplingTime time) {
 }
 
 SamplingPoints* SamplingPoints::multiple(SamplingPoints* sp1, SamplingPoints* sp2, SamplingPoints* sp3,
-					 SamplingPoints* sp4, SamplingPoints* sp5, SamplingPoints* sp6,
-					 SamplingPoints* sp7, SamplingPoints* sp8, SamplingPoints* sp9) {
+                                         SamplingPoints* sp4, SamplingPoints* sp5, SamplingPoints* sp6,
+                                         SamplingPoints* sp7, SamplingPoints* sp8, SamplingPoints* sp9) {
   SamplingPoints* generators [] = { sp1, sp2, sp3, sp4, sp5, sp6, sp7, sp8, sp9 };
   vector<SamplingPoints*> pointGenerators;
 

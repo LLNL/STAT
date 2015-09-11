@@ -244,10 +244,10 @@ bool Probe::releaseWaitingProcs() {
     if(waitingProcs->size() > 0) {
       vector<Act*>::iterator actIter = actions.begin();
       for(;actIter != actions.end(); actIter++) {
-	Act* act = *actIter;
-	if(act) {
-	  awaitingActions -= processCount;
-	}
+        Act* act = *actIter;
+        if(act) {
+          awaitingActions -= processCount;
+        }
       }
       
       processCount = 0;
@@ -330,7 +330,7 @@ DysectAPI::DysectErrorCode Probe::enqueueAction(Process::const_ptr process, Thre
 
 DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
   struct packet* p = 0; 
-  int len = 0, actionsHandled = 0;
+  int len = 0;
   
   DYSECTVERBOSE(true, "Sending %d enqueued actions for %x", awaitingActions, dom->getId());
 
@@ -353,7 +353,6 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
       
       act->finishBE(np, len);
       act->actionPending = false;
-      actionsHandled += 1;
 
       DYSECTVERBOSE(true, "Aggregate packet with tag %d length: %d", dom->getProbeEnabledTag(), len);
     }
@@ -377,26 +376,28 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
   assert(stream != 0);
 
   if(len > 0) {
-    DYSECTVERBOSE(true, "Sending %d byte aggregate packet", len);
+    DYSECTVERBOSE(true, "Sending %d byte aggregate packet with tag %d and process count %d", len, dom->getProbeEnabledTag(), processCount);
 
     if(stream->send(dom->getProbeEnabledTag(), "%d %auc", processCount, (char*)p, len) == -1) {
+      return DYSECTWARN(StreamError, "Send failed");
       return StreamError;
     }
 
     if(stream->flush() == -1) {
+      return DYSECTWARN(StreamError, "Flush failed");
       return StreamError;
     }
   } else {
     if(stream->send(dom->getProbeEnabledTag(), "%d %auc", processCount, "", 1) == -1) {
+      return DYSECTWARN(StreamError, "Send failed");
       return StreamError;
     }
 
     if(stream->flush() == -1) {
+      return DYSECTWARN(StreamError, "Flush failed");
       return StreamError;
     }
   }
-
-  processCount = 0;
 
   return OK;
 }

@@ -172,8 +172,8 @@ public:
   static Scope* singleFunction();
   static Scope* reachableFunctions(int calls = std::numeric_limits<int>::max());
   static Scope* callPath(std::string f1 = "", std::string f2 = "", std::string f3 = "",
-			 std::string f4 = "", std::string f5 = "", std::string f6 = "",
-			 std::string f7 = "", std::string f8 = "", std::string f9 = "");
+                         std::string f4 = "", std::string f5 = "", std::string f6 = "",
+                         std::string f7 = "", std::string f8 = "", std::string f9 = "");
   static Scope* calledFunction(std::string fname);
 
   virtual ~Scope() {}

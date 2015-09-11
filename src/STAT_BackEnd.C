@@ -1265,7 +1265,7 @@ StatError_t STAT_BackEnd::mainLoop()
 
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Library to load: %s\n", libraryPath);
 
-                printMsg(STAT_OK, __FILE__, __LINE__, "Checking walkerSet_ with size()=%d\n", walkerSet_->size());
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Checking walkerSet_ with size()=%d\n", walkerSet_->size());
 
                 WalkerSet::iterator procIter = walkerSet_->begin();
                 Walker * tmpWalker = *procIter;
@@ -1404,7 +1404,7 @@ StatError_t STAT_BackEnd::attach()
         aInfo.reserve(proctabSize_);
         for (i = 0; i < proctabSize_; i++)
         {
-            printMsg(STAT_OK, __FILE__, __LINE__, "Group attach includes process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
             pAttach.pid = proctab_[i].pd.pid;
             pAttach.executable = proctab_[i].pd.executable_name;
             pAttach.error_ret = ProcControlAPI::err_none;
@@ -1431,14 +1431,14 @@ StatError_t STAT_BackEnd::attach()
 
     for (i = 0; i < proctabSize_; i++)
     {
-        printMsg(STAT_OK, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
 
 #if defined(GROUP_OPS)
         if (doGroupOps_)
         {
   #ifdef DYSECTAPI
             BPatch_process *bpatch_process = tmpProcSet_.at(i);
-	        printMsg(STAT_OK, __FILE__, __LINE__, "Got bpatch_process with pid=%d\n", bpatch_process->getPid());
+	        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Got bpatch_process with pid=%d\n", bpatch_process->getPid());
             if (!bpatch_process)
             {
   #else
@@ -1477,7 +1477,7 @@ StatError_t STAT_BackEnd::attach()
                     assert(!pcProc->isExited());
                     assert(!pcProc->isCrashed());
                     assert(!pcProc->isTerminated());
-                    printMsg(STAT_OK, __FILE__, __LINE__, "walkerSet_->size()=%d\n", walkerSet_->size());
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "walkerSet_->size()=%d\n", walkerSet_->size());
                     
                     /* Also verify the first process as saved in the walkerSet_ */
                     WalkerSet::iterator procIter = walkerSet_->begin();

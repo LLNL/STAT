@@ -59,7 +59,7 @@ void* DataTrace::createInstrumentor() {
       analysisInstr = new PrintChangesInstr(prtChg, prtChg->variableName);
     } else if (bkts = dynamic_cast<Buckets*>(analysis)) {
       analysisInstr = new BucketsInstr(bkts, bkts->variableName, bkts->rangeStart,
-				       bkts->rangeEnd, bkts->count, bkts->stepSize);
+                                       bkts->rangeEnd, bkts->count, bkts->stepSize);
     } else if (avg = dynamic_cast<Average*>(analysis)) {
       analysisInstr = new AverageInstr(avg, avg->variableName);
     } else {
@@ -114,7 +114,7 @@ void* DataTrace::convertSamplingPoints(SamplingPoints* points) {
     vector<SamplingPointsInstr*> instrPoints;
 
     for (vector<SamplingPoints*>::iterator it = multiPts->pointGenerators.begin();
-	 it != multiPts->pointGenerators.end(); ++it) {
+         it != multiPts->pointGenerators.end(); ++it) {
       instrPoints.push_back((SamplingPointsInstr*)convertSamplingPoints(*it));
     }
     
@@ -277,9 +277,9 @@ void TraceAPI::processedGlobalRes(DataTrace* trace) {
 
     processedProcs.insert(process);
   }
+  pendingGlobalRes.erase(trace);
 
   ProcessSet::ptr processedProcset = ProcessSet::newProcessSet(processedProcs);
   ProcessMgr::continueProcsIfReady(processedProcset);
 
-  pendingGlobalRes.erase(trace);
 }

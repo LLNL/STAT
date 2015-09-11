@@ -229,7 +229,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                     probe->sendEnqueuedActions();
               }
 
-	      ProcessMgr::waitFor(ProcWait::probe, curProcess);
+              ProcessMgr::waitFor(ProcWait::probe, curProcess);
               retState = Process::cbThreadStop;
 
             } else {
@@ -238,14 +238,14 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
 
               probe->addWaitingProc(curProcess);
 
-	      ProcessMgr::waitFor(ProcWait::enableChildren, curProcess);
+              ProcessMgr::waitFor(ProcWait::enableChildren, curProcess);
               retState = Process::cbProcStop;
 
               if(probe->getLifeSpan() == fireOnce) {
                 DYSECTVERBOSE(true, "Requesting disablement of probe");
                 probe->enqueueDisable(curProcess);
 
-		ProcessMgr::waitFor(ProcWait::disable, curProcess);
+                ProcessMgr::waitFor(ProcWait::disable, curProcess);
                 retState = Process::cbProcStop;
               }
             }
@@ -267,7 +267,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
             Err::warn(false, "Condition stalls not yet supported");
 
             Err::verbose(true, "Stopping thread in process %d", curProcess->getPid());
-	    // Remember to add an appropriate wait event to process manager!
+            // Remember to add an appropriate wait event to process manager!
             retState = Process::cbProcStop;
 
             //retState = Process::cbThreadStop;
@@ -278,7 +278,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                 // Get out of the way
                 probe->enqueueDisable(curProcess);
 
-		ProcessMgr::waitFor(ProcWait::disable, curProcess);
+                ProcessMgr::waitFor(ProcWait::disable, curProcess);
                 retState = Process::cbProcStop;
 
               } else {
@@ -547,8 +547,8 @@ DysectAPI::DysectErrorCode Backend::registerEventHandlers() {
   Process::registerEventCallback(ProcControlAPI::EventType::Library, Backend::handleLibraryEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Crash, Backend::handleCrash);
   Process::registerEventCallback(ProcControlAPI::EventType(ProcControlAPI::EventType::Pre,
-							   ProcControlAPI::EventType::Exit),
-				 Backend::handleProcessExit);
+  ProcControlAPI::EventType::Exit),
+  Backend::handleProcessExit);
   
   return OK;
 }
@@ -635,7 +635,7 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
       case SIGSEGV:
       case SIGFPE:
         DYSECTINFO(true, "Non recoverable signal %d - stopping process and enquing detach", signum);
-	ProcessMgr::waitFor(ProcWait::detach, curProcess);
+        ProcessMgr::waitFor(ProcWait::detach, curProcess);
         retState = Process::cbProcStop;
 
         // Enqueue termination
@@ -961,7 +961,7 @@ DysectAPI::DysectErrorCode Backend::handleTimerActions() {
       ProcessSet::ptr lprocset = probe->getWaitingProcs();
       probe->enableChildren(lprocset);
       if(probe->getLifeSpan() == fireOnce)
-	probe->disable(lprocset);
+        probe->disable(lprocset);
       probe->releaseWaitingProcs();
       ProcessMgr::continueProcsIfReady(lprocset);
     }
@@ -1031,7 +1031,7 @@ Process::cb_ret_t Backend::handleTimeEvent() {
       Process::ptr procPtr = *procIter;
       if(event && event->isEnabled(procPtr)) {
         Thread::ptr threadPtr = procPtr->threads().getInitialThread();
-	Walker *proc = ProcMap::get()->getWalker(procPtr);
+        Walker *proc = ProcMap::get()->getWalker(procPtr);
         handleEvent(procPtr, threadPtr, event);
       }
     }

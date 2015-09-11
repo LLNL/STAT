@@ -44,7 +44,7 @@ bool CollectValuesInstr::prepareInstrumentedFunction(struct instTarget& target, 
 
   // TODO: Multiple variables with the same name should all be instrumented
   DYSECTVERBOSE(true, "Found variable '%s'!", variableName.c_str());
-		
+
   variable = variables[0];
 
   // Check the global variables have been allocated yet
@@ -180,7 +180,7 @@ bool BucketsInstr::prepareInstrumentedFunction(struct instTarget& target, BPatch
 
   // TODO: Multiple variables with the same name should all be instrumented
   DYSECTVERBOSE(true, "Found variable '%s'!", variableName.c_str());
-		
+
   variable = variables[0];
 
   // Check the global variables have been allocated yet
@@ -255,11 +255,11 @@ void BucketsInstr::finishAnalysis(struct instTarget& target) {
     
     for (int i = 0; i < 8; i++) {
       if (!(curBucket < bkts.count + 2)) {
-	break;
+        break;
       }
       
       if (curPart & 0x1) {
-	aggBucket[curBucket]->addRank(rank);
+        aggBucket[curBucket]->addRank(rank);
       }
 
       curPart = curPart >> 1;
@@ -290,7 +290,7 @@ bool AverageInstr::prepareInstrumentedFunction(struct instTarget& target, BPatch
 
   // TODO: Multiple variables with the same name should all be instrumented
   DYSECTVERBOSE(true, "Found variable '%s'!", variableName.c_str());
-		
+
   variable = variables[0];
 
   // Check the global variables have been allocated yet
@@ -500,7 +500,7 @@ void ExtractFeaturesInstr::finishAnalysis(struct instTarget& target) {
 
   if (feat & initialized) {
     if (feat & unchanged) { 
-      cout << "The variable " << variableName << " was written once." << endl;	
+      cout << "The variable " << variableName << " was written once." << endl;
     } else {
       cout << "The variable " << variableName << " was written multiple times." << endl;
     }
@@ -612,7 +612,7 @@ CallPathScopeInstr::CallPathScopeInstr(vector<string> callPath) : callPath(callP
 ScopeInstr::ShouldInstrument CallPathScopeInstr::shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function) {
   for (int i = 0; i < instrumentedFunctions.size(); i++) {
     if ((i == callPath.size()) ||
-	(instrumentedFunctions[i]->getName().compare(callPath[i]))) {
+        (instrumentedFunctions[i]->getName().compare(callPath[i]))) {
       return StopSearch;
     }
   }
@@ -748,18 +748,18 @@ vector<BPatch_point*> BasicBlockSamplingPointsInstr::getInstrumentationPoints(st
 
   for (set<BPatch_basicBlock*>::iterator it = basicBlocks.begin(); it != basicBlocks.end(); ++it) {
     if (!(*it)->isEntryBlock() &&
-	!(*it)->isExitBlock()) {
+        !(*it)->isExitBlock()) {
       // Instrument the point
       switch(time) {
       case beginning:
-	points.push_back((*it)->findEntryPoint());
-	break;
+        points.push_back((*it)->findEntryPoint());
+        break;
       case end:
-	points.push_back((*it)->findExitPoint());
-	break;
+        points.push_back((*it)->findExitPoint());
+        break;
       default:
-	// Error: unsupported time
-	return points;
+        // Error: unsupported time
+        return points;
       }
     }
   }
@@ -770,37 +770,37 @@ vector<BPatch_point*> BasicBlockSamplingPointsInstr::getInstrumentationPoints(st
 
 /************ DataTrace ************/
 void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_function*>& instrumentedFuncStack,
-		                       BPatch_function* currentFunction) {
+                                       BPatch_function* currentFunction) {
   if (instrumentedFunctions.count(currentFunction->getName()) != 0) {
     return;
   }
 
   ScopeInstr::ShouldInstrument shouldInstr = scope->shouldInstrument(instrumentedFuncStack, currentFunction);
   if (shouldInstr != ScopeInstr::StopSearch) {
-	
+
     // Instrument the current function
     if (shouldInstr == ScopeInstr::Instrument &&
-	analysis->prepareInstrumentedFunction(target, currentFunction)) {
+        analysis->prepareInstrumentedFunction(target, currentFunction)) {
       DYSECTVERBOSE(true, "[%d] Instrumenting %s", instrumentedFuncStack.size(), currentFunction->getName().c_str());
 
       vector<BPatch_point*> analysisPoints = points->getInstrumentationPoints(target, currentFunction);
 
       if (analysisPoints.size() != 0) {
-	if (analysis->pointAwareAnalysis()) {
-	  for (vector<BPatch_point*>::iterator it = analysisPoints.begin(); it != analysisPoints.end(); ++it) {
-	    BPatch_snippet* analysisSnippet = analysis->getInstrumentationSnippet(target, *it);
-	    
-	    vector<BPatch_point*> analysisPoint;
-	    analysisPoint.push_back(*it);
-	    
-	    target.addrHandle->insertSnippet(*analysisSnippet, analysisPoint);
-	  }
-	} else {
-	  // The analysis does not create different snippets for each point, we can reuse and batch install
-	  BPatch_snippet* analysisSnippet = analysis->getInstrumentationSnippet(target, analysisPoints[0]);
+        if (analysis->pointAwareAnalysis()) {
+          for (vector<BPatch_point*>::iterator it = analysisPoints.begin(); it != analysisPoints.end(); ++it) {
+            BPatch_snippet* analysisSnippet = analysis->getInstrumentationSnippet(target, *it);
 
-	  target.addrHandle->insertSnippet(*analysisSnippet, analysisPoints);
-	}
+            vector<BPatch_point*> analysisPoint;
+            analysisPoint.push_back(*it);
+
+            target.addrHandle->insertSnippet(*analysisSnippet, analysisPoint);
+          }
+        } else {
+          // The analysis does not create different snippets for each point, we can reuse and batch install
+          BPatch_snippet* analysisSnippet = analysis->getInstrumentationSnippet(target, analysisPoints[0]);
+
+          target.addrHandle->insertSnippet(*analysisSnippet, analysisPoints);
+        }
       }
     }
 
@@ -812,11 +812,11 @@ void DataTraceInstr::install_recursive(struct instTarget& target, vector<BPatch_
 
     if (subCalls != 0) {
       for (vector<BPatch_point*>::iterator call = subCalls->begin(); call != subCalls->end(); ++call) {
-	BPatch_function* subRoutine = (*call)->getCalledFunction();
+        BPatch_function* subRoutine = (*call)->getCalledFunction();
 
-	if (subRoutine != 0) {
-	  install_recursive(target, instrumentedFuncStack, subRoutine);
-	}
+    if (subRoutine != 0) {
+      install_recursive(target, instrumentedFuncStack, subRoutine);
+    }
       }
     }
       
