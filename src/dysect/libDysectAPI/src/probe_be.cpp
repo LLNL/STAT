@@ -322,7 +322,7 @@ DysectAPI::DysectErrorCode Probe::enqueueAction(Process::const_ptr process, Thre
 
 DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
   struct packet* p = 0;
-  int len = 0, actionsHandled = 0;
+  int len = 0;
 
   DYSECTVERBOSE(true, "Sending %d enqueued actions for %x", awaitingActions, dom->getId());
 
@@ -345,7 +345,6 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
 
       act->finishBE(np, len);
       act->actionPending = false;
-      actionsHandled += 1;
 
       DYSECTVERBOSE(true, "Aggregate packet with tag %d length: %d", dom->getProbeEnabledTag(), len);
     }
@@ -387,8 +386,6 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
       return StreamError;
     }
   }
-
-  processCount = 0;
 
   return OK;
 }

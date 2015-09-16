@@ -1,3 +1,13 @@
+2015-09-11 Gregory L. Lee <lee218@llnl.gov>
+	* probe_be.cpp : fixed awaitingActions decrementating
+	* err.cpp : flush file handle
+
+2015-09-11 Gregory L. Lee <lee218@llnl.gov>
+	* err.cpp : flush file handle
+
+2015-09-09 Gregory L. Lee <lee218@llnl.gov>
+	* probe_be.cpp : fixed awaitingActions decrementing
+
 2015-09-09 Gregory L. Lee <lee218@llnl.gov>
 	* : allow passing of argc and argv to probe sessions (Jira STAT-17)
 

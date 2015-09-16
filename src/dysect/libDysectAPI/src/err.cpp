@@ -365,6 +365,7 @@ void Err::write(const std::string fmt, va_list args, enum msgType type) {
 
     if(useStatOutFp_) {
       fprintf(gStatOutFp, "%s", msg);
+      fflush(gStatOutFp);
       if(type == Info && environment == FrontendEnvironment)
         fprintf(stdout, "%s", msg);
         fflush(stdout);
@@ -393,6 +394,7 @@ void Err::write(enum msgType type, const std::string fmt, ...) {
     vsnprintf(msg, 512, fmt.c_str(), arg);
     if(useStatOutFp_) {
       fprintf(gStatOutFp, "%s", msg);
+      fflush(gStatOutFp);
       if(type == Info && environment == FrontendEnvironment && fmt != "%s[%d]: ")
         fprintf(stdout, "%s", msg);
         fflush(stdout);
