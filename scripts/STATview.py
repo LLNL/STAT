@@ -32,7 +32,11 @@ import subprocess
 import traceback
 import shelve
 from collections import defaultdict
+import copy
 #import inspect
+
+import DLFCN
+sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
 
 (MODEL_INDEX_HIDE, MODEL_INDEX_NAME, MODEL_INDEX_CASESENSITIVE, MODEL_INDEX_REGEX, MODEL_INDEX_EDITABLE, MODEL_INDEX_NOTEDITABLE, MODEL_INDEX_CALLBACK, MODEL_INDEX_ICON, MODEL_INDEX_BUTTONNAME) = range(9)
 
@@ -63,7 +67,7 @@ except Exception as e:
 
 try:
     import STAThelper
-    from STAThelper import which, color_to_string, DecomposedNode, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, has_module_offset_and_not_collapsed, label_has_source, label_has_module_offset, label_collapsed, translate, expr
+    from STAThelper import which, color_to_string, DecomposedNode, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, has_module_offset_and_not_collapsed, label_has_source, label_has_module_offset, label_collapsed, translate, expr, node_attr_to_label, edge_attr_to_label
 except Exception as e:
     sys.stderr.write('%s\n' % repr(e))
     sys.stderr.write('There was a problem loading the STAThelper module.\n')
@@ -110,7 +114,8 @@ lex_map = {}
 search_paths = {}
 search_paths['source'] = []
 search_paths['source'].append(os.getcwd())
-search_paths['include'] = []
+search_paths['include'] = ["/usr/local/tools/mvapich-gnu/include"]
+#search_paths['include'] = []
 
 ## A global table to avoid redundant task list generation
 task_label_to_list = {}
@@ -227,6 +232,7 @@ def create_temp(dot_filename, truncate, max_node_name):
             parser.parse()
             for node in parser.nodes:
                 id, attrs = node
+                attrs["label"] = node_attr_to_label(attrs, False)
                 output_line = '\t%s [' % id
                 for key in attrs.keys():
                     if key == 'label':
@@ -235,43 +241,22 @@ def create_temp(dot_filename, truncate, max_node_name):
                         final_label = ''
                         label_lines = label.split('\\n')
                         for i, label in enumerate(label_lines):
-                            if has_source_and_not_collapsed(label):
-                                # if the source file information is full path, reduce to the basename
-                                decomposed_node = decompose_node(label)
-                                iter_string = decomposed_node.iter_string
-                                if decomposed_node.source_line.find(':') != -1 and decomposed_node.source_line.find('?') == -1:
-                                    source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
-                                    cur_line_num = int(decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:])
-                                    if os.path.isabs(source):
-                                        source = os.path.basename(source)
-                                    if iter_string != '':
-                                        iter_string = '$' + iter_string
-                                    label = "%s@%s:%d%s" % (decomposed_node.function_name, source, cur_line_num, iter_string)
-                            elif has_module_offset_and_not_collapsed(label):
-                                # if the source file information is full path, reduce to the basename
-                                decomposed_node = decompose_node(label)
-                                module = decomposed_node.module
-                                if os.path.isabs(module):
-                                    module = os.path.basename(module)
-                                label = "%s+%s" % (module, decomposed_node.offset)
-
                             if len(label) > max_node_name and truncate == "front":
                                 # clip long node names at the front (preserve most significant characters)
-                                if label[2-max_node_name] == '\\':
+                                if label[2 - max_node_name] == '\\':
                                     label = '...\\%s' % label[3 - max_node_name:]
                                 else:
                                     label = '...%s' % label[3 - max_node_name:]
                             if len(label) > max_node_name and truncate == "rear":
                                 # clip long node names at the rear (preserve least significant characters)
-                                if label[max_node_name-1] == '\\':
+                                if label[max_node_name - 1] == '\\':
                                     label = '%s' % label[:max_node_name - 2]
                                 else:
                                     label = '%s...' % label[:max_node_name - 3]
                             final_label += label
                             if i != len(label_lines) - 1:
                                 final_label += '\\n'
-                        label = final_label
-                        output_line += '%s="%s",' % (key, label)
+                        output_line += '%s="%s",' % (key, final_label)
                     else:
                         output_line += '%s="%s",' % (key, attrs[key])
                 output_line += 'originallabel="%s"];\n' % original_label
@@ -755,7 +740,6 @@ class Label(object):
     def __init__(self, item, label, highlight=None):
         """The constructor"""
         self.item = item
-        self.label = label
         if highlight is None:
             highlight = set([item])
         self.highlight = highlight
@@ -794,7 +778,7 @@ class STATNode(STATElement):
     It adds several STAT specific members to the xdot Node class.
     """
 
-    def __init__(self, x, y, x1, y1, x2, y2, shapes, label):
+    def __init__(self, x, y, x1, y1, x2, y2, shapes, label, attrs):
         """The constructor"""
         STATElement.__init__(self, shapes)
         self.x = x
@@ -803,8 +787,8 @@ class STATNode(STATElement):
         self.y1 = y1
         self.x2 = x2
         self.y2 = y2
-        self.label = label
-        self.lex_string = None
+        self.attrs = attrs
+        self.attrs["label"] = label
         self.source_dir = None
         self.edge_label = None
         self.edge_label_id = -2
@@ -823,14 +807,17 @@ class STATNode(STATElement):
         self.temporally_ordered = False
 
     def __repr__(self):
-        ret = "STAT Node: "
-        ret += "node_name(%s), " % self.node_name
-        ret += "label(%s), " % self.label
-        ret += "edge_label(%d: %s), " % (self.edge_label_id, self.edge_label)
-        ret += "hide(%s)" % str(self.hide)
-        ret += "num_tasks(%d)" % self.num_tasks
-        ret += "in_edge(%s)" % str(self.in_edge)
-        ret += "out_edges(%s)" % str(self.out_edges)
+        ret = "STAT Node:\n"
+        ret += "node_name(%s)\n" % self.node_name
+        ret += "edge_label(%d: %s)\n" % (self.edge_label_id, self.edge_label)
+        ret += "hide(%s)\n" % str(self.hide)
+        ret += "num_tasks(%d)\n" % self.num_tasks
+        ret += "attrs:\n"
+        for key in self.attrs.keys():
+            ret += "\tattrs[%s] = %s\n" % (key, self.attrs[key])
+        ret += "\nin_edge:\n%s\n" % str(self.in_edge)
+        for edge in self.out_edges:
+            ret += "\nout_edge:\n%s\n" % str(edge)
         return ret
 
     def is_inside(self, x, y):
@@ -839,10 +826,10 @@ class STATNode(STATElement):
 
     def get_label(self, x, y):
         """Get the node's label."""
-        if self.label is None:
+        if self.attrs["label"] is None:
             return None
         if self.is_inside(x, y):
-            return Label(self, self.label)
+            return Label(self, self.attrs["label"])
         return None
 
     def get_url(self, x, y):
@@ -919,7 +906,7 @@ class STATNode(STATElement):
         if self.num_leaf_tasks == -1:
             out_sum = 0
             for edge in self.out_edges:
-                out_sum += get_num_tasks(edge.label)
+                out_sum += get_num_tasks(edge.attrs["label"])
             num_tasks = get_num_tasks(self.edge_label)
             if out_sum < num_tasks:
                 self.num_leaf_tasks = num_tasks - out_sum
@@ -935,7 +922,7 @@ class STATNode(STATElement):
         out_sum = 0
         for edge in self.out_edges:
             if edge.hide is False:
-                out_sum += get_num_tasks(edge.label)
+                out_sum += get_num_tasks(edge.attrs["label"])
         num_tasks = get_num_tasks(self.edge_label)
         if out_sum < num_tasks:
             return num_tasks - out_sum
@@ -947,7 +934,7 @@ class STATNode(STATElement):
             return False
         ret = False
         if len(self.out_edges) == 1 and self.in_edge is not None:
-            if self.out_edges[0].label == self.in_edge.label and self.out_edges[0].hide is False:
+            if self.out_edges[0].attrs["label"] == self.in_edge.attrs["label"] and self.out_edges[0].hide is False:
                 ret = True
         return ret
 
@@ -960,13 +947,14 @@ class STATEdge(STATElement):
     It adds several STAT specific members to the xdot Edge class.
     """
 
-    def __init__(self, src, dst, points, shapes, label):
+    def __init__(self, src, dst, points, shapes, label, attrs):
         """The constructor."""
         STATElement.__init__(self, shapes)
         self.src = src
         self.dst = dst
         self.points = points
-        self.label = label
+        self.attrs = attrs
+        self.attrs["label"] = label
         self.hide = False
         self.undo = []
         self.redo = []
@@ -974,17 +962,19 @@ class STATEdge(STATElement):
     RADIUS = 10
 
     def __repr__(self):
-        ret = "STATEdge: "
+        ret = "STATEdge:\n"
         try:
-            ret += "src(%s), " % str(self.src.label)
+            ret += "src(%s)\n" % str(self.src.attrs["label"])
         except:
-            ret += "src(?), "
+            ret += "src(?)\n"
         try:
-            ret += "dst(%s), " % str(self.dst.label)
+            ret += "dst(%s)\n" % str(self.dst.attrs["label"])
         except:
-            ret += "dst(%s), " % str(self.dst.label)
-        ret += "label(%s), " % self.label
-        ret += "hide(%s), " % str(self.hide)
+            ret += "dst(%s)\n" % str(self.dst.attrs["label"])
+        ret += "hide(%s)\n" % str(self.hide)
+        ret += "attrs:\n"
+        for key in self.attrs.keys():
+            ret += "\tattrs[%s] = %s\n" % (key, self.attrs[key])
         return ret
 
     def get_jump(self, x, y):
@@ -1047,7 +1037,7 @@ class STATGraph(xdot.Graph):
         """Save modifiable node attributes to a list for undo operations."""
         for node in self.nodes:
             node_text = node.get_text()
-            node.undo.append((node.hide, node_text, node.to_color_index, node.lex_string, node.temporally_ordered))
+            node.undo.append((node.hide, node_text, node.to_color_index, node.attrs.get("lex_string"), node.temporally_ordered))
             node.redo = []
         for edge in self.edges:
             edge_colors = []
@@ -1075,15 +1065,16 @@ class STATGraph(xdot.Graph):
             old_node_text = node.get_text()
             node.set_text(node_text)
             if update_redo:
-                node.redo.append((node.hide, old_node_text, node.to_color_index, node.lex_string, node.temporally_ordered))
+                node.redo.append((node.hide, old_node_text, node.to_color_index, node.attrs.get("lex_string"), node.temporally_ordered))
             node.hide = hide
             node.to_color_index = to_color_index
-            node.lex_string = lex_string
+            if lex_string is not None:
+                node.attrs["lex_string"] = lex_string
             node.temporally_ordered = temporally_ordered
             if hasattr(node, 'eq_collapsed_out_edges'):
                 del node.eq_collapsed_out_edges
-            if hasattr(node, 'eq_collapsed_label'):
-                del node.eq_collapsed_label
+            if "eq_collapsed_label" in node.attrs:
+                del node.attrs["eq_collapsed_label"]
         for edge in self.edges:
             edge_colors = []
             for shape in edge.shapes:
@@ -1116,10 +1107,11 @@ class STATGraph(xdot.Graph):
             hide, node_text, to_color_index, lex_string, temporally_ordered = node.redo.pop()
             old_node_text = node.get_text()
             node.set_text(node_text)
-            node.undo.append((node.hide, old_node_text, node.to_color_index, node.lex_string, node.temporally_ordered))
+            node.undo.append((node.hide, old_node_text, node.to_color_index, node.attrs.get("lex_string"), node.temporally_ordered))
             node.hide = hide
             node.to_color_index = to_color_index
-            node.lex_string = lex_string
+            if lex_string is not None:
+                node.attrs["lex_string"] = lex_string
             node.temporally_ordered = temporally_ordered
         for edge in self.edges:
             shapes = []
@@ -1184,29 +1176,30 @@ class STATGraph(xdot.Graph):
         """Collapse descendent nodes of the same eq class into a single node."""
         modified = False
         if node is None or node.hide is True:
-            return False, (None, None)
+            return False, (None, {})
         if not node.can_join_eq_c():
             node.hide = True
             node.in_edge.hide = True
-            return True, (node, node.label)
-        modified, (leaf_node, label) = self.join_eq_c(node.out_edges[0].dst)
+            return True, (node, node.attrs)
+        modified, (leaf_node, attrs) = self.join_eq_c(node.out_edges[0].dst)
         if root is True:
             #node.out_edges[0].hide
             node.eq_collapsed_out_edges = []
-            node.eq_collapsed_label = ''
             if leaf_node is not None:
                 for edge in leaf_node.out_edges:
-                    new_edge = STATEdge(node, edge.dst, edge.points, edge.shapes, edge.label)
+                    new_edge = STATEdge(node, edge.dst, edge.points, edge.shapes, edge.attrs["label"], edge.attrs)
                     new_edge.hide = edge.hide
                     edge.hide = True
                     node.eq_collapsed_out_edges.append(new_edge)
                     new_edge.dst.eq_collapsed_in_edge = new_edge
                     self.edges.append(new_edge)
-                node.eq_collapsed_label = node.label + '\\n' + label
+                node.attrs["eq_collapsed_label"] = node.attrs["label"] + '\\n' + attrs["label"]
         else:
             node.hide = True
             node.in_edge.hide = True
-        return modified, (leaf_node, node.label + '\\n' + label)
+        for attr in ["label", "function", "source", "line", "module", "offset", "pc", "vars"]:
+            node.attrs[attr] = node.attrs[attr] + '\\n' + attrs[attr]
+        return modified, (leaf_node, node.attrs)
 
     def expand_all(self, node):
         """Show all descendents of the specified node."""
@@ -1278,19 +1271,18 @@ class STATGraph(xdot.Graph):
         else:
             return True
 
-    def view_source(self, node, item=None):
+    def view_source(self, node, item=0):
         """Generate a window that displays the source code for the node."""
         # find the source file name and line number
-        if not label_has_source(node.label):
+        if not "source" in node.attrs.keys():
+            show_error_dialog('Cannot determine source file, please run STAT with the -i option to get source file and line number information\n')
+            return
+        if node.attrs["source"] == "(null)" or node.attrs["source"] == "?":
             show_error_dialog('Cannot determine source file, please run STAT with the -i option to get source file and line number information\n')
             return
 
-        decomposed_node = decompose_node(node.label, item)
-        if decomposed_node.source_line.find(':') == -1 and decomposed_node.source_line.find('?') != -1:
-            show_error_dialog('Cannot determine source file, please run STAT with the -i option to get source file and line number information\n')
-            return
-        source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
-        cur_line_num = int(decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:])
+        source = node.attrs["source"].split('\\n')[item]
+        cur_line_num = int(node.attrs["line"].split('\\n')[item].strip(":"))
 
         # get the node font and background colors
         for shape in node.shapes:
@@ -1305,13 +1297,10 @@ class STATGraph(xdot.Graph):
         line_nums = []
         line_nums.append((cur_line_num, fill_color_string, font_color_string))
         for node_iter in self.nodes:
-            frames = decompose_node(node_iter.label, -1)
-            if (type(frames) == DecomposedNode):
-                frames = [frames]
-            for decomposed_node in frames:
-                if decomposed_node.source_line.find(':') == -1:
+            sources = node_iter.attrs["source"].split('\\n')
+            for i, this_source in enumerate(sources):
+                if this_source in ["(null)", "?"]:
                     continue
-                this_source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
                 if this_source == source:
                     for shape in node_iter.shapes:
                         if isinstance(shape, xdot.TextShape):
@@ -1320,8 +1309,7 @@ class STATGraph(xdot.Graph):
                             fill_color = shape.pen.fillcolor
                     font_color_string = color_to_string(font_color)
                     fill_color_string = color_to_string(fill_color)
-                    line_nums.append((int(decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:]), fill_color_string, font_color_string))
-
+                    line_nums.append((int(node_iter.attrs["line"].split('\\n')[i].strip(":")), fill_color_string, font_color_string))
         found = False
         error_msg = ''
         if os.path.isabs(source):
@@ -1526,28 +1514,27 @@ class STATGraph(xdot.Graph):
         """Generate a lexicographical string for the specified node."""
         if node is None:
             return False
-        if not has_source_and_not_collapsed(node.label):
+        if not has_source_and_not_collapsed(node.attrs["label"]):
             return False
-        if node.label.find('libc_start') != -1:
-            node.lex_string = ''
+        if node.attrs["label"].find('libc_start') != -1:
+            node.attrs["lex_string"] = "(null)"
             return True
-        decomposed_node = decompose_node(node.label)
-        if is_mpi(decomposed_node.function_name):
-            node.lex_string = ''
+        if is_mpi(node.attrs["function"]):
+            node.attrs["lex_string"] = "(null)"
             return True
-        lex_map_index = decomposed_node.source_line
-        if node.lex_string is None:
-            if decomposed_node.source_line.find(':') == -1:
+        lex_map_index = node.attrs["source"] + node.attrs["line"]
+        if node.attrs.get("lex_string") is None:
+            if node.attrs["source"] == "(null)":
                 return False
             if lex_map_index in lex_map.keys():
                 lex_string = lex_map[lex_map_index]
-                if lex_string.find('$') != -1 and decomposed_node.iter_string != '':
-                    input_val = decomposed_node.iter_string[decomposed_node.iter_string.find('=') + 1:]
+                if lex_string.find('$') != -1 and node.attrs["vars"] != '(null)':
+                    input_val = node.attrs["vars"][node.attrs["vars"].find('=') + 1:]
                     lex_string = lex_string[:lex_string.find('$')] + input_val + lex_string[lex_string.find(')') + 1:]
-                node.lex_string = lex_string
+                node.attrs["lex_string"] = lex_string
                 return True
-            source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
-            line = decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:]
+            source = node.attrs["source"]
+            line = node.attrs["line"].strip(":")
             if os.path.isabs(source):
                 node.source_dir, source = os.path.split(source)
                 node.source_dir += '/'
@@ -1571,10 +1558,10 @@ class STATGraph(xdot.Graph):
                 tomod.add_program_point(to_input)
                 return True
             lex_string = tomod.get_lex_string(to_input)
-            if lex_string.find('$') != -1 and decomposed_node.iter_string != '':
-                input_val = decomposed_node.iter_string[decomposed_node.iter_string.find('=') + 1:]
+            if lex_string.find('$') != -1 and node.attrs["vars"] != '(null)':
+                input_val = node.attrs["vars"][node.attrs["vars"].find('=') + 1:]
                 lex_string = lex_string[:lex_string.find('$')] + input_val + lex_string[lex_string.find(')') + 1:]
-            node.lex_string = lex_string
+            node.attrs["lex_string"] = lex_string
             lex_map[lex_map_index] = lex_string
             if lex_string == '':
                 return True
@@ -1615,25 +1602,25 @@ class STATGraph(xdot.Graph):
                 return False
             #t2 = time.time()
             #print t2 - t1
-            if temp_node.lex_string is None or ret is False:
-                node.lex_string = ''
-                error_nodes.append(temp_node.label)
+            if temp_node.attrs.get("lex_string") is None or ret is False:
+                error_nodes.append(temp_node.attrs["label"])
                 continue
-            if not has_source_and_not_collapsed(temp_node.label):
-                error_nodes.append(temp_node.label)
+            if not has_source_and_not_collapsed(temp_node.attrs["label"]):
+                error_nodes.append(temp_node.attrs["label"])
                 continue
-            decomposed_node = decompose_node(temp_node.label)
-            if decomposed_node.source_line.find(':') == -1:
-                error_nodes.append(temp_node.label)
+            if temp_node.attrs["source"] in ["(null)", "?"] or temp_node.attrs["line"] in ["(null)", ":?"]:
+                error_nodes.append(temp_node.attrs["label"])
                 continue
-            source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
-            line = decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:]
-            temp_string = temp_node.lex_string[temp_node.lex_string.find('#') + 1:]
+            source = temp_node.attrs["source"]
+            line = temp_node.attrs["line"].strip(":")
+            if not "lex_string" in node.attrs.keys():
+                temp_node.attrs["lex_string"] = ""
+            temp_string = temp_node.attrs["lex_string"][temp_node.attrs["lex_string"].find('#') + 1:]
             temp_string = temp_string[:temp_string.find('#')]
             # temp_string is now the line number offset of the function
             index_string = source + '#' + temp_string
             to_input = tomod.to_tuple()
-            to_input.basepath = temp_node.lex_string
+            to_input.basepath = temp_node.attrs["lex_string"]
             to_input.filename = source
             to_input.line = int(line)
             source_map[index_string].append((to_input, temp_node))
@@ -1652,14 +1639,13 @@ class STATGraph(xdot.Graph):
             found = False
             skip_node_rename_list = []
             for to_input_tuple, node in source:
-                decomposed_node = decompose_node(node.label)
-                if node.lex_string.find('$') != -1 or node.label.find('$') != -1:
+                if node.attrs["lex_string"].find('$') != -1 or node.attrs["label"].find('$') != -1:
                     # check if this is the first time visiting this variable
                     if node not in self.to_var_visit_list:
-                        if node.label.find('=') != -1:
+                        if node.attrs["label"].find('=') != -1:
                             found = True
                         else:
-                            temp = node.lex_string[node.lex_string.find('$') + 1:]
+                            temp = node.attrs["lex_string"][node.attrs["lex_string"].find('$') + 1:]
                             var = temp[:temp.find('(')]
                             if var != 'iter#':
                                 skip_node_rename_list.append(node)
@@ -1668,7 +1654,8 @@ class STATGraph(xdot.Graph):
             if found is True:
                 for to_input_tuple, node in source:
                     # set lex string to None so we visit this next time around
-                    node.lex_string = None
+                    if "lex_string" in node.attrs.keys():
+                        del node.attrs["lex_string"]
                 return False
             for to_input_tuple, node in source:
                 if node in skip_node_rename_list:
@@ -1678,12 +1665,15 @@ class STATGraph(xdot.Graph):
                 parent_temporal_string = ''
                 if parent is not None:
                     parent_temporal_string = self.get_to_string(parent)
-                decomposed_node = decompose_node(node.label)
                 node.temporally_ordered = True
                 if parent_temporal_string == '':
-                    node.set_text(decomposed_node.function_name + "@T" + temporal_string)
+                    node.attrs["temporal_string"] = node.attrs["function"] + "@T" + temporal_string
+                    node.set_text(node.attrs["temporal_string"])
+                    node.attrs["label"] = node.attrs["temporal_string"]
                 else:
-                    node.set_text(decomposed_node.function_name + "@T" + parent_temporal_string + '.' + temporal_string)
+                    node.attrs["temporal_string"] = node.attrs["function"] + "@T" + parent_temporal_string + '.' + temporal_string
+                    node.set_text(node.attrs["temporal_string"])
+                    node.attrs["label"] = node.attrs["temporal_string"]
         self.color_temporally_ordered_edges()
         #t2 = time.time()
         #print t2 - t1
@@ -1698,13 +1688,9 @@ class STATGraph(xdot.Graph):
 
     def get_to_string(self, node):
         """Get the temporal string from the specified node."""
-        temporal_string = ''
-        name = node.get_text()
-        if name.find('@') != -1:
-            decomposed_node = decompose_node(name)
-            if decomposed_node.source_line.find('T') != -1 and decomposed_node.source_line.find(':') == -1:
-                temporal_string = decomposed_node.source_line[decomposed_node.source_line.find('T') + 1:]
-        return temporal_string
+        temporal_string = node.attrs.get("temporal_string", "")
+        ret_string = temporal_string[temporal_string.find('@T') + 2:]
+        return ret_string
 
     def has_to_descendents(self, node):
         """Determine whether the specified node has children that have been temporally ordered."""
@@ -1848,7 +1834,7 @@ class STATGraph(xdot.Graph):
             parent_node = node.in_edge.src
             if parent_node.in_edge is None:
                 return 1
-            if node.in_edge.label != parent_node.in_edge.label:
+            if node.in_edge.attrs["label"] != parent_node.in_edge.attrs["label"]:
                 return 1 + self.get_node_eq_depth(node.in_edge.src)
             return self.get_node_eq_depth(node.in_edge.src)
         else:
@@ -1875,27 +1861,46 @@ class STATGraph(xdot.Graph):
                             node_text = shape.t
                         else:
                             fill_color = shape.pen.fillcolor
-                    if translate_module_offset is True and label_has_module_offset(node.label):
-                        node_text = re.sub(expr, translate, node.label)
+                    if translate_module_offset is True and node.attrs["module"] != "(null)":
+                        eq_collapsed_label = ''
+                        for i, label in enumerate(node.attrs["label"].split('\\n')):
+                            module_offset = "%s%s" %(node.attrs["module"].split('\\n')[i], node.attrs["offset"].split('\\n')[i])
+                            node_text = re.sub(expr, translate, module_offset)
+                            function = node_text[0:node_text.find('@')]
+                            source = node_text[node_text.find('@') + 1:node_text.find(':')]
+                            line = node_text[node_text.find(':') + 1:]
+                            if i == 0:
+                                node.attrs["function"] = function
+                                node.attrs["source"] = source
+                                node.attrs["line"] = line
+                                eq_collapsed_label = function + '@' + source + ':' + line
+                            else:
+                                node.attrs["function"] += '\\n' + function
+                                node.attrs["source"] += '\\n' + source
+                                node.attrs["line"] += '\\n' + line
+                                eq_collapsed_label += '\\n' + function + '@' + source + ':' + line
+                        if "eq_collapsed_label" in node.attrs.keys():
+                            node.attrs["eq_collapsed_label"] = eq_collapsed_label
                     elif full_node_label is True:
-                        if (hasattr(node, 'eq_collapsed_label')):
-                            node_text = node.eq_collapsed_label
-                        else:
-                            node_text = node.label
-                    fill_string = ''
-                    for fval in fill_color[0:3]:
-                        fill_string += "%02x" % (int(fval * 255))
-                    font_string = ''
-                    for fval in font_color[0:3]:
-                        font_string += "%02x" % (int(fval * 255))
-                    f.write('\t%s [pos="0,0", label="%s", fillcolor="#%s",fontcolor="#%s"];\n' % (node.node_name, escaped_label(node_text), fill_string, font_string))
+                        node_text = node_attr_to_label(node.attrs)
+                        if "eq_collapsed_label" in node.attrs.keys():
+                            node.attrs["eq_collapsed_label"] = node_text
+                    f.write('\t%s [pos="0,0", label="%s"' % (node.node_name, escaped_label(node_text)))
+                    for attr in node.attrs.keys():
+                        if attr not in ["pos", "label", "_draw_", "_ldraw_", "width", "height", "rects", "temporal_string", "lex_string"]:
+                            f.write(', %s="%s"' %(attr, node.attrs[attr]))
+                    f.write('];\n')
                 for edge in self.edges:
                     if edge.hide:
                         continue
                     if full_edge_label is True:
-                        f.write('\t%s -> %s [label="%s"]\n' % (edge.src.node_name, edge.dst.node_name, edge.dst.edge_label))
+                        f.write('\t%s -> %s [label="%s"' % (edge.src.node_name, edge.dst.node_name, edge.dst.edge_label))
                     else:
-                        f.write('\t%s -> %s [label="%s"]\n' % (edge.src.node_name, edge.dst.node_name, edge.label))
+                        f.write('\t%s -> %s [label="%s"' % (edge.src.node_name, edge.dst.node_name, edge.attrs["label"]))
+                    for attr in edge.attrs.keys():
+                        if attr not in ["label", "_draw_", "_ldraw_", "_hdraw_", "pos", "lp"]:
+                            f.write(', %s="%s"' %(attr, edge.attrs[attr]))
+                    f.write(']\n')
                 f.write('}\n')
         except IOError as e:
             show_error_dialog('%s\nFailed to open file "%s" for writing' % (repr(e), filename), exception=e)
@@ -1928,8 +1933,10 @@ class STATGraph(xdot.Graph):
         widget.user_zoom = False
         modified = False
         for node in self.nodes:
-            #node.set_text(node.label) # TODO, this was needed to restore TO'ed labels
-            node.lex_string = None
+            if "lex_string" in node.attrs:
+                del node.attrs["lex_string"]
+            if "temporal_string" in node.attrs:
+                del node.attrs["temporal_string"]
             node.temporally_ordered = False
             if node.hide is True:
                 node.hide = False
@@ -1956,14 +1963,13 @@ class STATGraph(xdot.Graph):
         """Hide frames that match the specified function."""
         modified = False
         for node in self.nodes:
-            frames = decompose_node(node.label, -1)
-            if (type(frames) == DecomposedNode):
-                frames = [frames]
-            for decomposed_node in frames:
+
+            function_names = node.attrs["function"].split('\\n')
+            for i, function_name in enumerate(function_names):
                 if args != ():
-                    hide = func(decomposed_node.function_name, args)
+                    hide = func(function_name, args)
                 else:
-                    hide = func(decomposed_node.function_name)
+                    hide = func(function_name)
                 if hide is True:
                     ret = self.collapse(node, True)
                     if ret is True:
@@ -2011,7 +2017,7 @@ class STATGraph(xdot.Graph):
 #                for edge in root.out_edges:
 #                    edge.hide = False
                 if root.out_edges is not None:
-                    if root.out_edges[0].dst.label.find('start') != -1 and root.out_edges[0].dst.label.find('libc') == -1:
+                    if root.out_edges[0].dst.attrs["label"].find('start') != -1 and root.out_edges[0].dst.attrs["label"].find('libc') == -1:
                         root = root.out_edges[0].dst
                         root.temporally_ordered = True
                 break
@@ -2033,12 +2039,12 @@ class STATGraph(xdot.Graph):
                     edge.hide = False
                 if root.out_edges is not None:
                     for edge in root.out_edges:
-                        if edge.dst.label.find('start') != -1 and edge.dst.label.find('libc') == -1:
+                        if edge.dst.attrs["label"].find('start') != -1 and edge.dst.attrs["label"].find('libc') == -1:
                             edge.dst.temporally_ordered = True
                             root = edge.dst
                             edge.hide = False
                             break
-#                    if root.out_edges[0].dst.label.find('start') != -1 and root.out_edges[0].dst.label.find('libc') == -1:
+#                    if root.out_edges[0].dst.attrs["label"].find('start') != -1 and root.out_edges[0].dst.attrs["label"].find('libc') == -1:
 #                        root = root.out_edges[0].dst
                 break
         ret = self._traverse_progress(root, 'most')
@@ -2060,15 +2066,14 @@ class STATGraph(xdot.Graph):
                 edge.dst.hide = False
                 found_lex_string = True
         if found_lex_string is False:
-            decomposed_node = decompose_node(node.label)
-            if is_mpi(decomposed_node.function_name):
+            if is_mpi(node.attrs["function"]):
                 return False
             # we want to TO this node's children
             ret = self.get_children_temporal_order(node)
             if ret is False:
                 return ret
             if len(node.out_edges) == 1:
-                if node.out_edges[0].dst.lex_string.find('$') != -1:
+                if node.out_edges[0].dst.attrs["lex_string"].find('$') != -1:
                     return True
                 self._traverse_progress(node.out_edges[0].dst, least_or_most)
             else:
@@ -2126,10 +2131,10 @@ class STATGraph(xdot.Graph):
             if self.depth_first_search_text(edge.dst, text, case_sensitive):
                 ret = True
         search_text = text
-        node_text = node.label
+        node_text = node.attrs["label"]
         if case_sensitive is False:
             search_text = string.lower(text)
-            node_text = string.lower(node.label)
+            node_text = string.lower(node.attrs["label"])
         if re.search(search_text, node_text) is not None:
             ret = True
         if ret is False and node.node_name != '0':
@@ -2551,10 +2556,8 @@ class STATXDotParser(xdot.XDotParser):
         node = self.node_by_name[new_id]
         label = attrs.get('originallabel', None)
         if label == None:
-            if not "label" in attrs:
-                return False
-            label = attrs["label"]
-        stat_node = STATNode(node.x, node.y, node.x1, node.y1, node.x2, node.y2, node.shapes, label)
+            return False
+        stat_node = STATNode(node.x, node.y, node.x1, node.y1, node.x2, node.y2, node.shapes, label, attrs)
         stat_node.node_name = new_id
         self.node_by_name[new_id] = stat_node
         self.nodes.pop()
@@ -2566,8 +2569,10 @@ class STATXDotParser(xdot.XDotParser):
         new_dst_id = dst_id.strip('"')
         xdot.XDotParser.handle_edge(self, new_src_id, new_dst_id, attrs)
         label = attrs.get('label', None)
+        if label == None:
+            return False
         edge = self.edges.pop()
-        stat_edge = STATEdge(edge.src, edge.dst, edge.points, edge.shapes, label)
+        stat_edge = STATEdge(edge.src, edge.dst, edge.points, edge.shapes, label, attrs)
         self.edges.append(stat_edge)
         stat_edge.src.out_edges.append(stat_edge)
         stat_edge.dst.in_edge = stat_edge
@@ -2577,7 +2582,7 @@ class STATXDotParser(xdot.XDotParser):
         if src_id == '0':
             self.node_by_name[new_src_id].edge_label = ''
             self.node_by_name[new_src_id].num_tasks = get_num_tasks(new_dst_label)
-        stat_edge.label = new_dst_label
+        stat_edge.attrs["label"] = new_dst_label
         self.node_by_name[new_dst_id].edge_label = new_dst_label
         self.node_by_name[new_dst_id].num_tasks = get_num_tasks(new_dst_label)
 
@@ -3758,9 +3763,9 @@ entered as a regular expression"""
         if match_case_check_box.get_active() is False:
             search_text = string.lower(text)
         for node in self.get_current_graph().nodes:
-            node_text = node.label
+            node_text = node.attrs["label"]
             if match_case_check_box.get_active() is False:
-                node_text = string.lower(node.label)
+                node_text = string.lower(node.attrs["label"])
             if node_text.find(search_text) != -1 and node.hide is False:
                 highlight_list.append(node)
         self.tabs[self.notebook.get_current_page()].widget.set_highlight(highlight_list)
@@ -4103,12 +4108,17 @@ enterered as a regular expression.
             return False
         num_edges = len(graph.edges)
         graph.set_undo_list()
+        old_attrs = {}
+        for node in graph.nodes:
+            old_attrs[node.node_name] = (copy.copy(node.attrs))
         for node in graph.nodes:
             if node.node_name == '0':
                 ret = self.join_eq_classes(node)
                 break
         if ret is True:
             self.on_reset_layout()
+            for node in graph.nodes:
+                node.attrs = copy.copy(old_attrs[node.node_name])
             for i in xrange(len(graph.edges) - num_edges):
                 graph.edges.pop()
             graph.undo(False)
@@ -4192,7 +4202,7 @@ enterered as a regular expression.
             node = event
         else:
             node = widget.get_node(int(event.x), int(event.y))
-        function = node.label.replace('\\n', '\n').replace('\\<', '<').replace('\\>', '>')
+        label = node.attrs["label"].replace('\\n', '\n').replace('\\<', '<').replace('\\>', '>')
         tasks = node.edge_label
         if node.hide is True:
             return True
@@ -4232,7 +4242,7 @@ enterered as a regular expression.
             background = gtk.gdk.color_parse(fill_color_string)
             back_color_tag = "color_back%s" % (fill_color_string)
             text_view_buffer.create_tag(back_color_tag, background_gdk=background)
-            text_view_buffer.insert_with_tags_by_name(iterator, function, fore_color_tag, back_color_tag, "monospace")
+            text_view_buffer.insert_with_tags_by_name(iterator, label, fore_color_tag, back_color_tag, "monospace")
             sw.add(text_view)
             my_frame.add(sw)
             vpaned1.add1(my_frame)
@@ -4284,7 +4294,6 @@ enterered as a regular expression.
             else:
                 num_tasks = node.num_tasks
                 num_leaf_tasks = node.get_num_leaf_tasks()
-                vpaned2 = gtk.VPaned()
                 my_frame = gtk.Frame("Node summary:")
                 sw = gtk.ScrolledWindow()
                 sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -4298,6 +4307,23 @@ enterered as a regular expression.
                 my_frame.add(sw)
                 vpaned1.add2(my_frame)
             self.my_dialog.vbox.pack_start(vpaned1, True, True, 5)
+
+            expander = gtk.Expander("Advanced")
+            my_frame = gtk.Frame("Node Attributes:")
+            sw = gtk.ScrolledWindow()
+            sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+            attributes_view = gtk.TextView()
+            attributes_view.set_editable(False)
+            attributes_view.set_cursor_visible(False)
+            attributes_view_buffer = attributes_view.get_buffer()
+            attributes_view.set_wrap_mode(gtk.WRAP_WORD)
+            attributes_text = str(node)
+            attributes_view_buffer.set_text(attributes_text)
+            sw.add(attributes_view)
+            my_frame.add(sw)
+            expander.add(my_frame)
+            self.my_dialog.vbox.pack_start(expander, True, True, 5)
+
             self.separator = gtk.HSeparator()
             self.my_dialog.vbox.pack_start(self.separator, False, True, 5)
             box2 = gtk.HButtonBox()
@@ -4306,14 +4332,14 @@ enterered as a regular expression.
                 if option != 'View Source' and option != 'Get Full Edge Label' and option != 'Translate':
                     button.connect("clicked", self.manipulate_cb, option, node)
                 if option == 'View Source':
-                    if not label_has_source(node.label):
+                    if not label_has_source(node.attrs["label"]):
                         button.set_sensitive(False)
-                    elif label_has_source(node.label) and label_collapsed(node.label):
+                    elif label_has_source(node.attrs["label"]) and label_collapsed(node.attrs["label"]):
                         button.connect("clicked", lambda w, n: self.select_source(n), node)
                     else:
                         button.connect("clicked", self.manipulate_cb, option, node)
                 elif option == 'Translate':
-                    if not label_has_module_offset(node.label):
+                    if node.attrs["offset"].find("(null)") != -1 or node.attrs["module"].find("(null)") != -1 or node.attrs["source"].find("(null)") == -1:
                         button.set_sensitive(False)
                     else:
                         button.connect("clicked", lambda x:self.on_translate())
@@ -4336,15 +4362,21 @@ enterered as a regular expression.
                 if option != 'View Source' and option != 'Get Full Edge Label' and option != 'Translate':
                     menu_item.connect('activate', self.manipulate_cb, option, node)
                 if option == 'View Source':
-                    if label_has_source(node.label):
-                        if not label_collapsed(node.label):
+                    if label_has_source(node.attrs["label"]):
+                        if not label_collapsed(node.attrs["label"]):
                             menu_item.connect('activate', self.manipulate_cb, option, node)
                         else:
                             sub_menu = gtk.Menu()
-                            frames = node.label.split('\\n')
-                            for i, frame in enumerate(frames):
-                                decomposed_node = decompose_node(frame)
-                                sub_menu_item = gtk.MenuItem(decomposed_node.source_line)
+                            sources = node.attrs["source"].split('\\n')
+                            for i, source in enumerate(sources):
+                                if source == "(null)":
+                                    source = "?"
+                                else:
+                                    source = os.path.basename(source)
+                                cur_line_num = node.attrs["line"].split('\\n')[i]
+                                if cur_line_num == "(null)":
+                                    cur_line_num = "?"
+                                sub_menu_item = gtk.MenuItem(source + cur_line_num)
                                 sub_menu_item.connect('button-release-event', lambda w, e, o, n, i2: self.get_current_graph().view_source(n, i2), option, node, i)
                                 sub_menu.append(sub_menu_item)
                                 sub_menu_item.show()
@@ -4353,7 +4385,7 @@ enterered as a regular expression.
                     else:
                         menu_item.set_sensitive(False)
                 elif option == 'Translate':
-                    if label_has_module_offset(node.label):
+                    if label_has_module_offset(node.attrs["label"]):
                         menu_item.connect('activate', lambda w: self.on_translate())
                     else:
                         menu_item.set_sensitive(False)
@@ -4372,17 +4404,24 @@ enterered as a regular expression.
 
     def select_source(self, node):
         self.my_dialog.destroy()
-        frames = decompose_node(node.label, -1)
-        if (type(frames) == DecomposedNode):
-            decomposed_node = frames
+        frames = node.attrs["label"].split('\\n')
+        if len(frames) == 1:
             self.get_current_graph().view_source(node)
         else:
             self.my_dialog = gtk.Dialog("Select Frame")
             hbox = gtk.HBox()
             hbox.pack_start(gtk.Label("Select a frame"), False, False, 0)
             combo_box = gtk.combo_box_new_text()
-            for i, decomposed_node in enumerate(frames):
-                combo_box.append_text(decomposed_node.source_line)
+            for i, frame in enumerate(frames):
+                source = node.attrs["source"].split('\\n')[i]
+                if source == "(null)":
+                    source = "?"
+                else:
+                    source = os.path.basename(source)
+                cur_line_num = node.attrs["line"].split('\\n')[i]
+                if cur_line_num == "(null)":
+                    cur_line_num = "?"
+                combo_box.append_text(source + cur_line_num)
             combo_box.set_active(0)
             hbox.pack_start(combo_box, False, False, 10)
             self.my_dialog.vbox.pack_start(hbox, True, True, 0)
@@ -4409,8 +4448,9 @@ enterered as a regular expression.
         elif data == 'Collapse Depth':
             ret = self.get_current_graph().collapse_depth(node)
         elif data == 'Join Equivalence Class':
+            old_attrs = copy.copy(node.attrs)
             num_edges = len(self.get_current_graph().edges)
-            ret, (leaf_node, label) = self.get_current_graph().join_eq_c(node, True)
+            ret, (leaf_node, attrs) = self.get_current_graph().join_eq_c(node, True)
         elif data == 'Expand':
             ret = self.get_current_graph().expand(node)
         elif data == 'Expand All':
@@ -4427,7 +4467,7 @@ enterered as a regular expression.
         # post process
         if data not in ['View Source', 'Join Equivalence Class']:
             if ret is True:
-                self.get_current_graph().action_history.append('%s: %s' % (data, node.label))
+                self.get_current_graph().action_history.append('%s: %s' % (data, node.attrs["label"]))
                 self.update_history()
             else:
                 self.get_current_graph().undo(False)
@@ -4441,6 +4481,7 @@ enterered as a regular expression.
         if data == 'Join Equivalence Class' and ret is True:
             old_graph = self.get_current_graph()
             self.on_reset_layout()
+            node.attrs = copy.copy(old_attrs)
             for i in xrange(len(old_graph.edges) - num_edges):
                 old_graph.edges.pop()
             old_graph.undo(False)

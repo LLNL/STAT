@@ -38,7 +38,6 @@ FILE *gStatOutFp = NULL;
 //! a pointer to the current STAT_BackEnd object
 STAT_BackEnd *gBePtr;
 
-
 StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType)
 {
     int intRet;
@@ -64,7 +63,6 @@ StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType)
             return STAT_LMON_ERROR;
         }
     }
-
     return STAT_OK;
 }
 
@@ -205,6 +203,17 @@ void STAT_BackEnd::clear2dNodesAndEdges()
         if (edgesIter->second.second != NULL)
             statFreeEdge(edgesIter->second.second);
     edges2d_.clear();
+#ifdef GRAPHLIB_3_0
+    nodeIdToAttrs_.clear();
+// We don't use the edge attrs here yet since we just derrive it from the BV upon generateGraphs
+//    map<int, map<string, void *> >::iterator edgeIdToAttrsIter;
+//    map<string, void *>::iterator edgeAttrsIter;
+//    for (edgeIdToAttrsIter = edgeIdToAttrs_.begin(); edgeIdToAttrsIter != edgeIdToAttrs_.end(); edgeIdToAttrsIter++)
+//        for (edgeAttrsIter = edgeIdToAttrsIter->second.begin(); edgeAttrsIter != edgeIdToAttrsIter->second.end(); edgeAttrsIter++)
+//            if (edgeAttrsIter->second != NULL)
+//                statFreeEdgeAttr(edgeAttrsIter->first.c_str(), edgeAttrsIter->second);
+//    edgeIdToAttrs_.clear();
+#endif
 }
 
 void STAT_BackEnd::clear3dNodesAndEdges()
@@ -274,8 +283,13 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
     StatCountRepEdge_t *countRepEdge = NULL;
     graphlib_graph_p *currentGraph;
     graphlib_error_t graphlibError;
+#ifdef GRAPHLIB_3_0
+    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1,NULL};
+    graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0,NULL};
+#else
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
+#endif
     map<int, string> *nodes;
     map<int, pair<int, StatBitVectorEdge_t *> > *edges;
     map<int, string>::iterator nodesIter;
@@ -310,7 +324,6 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error initializing graph\n");
             return STAT_GRAPHLIB_ERROR;
         }
-
         for (nodesIter = (*nodes).begin(); nodesIter != (*nodes).end(); nodesIter++)
         {
             /* Add \ character before '<' and '>' characters for dot format */
@@ -332,6 +345,17 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 tempString.insert(delimPos, "\\");
             }
             nodeAttr.label = (void *)tempString.c_str();
+#ifdef GRAPHLIB_3_0
+            int numNodeAttrs, index;
+            map<string, string>::iterator nodeAttrIter;
+            graphlibError = graphlib_getNumNodeAttrs(*currentGraph, &numNodeAttrs);
+            nodeAttr.attr_values = (void **)calloc(1, numNodeAttrs * sizeof(void *));
+            for (nodeAttrIter = nodeIdToAttrs_[nodesIter->first].begin(); nodeAttrIter != nodeIdToAttrs_[nodesIter->first].end(); nodeAttrIter++)
+            {
+                graphlibError = graphlib_getNodeAttrIndex(*currentGraph, nodeAttrIter->first.c_str(), &index);
+                nodeAttr.attr_values[index] =  statCopyNodeAttr(nodeAttrIter->first.c_str(), nodeAttrIter->second.c_str());
+            }
+#endif
             graphlibError = graphlib_addNode(*currentGraph, nodesIter->first, &nodeAttr);
             if (GRL_IS_FATALERROR(graphlibError))
             {
@@ -341,6 +365,19 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
         }
         for (edgesIter = (*edges).begin(); edgesIter != (*edges).end(); edgesIter++)
         {
+#ifdef GRAPHLIB_3_0
+            int numEdgeAttrs;
+            graphlibError = graphlib_getNumEdgeAttrs(*currentGraph, &numEdgeAttrs);
+            edgeAttr.attr_values = (void **)calloc(1, numEdgeAttrs * sizeof(void *));
+// We don't use the edge attrs here yet since we just derrive it from the BV
+//            int index;
+//            map<string, void *>::iterator edgeAttrIter;
+//            for (edgeAttrIter = edgeIdToAttrs_[edgesIter->first].begin(); edgeAttrIter != edgeIdToAttrs_[edgesIter->first].end(); edgeAttrIter++)
+//            {
+//                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, edgeAttrIter->first.c_str(), &index);
+//                edgeAttr.attr_values[index] = statCopyEdgeAttr(edgeAttrIter->first.c_str(), edgeAttrIter->second);
+//            }
+#endif
             if (sampleType_ & STAT_SAMPLE_COUNT_REP)
             {
                 countRepEdge = getBitVectorCountRep(edgesIter->second.second, statRelativeRankToAbsoluteRank);
@@ -350,9 +387,26 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                     return STAT_ALLOCATE_ERROR;
                 }
                 edgeAttr.label = (void *)countRepEdge;
+#ifdef GRAPHLIB_3_0
+                int index;
+                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, "count", &index);
+                edgeAttr.attr_values[index] = (void *)&countRepEdge->count;
+                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, "rep", &index);
+                edgeAttr.attr_values[index] = (void *)&countRepEdge->representative;
+                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, "sum", &index);
+                edgeAttr.attr_values[index] = (void *)&countRepEdge->checksum;
+#endif
             }
             else
+            {
                 edgeAttr.label = (void *)edgesIter->second.second;
+#ifdef GRAPHLIB_3_0
+                int index;
+                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, "bv", &index);
+                edgeAttr.attr_values[index] = (void *)edgesIter->second.second;
+#endif
+            }
+
             graphlibError = graphlib_addDirectedEdge(*currentGraph, edgesIter->second.first, edgesIter->first, &edgeAttr);
             if (GRL_IS_FATALERROR(graphlibError))
             {
@@ -900,6 +954,7 @@ StatError_t STAT_BackEnd::mainLoop()
             FD_SET(swNotificationFd, &readFds);
 
             /* call select to get pending requests */
+sleep(2);            
             intRet = select(maxFd, &readFds, &writeFds, &exceptFds, NULL);
             if (intRet < 0 && errno != EINTR)
             {
@@ -1312,11 +1367,11 @@ StatError_t STAT_BackEnd::mainLoop()
                     }
                     else
                         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Dysect library not loaded yet\n");
-                } 
-                else 
+                }
+                else
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Not Dysect packet\n");
 #endif
-              
+
                 /* Unknown tag */
                 printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Unknown Tag %d, first = %d, last = %d\n", tag, PROT_ATTACH_APPLICATION, PROT_SEND_NODE_IN_EDGE_RESP);
                 break;
@@ -1376,7 +1431,7 @@ StatError_t STAT_BackEnd::attach()
     ProcessSet::AttachInfo pAttach;
     Process::ptr pcProc;
   #ifdef BGL
-    #ifdef SW_VERSION_8_1_3 
+    #ifdef SW_VERSION_8_1_3
     /* TODO: version 8.1.3 (or 8.2) doesn't exist with this feature yet */
     BGQData::setStartupTimeout(600);
     #endif
@@ -1880,7 +1935,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
 }
 
 
-std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
+std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Frame &frame, int depth)
 {
     int lineNum, i, value, pyLineNo;
     bool boolRet;
@@ -1889,11 +1944,15 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
     Address addr;
     StatError_t statError;
 
-    boolRet = frame.getName(name);
-    if (boolRet == false)
-        name = "[unknown]";
-    else if (name == "")
-        name = "[empty]";
+    if (!(sampleType_ & STAT_SAMPLE_MODULE_OFFSET))
+    {
+        boolRet = frame.getName(name);
+        if (boolRet == false)
+            name = "[unknown]";
+        else if (name == "")
+            name = "[empty]";
+        nodeAttrs["function"] = name;
+    }
 
     /* Gather Python script level traces if requested */
     if (sampleType_ & STAT_SAMPLE_PYTHON && name.find("PyEval_EvalFrameEx") != string::npos)
@@ -1905,6 +1964,10 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
             {
                 snprintf(buf, BUFSIZE, "%s@%s:%d", pyFun, pySource, pyLineNo);
                 name = buf;
+                nodeAttrs["function"] = pyFun;
+                nodeAttrs["source"] = pySource;
+                snprintf(buf, BUFSIZE, ":%d", pyLineNo);
+                nodeAttrs["line"] = buf;
             }
             else
                 name = pyFun;
@@ -1931,6 +1994,7 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
 #endif
             snprintf(buf, BUFSIZE, "@0x%lx", frame.getRA() - 1);
         name += buf;
+        nodeAttrs["pc"] = buf;
     }
     else if (sampleType_ & STAT_SAMPLE_MODULE_OFFSET)
     {
@@ -1948,6 +2012,8 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
         name = modName;
         snprintf(buf, BUFSIZE, "+0x%lx", offset);
         name += buf;
+        nodeAttrs["module"] = modName;
+        nodeAttrs["offset"] = buf;
     }
     else if (sampleType_ & STAT_SAMPLE_LINE)
     {
@@ -1965,11 +2031,13 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
         }
         name += "@";
         name += fileName;
+        nodeAttrs["source"] = fileName;
         if (lineNum != 0)
-        {
             snprintf(buf, BUFSIZE, ":%d", lineNum);
-            name += buf;
-        }
+        else
+            snprintf(buf, BUFSIZE, ":?");
+        name += buf;
+        nodeAttrs["line"] = buf;
         if (extractVariables_ != NULL)
         {
             for (i = 0; i < nVariables_; i++)
@@ -1987,6 +2055,7 @@ std::string STAT_BackEnd::getFrameName(const Frame &frame, int depth)
                     value = *((int *)buf);
                     snprintf(buf, BUFSIZE, "$%s=%d", extractVariables_[i].variableName, value);
                     name += buf;
+                    nodeAttrs["vars"] = nodeAttrs["vars"] + buf;
                 }
             }
         } /* if (extractVariables_ != NULL) */
@@ -2004,6 +2073,8 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
     string name, path;
     vector<Frame> currentStackWalk, bestStackWalk;
     vector<string> trace;
+    map<string, string>::iterator nodeAttrsIter;
+    map<string, map<string, string> > nameToNodeAttrs;
     StatBitVectorEdge_t *edge = NULL;
     vector<Dyninst::THR_ID> threads;
     ProcDebug *pDebug = NULL;
@@ -2139,7 +2210,8 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                 isPyTrace_ = false;
                 for (i = bestStackWalk.size() - 1; i >= 0; i = i - 1)
                 {
-                    name = getFrameName(bestStackWalk[i], bestStackWalk.size() - i + 1);
+                    map<string, string> nodeAttrs;
+                    name = getFrameName(nodeAttrs, bestStackWalk[i], bestStackWalk.size() - i + 1);
                     if (sampleType_ & STAT_SAMPLE_PYTHON)
                     {
                         if (isPyTrace_ == true && isFirstPythonFrame == true)
@@ -2158,6 +2230,7 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                             continue;
                     }
                     trace.push_back(name);
+                    nameToNodeAttrs[name] = nodeAttrs;
                 }
             }
         } /* else branch of if (proc == NULL) */
@@ -2167,6 +2240,11 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
             path += trace[i].c_str();
             nodeId = statStringHash(path.c_str());
             nodes2d_[nodeId] = trace[i];
+#ifdef GRAPHLIB_3_0
+            map<string, string> nodeAttrs = nameToNodeAttrs[trace[i].c_str()];
+            for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
+                nodeIdToAttrs_[nodeId][nodeAttrsIter->first] = nodeAttrsIter->second;
+#endif
             update2dEdge(prevId, nodeId, edge);
             prevId = nodeId;
         }
@@ -2185,6 +2263,7 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
     bool myAbort = false, allMyChildrenAbort = true;
     set<int> myRanks, kidsRanks;
     set<int>::iterator myRanksIter;
+    map<string, string> nodeAttrs;
     string name, newNodeIdNames;
     frame_set_t &children = stackwalkerNode->getChildren();
     frame_set_t::iterator childrenIter;
@@ -2246,7 +2325,7 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             allMyChildrenAbort = false;
             continue;
         }
-        name = getFrameName(*frame);
+        name = getFrameName(nodeAttrs, *frame);
         childrenNames[name].insert(child);
     }
 
@@ -2284,6 +2363,9 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             newNodeIdNames = nodeIdNames + name;
             newChildId = statStringHash(newNodeIdNames.c_str());
             nodes2d_[newChildId] = name;
+#ifdef GRAPHLIB_3_0
+            nodeIdToAttrs_[newChildId]["function"] = name;
+#endif
         }
 
         /* Traversal 2.1: For each new node, recursively add its children to the graph */
@@ -2349,12 +2431,13 @@ bool statFrameCmp(const Frame &frame1, const Frame &frame2)
 {
     int depth = -1;
     string name1, name2;
+    map<string, string> nodeAttrs;
 
 #ifdef PROTOTYPE_TO
     /* TODO: compute the depth of each frame for variable extraction */
 #endif
-    name1 = gBePtr->getFrameName(frame1, depth);
-    name2 = gBePtr->getFrameName(frame2, depth);
+    name1 = gBePtr->getFrameName(nodeAttrs, frame1, depth);
+    name2 = gBePtr->getFrameName(nodeAttrs, frame2, depth);
 
     if (name1.compare(name2) < 0)
         return true;
@@ -2532,6 +2615,9 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
 
         int newChildId = statStringHash(msg.c_str());
         nodes2d_[newChildId] = msg;
+#ifdef GRAPHLIB_3_0
+        nodeIdToAttrs_[newChildId]["function"] = msg;
+#endif
 
         StatBitVectorEdge_t *edge = initializeBitVectorEdge(proctabSize_);
         if (edge == NULL)
@@ -2588,7 +2674,7 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
     {
         if(DysectAPI::ProcessMgr::isActive())
             DysectAPI::ProcessMgr::detachAll();
-        else 
+        else
             procSet_->temporaryDetach();
     }
   #else
