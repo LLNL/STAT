@@ -2771,7 +2771,7 @@ bool STAT_FrontEnd::isRunning()
     return isRunning_;
 }
 
-StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, char *variableSpecification)
+StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, const char *variableSpecification)
 {
     StatError_t statError;
 

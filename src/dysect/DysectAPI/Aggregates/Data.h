@@ -129,7 +129,7 @@ namespace DysectAPI {
     void* getBuf() { return buf; }
 
     bool getStr(std::string& str);
-    char *getFmt();
+    const char *getFmt();
 
     Value& operator=(Value& rhs);
     bool operator<(Value &rhs);

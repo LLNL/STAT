@@ -12,6 +12,7 @@ include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphR
 if ENABLE_DYSECTAPI
 stat_cppflags_add_dysectapi = -I$(abs_top_srcdir)/src -I$(abs_top_srcdir)/src/dysect -I$(abs_top_srcdir)/src/dysect/libDysectAPI/include
 stat_fe_ldadd_add_dysectapi = @LIBDYSECTAPIFE@ @LIBDYSECTFE@
+stat_fe_cppflags_add_dysectapi = -D__DYSECT_IS_FRONTEND
 stat_be_ldadd_add_dysectapi = @LIBDYSECTAPIBE@ @LIBDYSECTBE@
 stat_fd_ldadd_add_dysectapi = @LIBDYSECTAPIFD@
 stat_ldflags_add_dysectapi = -L@LIBDYSECTAPILOC@ -L@LIBDYSECTLOC@
@@ -26,7 +27,7 @@ STATBenchD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
 STATBenchbin_LDADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
 STATBenchD_LDADD = libstatbe.la $(stat_be_ldadd_add_dysectapi) @BELIBS@
 STATBenchD_CPPFLAGS = $(stat_cppflags_add_dysectapi)
-STATBenchbin_CPPFLAGS = $(stat_cppflags_add_dysectapi)
+STATBenchbin_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
 endif
 
 if ENABLE_GRAPHLIB20
@@ -53,9 +54,9 @@ stat_fe_la_sources_base = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h ST
 libstatbe_la_SOURCES = $(stat_be_la_sources_base) $(stat_graphlib_sources) $(stat_be_la_source_add_dysectapi) $(stat_be_la_sources_fgfs)
 libstatfe_la_SOURCES = $(stat_fe_la_sources_base) $(stat_graphlib_sources) $(stat_fe_la_source_add_dysectapi)
 libstatbe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
-libstatfe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
+libstatfe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
 STATD_CPPFLAGS = $(stat_cppflags_add_dysectapi)
-STATbin_CPPFLAGS = $(stat_cppflags_add_dysectapi)
+STATbin_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
 
 pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
 pkglibdir = $(libdir)
@@ -77,15 +78,15 @@ GUI_SWIG_SOURCES = STAT.i
 pyexec_LTLIBRARIES += _STAT.la
 python_PYTHON += STAT.py
 _STAT_la_SOURCES = STAT_wrap.C $(GUI_SWIG_SOURCES)
-_STAT_la_CPPFLAGS = -I./ $(stat_cppflags_add_dysectapi) -D__DYSECT_IS_FRONTEND
+_STAT_la_CPPFLAGS = -I./ $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
 _STAT_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi)
 _STAT_la_LIBADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
 
 STAT_wrap.C:$(GUI_SWIG_SOURCES) Makefile
 if ENABLE_DYSECTAPI
-	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) -DDYSECTAPI $(AM_CXXFLAGS) -o $@ $<
+	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) -DDYSECTAPI $(AM_CXXFLAGS) -o $@ $<
 else
-	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(AM_CXXFLAGS) -o $@ $<
+	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) $(AM_CXXFLAGS) -o $@ $<
 endif
 
 STAT.py:$(GUI_SWIG_SOURCES) Makefile

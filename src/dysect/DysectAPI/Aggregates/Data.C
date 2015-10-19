@@ -82,7 +82,7 @@ Value::Value(bool bval) : content(boolType), len(0), buf(0) {
   populate<bool>(bval);
 }
 
-char *Value::getFmt()
+const char *Value::getFmt()
 {
   if (content == intType)
     return "%d";

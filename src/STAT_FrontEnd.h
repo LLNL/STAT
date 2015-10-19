@@ -64,7 +64,6 @@ extern "C"
 #define STAT_MAX_FANOUT 64
 
 #ifdef DYSECTAPI
-  #define __DYSECT_IS_FRONTEND
   #include "DysectAPI/DysectAPIFE.h"
 #endif
 
@@ -309,7 +308,7 @@ class STAT_FrontEnd
                    gather along with the traces
             \return STAT_OK on success
         */
-        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, const char *variableSpecification = "NULL");
 
         //! Collect the most recent stack trace from all daemons
         /*!
