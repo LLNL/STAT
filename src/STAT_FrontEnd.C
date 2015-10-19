@@ -3024,8 +3024,8 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating sorted graph\n");
         gStartTime.setTime();
         offset = 0;
-        graphlibError = graphlib_newGraph(&sortedStackTraces, gStatReorderFunctions);
-        if (GRL_IS_FATALERROR(graphlibError))
+        sortedStackTraces = statNewGraph(gStatReorderFunctions);
+        if (sortedStackTraces == NULL)
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
             return STAT_GRAPHLIB_ERROR;

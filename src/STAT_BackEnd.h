@@ -228,13 +228,14 @@ class STAT_BackEnd
 
         //! Return the STAT name that should be given for a specific frame
         /*!
+            \param nodeAttrs[out] - the node attributes for this frame
             \param frame - the Frame to gather the name from
             \param depth - [optional] the depth of this frame in the stack walk.
                    This is necessary for identifying the appropriate frame for
                    variable extraction.
             \return the name to use for this frame
         */
-        std::string getFrameName(const Dyninst::Stackwalker::Frame &frame, int depth = -1);
+        std::string getFrameName(std::map<std::string, std::string> &nodeAttrs, const Dyninst::Stackwalker::Frame &frame, int depth = -1);
 
         //! Print the STAT error type and error message
         /*!
@@ -563,6 +564,11 @@ class STAT_BackEnd
         MRN::Port parentPort_;          /*!< the MRNet parent's port */
         MRN::Stream *broadcastStream_;  /*!< the main broadcast and
                                              acknowledgement stream */
+#ifdef GRAPHLIB_3_0
+        std::map<int, std::map<std::string, std::string> > nodeIdToAttrs_;
+// We don't use the edge attrs here yet since we just derrive it from the BV upon generateGraphs
+//        std::map<int, std::map<std::string, void *> > edgeIdToAttrs_;
+#endif
         std::map<int, std::string> nodes2d_; /*!< the 2D prefix tree nodes */
         std::map<int, std::string> nodes3d_; /*!< the 3D prefix tree nodes */
         std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges2d_; /*!< the 2D prefix tree edges */

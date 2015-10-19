@@ -2,13 +2,16 @@
 #set -ex
 
 prefix="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test"
-testnums="01 02 03"
-testmodes="attach launch"
+#testnums="01 02 03"
+#testmodes="attach launch"
+testnums="01"
+testmodes="launch"
 
 statcl_command="${prefix}/bin/stat-cl"
 app_exe="${prefix}/share/STAT/examples/bin/dysect_test"
 logmode=" -l FE -l BE -l CP "
-topologymode=" -u 1-1-1 -p 8 -A -n 8 "
+topologymode=""
+#topologymode=" -u 1-1-1 -p 8 -A -n 8 "
 
 rm -rf test_results
 

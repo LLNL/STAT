@@ -38,6 +38,9 @@ enum StatSampleOptions_t {
 #include <stdlib.h>
 #include <stdint.h>
 #include "graphlib.h"
+#include <vector>
+#include <string>
+#include <map>
 
 #define STAT_GRAPH_CHUNK 8192
 
@@ -68,6 +71,8 @@ typedef struct
     \return the hash value of the string
 */
 unsigned int statStringHash(const char *str);
+
+graphlib_graph_p statNewGraph(graphlib_functiontable_p functions);
 
 //! Created a new graph of type sampleType with a root node
 /*!
@@ -113,6 +118,7 @@ void statFreeCountRepFunctions();
     \return the length of the bit vector (i.e., number of StatBitVector_t elements)
 */
 size_t statBitVectorLength(int numTasks);
+
 
 //! Serialize the STAT node object into a buffer
 /*!
@@ -163,6 +169,65 @@ void *statCopyNode(const void *node);
 */
 void statFreeNode(void *node);
 
+#ifdef GRAPHLIB_3_0
+//! Serialize the STAT node object into a buffer
+/*!
+    \param key - the attribute key
+    \param buf - the buffer to write to
+    \param node - a pointer to the node object
+*/
+void statSerializeNodeAttr(const char *key, char *buf, const void *node);
+
+//! Calculate the serialized length of the STAT node object
+/*!
+    \param key - the attribute key
+    \param node - a pointer to the node object
+    \return the serialized length of the node
+*/
+unsigned int statSerializeNodeAttrLength(const char *key, const void *node);
+
+//! Deserialize the STAT node object from a buffer
+/*!
+    \param key - the attribute key
+    \param[out] node - a return pointer to the new node object pointer
+    \param buf - the serialized buffer
+    \param bufLength - the length of the serialized buffer
+*/
+void statDeserializeNodeAttr(const char *key, void **node, const char *buf, unsigned int bufLength);
+
+//! Translate the STAT node object into a string
+/*!
+    \param key - the attribute key
+    \param node - a pointer to the node object
+    \return the string representation of the node
+*/
+char *statNodeAttrToText(const char *key, const void *node);
+
+//! Merge two STAT node objects
+/*!
+    \param key - the attribute key
+    \param[in,out] node1 - the node to merge into
+    \param node2 - the node to merge with
+*/
+void *statMergeNodeAttr(const char *key, void *node1, const void *node2);
+
+//! Copy a STAT node object
+/*!
+    \param key - the attribute key
+    \param node - a pointer to the node object to be copied
+    \return a pointer to the new node copy
+*/
+void *statCopyNodeAttr(const char *key, const void *node);
+
+//! Free a STAT node object
+/*!
+    \param key - the attribute key
+    \param node - a pointer to the node object to be freed
+*/
+void statFreeNodeAttr(const char *key, void *node);
+#endif
+
+
 //! Serialize a STAT edge object into a buffer
 /*!
     \param buf - the buffer to write to
@@ -212,6 +277,64 @@ void *statCopyEdge(const void *edge);
 */
 void statFreeEdge(void *edge);
 
+#ifdef GRAPHLIB_3_0
+//! Serialize a STAT edge object into a buffer
+/*!
+    \param key - the attribute key
+    \param buf - the buffer to write to
+    \param edge - a pointer to the edge object
+*/
+void statSerializeEdgeAttr(const char *key, char *buf, const void *edge);
+
+//! Calculate the serialized length of a STAT edge object
+/*!
+    \param key - the attribute key
+    \param edge - a pointer to the edge object
+    \return the serialized length of the edge
+*/
+unsigned int statSerializeEdgeAttrLength(const char *key, const void *edge);
+
+//! Deserialize a STAT edge object from a buffer
+/*!
+    \param key - the attribute key
+    \param[out] edge - a pointer to the edge object
+    \param buf - the serialized buffer
+    \param bufLength - the length of the serialized buffer
+*/
+void statDeserializeEdgeAttr(const char *key, void **edge, const char *buf, unsigned int bufLength);
+
+//! Translate a STAT edge object into a string
+/*!
+    \param key - the attribute key
+    \param edge - a pointer to the edge object
+    \return the string representation of the edge
+*/
+char *statEdgeAttrToText(const char *key, const void *edge);
+
+//! Merge two STAT edge objects
+/*!
+    \param key - the attribute key
+    \param[in,out] edge1 - the edge to merge into
+    \param edge2 - the edge to merge in
+*/
+void *statMergeEdgeAttr(const char *key, void *edge1, const void *edge2);
+
+//! Copy a STAT edge object
+/*!
+    \param key - the attribute key
+    \param edge - a pointer to the edge object to be copied
+    \return a pointer to the new edge copy
+*/
+void *statCopyEdgeAttr(const char *key, const void *edge);
+
+//! Free a STAT edge object
+/*!
+    \param key - the attribute key
+    \param edge - a pointer to the edge object to be freed
+*/
+void statFreeEdgeAttr(const char *key, void *edge);
+#endif
+
 //! Calculate a checksum of a STAT edge object
 /*!
     \param edge - a pointer to the edge object
@@ -233,12 +356,37 @@ long statEdgeCheckSum(const void *edge);
 */
 void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLength);
 
+#ifdef GRAPHLIB_3_0
+//! Deserialize a STAT edge object for the STAT filter.
+/*!
+    \param[out] edge - a pointer to the edge object
+    \param buf - the serialized buffer
+    \param bufLength - the length of the serialized buffer
+
+    Deserialize a STAT edge object from a buffer into the appropriate location
+    in the bit vector for the STAT filter. This requires
+    gStatGraphRoutinesTotalWidth to be set to the final bit vector width,
+    gStatGraphRoutinesEdgeLabelWidths must be a list of bit vector widths, and
+    gStatGraphRoutinesCurrentIndex must be set to the current index.
+*/
+void statFilterDeserializeEdgeAttr(const char *key, void **edge, const char *buf, unsigned int bufLength);
+#endif
+
 //! Initialize an empty bit vector for initializing the FrontEnd's reorder graph
 /*!
     \param edge - a pointer to the edge object to be copied
     \return a pointer to the new edge copy
 */
 void *statCopyEdgeInitializeEmpty(const void *edge);
+
+#ifdef GRAPHLIB_3_0
+//! Initialize an empty bit vector for initializing the FrontEnd's reorder graph
+/*!
+    \param edge - a pointer to the edge object to be copied
+    \return a pointer to the new edge copy
+*/
+void *statCopyEdgeAttrInitializeEmpty(const char *key, const void *edge);
+#endif
 
 //! Merge the unordered input vector bits into the reorder graph.
 /*!
@@ -253,6 +401,22 @@ void *statCopyEdgeInitializeEmpty(const void *edge);
     set to the start index for the bit vector in edge
 */
 void *statMergeEdgeOrdered(void *edge1, const void *edge2);
+
+#ifdef GRAPHLIB_3_0
+//! Merge the unordered input vector bits into the reorder graph.
+/*!
+    \param[in,out] edge1 - the edge to merge into
+    \param edge2 - the edge to merge in
+
+    Merge the unordered input vector bits into the appropriate in-order bits of
+    the frontend's reorder graph. This requires gStatGraphRoutinesRanksList to
+    be set to the ranks list for the current bit vector,
+    gStatGraphRoutinesRanksListLength must be set to the length of the ranks
+    list for the current bitvector, and gStatGraphRoutinesCurrentIndex must be
+    set to the start index for the bit vector in edge
+*/
+void *statMergeEdgeAttrOrdered(const char *key, void *edge1, const void *edge2);
+#endif
 
 //! Serialize a STAT count + rep edge object into a buffer
 /*!
@@ -303,6 +467,57 @@ void *statCopyCountRepEdge(const void *edge);
 */
 void statFreeCountRepEdge(void *edge);
 
+#ifdef GRAPHLIB_3_0
+//! Serialize a STAT count + rep edge object into a buffer
+/*!
+    \param buf - the buffer to write to
+    \param edge - a pointer to the edge object
+*/
+void statSerializeCountRepEdgeAttr(const char * key, char *buf, const void *edge);
+
+//! Calculate the serialized length of a STAT count + rep edge object
+/*!
+    \param edge - a pointer to the edge object
+    \return the serialized length of the edge
+*/
+unsigned int statSerializeCountRepEdgeAttrLength(const char * key, const void *edge);
+
+//! Deserialize a STAT count + rep edge object from a buffer
+/*!
+    \param[out] edge - a pointer to the edge object
+    \param buf - the serialized buffer
+    \param bufLength - the length of the serialized buffer
+*/
+void statDeserializeCountRepEdgeAttr(const char * key, void **edge, const char *buf, unsigned int bufLength);
+
+//! Translate a STAT count + rep edge object into a string
+/*!
+    \param edge - a pointer to the edge object
+    \return the string representation of the edge
+*/
+char *statCountRepEdgeAttrToText(const char * key, const void *edge);
+
+//! Merge a pair of STAT count + rep edges
+/*!
+    \param[in,out] edge1 - the edge to merge into
+    \param edge2 - the edge to merge in
+*/
+void *statMergeCountRepEdgeAttr(const char * key, void *edge1, const void *edge2);
+
+//! Copy a STAT count + rep edge
+/*!
+    \param edge - a pointer to the edge object to be copied
+    \return a pointer to the new edge copy
+*/
+void *statCopyCountRepEdgeAttr(const char * key, const void *edge);
+
+//! Free a STAT count + rep edge object
+/*!
+    \param edge - a pointer to the edge object to be freed
+*/
+void statFreeCountRepEdgeAttr(const char * key, void *edge);
+#endif
+
 //! Calculate a checksum of a STAT count + rep edge object
 /*!
     \param edge - a pointer to the edge object
@@ -317,5 +532,15 @@ long statCountRepEdgeCheckSum(const void *edge);
     \return the count + representative version of the edge
 */
 StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int));
+
+#ifdef GRAPHLIB_3_0
+//! Translate a full bit vector edge into a count + representative edge
+/*!
+    \param edge - a pointer to the edge object
+    \param relativeRankToAbsoluteRank - a pointer to a function that translates relative (daemon) rank into absolute (global/MPI) rank
+    \return the count + representative version of the edge
+*/
+StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int));
+#endif
 
 #endif

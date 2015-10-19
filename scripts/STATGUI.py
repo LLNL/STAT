@@ -23,7 +23,7 @@ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendr
 __version__ = "2.2.0"
 
 import STAThelper
-from STAThelper import var_spec_to_string, get_task_list, get_proctab, decompose_node, HAVE_PYGMENTS
+from STAThelper import var_spec_to_string, get_task_list, get_proctab, HAVE_PYGMENTS
 if HAVE_PYGMENTS:
     import pygments
     import pango
@@ -34,8 +34,6 @@ if HAVE_PYGMENTS:
 import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO, run_gtk_main_loop
 
-import DysectView
-from DysectView import DysectDotWindow
 import sys
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
@@ -43,6 +41,8 @@ from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_B
 HAVE_DYSECT = True
 try:
     from STAT import DysectAPI_OK, DysectAPI_Error, DysectAPI_InvalidSystemState, DysectAPI_LibraryNotLoaded, DysectAPI_SymbolNotFound, DysectAPI_SessionCont, DysectAPI_SessionQuit, DysectAPI_DomainNotFound, DysectAPI_NetworkError, DysectAPI_DomainExpressionError, DysectAPI_StreamError, DysectAPI_OptimizedOut
+    import DysectView
+    from DysectView import DysectDotWindow
 except:
     HAVE_DYSECT = False
 
@@ -656,12 +656,11 @@ host[1-10,12,15-20];otherhost[30]
         If found, prompt user to gather stack trace with variable values."""
         found = False
         for node in self.get_current_graph().nodes:
-            if node.lex_string is not None:
-                if node.lex_string.find('$') != -1 and node.lex_string.find('=') == -1:
-                    decomposed_node = decompose_node(node.label)
-                    source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
-                    line = int(decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:])
-                    temp = node.lex_string[node.lex_string.find('$') + 1:]
+            if node.attrs.get("lex_string") is not None:
+                if node.attrs["lex_string"].find('$') != -1 and node.attrs["lex_string"].find('=') == -1:
+                    source = node.attrs["source"]
+                    line = int(node.attrs["line"].strip(":"))
+                    temp = node.attrs["lex_string"][node.attrs["lex_string"].find('$') + 1:]
                     while 1:
                         var = temp[:temp.find('(')]
                         if var == 'iter#':
