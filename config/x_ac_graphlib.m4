@@ -1,6 +1,7 @@
 AC_DEFUN([X_AC_GRAPHLIB], [
 
   AM_CONDITIONAL([ENABLE_GRAPHLIB20], false)
+  AM_CONDITIONAL([ENABLE_GRAPHLIB30], false)
 
   AC_ARG_WITH(graphlib, 
     [AS_HELP_STRING([--with-graphlib=prefix],
@@ -36,6 +37,20 @@ AC_DEFUN([X_AC_GRAPHLIB], [
       AM_CONDITIONAL([ENABLE_GRAPHLIB20], true)
     ]
   )
+  AC_COMPILE_IFELSE([#include "graphlib.h"
+    #include <stdlib.h>
+    #include <stdio.h>
+    int main()
+    {
+      int numNodeAttrs;
+      graphlib_getNumNodeAttrs(NULL, &numNodeAttrs);
+      return 0;
+    }],
+    [AC_DEFINE([GRAPHLIB_3_0], [], [Graphlib 3.0])
+      graphlib_vers=3.0
+      AM_CONDITIONAL([ENABLE_GRAPHLIB30], true)
+    ]
+  )
   if test "$graphlib_vers" = 1 ; then
     AC_MSG_ERROR([STAT requires graphlib 2.0 or greater.  Specify graphlib prefix with --with-graphlib])
   fi
@@ -51,3 +66,5 @@ AC_DEFUN([X_AC_GRAPHLIB], [
   fi
   AC_LANG_POP(C++)
 ])
+
+    graphlibError = graphlib_getNumNodeAttrs(retGraph, &numNodeAttrs);

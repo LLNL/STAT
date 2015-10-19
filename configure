@@ -827,6 +827,8 @@ LIBDYSECTBE
 LIBDYSECTFE
 ENABLE_DYSECTAPI_FALSE
 ENABLE_DYSECTAPI_TRUE
+ENABLE_GRAPHLIB30_FALSE
+ENABLE_GRAPHLIB30_TRUE
 ENABLE_GRAPHLIB20_FALSE
 ENABLE_GRAPHLIB20_TRUE
 ENABLE_BGL_FALSE
@@ -5164,13 +5166,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:5167: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:5169: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5170: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:5172: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:5173: output\"" >&5)
+  (eval echo "\"\$as_me:5175: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -6376,7 +6378,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6379 "configure"' > conftest.$ac_ext
+  echo '#line 6381 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -8941,11 +8943,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8944: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8946: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8948: \$? = $ac_status" >&5
+   echo "$as_me:8950: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9280,11 +9282,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9283: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9285: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:9287: \$? = $ac_status" >&5
+   echo "$as_me:9289: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -9385,11 +9387,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9388: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9390: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9392: \$? = $ac_status" >&5
+   echo "$as_me:9394: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -9440,11 +9442,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:9443: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:9445: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:9447: \$? = $ac_status" >&5
+   echo "$as_me:9449: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -12243,7 +12245,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12246 "configure"
+#line 12248 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12339,7 +12341,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 12342 "configure"
+#line 12344 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14359,11 +14361,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14362: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14364: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14366: \$? = $ac_status" >&5
+   echo "$as_me:14368: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -14458,11 +14460,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14461: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14463: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14465: \$? = $ac_status" >&5
+   echo "$as_me:14467: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -14510,11 +14512,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14513: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14515: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14517: \$? = $ac_status" >&5
+   echo "$as_me:14519: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16559,6 +16561,14 @@ else
   ENABLE_GRAPHLIB20_FALSE=
 fi
 
+   if false; then
+  ENABLE_GRAPHLIB30_TRUE=
+  ENABLE_GRAPHLIB30_FALSE='#'
+else
+  ENABLE_GRAPHLIB30_TRUE='#'
+  ENABLE_GRAPHLIB30_FALSE=
+fi
+
 
 
 # Check whether --with-graphlib was given.
@@ -16679,6 +16689,59 @@ _ACEOF
 else
   ENABLE_GRAPHLIB20_TRUE='#'
   ENABLE_GRAPHLIB20_FALSE=
+fi
+
+
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  cat >conftest.$ac_ext <<_ACEOF
+#include "graphlib.h"
+    #include <stdlib.h>
+    #include <stdio.h>
+    int main()
+    {
+      int numNodeAttrs;
+      graphlib_getNumNodeAttrs(NULL, &numNodeAttrs);
+      return 0;
+    }
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+
+cat >>confdefs.h <<\_ACEOF
+#define GRAPHLIB_3_0 /**/
+_ACEOF
+
+      graphlib_vers=3.0
+       if true; then
+  ENABLE_GRAPHLIB30_TRUE=
+  ENABLE_GRAPHLIB30_FALSE='#'
+else
+  ENABLE_GRAPHLIB30_TRUE='#'
+  ENABLE_GRAPHLIB30_FALSE=
 fi
 
 
@@ -20958,10 +21021,24 @@ $as_echo "$as_me: error: conditional \"ENABLE_GRAPHLIB20\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
+if test -z "${ENABLE_GRAPHLIB30_TRUE}" && test -z "${ENABLE_GRAPHLIB30_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_GRAPHLIB30\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"ENABLE_GRAPHLIB30\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
 if test -z "${ENABLE_GRAPHLIB20_TRUE}" && test -z "${ENABLE_GRAPHLIB20_FALSE}"; then
   { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_GRAPHLIB20\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 $as_echo "$as_me: error: conditional \"ENABLE_GRAPHLIB20\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${ENABLE_GRAPHLIB30_TRUE}" && test -z "${ENABLE_GRAPHLIB30_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"ENABLE_GRAPHLIB30\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"ENABLE_GRAPHLIB30\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
