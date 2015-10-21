@@ -2937,7 +2937,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     int tag, totalWidth, intRet, dummyRank, offset, nodeId;
     uint64_t byteArrayLen;
     unsigned int sampleType;
-    char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL;
+    char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL, **graphAttrKeys, **graphAttrValues, tmpStr[BUFSIZE];
     list<int>::iterator ranksIter;
     set<int>::iterator missingRanksIter;
     graphlib_graph_p stackTraces = NULL, sortedStackTraces = NULL, withMissingStackTraces = NULL;
@@ -3159,7 +3159,24 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     else
         snprintf(outFile, BUFSIZE, "%s/%02d_%s.%s.dot", outDir_, sMergeCount, filePrefix_, outSuffix);
     snprintf(lastDotFileName_, BUFSIZE, "%s", outFile);
-    graphlibError = graphlib_exportGraph(outFile, GRF_DOT, sortedStackTraces);
+    graphAttrKeys = (char **)malloc(sizeof(char *));
+    if (graphAttrKeys == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate for graph attr keys\n", strerror(errno));
+        return STAT_ALLOCATE_ERROR;
+    }
+    graphAttrKeys[0] = strdup("type");
+    graphAttrValues = (char **)malloc(sizeof(char *));
+    if (graphAttrValues == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate for graph attr values\n", strerror(errno));
+        return STAT_ALLOCATE_ERROR;
+    }
+    snprintf(tmpStr, BUFSIZE, "stat_%d_%d", STAT_MAJOR_VERSION, STAT_MINOR_VERSION);
+    graphAttrValues[0] = strdup(tmpStr);
+    graphlibError = graphlib_exportAttributedGraph(outFile, GRF_DOT, sortedStackTraces, 1, graphAttrKeys, graphAttrValues);
+    free(graphAttrKeys[0]);
+    free(graphAttrValues[0]);
     if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error exporting graph to dot format\n");

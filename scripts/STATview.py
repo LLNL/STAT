@@ -20,7 +20,10 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "2.2.0"
+__version_major__ = 3
+__version_minor__ = 0
+__version_revision__ = 0
+__version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import os.path
 import string
@@ -230,6 +233,14 @@ def create_temp(dot_filename, truncate, max_node_name):
         with open(dot_filename, 'r') as dot_file:
             parser = STATDotParser(dot_file.read())
             parser.parse()
+            for i, attr in enumerate(parser.graph_attrs.keys()):
+                if i == 0:
+                    temp_dot_file.write('\tgraph [')
+                else:
+                    temp_dot_file.write(', ')
+                temp_dot_file.write('%s="%s"' %(attr, parser.graph_attrs[attr]))
+                if i == len(parser.graph_attrs.keys()) - 1:
+                    temp_dot_file.write('];\n')
             for node in parser.nodes:
                 id, attrs = node
                 attrs["label"] = node_attr_to_label(attrs, False)
@@ -1851,6 +1862,7 @@ class STATGraph(xdot.Graph):
         try:
             with open(filename, 'w') as f:
                 f.write('digraph G {\n')
+                f.write('\tgraph [type="stat_%d_%d"];\n' %(__version_major__, __version_minor__))
                 f.write('\tnode [shape=record,style=filled,labeljust=c,height=0.2];\n')
                 for node in self.nodes:
                     if node.hide:
@@ -2520,7 +2532,11 @@ class STATDotParser(xdot.DotParser):
     def __init__(self, dot_code):
         self.nodes = []
         self.edges = []
+        self.graph_attrs = {}
         xdot.DotParser.__init__(self, xdot.DotLexer(buf=dot_code))
+
+    def handle_graph(self, attrs):
+        self.graph_attrs.update(attrs)
 
     def handle_node(self, id, attrs):
         self.nodes.append((id, attrs))
@@ -2542,12 +2558,19 @@ class STATXDotParser(xdot.XDotParser):
 
     def __init__(self, xdotcode):
         """The constructor."""
+        self.graph_attrs = {}
         xdot.XDotParser.__init__(self, xdotcode)
 
     def parse(self):
         """Parse the dot file."""
         xdot.DotParser.parse(self)
+        if ("type" in self.graph_attrs.keys()) and (self.graph_attrs["type"] == "dysect"):
+            raise Exception('This is a DySectAPI .dot graph')
         return STATGraph(self.width, self.height, (), self.nodes, self.edges)
+
+    def handle_graph(self, attrs):
+        self.graph_attrs.update(attrs)
+        xdot.XDotParser.handle_graph(self, attrs)
 
     def handle_node(self, node_id, attrs):
         """Handle a node attribute to create a STATNode."""
@@ -3380,9 +3403,12 @@ entered as a regular expression"""
 
     def set_dotcode(self, dotcode, filename='<stdin>', page=-1):
         """Set the dotcode of the specified tab's widget."""
-        if self.tabs[page].widget.set_dotcode(dotcode, filename, self.options["truncate"], self.options["max node name"]):
-            self.tabs[page].label.set_text(os.path.basename(filename))
-            self.tabs[page].widget.zoom_to_fit()
+        try:
+            if self.tabs[page].widget.set_dotcode(dotcode, filename, self.options["truncate"], self.options["max node name"]):
+                self.tabs[page].label.set_text(os.path.basename(filename))
+                self.tabs[page].widget.zoom_to_fit()
+        except Exception as e:
+            show_error_dialog('%s\nFailed to open file:\n\n%s\n\nPlease be sure the file exists and is a valid STAT outputted dot file.' % (repr(e), filename), exception=e)
 
     def open_file(self, filename):
         """Open a dot file and set the dotcode for the current tab."""

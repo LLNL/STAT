@@ -1,3 +1,13 @@
+2015-10-20 Gregory L. Lee <lee218@llnl.gov>
+	* : added stat type attribute to .dot files
+
+2015-10-19 Gregory L. Lee <lee218@llnl.gov>
+	* : bug fixes to resolve compiler warnings
+
+2015-10-15 Gregory L. Lee <lee218@llnl.gov>
+	* : integrated with graphlib 3 API
+	* : added node and edge attributes to STAT graphs
+
 2015-09-11 Gregory L. Lee <lee218@llnl.gov>
 	* probe_be.cpp : fixed awaitingActions decrementating
 	* err.cpp : flush file handle
