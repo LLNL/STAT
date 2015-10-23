@@ -50,7 +50,8 @@ typedef struct
     bool countRep;                          /*!< whether to gather just a count and representative */
     bool withPython;                        /*!< whether to gather Python script level traces */
     bool withThreads;                       /*!< whether to gather traces from threads */
-    StatCpPolicy_t cpPolicy;                     /*!< whether to use the application nodes to run communication processes */
+    bool withOpenMP;                        /*!< whether to translate OpenMP stack walks */
+    StatCpPolicy_t cpPolicy;                /*!< whether to use the application nodes to run communication processes */
     StatLaunch_t applicationOption;         /*!< attach or launch case */
     unsigned int sampleType;                /*!< the sample level of detail */
     StatTopology_t topologyType;            /*!< the topology specification type */
@@ -271,6 +272,10 @@ int main(int argc, char **argv)
             statArgs->sampleType |= STAT_SAMPLE_CLEAR_ON_SAMPLE;
             if (statArgs->withThreads == true)
                 statArgs->sampleType |= STAT_SAMPLE_THREADS;
+#ifdef OMP_STACKWALKER
+            if (statArgs->withOpenMP == true)
+                statArgs->sampleType |= STAT_SAMPLE_OPENMP;
+#endif
             if (statArgs->withPython == true)
                 statArgs->sampleType |= STAT_SAMPLE_PYTHON;
             if (statArgs->countRep == true)
@@ -399,6 +404,9 @@ void printUsage()
     fprintf(stderr, "  -P, --withpc\t\t\tsample program counter in addition to\n\t\t\t\tfunction name\n");
     fprintf(stderr, "  -m, --withmoduleoffset\tsample module offset only\n");
     fprintf(stderr, "  -i, --withline\t\tsample source line number in addition\n\t\t\t\tto function name\n");
+#ifdef OMP_STACKWALKER
+    fprintf(stderr, "  -o, --withopenmp\t\ttranslate OpenMP stacks to logical application\n\t\t\t\tview\n");
+#endif
     fprintf(stderr, "  -c, --comprehensive\t\tgather 5 traces: function only; module offset;\n\t\t\t\tfunction + pc; function + line; and 3D function\n\t\t\t\tonly\n");
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
@@ -457,6 +465,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"withpc",              no_argument,        0, 'P'},
         {"withmoduleoffset",    no_argument,        0, 'P'},
         {"withline",            no_argument,        0, 'i'},
+        {"withopenmp",          no_argument,        0, 'o'},
         {"comprehensive",       no_argument,        0, 'c'},
         {"withthreads",         no_argument,        0, 'w'},
         {"pythontrace",         no_argument,        0, 'y'},
@@ -505,9 +514,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     while (1)
     {
 #ifdef DYSECTAPI
-        opt = getopt_long(argc, argv,"hVvPmicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:Y:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:Y:", longOptions, &optionIndex);
 #else
-        opt = getopt_long(argc, argv,"hVvPmicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
 #endif
         if (opt == -1)
             break;
@@ -553,6 +562,12 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         case 'i':
             statArgs->sampleType |= STAT_SAMPLE_LINE;
             statArgs->comprehensive = false;
+            break;
+        case 'o':
+            statArgs->withOpenMP = true;
+#ifdef OMP_STACKWALKER
+            statArgs->sampleType |= STAT_SAMPLE_OPENMP;
+#endif
             break;
         case 'c':
             statArgs->comprehensive = true;

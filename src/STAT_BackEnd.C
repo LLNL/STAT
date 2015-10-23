@@ -1442,7 +1442,9 @@ StatError_t STAT_BackEnd::attach()
 
 
 #if defined(GROUP_OPS)
+  #ifndef OMP_STACKWALKER
     ThreadTracking::setDefaultTrackThreads(false);
+  #endif
   #ifdef SW_VERSION_8_1_0
     LWPTracking::setDefaultTrackLWPs(false);
   #endif
@@ -2120,6 +2122,11 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
         }
     }
 
+#ifdef OMP_STACKWALKER
+    OpenMPStackWalker *ompWalker;
+    if (sampleType_ & STAT_SAMPLE_OPENMP)
+        ompWalker = new OpenMPStackWalker(proc);
+#endif
 
     /* Loop over the threads and get the traces */
     for (j = 0; j < threads.size(); j++)
@@ -2136,10 +2143,21 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
             for (i = 0; i <= nRetries; i++)
             {
                 currentStackWalk.clear();
+#ifdef OMP_STACKWALKER
+                boolRet = false;
+                if (sampleType_ & STAT_SAMPLE_OPENMP)
+                    boolRet = ompWalker->walkOpenMPStack(currentStackWalk, threads[j]);
+                if (!boolRet)
+                {
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Failed to get OpenMP translated stack walk, reverting to raw stack walk\n");
+                    boolRet = proc->walkStack(currentStackWalk, threads[j]);
+                }
+#else
                 boolRet = proc->walkStack(currentStackWalk, threads[j]);
+#endif
                 if (boolRet == false && currentStackWalk.size() < 1)
                 {
-                   printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d, thread %d id %d with StackWalker error %s\n", i, nRetries, j, threads[j], Stackwalker::getLastErrorMsg());
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "RETRY failed walk, on attempt %d of %d, thread %d id %d with StackWalker error %s\n", i, nRetries, j, threads[j], Stackwalker::getLastErrorMsg());
                     if (i < nRetries)
                     {
                         if (isRunning_ == false)
@@ -2251,6 +2269,10 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
         trace.clear();
     } /* for j thread */
 
+#ifdef OMP_STACKWALKER
+    if (sampleType_ & STAT_SAMPLE_OPENMP)
+        delete ompWalker;
+#endif
     statFreeEdge(edge);
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Trace successfully gathered from task rank %d\n", rank);
     return STAT_OK;

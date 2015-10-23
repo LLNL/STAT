@@ -35,11 +35,13 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@ENABLE_DYSECTAPI_TRUE@am__append_1 = -DDYSECTAPI
+@ENABLE_OPENMP_TRUE@am__append_2 = -DOMP_STACKWALKER
 bin_PROGRAMS = STATbin$(EXEEXT) STATD$(EXEEXT) $(am__EXEEXT_1)
-@ENABLE_GUI_TRUE@am__append_1 = _STAT.la
-@ENABLE_GUI_TRUE@am__append_2 = STAT.py
-@ENABLE_TO_TRUE@am__append_3 = _tomod.la
-@ENABLE_TO_TRUE@am__append_4 = tomod.py
+@ENABLE_GUI_TRUE@am__append_3 = _STAT.la
+@ENABLE_GUI_TRUE@am__append_4 = STAT.py
+@ENABLE_TO_TRUE@am__append_5 = _tomod.la
+@ENABLE_TO_TRUE@am__append_6 = tomod.py
 subdir = src
 DIST_COMMON = $(am__python_PYTHON_DIST) $(include_HEADERS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in
@@ -446,7 +448,8 @@ top_srcdir = @top_srcdir@
 SUBDIRS = $(MAYBE_DYSECT)
 
 # what flags you want to pass to the C compiler & linker
-AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
+AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\" $(am__append_1) \
+	$(am__append_2)
 AM_LDFLAGS = 
 include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h
 @ENABLE_DYSECTAPI_TRUE@stat_cppflags_add_dysectapi = -I$(abs_top_srcdir)/src -I$(abs_top_srcdir)/src/dysect -I$(abs_top_srcdir)/src/dysect/libDysectAPI/include
@@ -486,12 +489,12 @@ STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C $(stat_graphlib_sou
 STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi)
 STAT_FilterDefinitions_la_LIBADD = @MWLIBS@ $(stat_fd_ldadd_add_dysectapi)
 STAT_FilterDefinitions_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
-pyexec_LTLIBRARIES = _STATmerge.la $(am__append_1) $(am__append_3)
+pyexec_LTLIBRARIES = _STATmerge.la $(am__append_3) $(am__append_5)
 _STATmerge_la_SOURCES = STAT_merge.C STAT_GraphRoutines.C
 _STATmerge_la_CPPFLAGS = -I./
 _STATmerge_la_LDFLAGS = -module -avoid-version
 _STATmerge_la_LIBADD = -llnlgraph
-python_PYTHON = $(am__append_2) $(am__append_4)
+python_PYTHON = $(am__append_4) $(am__append_6)
 @ENABLE_GUI_TRUE@GUI_SWIG_SOURCES = STAT.i
 @ENABLE_GUI_TRUE@_STAT_la_SOURCES = STAT_wrap.C $(GUI_SWIG_SOURCES)
 @ENABLE_GUI_TRUE@_STAT_la_CPPFLAGS = -I./ $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
@@ -1297,8 +1300,7 @@ uninstall-am: uninstall-binPROGRAMS uninstall-includeHEADERS \
 
 
 @ENABLE_GUI_TRUE@STAT_wrap.C:$(GUI_SWIG_SOURCES) Makefile
-@ENABLE_DYSECTAPI_TRUE@@ENABLE_GUI_TRUE@	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) -DDYSECTAPI $(AM_CXXFLAGS) -o $@ $<
-@ENABLE_DYSECTAPI_FALSE@@ENABLE_GUI_TRUE@	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) $(AM_CXXFLAGS) -o $@ $<
+@ENABLE_GUI_TRUE@	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) $(AM_CXXFLAGS) -o $@ $<
 
 @ENABLE_GUI_TRUE@STAT.py:$(GUI_SWIG_SOURCES) Makefile
 @ENABLE_GUI_TRUE@	$(MAKE) $(AM_MAKEFLAGS) STAT_wrap.C

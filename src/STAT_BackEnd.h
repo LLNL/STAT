@@ -63,6 +63,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #include "Variable.h"
   #include "Function.h"
 #endif
+#ifdef OMP_STACKWALKER
+  #include "OpenMPStackWalker.h"
+#endif
 
 #ifdef STAT_FGFS
   #include "Comm/MRNetCommFabric.h"

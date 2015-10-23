@@ -41,6 +41,13 @@ import sys
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
 from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
+HAVE_OPENMP_SUPPORT = True
+try:
+    from STAT import STAT_SAMPLE_OPENMP
+    print 'true'
+except:
+    print 'false'
+    HAVE_OPENMP_SUPPORT = False
 HAVE_DYSECT = True
 try:
     from STAT import DysectAPI_OK, DysectAPI_Error, DysectAPI_InvalidSystemState, DysectAPI_LibraryNotLoaded, DysectAPI_SymbolNotFound, DysectAPI_SessionCont, DysectAPI_SessionQuit, DysectAPI_DomainNotFound, DysectAPI_NetworkError, DysectAPI_DomainExpressionError, DysectAPI_StreamError, DysectAPI_OptimizedOut
@@ -141,6 +148,7 @@ class STATGUI(STATDotWindow):
                    'Num Retries':                      5,
                    'Retry Frequency (us)':             10,
                    'With Threads':                     False,
+                   'With OpenMP':                      False,
                    'Gather Python Traces':             False,
                    'Clear On Sample':                  True,
                    'Gather Individual Samples':        False,
@@ -1397,6 +1405,8 @@ host[1-10,12,15-20];otherhost[30]
             sample_type += STAT_SAMPLE_COUNT_REP
         if self.options['With Threads']:
             sample_type += STAT_SAMPLE_THREADS
+        if self.options['With OpenMP'] and HAVE_OPENMP_SUPPORT:
+            sample_type += STAT_SAMPLE_OPENMP
         if self.options['Gather Python Traces']:
             sample_type += STAT_SAMPLE_PYTHON
         if self.options['Clear On Sample']:
@@ -1484,6 +1494,8 @@ host[1-10,12,15-20];otherhost[30]
                 sample_type += STAT_SAMPLE_COUNT_REP
             if self.options['With Threads']:
                 sample_type += STAT_SAMPLE_THREADS
+            if self.options['With OpenMP'] and HAVE_OPENMP_SUPPORT:
+                sample_type += STAT_SAMPLE_OPENMP
             if self.options['Gather Python Traces']:
                 sample_type += STAT_SAMPLE_PYTHON
             if self.options['Clear On Sample']:
@@ -2159,6 +2171,8 @@ host[1-10,12,15-20];otherhost[30]
         frame = gtk.Frame('Per Sample Options')
         vbox2 = gtk.VBox()
         self.pack_check_button(vbox2, 'With Threads', False, False, 5)
+        if HAVE_OPENMP_SUPPORT:
+            self.pack_check_button(vbox2, 'With OpenMP', False, False, 5)
         self.pack_check_button(vbox2, 'Gather Python Traces', False, False, 5)
         frame2 = gtk.Frame('Stack Frame (node) Sample Options')
         vbox3 = gtk.VBox()

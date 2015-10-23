@@ -47,7 +47,10 @@ enum StatSampleOptions_t {
     STAT_SAMPLE_THREADS = 0x08,
     STAT_SAMPLE_CLEAR_ON_SAMPLE = 0x10,
     STAT_SAMPLE_PYTHON = 0x20,
-    STAT_SAMPLE_MODULE_OFFSET = 0x40
+    STAT_SAMPLE_MODULE_OFFSET = 0x40,
+#ifdef OMP_STACKWALKER
+    STAT_SAMPLE_OPENMP = 0x80
+#endif
 } ;
 
 //! An enum for MRNet message tags

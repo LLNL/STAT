@@ -6,6 +6,12 @@ SUBDIRS = $(MAYBE_DYSECT)
 
 # what flags you want to pass to the C compiler & linker
 AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
+if ENABLE_DYSECTAPI
+AM_CXXFLAGS += -DDYSECTAPI
+endif
+if ENABLE_OPENMP
+AM_CXXFLAGS += -DOMP_STACKWALKER
+endif
 AM_LDFLAGS =
 
 include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h
@@ -83,11 +89,7 @@ _STAT_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi)
 _STAT_la_LIBADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
 
 STAT_wrap.C:$(GUI_SWIG_SOURCES) Makefile
-if ENABLE_DYSECTAPI
-	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) -DDYSECTAPI $(AM_CXXFLAGS) -o $@ $<
-else
 	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) $(AM_CXXFLAGS) -o $@ $<
-endif
 
 STAT.py:$(GUI_SWIG_SOURCES) Makefile
 	$(MAKE) $(AM_MAKEFLAGS) STAT_wrap.C
