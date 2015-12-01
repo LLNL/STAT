@@ -74,6 +74,11 @@ int gNumCallbacks;
 //! A mutex to protect data/events during a callback
 pthread_mutex_t gMrnetCallbackMutex = PTHREAD_MUTEX_INITIALIZER;
 
+extern const char *gNodeAttrs[];
+extern const char *gEdgeAttrs[];
+extern int gNumNodeAttrs;
+extern int gNumEdgeAttrs;
+
 
 STAT_FrontEnd::STAT_FrontEnd()
 {
@@ -2937,7 +2942,10 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     int tag, totalWidth, intRet, dummyRank, offset, nodeId;
     uint64_t byteArrayLen;
     unsigned int sampleType;
-    char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL, **graphAttrKeys, **graphAttrValues, tmpStr[BUFSIZE];
+    char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL;
+#ifdef GRAPHLIB_3_0
+    char **graphAttrKeys, **graphAttrValues, tmpStr[BUFSIZE];
+#endif
     list<int>::iterator ranksIter;
     set<int>::iterator missingRanksIter;
     graphlib_graph_p stackTraces = NULL, sortedStackTraces = NULL, withMissingStackTraces = NULL;
@@ -2995,7 +3003,12 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         return STAT_MRNET_ERROR;
     }
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph\n");
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph, byteArrayLen = %d\n", byteArrayLen);
+    if (sampleType & STAT_SAMPLE_THREADS)
+    {
+        gStatBitVectorFunctions->edge_checksum = statCountRepEdgeCheckSum;
+        gStatReorderFunctions->edge_checksum = statCountRepEdgeCheckSum;
+    }
     if (sampleType & STAT_SAMPLE_COUNT_REP)
         graphlibError = graphlib_deserializeBasicGraph(&stackTraces, gStatCountRepFunctions, byteArray, byteArrayLen);
     else
@@ -3075,6 +3088,24 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating rooted graph\n");
             return STAT_GRAPHLIB_ERROR;
         }
+#ifdef GRAPHLIB_3_0
+        int functionIndex;
+        map<string, string>::iterator nodeAttrIter;
+
+        nodeAttr.attr_values = (void **)calloc(1, gNumNodeAttrs * sizeof(void *));
+        if (nodeAttr.attr_values == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error callocing %d nodeAttr.attr_values\n", strerror(errno), gNumNodeAttrs);
+            return STAT_ALLOCATE_ERROR;
+        }
+        graphlibError = graphlib_getNodeAttrIndex(withMissingStackTraces, "function", &functionIndex);
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get node attr index for function\n");
+            return STAT_GRAPHLIB_ERROR;
+        }
+        nodeAttr.attr_values[functionIndex] = statCopyNodeAttr("function", nodeAttr.label);
+#endif
         nodeId = statStringHash((char *)nodeAttr.label);
         graphlibError = graphlib_addNode(withMissingStackTraces, nodeId, &nodeAttr);
         if (GRL_IS_FATALERROR(graphlibError))
@@ -3082,7 +3113,19 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
             return STAT_GRAPHLIB_ERROR;
         }
+#ifdef GRAPHLIB_3_0
+        free(nodeAttr.attr_values);
+#endif
 
+#ifdef GRAPHLIB_3_0
+        map<string, string>::iterator edgeAttrIter;
+        edgeAttr.attr_values = (void **)calloc(1, gNumEdgeAttrs * sizeof(void *));
+        if (edgeAttr.attr_values == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error callocing %d edgeAttr.attr_values\n", strerror(errno), gNumEdgeAttrs);
+            return STAT_ALLOCATE_ERROR;
+        }
+#endif
         if (sampleType & STAT_SAMPLE_COUNT_REP)
         {
             countRepEdge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
@@ -3111,11 +3154,54 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             edgeAttr.label = (void *)edge;
         }
 
+#ifdef GRAPHLIB_3_0
+        int index;
+        if (sampleType & STAT_SAMPLE_COUNT_REP)
+        {
+            graphlib_getEdgeAttrIndex(withMissingStackTraces, "count", &index);
+            edgeAttr.attr_values[index] = statCopyEdgeAttr("count", (void *)&countRepEdge->count);
+            graphlib_getEdgeAttrIndex(withMissingStackTraces, "rep", &index);
+            edgeAttr.attr_values[index] = statCopyEdgeAttr("rep", (void *)&countRepEdge->representative);
+            graphlib_getEdgeAttrIndex(withMissingStackTraces, "sum", &index);
+            edgeAttr.attr_values[index] = statCopyEdgeAttr("sum", (void *)&countRepEdge->checksum);
+        }
+        else if (sampleType & STAT_SAMPLE_THREADS)
+        {
+            graphlib_getEdgeAttrIndex(withMissingStackTraces, "bv", &index);
+            edgeAttr.attr_values[index] = statCopyEdgeAttr("bv", (void *)edge);
+        }
+        else
+        {
+            graphlib_getEdgeAttrIndex(withMissingStackTraces, "bv", &index);
+            edgeAttr.attr_values[index] = statCopyEdgeAttr("bv", (void *)edge);
+        }
+#endif
+
         graphlibError = graphlib_addDirectedEdge(withMissingStackTraces, 0, nodeId, &edgeAttr);
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
+            return STAT_GRAPHLIB_ERROR;
+        }
         if (countRepEdge != NULL)
             statFreeCountRepEdge(countRepEdge);
         if (edge != NULL)
             statFreeEdge(edge);
+#ifdef GRAPHLIB_3_0
+        int i;
+        char *edgeAttrKey;
+        for (i = 0; i < gNumEdgeAttrs; i++)
+        {
+            graphlibError = graphlib_getEdgeAttrKey(withMissingStackTraces, i, &edgeAttrKey);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get edge attr key for index %d\n", i);
+                return STAT_GRAPHLIB_ERROR;
+            }
+            statFreeEdgeAttr(edgeAttrKey, edgeAttr.attr_values[i]);
+        }
+        free(edgeAttr.attr_values);
+#endif
         if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
@@ -3141,11 +3227,19 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Exporting %s graph to dot\n", outSuffix);
     gStartTime.setTime();
-
+#ifdef GRAPHLIB_3_0
+    if (sampleType & STAT_SAMPLE_COUNT_REP)
+        graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "sum");
+    else if (sampleType & STAT_SAMPLE_THREADS)
+        graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "sum");
+    else
+        graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "bv");
+#else
     graphlibError = graphlib_colorGraphByLeadingEdgeLabel(sortedStackTraces);
+#endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error coloring graph by leading edge label\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error coloring graph by leading edge\n");
         return STAT_GRAPHLIB_ERROR;
     }
     graphlibError = graphlib_scaleNodeWidth(sortedStackTraces, 80, 160);
@@ -3159,6 +3253,8 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     else
         snprintf(outFile, BUFSIZE, "%s/%02d_%s.%s.dot", outDir_, sMergeCount, filePrefix_, outSuffix);
     snprintf(lastDotFileName_, BUFSIZE, "%s", outFile);
+
+#ifdef GRAPHLIB_3_0
     graphAttrKeys = (char **)malloc(sizeof(char *));
     if (graphAttrKeys == NULL)
     {
@@ -3177,6 +3273,11 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     graphlibError = graphlib_exportAttributedGraph(outFile, GRF_DOT, sortedStackTraces, 1, graphAttrKeys, graphAttrValues);
     free(graphAttrKeys[0]);
     free(graphAttrValues[0]);
+    free(graphAttrKeys);
+    free(graphAttrValues);
+#else
+    graphlibError = graphlib_exportGraph(outFile, GRF_DOT, sortedStackTraces);
+#endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error exporting graph to dot format\n");
@@ -3190,6 +3291,12 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     statError = dumpPerf();
     if (statError != STAT_OK)
         printMsg(statError, __FILE__, __LINE__, "Failed to dump performance results\n");
+
+    if (sampleType & STAT_SAMPLE_THREADS)
+    {
+        gStatBitVectorFunctions->edge_checksum = statEdgeCheckSum;
+        gStatReorderFunctions->edge_checksum = statEdgeCheckSum;
+    }
 
     if (stackTraces != NULL)
     {

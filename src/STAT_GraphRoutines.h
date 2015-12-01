@@ -170,6 +170,8 @@ void *statCopyNode(const void *node);
 void statFreeNode(void *node);
 
 #ifdef GRAPHLIB_3_0
+int statGetBitVectorCount(StatBitVectorEdge_t *edge);
+
 //! Serialize the STAT node object into a buffer
 /*!
     \param key - the attribute key

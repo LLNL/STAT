@@ -171,6 +171,7 @@ bool statFrameCmp(const Dyninst::Stackwalker::Frame &frame1, const Dyninst::Stac
     \return the absolute rank
 */
 int statRelativeRankToAbsoluteRank(int rank);
+int statDummyRelativeRankToAbsoluteRank(int rank);
 
 
 //! The STAT daemon object used to gather and send stack traces
@@ -497,11 +498,12 @@ class STAT_BackEnd
             \param src - the source node
             \param dst - the destination node
             \param edge - the edge bit vector
+            \param tid - the thread ID
             \return STAT_OK on success
 
             If the edge does not exist, create it, otherwise just merge
         */
-        StatError_t update2dEdge(int src, int dst, StatBitVectorEdge_t *edge);
+        StatError_t update2dEdge(int src, int dst, StatBitVectorEdge_t *edge, Dyninst::THR_ID tid);
 
         //! generate the 2d and 3d prefix trees based on nodes and edges maps
         /*!
@@ -569,8 +571,10 @@ class STAT_BackEnd
                                              acknowledgement stream */
 #ifdef GRAPHLIB_3_0
         std::map<int, std::map<std::string, std::string> > nodeIdToAttrs_;
-// We don't use the edge attrs here yet since we just derrive it from the BV upon generateGraphs
-//        std::map<int, std::map<std::string, void *> > edgeIdToAttrs_;
+        std::map<int, std::map<std::string, void *> > edgeIdToAttrs_;
+        std::map<int, std::map<std::string, void *> > edgeIdToAttrs3d_;
+        int threadBvLength_;
+        std::vector<Dyninst::THR_ID> threadIds_;
 #endif
         std::map<int, std::string> nodes2d_; /*!< the 2D prefix tree nodes */
         std::map<int, std::string> nodes3d_; /*!< the 3D prefix tree nodes */

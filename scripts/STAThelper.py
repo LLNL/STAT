@@ -399,6 +399,11 @@ def decompose_node(label, item=None):
 def node_attr_to_label(attrs, full_path = True):
     """Translates a set of node attributes into a node label."""
     if not "function" in attrs.keys():
+        if "label" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
+            attrs["function"], source_line, iter_string, attrs["module"], attrs["offset"] = decompose_node(attrs["label"])
+            attrs["source"] = source_line[:source_line.find(":")]
+            attrs["line"] = source_line[source_line.find(":") + 1:]
+            return attrs["label"]
         return ""
     if "temporal_string" in attrs.keys():
         return attrs["temporal_string"]
@@ -432,6 +437,8 @@ def node_attr_to_label(attrs, full_path = True):
 def edge_attr_to_label(attrs):
     """Translates a set of edge attributes into a edge label."""
     if not "bv" in attrs.keys():
+        if "label" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
+            return attrs["label"]
         return ""
     if attrs["bv"] != "(null)":
         label = attrs["bv"]

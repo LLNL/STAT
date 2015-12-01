@@ -38,6 +38,11 @@ FILE *gStatOutFp = NULL;
 //! a pointer to the current STAT_BackEnd object
 STAT_BackEnd *gBePtr;
 
+extern const char *gNodeAttrs[];
+extern const char *gEdgeAttrs[];
+extern int gNumNodeAttrs;
+extern int gNumEdgeAttrs;
+
 StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType)
 {
     int intRet;
@@ -123,6 +128,9 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
 #endif
     gBePtr = this;
 	registerSignalHandlers(true);
+#ifdef GRAPHLIB_3_0
+    threadBvLength_ = STAT_BITVECTOR_BITS; // for now we restict to 64 threads per process
+#endif
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -205,14 +213,12 @@ void STAT_BackEnd::clear2dNodesAndEdges()
     edges2d_.clear();
 #ifdef GRAPHLIB_3_0
     nodeIdToAttrs_.clear();
-// We don't use the edge attrs here yet since we just derrive it from the BV upon generateGraphs
-//    map<int, map<string, void *> >::iterator edgeIdToAttrsIter;
-//    map<string, void *>::iterator edgeAttrsIter;
-//    for (edgeIdToAttrsIter = edgeIdToAttrs_.begin(); edgeIdToAttrsIter != edgeIdToAttrs_.end(); edgeIdToAttrsIter++)
-//        for (edgeAttrsIter = edgeIdToAttrsIter->second.begin(); edgeAttrsIter != edgeIdToAttrsIter->second.end(); edgeAttrsIter++)
-//            if (edgeAttrsIter->second != NULL)
-//                statFreeEdgeAttr(edgeAttrsIter->first.c_str(), edgeAttrsIter->second);
-//    edgeIdToAttrs_.clear();
+    map<int, map<string, void *> >::iterator edgeIdToAttrsIter;
+    map<string, void *>::iterator edgeAttrsIter;
+    for (edgeIdToAttrsIter = edgeIdToAttrs_.begin(); edgeIdToAttrsIter != edgeIdToAttrs_.end(); edgeIdToAttrsIter++)
+        for (edgeAttrsIter = edgeIdToAttrsIter->second.begin(); edgeAttrsIter != edgeIdToAttrsIter->second.end(); edgeAttrsIter++)
+            statFreeEdgeAttr(edgeAttrsIter->first.c_str(), edgeAttrsIter->second);
+    edgeIdToAttrs_.clear();
 #endif
 }
 
@@ -225,6 +231,16 @@ void STAT_BackEnd::clear3dNodesAndEdges()
         if (edgesIter->second.second != NULL)
             statFreeEdge(edgesIter->second.second);
     edges3d_.clear();
+
+#ifdef GRAPHLIB_3_0
+    nodeIdToAttrs_.clear();
+    map<int, map<string, void *> >::iterator edgeIdToAttrsIter;
+    map<string, void *>::iterator edgeAttrsIter;
+    for (edgeIdToAttrsIter = edgeIdToAttrs3d_.begin(); edgeIdToAttrsIter != edgeIdToAttrs3d_.end(); edgeIdToAttrsIter++)
+        for (edgeAttrsIter = edgeIdToAttrsIter->second.begin(); edgeAttrsIter != edgeIdToAttrsIter->second.end(); edgeAttrsIter++)
+            statFreeEdgeAttr(edgeAttrsIter->first.c_str(), edgeAttrsIter->second);
+    edgeIdToAttrs3d_.clear();
+#endif
 }
 
 
@@ -250,15 +266,60 @@ StatError_t STAT_BackEnd::update3dNodesAndEdges()
             edges3d_[edgesIter->first] = make_pair(edgesIter->second.first, edge);
         }
         statMergeEdge(edges3d_[edgesIter->first].second, edgesIter->second.second);
-    }
+
+#ifdef GRAPHLIB_3_0
+        int i, dst;
+        StatCountRepEdge_t *countRepEdge = NULL;
+        dst = edgesIter->first;
+        if (edgeIdToAttrs3d_.find(dst) == edgeIdToAttrs3d_.end())
+        {
+            map<string, void *> edgeAttrs;
+            for (i = 0; i < gNumEdgeAttrs; i++)
+                edgeAttrs[gEdgeAttrs[i]] = NULL;
+            edgeIdToAttrs3d_[edgesIter->first] = edgeAttrs;
+        }
+        for (i = 0; i < gNumEdgeAttrs; i++)
+            edgeIdToAttrs3d_[dst][gEdgeAttrs[i]] = statMergeEdgeAttr(gEdgeAttrs[i], edgeIdToAttrs3d_[dst][gEdgeAttrs[i]], edgeIdToAttrs_[dst][gEdgeAttrs[i]]);
+        if (sampleType_ & STAT_SAMPLE_COUNT_REP)
+        {
+            countRepEdge = getBitVectorCountRep((StatBitVectorEdge_t *)edgeIdToAttrs3d_[dst]["bv"], statRelativeRankToAbsoluteRank);
+            if (countRepEdge == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to translate bit vector into count + representative\n");
+                return STAT_ALLOCATE_ERROR;
+            }
+            statFreeEdgeAttr("count", edgeIdToAttrs3d_[dst]["count"]);
+            statFreeEdgeAttr("rep", edgeIdToAttrs3d_[dst]["rep"]);
+            edgeIdToAttrs3d_[dst]["count"] = statCopyEdgeAttr("count", (void *)&countRepEdge->count);
+            edgeIdToAttrs3d_[dst]["rep"] = statCopyEdgeAttr("rep" , (void *)&countRepEdge->representative);
+            edgeIdToAttrs_[dst]["sum"] = statMergeEdgeAttr("sum", edgeIdToAttrs_[dst]["sum"], (void *)&countRepEdge->checksum);
+            statFreeCountRepEdge(countRepEdge);
+        }
+        if (sampleType_ & STAT_SAMPLE_THREADS)
+        {
+            countRepEdge = getBitVectorCountRep((StatBitVectorEdge_t *)edgeIdToAttrs3d_[dst]["tbv"], statDummyRelativeRankToAbsoluteRank);
+            if (countRepEdge == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to translate bit vector into count + representative\n");
+                return STAT_ALLOCATE_ERROR;
+            }
+            statFreeEdgeAttr("tcount", edgeIdToAttrs3d_[dst]["tcount"]);
+            edgeIdToAttrs3d_[dst]["tcount"] = statCopyEdgeAttr("tcount", (void *)&countRepEdge->count);
+            statFreeEdgeAttr("sum", edgeIdToAttrs3d_[dst]["sum"]);
+            edgeIdToAttrs3d_[dst]["sum"] = statCopyEdgeAttr("sum", (void *)&countRepEdge->count);
+            statFreeCountRepEdge(countRepEdge);
+        }
+#endif
+
+    } // for edgesIter
 
     return STAT_OK;
 }
 
 
-StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *edge)
+StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *edge, Dyninst::THR_ID tid)
 {
-    StatBitVectorEdge_t *newEdge;
+    StatBitVectorEdge_t *newEdge = NULL;
 
     if (edges2d_.find(dst) == edges2d_.end())
     {
@@ -271,6 +332,63 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
         edges2d_[dst] = make_pair(src, newEdge);
     }
     statMergeEdge(edges2d_[dst].second, edge);
+
+#ifdef GRAPHLIB_3_0
+    int i, tidIndex;
+    map<string, void *> edgeAttrs;
+    StatCountRepEdge_t *countRepEdge = NULL;
+    if (edgeIdToAttrs_.find(dst) == edgeIdToAttrs_.end())
+    {
+        for (i = 0; i < gNumEdgeAttrs; i++)
+            edgeAttrs[gEdgeAttrs[i]] = NULL;
+        edgeIdToAttrs_[dst] = edgeAttrs;
+    }
+
+    // we always maintain a bit vector and just won't send it if sampling count + rep
+    statFreeEdgeAttr("bv", edgeIdToAttrs_[dst]["bv"]);
+    edgeIdToAttrs_[dst]["bv"] = statCopyEdgeAttr("bv", (void *)edges2d_[dst].second);
+    if (sampleType_ & STAT_SAMPLE_THREADS)
+    {
+        newEdge = initializeBitVectorEdge(STAT_BITVECTOR_BITS);
+        if (newEdge == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize newEdge\n");
+            return STAT_ALLOCATE_ERROR;
+        }
+        tidIndex = find(threadIds_.begin(), threadIds_.end(), tid) - threadIds_.begin();
+        tidIndex = tidIndex % threadBvLength_;
+        newEdge->bitVector[tidIndex / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(tidIndex % STAT_BITVECTOR_BITS);
+        edgeIdToAttrs_[dst]["tbv"] = statMergeEdgeAttr("tbv", edgeIdToAttrs_[dst]["tbv"], (void *)newEdge);
+        statFreeEdge(newEdge);
+
+        countRepEdge = getBitVectorCountRep((StatBitVectorEdge_t *)edgeIdToAttrs_[dst]["tbv"], statDummyRelativeRankToAbsoluteRank);
+        if (countRepEdge == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to translate bit vector into count + representative\n");
+            return STAT_ALLOCATE_ERROR;
+        }
+        statFreeEdgeAttr("tcount", edgeIdToAttrs_[dst]["tcount"]);
+        edgeIdToAttrs_[dst]["tcount"] = statCopyEdgeAttr("tcount", (void *)&countRepEdge->count);
+        edgeIdToAttrs_[dst]["sum"] = statMergeEdgeAttr("sum", edgeIdToAttrs_[dst]["sum"], (void *)&countRepEdge->count);
+        statFreeCountRepEdge(countRepEdge);
+    } //if (sampleType_ & STAT_SAMPLE_THREADS)
+
+    if (sampleType_ & STAT_SAMPLE_COUNT_REP)
+    {
+        countRepEdge = getBitVectorCountRep(edges2d_[dst].second, statRelativeRankToAbsoluteRank);
+        if (countRepEdge == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to translate bit vector into count + representative\n");
+            return STAT_ALLOCATE_ERROR;
+        }
+        statFreeEdgeAttr("count", edgeIdToAttrs_[dst]["count"]);
+        statFreeEdgeAttr("rep", edgeIdToAttrs_[dst]["rep"]);
+        edgeIdToAttrs_[dst]["count"] = statCopyEdgeAttr("count", (void *)&countRepEdge->count);
+        edgeIdToAttrs_[dst]["rep"] = statCopyEdgeAttr("rep" , (void *)&countRepEdge->representative);
+        edgeIdToAttrs_[dst]["sum"] = statMergeEdgeAttr("sum", edgeIdToAttrs_[dst]["sum"], (void *)&countRepEdge->checksum);
+        statFreeCountRepEdge(countRepEdge);
+    }
+#endif
 
     return STAT_OK;
 }
@@ -326,6 +444,27 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
         }
         for (nodesIter = (*nodes).begin(); nodesIter != (*nodes).end(); nodesIter++)
         {
+
+#ifdef GRAPHLIB_3_0
+            int index;
+            map<string, string>::iterator nodeAttrIter;
+            nodeAttr.attr_values = (void **)calloc(1, gNumNodeAttrs * sizeof(void *));
+            if (nodeAttr.attr_values == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error callocing %d nodeAttr.attr_values\n", strerror(errno), gNumNodeAttrs);
+                return STAT_ALLOCATE_ERROR;
+            }
+            for (nodeAttrIter = nodeIdToAttrs_[nodesIter->first].begin(); nodeAttrIter != nodeIdToAttrs_[nodesIter->first].end(); nodeAttrIter++)
+            {
+                graphlibError = graphlib_getNodeAttrIndex(*currentGraph, nodeAttrIter->first.c_str(), &index);
+                if (GRL_IS_FATALERROR(graphlibError))
+                {
+                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get node attr index for key %s\n", nodeAttrIter->first.c_str());
+                    return STAT_GRAPHLIB_ERROR;
+                }
+                nodeAttr.attr_values[index] =  statCopyNodeAttr(nodeAttrIter->first.c_str(), nodeAttrIter->second.c_str());
+            }
+#else
             /* Add \ character before '<' and '>' characters for dot format */
             tempString = nodesIter->second;
             delimPos = -2;
@@ -345,16 +484,6 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 tempString.insert(delimPos, "\\");
             }
             nodeAttr.label = (void *)tempString.c_str();
-#ifdef GRAPHLIB_3_0
-            int numNodeAttrs, index;
-            map<string, string>::iterator nodeAttrIter;
-            graphlibError = graphlib_getNumNodeAttrs(*currentGraph, &numNodeAttrs);
-            nodeAttr.attr_values = (void **)calloc(1, numNodeAttrs * sizeof(void *));
-            for (nodeAttrIter = nodeIdToAttrs_[nodesIter->first].begin(); nodeAttrIter != nodeIdToAttrs_[nodesIter->first].end(); nodeAttrIter++)
-            {
-                graphlibError = graphlib_getNodeAttrIndex(*currentGraph, nodeAttrIter->first.c_str(), &index);
-                nodeAttr.attr_values[index] =  statCopyNodeAttr(nodeAttrIter->first.c_str(), nodeAttrIter->second.c_str());
-            }
 #endif
             graphlibError = graphlib_addNode(*currentGraph, nodesIter->first, &nodeAttr);
             if (GRL_IS_FATALERROR(graphlibError))
@@ -362,22 +491,59 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
                 return STAT_GRAPHLIB_ERROR;
             }
+#ifdef GRAPHLIB_3_0
+            for (int j = 0; j < gNumNodeAttrs; j++)
+            {
+                char *nodeAttrKey;
+                graphlibError = graphlib_getNodeAttrKey(*currentGraph, j, &nodeAttrKey);
+                if (GRL_IS_FATALERROR(graphlibError))
+                {
+                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error getting key for attribute %d\n", j);
+                    return STAT_GRAPHLIB_ERROR;
+                }
+                statFreeNodeAttr(nodeAttrKey, nodeAttr.attr_values[j]);
+            }
+            free(nodeAttr.attr_values);
+#endif
         }
         for (edgesIter = (*edges).begin(); edgesIter != (*edges).end(); edgesIter++)
         {
 #ifdef GRAPHLIB_3_0
-            int numEdgeAttrs;
-            graphlibError = graphlib_getNumEdgeAttrs(*currentGraph, &numEdgeAttrs);
-            edgeAttr.attr_values = (void **)calloc(1, numEdgeAttrs * sizeof(void *));
-// We don't use the edge attrs here yet since we just derrive it from the BV
-//            int index;
-//            map<string, void *>::iterator edgeAttrIter;
-//            for (edgeAttrIter = edgeIdToAttrs_[edgesIter->first].begin(); edgeAttrIter != edgeIdToAttrs_[edgesIter->first].end(); edgeAttrIter++)
-//            {
-//                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, edgeAttrIter->first.c_str(), &index);
-//                edgeAttr.attr_values[index] = statCopyEdgeAttr(edgeAttrIter->first.c_str(), edgeAttrIter->second);
-//            }
-#endif
+            int index;
+            edgeAttr.attr_values = (void **)calloc(1, gNumEdgeAttrs * sizeof(void *));
+            if (edgeAttr.attr_values == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error callocing %d edgeAttr.attr_values\n", strerror(errno), gNumEdgeAttrs);
+                return STAT_ALLOCATE_ERROR;
+            }
+            map<string, void *>::iterator edgeAttrIter, edgeAttrIterEnd;
+            if (currentGraph == prefixTree2d)
+            {
+                edgeAttrIter = edgeIdToAttrs_[edgesIter->first].begin();
+                edgeAttrIterEnd = edgeIdToAttrs_[edgesIter->first].end();
+            }
+            else
+            {
+                edgeAttrIter = edgeIdToAttrs3d_[edgesIter->first].begin();
+                edgeAttrIterEnd = edgeIdToAttrs3d_[edgesIter->first].end();
+            }
+            while (edgeAttrIter != edgeAttrIterEnd)
+            {
+                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, edgeAttrIter->first.c_str(), &index);
+                if (GRL_IS_FATALERROR(graphlibError))
+                {
+                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get edge attr index for key %s\n", edgeAttrIter->first.c_str());
+                    return STAT_GRAPHLIB_ERROR;
+                }
+                if ((sampleType_ & STAT_SAMPLE_COUNT_REP && strcmp(edgeAttrIter->first.c_str(), "bv") == 0) || strcmp(edgeAttrIter->first.c_str(), "tbv") == 0)
+                {
+                    edgeAttrIter++;
+                    continue;
+                }
+                edgeAttr.attr_values[index] = statCopyEdgeAttr(edgeAttrIter->first.c_str(), edgeAttrIter->second);
+                edgeAttrIter++;
+            }
+#else
             if (sampleType_ & STAT_SAMPLE_COUNT_REP)
             {
                 countRepEdge = getBitVectorCountRep(edgesIter->second.second, statRelativeRankToAbsoluteRank);
@@ -387,25 +553,10 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                     return STAT_ALLOCATE_ERROR;
                 }
                 edgeAttr.label = (void *)countRepEdge;
-#ifdef GRAPHLIB_3_0
-                int index;
-                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, "count", &index);
-                edgeAttr.attr_values[index] = (void *)&countRepEdge->count;
-                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, "rep", &index);
-                edgeAttr.attr_values[index] = (void *)&countRepEdge->representative;
-                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, "sum", &index);
-                edgeAttr.attr_values[index] = (void *)&countRepEdge->checksum;
-#endif
             }
             else
-            {
                 edgeAttr.label = (void *)edgesIter->second.second;
-#ifdef GRAPHLIB_3_0
-                int index;
-                graphlibError = graphlib_getEdgeAttrIndex(*currentGraph, "bv", &index);
-                edgeAttr.attr_values[index] = (void *)edgesIter->second.second;
 #endif
-            }
 
             graphlibError = graphlib_addDirectedEdge(*currentGraph, edgesIter->second.first, edgesIter->first, &edgeAttr);
             if (GRL_IS_FATALERROR(graphlibError))
@@ -413,6 +564,20 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
                 return STAT_GRAPHLIB_ERROR;
             }
+#ifdef GRAPHLIB_3_0
+            for (int j = 0; j < gNumEdgeAttrs; j++)
+            {
+                char *edgeAttrKey;
+                graphlibError = graphlib_getEdgeAttrKey(*currentGraph, j, &edgeAttrKey);
+                if (GRL_IS_FATALERROR(graphlibError))
+                {
+                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get edge attr key for index %d\n", j);
+                    return STAT_GRAPHLIB_ERROR;
+                }
+                statFreeEdgeAttr(edgeAttrKey, edgeAttr.attr_values[j]);
+            }
+            free(edgeAttr.attr_values);
+#else
             if (sampleType_ & STAT_SAMPLE_COUNT_REP)
             {
                 graphlibError = graphlib_delEdgeAttr(edgeAttr, statFreeCountRepEdge);
@@ -422,6 +587,8 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                     return STAT_GRAPHLIB_ERROR;
                 }
             }
+#endif
+
         }
     }
 
@@ -1417,6 +1584,10 @@ sleep(2);
         byteArray = NULL;
     }
 
+#ifdef STAT_FGFS
+    delete msrf;
+#endif
+
     return STAT_OK;
 }
 
@@ -2020,7 +2191,11 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
     else if (sampleType_ & STAT_SAMPLE_LINE)
     {
 #ifdef SW_VERSION_8_0_0
+  #ifdef OMP_STACKWALKER
+        if (frame.isTopFrame() == true and !(sampleType_ & STAT_SAMPLE_OPENMP))
+  #else
         if (frame.isTopFrame() == true)
+  #endif
             addr = frame.getRA();
         else
 #endif
@@ -2080,6 +2255,9 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
     StatBitVectorEdge_t *edge = NULL;
     vector<Dyninst::THR_ID> threads;
     ProcDebug *pDebug = NULL;
+#ifdef GRAPHLIB_3_0
+    static int threadCountWarning = 0;
+#endif
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d of %d\n", rank, proctabSize_);
 
@@ -2131,6 +2309,17 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
     /* Loop over the threads and get the traces */
     for (j = 0; j < threads.size(); j++)
     {
+#ifdef GRAPHLIB_3_0
+        if (find(threadIds_.begin(), threadIds_.end(), threads[j]) == threadIds_.end())
+        {
+            threadIds_.push_back(threads[j]);
+            if (threadCountWarning == 0 and threadIds_.size() >= threadBvLength_)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
+                threadCountWarning++;
+            }
+        }
+#endif
         trace.clear();
         prevId = 0;
         path = "";
@@ -2263,7 +2452,7 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
             for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
                 nodeIdToAttrs_[nodeId][nodeAttrsIter->first] = nodeAttrsIter->second;
 #endif
-            update2dEdge(prevId, nodeId, edge);
+            update2dEdge(prevId, nodeId, edge, threads[j]);
             prevId = nodeId;
         }
         trace.clear();
@@ -2428,7 +2617,7 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
                 rank = *myRanksIter;
                 edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
             }
-            update2dEdge(graphlibNode, newChildId, edge);
+            update2dEdge(graphlibNode, newChildId, edge, 0);
             statFreeEdge(edge);
         } /* if (graphlibNode != newChildId) */
 
@@ -2653,7 +2842,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
             edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
         }
 
-        update2dEdge(0, newChildId, edge);
+        update2dEdge(0, newChildId, edge, 0);
         statFreeEdge(edge);
     }
 
@@ -2680,6 +2869,10 @@ int statRelativeRankToAbsoluteRank(int rank)
     return absoluteRank;
 }
 
+int statDummyRelativeRankToAbsoluteRank(int rank)
+{
+    return rank;
+}
 
 StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
 {
@@ -3756,14 +3949,20 @@ StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned i
     path += "__libc_start_main";
     nodeId = statStringHash(path.c_str());
     nodes2d_[nodeId] = "__libc_start_main";
-    update2dEdge(prevId, nodeId, edge);
+#ifdef GRAPHLIB_3_0
+    nodeIdToAttrs_[nodeId]["function"] = nodes2d_[nodeId];
+#endif
+    update2dEdge(prevId, nodeId, edge, 0);
     prevId = nodeId;
 
     /* Create artificial main */
     path += "main";
     nodeId = statStringHash(path.c_str());
     nodes2d_[nodeId] = "main";
-    update2dEdge(prevId, nodeId, edge);
+#ifdef GRAPHLIB_3_0
+    nodeIdToAttrs_[nodeId]["function"] = nodes2d_[nodeId];
+#endif
+    update2dEdge(prevId, nodeId, edge, 0);
     prevId = nodeId;
 
     /* Seed the random number generator based on my equivalence class */
@@ -3779,7 +3978,10 @@ StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned i
         path += frame;
         nodeId = statStringHash(path.c_str());
         nodes2d_[nodeId] = frame;
-        update2dEdge(prevId, nodeId, edge);
+#ifdef GRAPHLIB_3_0
+        nodeIdToAttrs_[nodeId]["function"] = nodes2d_[nodeId];
+#endif
+        update2dEdge(prevId, nodeId, edge, 0);
         prevId = nodeId;
     }
 

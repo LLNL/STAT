@@ -44,9 +44,7 @@ from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_B
 HAVE_OPENMP_SUPPORT = True
 try:
     from STAT import STAT_SAMPLE_OPENMP
-    print 'true'
 except:
-    print 'false'
     HAVE_OPENMP_SUPPORT = False
 HAVE_DYSECT = True
 try:

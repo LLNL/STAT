@@ -139,7 +139,6 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
                         gStatOutFp, "Malloc returned NULL for %s\n", pathStr));
-                free(fileContents);
                 fclose(fp);
                 return NULL;
             }

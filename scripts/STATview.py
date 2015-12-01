@@ -126,6 +126,9 @@ task_label_to_list = {}
 ## A global table to avoid unnecessary parsing of long label strings
 task_label_id_to_list = {}
 
+## A global table to avoid unnecessary parsing of long label strings
+task_label_to_id = {}
+
 ## A counter to keep track of unique label IDs
 next_label_id = -1
 
@@ -150,6 +153,7 @@ def get_task_list(label):
         global next_label_id
         next_label_id += 1
         task_label_id_to_list[next_label_id] = ret
+        task_label_to_id[label] = next_label_id
     return ret
 
 
@@ -205,6 +209,7 @@ def list_to_string(task_list):
     task_label_to_list['[' + ret + ']'] = task_list
     next_label_id += 1
     task_label_id_to_list[next_label_id] = task_list
+    task_label_to_id['[' + ret + ']'] = next_label_id
     return ret
 
 
@@ -274,6 +279,7 @@ def create_temp(dot_filename, truncate, max_node_name):
                 temp_dot_file.write(output_line)
             for edge in parser.edges:
                 src_id, dst_id, attrs = edge
+                attrs["label"] = edge_attr_to_label(attrs)
                 output_line = '\t%s -> %s [' % (src_id, dst_id)
                 for key in attrs.keys():
                     if key == 'label':
@@ -281,6 +287,11 @@ def create_temp(dot_filename, truncate, max_node_name):
                         original_label = label
                         max_size = 12
                         num_tasks = get_num_tasks(label)
+                        num_threads = -1
+                        if attrs["tbv"] != "(null)":
+                            num_threads = int(attrs["tbv"])
+                        elif attrs["tcount"] != "(null)":
+                            num_threads = int(attrs["tcount"])
                         if label[0] != '[':
                             # this is just a count and representative
                             representative = get_task_list(label)[0]
@@ -302,7 +313,10 @@ def create_temp(dot_filename, truncate, max_node_name):
                                 if i + 1 < len(label):
                                     new_label += '...]'
                                 label = new_label
-                        output_line += '%s="%d:%s",' % (key, num_tasks, label)
+                        if num_threads != -1:
+                            output_line += '%s="%d(%d):%s",' % (key, num_tasks, num_threads, label)
+                        else:
+                            output_line += '%s="%d:%s",' % (key, num_tasks, label)
                     else:
                         output_line += '%s="%s",' % (key, attrs[key])
                 output_line += 'originallabel="%s"]\n' % original_label
@@ -896,6 +910,9 @@ class STATNode(STATElement):
 
         if self.edge_label_id in task_label_id_to_list:
             return task_label_id_to_list[self.edge_label_id]
+        ret = get_task_list(self.edge_label)
+        if self.edge_label != '' and self.edge_label[0] == '[': # not the head node and not count + rep
+            self.edge_label_id = task_label_to_id[self.edge_label]
         return get_task_list(self.edge_label)
 
     #  \return the task list

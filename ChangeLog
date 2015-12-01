@@ -1,3 +1,15 @@
+2015-12-01 Gregory L. Lee <lee218@llnl.gov>
+	* STAT_BackEnd.C : use edge attributes
+	* : track thread count in edges
+	* : static and dynamic code analysis fixes
+
+2015-11-02 Gregory L. Lee <lee218@llnl.gov>
+	* STATview.py : migrate to edge attributes instead of label
+	* : no longer generate edge labels
+
+2015-10-28 Gregory L. Lee <lee218@llnl.gov>
+	* : added ability to record Thread ID
+
 2015-10-23 Gregory L. Lee <lee218@llnl.gov>
 	* : added OpenMP OMPD support (prototype from Lai Wei)
 
