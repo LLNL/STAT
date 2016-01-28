@@ -3231,7 +3231,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     if (sampleType & STAT_SAMPLE_COUNT_REP)
         graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "sum");
     else if (sampleType & STAT_SAMPLE_THREADS)
-        graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "sum");
+        graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "tbvsum");
     else
         graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "bv");
 #else

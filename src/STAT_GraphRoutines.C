@@ -33,7 +33,7 @@ graphlib_functiontable_p gStatReorderFunctions = NULL;
 graphlib_functiontable_p gStatCountRepFunctions = NULL;
 
 const char *gNodeAttrs[] = {"function", "source", "line", "module", "offset", "vars", "pc"};
-const char *gEdgeAttrs[] = {"bv", "count", "rep", "sum", "tbv", "tcount"};
+const char *gEdgeAttrs[] = {"bv", "count", "rep", "sum", "tbv", "tcount", "tbvsum"};
 int gNumNodeAttrs;
 int gNumEdgeAttrs;
 
@@ -623,7 +623,7 @@ void statFreeEdge(void *edge)
     free(e);
 }
 
-long statEdgeCheckSum(const void *edge)
+long statEdgeCheckSum(const char *key, const void *edge)
 {
     int i;
     long longRet = 0;
@@ -631,9 +631,18 @@ long statEdgeCheckSum(const void *edge)
 
     if (edge == NULL)
         return 0;
-    for (i = 0; i < e->length; i++)
-        longRet = longRet + e->bitVector[i] * (e->length - i + 1);
-
+    if (key == NULL)
+    {
+        for (i = 0; i < e->length; i++)
+            longRet = longRet + e->bitVector[i] * (e->length - i + 1);
+    }
+    else if (strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0)
+        longRet = *(int64_t *)edge;
+    else if (strcmp(key, "bv") == 0)
+    {
+        for (i = 0; i < e->length; i++)
+            longRet = longRet + e->bitVector[i] * (e->length - i + 1);
+    }
     return longRet;
 }
 
@@ -798,14 +807,31 @@ void statFreeCountRepEdge(void *edge)
 }
 
 #ifdef GRAPHLIB_3_0
-long statCountRepEdgeCheckSum(const void *edge)
+long statCountRepEdgeCheckSum(const char *key, const void *edge)
 {
+    int i;
+    long longRet = 0;
+    StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
+
     if (edge == NULL)
         return 0;
-    return *(int64_t *)edge;
+    if (key == NULL)
+        longRet = *(int64_t *)edge;
+    else if (strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0)
+        longRet = *(int64_t *)edge;
+    else if (strcmp(key, "bv") == 0)
+    {
+        for (i = 0; i < e->length; i++)
+            longRet = longRet + e->bitVector[i] * (e->length - i + 1);
+    }
+    return longRet;
+    if (edge == NULL)
+        return 0;
+    if (key == NULL)
+        return *(int64_t *)edge;
 }
 #else
-long statCountRepEdgeCheckSum(const void *edge)
+long statCountRepEdgeCheckSum(const char *key, const void *edge)
 {
     if (edge == NULL)
         return 0;
@@ -900,7 +926,7 @@ void statSerializeEdgeAttr(const char *key, char *buf, const void *edge)
     }
     if (strcmp(key, "bv") == 0 || strcmp(key, "tbv") == 0)
         statSerializeEdge(buf, edge);
-    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0)
+    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0)
         memcpy(buf, edge, sizeof(int64_t));
     else if (strcmp(key, "tid") == 0)
     {
@@ -915,7 +941,7 @@ unsigned int statSerializeEdgeAttrLength(const char *key, const void *edge)
         return 0;
     if (strcmp(key, "bv") == 0 || strcmp(key, "tbv") == 0)
         return statSerializeEdgeLength(edge);
-    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0)
+    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0)
         return sizeof(int64_t);
     else if (strcmp(key, "tid") == 0)
     {
@@ -949,7 +975,7 @@ void statDeserializeEdgeAttr(const char *key, void **edge, const char *buf, unsi
     }
     if (strcmp(key, "bv") == 0 || strcmp(key, "tbv") == 0)
         statDeserializeEdge(edge, buf, bufLength);
-    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tid") == 0)
+    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0 || strcmp(key, "tid") == 0)
     {
         int64_t *e;
 
@@ -970,7 +996,7 @@ char *statEdgeAttrToText(const char *key, const void *edge)
         return NULL;
     if (strcmp(key, "bv") == 0)
         return statEdgeToText(edge);
-    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0)
+    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0)
     {
         char *charRet;
         int64_t *e;
@@ -1028,7 +1054,7 @@ void *statMergeEdgeAttr(const char *key, void *edge1, const void *edge2)
         return edge1;
     if (strcmp(key, "bv") == 0 || strcmp(key, "tbv") == 0)
         return statMergeEdge(edge1, edge2);
-    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "sum") == 0)
+    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0)
     {
         *(int64_t *)edge1 = *(int64_t *)edge1 + *(int64_t *)edge2;
         return edge1;
@@ -1068,7 +1094,7 @@ void *statCopyEdgeAttr(const char *key, const void *edge)
         return NULL;
     if (strcmp(key, "bv") == 0 || strcmp(key, "tbv") == 0)
         return statCopyEdge(edge);
-    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0)
+    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0)
     {
         int64_t *intRet;
 
@@ -1103,7 +1129,7 @@ void statFreeEdgeAttr(const char *key, void *edge)
         return;
     if (strcmp(key, "bv") == 0 || strcmp(key, "tbv") == 0)
         statFreeEdge(edge);
-    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0)
+    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0)
         free((int64_t *) edge);
 }
 
@@ -1116,7 +1142,7 @@ void statFilterDeserializeEdgeAttr(const char *key, void **edge, const char *buf
     }
     if (strcmp(key, "bv") == 0 || strcmp(key, "tbv") == 0)
         statFilterDeserializeEdge(edge, buf, bufLength);
-    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tid") == 0)
+    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0 || strcmp(key, "tid") == 0)
     {
         int64_t *e;
 
@@ -1137,7 +1163,7 @@ void *statCopyEdgeAttrInitializeEmpty(const char *key, const void *edge)
         return NULL;
     if (strcmp(key, "bv") == 0)
         return statCopyEdgeInitializeEmpty(edge);
-    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tid") == 0)
+    else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0 || strcmp(key, "tid") == 0)
     {
         int64_t *intRet;
 
@@ -1180,7 +1206,7 @@ void *statMergeEdgeAttrOrdered(const char *key, void *edge1, const void *edge2)
         return edge1;
     if (strcmp(key, "bv") == 0)
         return statMergeEdgeOrdered(edge1, edge2);
-    else if (strcmp(key, "count") == 0 || strcmp(key, "sum") == 0)
+    else if (strcmp(key, "count") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0)
     {
         *(int64_t *)edge1 = *(int64_t *)edge1 + *(int64_t *)edge2;
         return edge1;
