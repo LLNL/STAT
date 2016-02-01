@@ -307,6 +307,10 @@ StatError_t STAT_BackEnd::update3dNodesAndEdges()
             edgeIdToAttrs3d_[dst]["tcount"] = statCopyEdgeAttr("tcount", (void *)&countRepEdge->count);
             statFreeEdgeAttr("sum", edgeIdToAttrs3d_[dst]["sum"]);
             edgeIdToAttrs3d_[dst]["sum"] = statCopyEdgeAttr("sum", (void *)&countRepEdge->count);
+            statFreeEdgeAttr("tbvsum", edgeIdToAttrs3d_[dst]["tbvsum"]);
+            // we need a unique checksum for threads across damons:
+            int64_t tbvsum = countRepEdge->checksum * (myRank_ + 1);
+            edgeIdToAttrs3d_[dst]["tbvsum"] = statCopyEdgeAttr("tbvsum", (void *)&tbvsum);
             statFreeCountRepEdge(countRepEdge);
         }
 #endif
@@ -370,6 +374,10 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
         statFreeEdgeAttr("tcount", edgeIdToAttrs_[dst]["tcount"]);
         edgeIdToAttrs_[dst]["tcount"] = statCopyEdgeAttr("tcount", (void *)&countRepEdge->count);
         edgeIdToAttrs_[dst]["sum"] = statMergeEdgeAttr("sum", edgeIdToAttrs_[dst]["sum"], (void *)&countRepEdge->count);
+        // we need a unique checksum for threads across damons:
+        int64_t tbvsum = countRepEdge->checksum * (myRank_ + 1);
+        edgeIdToAttrs_[dst]["tbvsum"] = statMergeEdgeAttr("tbvsum", edgeIdToAttrs_[dst]["tbvsum"], (void *)&tbvsum);
+
         statFreeCountRepEdge(countRepEdge);
     } //if (sampleType_ & STAT_SAMPLE_THREADS)
 

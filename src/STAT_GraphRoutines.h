@@ -339,10 +339,11 @@ void statFreeEdgeAttr(const char *key, void *edge);
 
 //! Calculate a checksum of a STAT edge object
 /*!
+    \param key - the attribute key, or NULL if not applicable
     \param edge - a pointer to the edge object
     \return the checksum of the edge
 */
-long statEdgeCheckSum(const void *edge);
+long statEdgeCheckSum(const char *key, const void *edge);
 
 //! Deserialize a STAT edge object for the STAT filter.
 /*!
@@ -522,10 +523,11 @@ void statFreeCountRepEdgeAttr(const char * key, void *edge);
 
 //! Calculate a checksum of a STAT count + rep edge object
 /*!
+    \param key - the attribute key, or NULL if not applicable
     \param edge - a pointer to the edge object
     \return the checksum of the edge
 */
-long statCountRepEdgeCheckSum(const void *edge);
+long statCountRepEdgeCheckSum(const char *key, const void *edge);
 
 //! Translate a full bit vector edge into a count + representative edge
 /*!
