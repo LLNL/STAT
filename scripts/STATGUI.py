@@ -128,7 +128,7 @@ class STATGUI(STATDotWindow):
                    'CP Policy':                        'share app nodes',
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
-                   'Job Launcher':                     'mpirun|srun|orterun|aprun|runjob|wreckrun',
+                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun',
                    'Filter Ranks':                     '',
                    'Filter Hosts':                     '',
                    'Log Dir':                          os.environ['HOME'],
