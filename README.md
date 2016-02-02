@@ -1,35 +1,35 @@
-STAT: the Stack Trace Analyasis Tool
+## STAT: the Stack Trace Analysis Tool
 http://paradyn.org/STAT/STAT.html
 
-Please see LICENSE for usage terms.
+Please see [LICENSE](https://github.com/LLNL/STAT/blob/master/LICENSE) for usage terms.
 
-1. OVERVIEW
+### OVERVIEW
 The Stack Trace Analysis Tool (STAT) is a highly scalable, lightweight tool that gathers and merges stack traces from all of the processes of a parallel application to form call graph prefix trees.  STAT generates two prefix trees termed 2D-trace-space and 3D-trace-space-time.  The 2D-trace-space prefix tree is a merge of a single stack trace from each task in the parallel application.  The 3D-trace-space-time prefix tree is a merge of several stack traces from each task gathered over time.  The latter provides insight into whether tasks are making progress or are in a hang state (livelock, deadlock, infiite loop, etc.).  The call graph prefix trees also identify processes equivalence classes, processes exhibitin similar behavior with respect to their call paths.  A representative task from each equivalence class can then be fed into a full-featured debugger for root cause analysis at a manageable scale.
 
 STAT's source code also includes STATBench, a tool to emulate STAT.  STATBench enables the benchmarking of STAT on arbitrary machine architectures and applications by fully utilizing parallel resources and generating artificial stack traces.
 
-2. BUILDING STAT
+### BUILDING STAT
 STAT has several dependent libraries that must be installed:
-    -MRNet
-    -LaunchMON
-    -GraphLib
-    -Stackwalker
-    -libdwarf
+* MRNet
+* LaunchMON
+* GraphLib
+* Stackwalker
+* libdwarf
 
 In addition, the STAT GUI requires Python with PyGTK, both of which are commonly preinstalled with many Linux operating systems. 
 
 Please refer to INSTALL for instructions on building STAT
 
-3. SUPPORTED PLATFORMS
+### SUPPORTED PLATFORMS
 STAT is able to run on any machine where all of the dependent libraries run.  This currently includes:
-    -IBM BlueGene/L
-    -IBM BlueGene/P
-    -IBM BlueGene/Q
-    -x86-based architectures with SLURM
-    -x86-based architectures with OpenMPI
-    -Cray XT
-    -Cray XE
-    -Cray XK
+* IBM BlueGene/L
+* IBM BlueGene/P
+* IBM BlueGene/Q
+* x86-based architectures with SLURM
+* x86-based architectures with OpenMPI
+* Cray XT
+* Cray XE
+* Cray XK
 
-4. CONTACT
-Please direct any questions to Gregory Lee <lee218@llnl.gov>
+### CONTACT
+Please direct any questions to [Gregory Lee](mailto:lee218@llnl.gov).
