@@ -1,5 +1,6 @@
 ## STAT: the Stack Trace Analysis Tool
 http://paradyn.org/STAT/STAT.html
+
 Please see [LICENSE](https://github.com/LLNL/STAT/blob/master/LICENSE) for usage terms.
 
 ### OVERVIEW
