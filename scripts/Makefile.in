@@ -43,11 +43,11 @@ subdir = scripts
 DIST_COMMON = $(am__python_PYTHON_DIST) $(dist_bin_SCRIPTS) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in $(srcdir)/STAT.in \
 	$(srcdir)/STATBench.in $(srcdir)/STATGUI.in \
-	$(srcdir)/STATview.in $(srcdir)/dysect-view.in \
-	$(srcdir)/dysectc.in $(srcdir)/stat-bench.in \
-	$(srcdir)/stat-cl.in $(srcdir)/stat-core-merger.in \
-	$(srcdir)/stat-gui.in $(srcdir)/stat-script.in \
-	$(srcdir)/stat-view.in
+	$(srcdir)/STATview.in $(srcdir)/attach-helper.in \
+	$(srcdir)/dysect-view.in $(srcdir)/dysectc.in \
+	$(srcdir)/stat-bench.in $(srcdir)/stat-cl.in \
+	$(srcdir)/stat-core-merger.in $(srcdir)/stat-gui.in \
+	$(srcdir)/stat-script.in $(srcdir)/stat-view.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/libtool.m4 \
 	$(top_srcdir)/config/ltoptions.m4 \
@@ -78,7 +78,7 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config.h
 CONFIG_CLEAN_FILES = STAT stat-cl STATGUI STATview stat-script \
 	stat-gui stat-view STATBench stat-bench dysectc dysect-view \
-	stat-core-merger
+	stat-core-merger attach-helper
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -107,8 +107,8 @@ SCRIPTS = $(bin_SCRIPTS) $(dist_bin_SCRIPTS)
 SOURCES =
 DIST_SOURCES =
 am__python_PYTHON_DIST = stat_merge_base.py STATmerge.py \
-	core_file_merger.py bg_core_backtrace.py STATGUI.py \
-	STATview.py xdot.py STAThelper.py DysectView.py
+	core_file_merger.py bg_core_backtrace.py attach_helper.py \
+	STATGUI.py STATview.py xdot.py STAThelper.py DysectView.py
 py_compile = $(top_srcdir)/config/py-compile
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
@@ -279,14 +279,16 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 dist_bin_SCRIPTS = run_one_sec
 @ENABLE_DYSECTAPI_FALSE@bin_SCRIPTS = STAT stat-cl stat-script \
-@ENABLE_DYSECTAPI_FALSE@	stat-core-merger $(am__append_3) \
-@ENABLE_DYSECTAPI_FALSE@	$(am__append_4) $(am__append_5)
+@ENABLE_DYSECTAPI_FALSE@	stat-core-merger attach-helper \
+@ENABLE_DYSECTAPI_FALSE@	$(am__append_3) $(am__append_4) \
+@ENABLE_DYSECTAPI_FALSE@	$(am__append_5)
 @ENABLE_DYSECTAPI_TRUE@bin_SCRIPTS = STAT stat-cl stat-script \
-@ENABLE_DYSECTAPI_TRUE@	stat-core-merger dysectc \
+@ENABLE_DYSECTAPI_TRUE@	stat-core-merger attach-helper dysectc \
 @ENABLE_DYSECTAPI_TRUE@	$(am__append_3) $(am__append_4) \
 @ENABLE_DYSECTAPI_TRUE@	$(am__append_5)
 python_PYTHON = stat_merge_base.py STATmerge.py core_file_merger.py \
-	bg_core_backtrace.py $(am__append_1) $(am__append_2)
+	bg_core_backtrace.py attach_helper.py $(am__append_1) \
+	$(am__append_2)
 all: all-am
 
 .SUFFIXES:
@@ -343,6 +345,8 @@ dysectc: $(top_builddir)/config.status $(srcdir)/dysectc.in
 dysect-view: $(top_builddir)/config.status $(srcdir)/dysect-view.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 stat-core-merger: $(top_builddir)/config.status $(srcdir)/stat-core-merger.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+attach-helper: $(top_builddir)/config.status $(srcdir)/attach-helper.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 install-binSCRIPTS: $(bin_SCRIPTS)
 	@$(NORMAL_INSTALL)

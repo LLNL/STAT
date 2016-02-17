@@ -53,7 +53,11 @@ try:
     from DysectView import DysectDotWindow
 except:
     HAVE_DYSECT = False
-
+HAVE_ATTACH_HELPER = True
+try:
+    import attach_helper
+except:
+    HAVE_ATTACH_HELPER = False
 import commands
 import subprocess
 import time
@@ -110,6 +114,7 @@ class STATGUI(STATDotWindow):
                  'Sample Type':       ['function only', 'function and pc', 'module offset', 'function and line'],
                  'Edge Type':         ['full list', 'count and representative'],
                  'Remote Host Shell': ['rsh', 'ssh'],
+                 'Resource Manager':  ['Auto', 'Alps', 'Slurm'],
                  'CP Policy':         ['none', 'share app nodes', 'exclusive']}
         if not hasattr(self, "types"):
             self.types = {}
@@ -117,6 +122,7 @@ class STATGUI(STATDotWindow):
             self.types[opt] = types[opt]
         options = {'Remote Host':                      "localhost",
                    'Remote Host Shell':                "rsh",
+                   'Resource Manager':                 "Auto",
                    'PID':                              None,
                    'Launcher Exe':                     '',
                    'Serial PID':                       None,
@@ -129,6 +135,7 @@ class STATGUI(STATDotWindow):
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
                    'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun',
+                   'Job ID':                           '',
                    'Filter Ranks':                     '',
                    'Filter Hosts':                     '',
                    'Log Dir':                          os.environ['HOME'],
@@ -541,10 +548,28 @@ host[1-10,12,15-20];otherhost[30]
     def _on_update_process_listing2(self, attach_dialog, listing_filter, vbox, is_parallel):
         """Search for user processes."""
         self.options['Remote Host Shell'] = self.types['Remote Host Shell'][self.combo_boxes['Remote Host Shell'].get_active()]
+        pid_list = ''
+        if HAVE_ATTACH_HELPER and self.options['Job ID'] != '':
+            self.options['Remote Host'], rm_exe, pids = attach_helper.jobid_to_hostname_pid(self.options['Resource Manager'], self.options['Job ID'], self.options['Remote Host Shell'])
+            self.options['Job Launcher'] = rm_exe
+            if self.options['Remote Host'] == None:
+                show_error_dialog('Failed to find host for job ID %s' % self.options['Job ID'], attach_dialog)
+                self.options['Job ID'] = ''
+                return False
+            self.options['Job ID'] = ''
+            for i, pid in enumerate(pids):
+                if i != 0:
+                    pid_list += ','
+                pid_list += str(pid)
+            self.filter_entry.set_text(self.options['Job Launcher'])
+            self.rh_entry.set_text(self.options['Remote Host'])
         if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
             output = commands.getoutput('ps xw')
         else:
-            output = commands.getoutput('%s %s ps xw' % (self.options['Remote Host Shell'], self.options['Remote Host']))
+            if pid_list != '':
+                output = commands.getoutput('%s %s ps w -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
+            else:
+                output = commands.getoutput('%s %s ps xw' % (self.options['Remote Host Shell'], self.options['Remote Host']))
             if output.find('Hostname not found') != -1 or output.find('PID') == -1:
                 show_error_dialog('Failed to get process listing for %s' % self.options['Remote Host'], attach_dialog)
                 return False
@@ -563,7 +588,8 @@ host[1-10,12,15-20];otherhost[30]
                 pid_index = counter
             elif token == 'COMMAND':
                 command_index = counter
-        filter_compiled_re = re.compile(listing_filter.get_text())
+        if listing_filter is not None:
+            filter_compiled_re = re.compile(listing_filter.get_text())
         started = False
         for line in output[1:]:
             try:
@@ -621,6 +647,14 @@ host[1-10,12,15-20];otherhost[30]
         self.serial_sw.add_with_viewport(vbox)
         frame.add(self.serial_sw)
         attach_dialog.show_all()
+
+    def on_update_job_id(self, w, frame, attach_dialog, entry):
+        """Callback to search a job id for resource manager processes."""
+        self.options['Job ID'] = entry.get_text()
+        entry.set_text(self.options['Job ID'])
+        self.options['Resource Manager'] = self.types['Resource Manager'][self.combo_boxes['Resource Manager'].get_active()]
+        self.on_update_process_listing(w, frame, attach_dialog, None)
+
 
     def on_update_remote_host(self, w, frame, attach_dialog, entry):
         """Callback to search a remote host for processes."""
@@ -809,16 +843,36 @@ host[1-10,12,15-20];otherhost[30]
         # parallel attach
         process_frame = gtk.Frame('Current Process List')
         vbox = gtk.VBox()
+
+        self.rm_expander = gtk.Expander("Search for job by Resource Manager job ID")
         hbox = gtk.HBox()
-        self.pack_entry_and_button(self.options['Remote Host'], self.on_update_remote_host, process_frame, attach_dialog, "Search Remote Host", hbox)
+        self.jobid_entry = self.pack_entry_and_button(self.options['Job ID'], self.on_update_job_id, process_frame, attach_dialog, "Search for Job", hbox, True, True, 0)
         hbox.pack_start(gtk.VSeparator(), False, False, 5)
+        self.pack_combo_box(hbox, 'Resource Manager')
+        self.rm_expander.add(hbox)
+        vbox.pack_start(self.rm_expander, False, False, 0)
+
+        self.hn_expander = gtk.Expander("Search for job by hostname")
+        hbox = gtk.HBox()
+        self.rh_entry = self.pack_entry_and_button(self.options['Remote Host'], self.on_update_remote_host, process_frame, attach_dialog, "Search Remote Host", hbox)
+        self.hn_expander.add(hbox)
+        self.hn_expander.set_expanded(True)
+        vbox.pack_start(self.hn_expander, False, False, 0)
+
+        self.rm_expander.connect("activate", lambda w: self.hn_expander.set_expanded(self.rm_expander.get_expanded()))
+        self.hn_expander.connect("activate", lambda w: self.rm_expander.set_expanded(self.hn_expander.get_expanded()))
+
+        vbox.pack_start(gtk.HSeparator(), False, False, 0)
+        hbox = gtk.HBox()
         self.pack_combo_box(hbox, 'Remote Host Shell')
         vbox.pack_start(hbox, False, False, 0)
+
+        vbox.pack_start(process_frame, True, True, 0)
+
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label('Filter Process List'), False, False, 5)
         self.filter_entry = self.pack_entry_and_button(self.options['Job Launcher'], self.on_update_process_listing, process_frame, attach_dialog, "Filter", hbox, True, True, 0)
         vbox.pack_start(hbox, False, False, 0)
-        vbox.pack_start(process_frame, True, True, 0)
         hbox = gtk.HBox()
         button = gtk.Button("Refresh Process List")
         button.connect("clicked", lambda w: self.on_update_process_listing(w, process_frame, attach_dialog, self.filter_entry))

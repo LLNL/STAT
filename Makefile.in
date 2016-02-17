@@ -35,7 +35,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 subdir = .
-DIST_COMMON = README $(am__configure_deps) $(dist_image_DATA) \
+DIST_COMMON = $(am__configure_deps) $(dist_image_DATA) \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/config.h.in $(top_srcdir)/configure AUTHORS \
 	ChangeLog INSTALL TODO config/config.guess config/config.sub \

@@ -166,5 +166,6 @@ then
 fi
   
 AC_CONFIG_FILES([scripts/stat-core-merger])
+AC_CONFIG_FILES([scripts/attach-helper])
 
 AC_OUTPUT
