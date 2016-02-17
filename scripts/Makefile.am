@@ -1,10 +1,10 @@
 dist_bin_SCRIPTS = run_one_sec
 if ENABLE_DYSECTAPI
-bin_SCRIPTS = STAT stat-cl stat-script stat-core-merger dysectc
+bin_SCRIPTS = STAT stat-cl stat-script stat-core-merger attach-helper dysectc
 else
-bin_SCRIPTS = STAT stat-cl stat-script stat-core-merger
+bin_SCRIPTS = STAT stat-cl stat-script stat-core-merger attach-helper
 endif
-python_PYTHON = stat_merge_base.py STATmerge.py core_file_merger.py bg_core_backtrace.py
+python_PYTHON = stat_merge_base.py STATmerge.py core_file_merger.py bg_core_backtrace.py attach_helper.py
 if ENABLE_GUI
 python_PYTHON += STATGUI.py STATview.py xdot.py STAThelper.py
 if ENABLE_DYSECTAPI

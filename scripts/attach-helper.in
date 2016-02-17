@@ -1,0 +1,12 @@
+#!/bin/sh
+# @configure_input@
+export prefix=@prefix@
+export exec_prefix=@exec_prefix@
+
+if test -n "$STAT_PREFIX" ; then
+    export prefix=$STAT_PREFIX
+fi
+
+export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
+exec @STATPYTHON@ @pythondir@/attach_helper.py $@
+
