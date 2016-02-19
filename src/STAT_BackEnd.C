@@ -2483,6 +2483,8 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
     set<int> myRanks, kidsRanks;
     set<int>::iterator myRanksIter;
     map<string, string> nodeAttrs;
+    map<string, string>::iterator nodeAttrsIter;
+    map<string, map<string, string> > nameToNodeAttrs;
     string name, newNodeIdNames;
     frame_set_t &children = stackwalkerNode->getChildren();
     frame_set_t::iterator childrenIter;
@@ -2545,6 +2547,7 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             continue;
         }
         name = getFrameName(nodeAttrs, *frame);
+        nameToNodeAttrs[name] = nodeAttrs;
         childrenNames[name].insert(child);
     }
 
@@ -2583,7 +2586,11 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             newChildId = statStringHash(newNodeIdNames.c_str());
             nodes2d_[newChildId] = name;
 #ifdef GRAPHLIB_3_0
-            nodeIdToAttrs_[newChildId]["function"] = name;
+            //fprintf(stderr, "%s\n", name.c_str());
+            //nodeIdToAttrs_[newChildId]["function"] = name;
+            map<string, string> nodeAttrs = nameToNodeAttrs[name];
+            for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
+                nodeIdToAttrs_[newChildId][nodeAttrsIter->first] = nodeAttrsIter->second;
 #endif
         }
 
