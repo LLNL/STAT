@@ -379,13 +379,14 @@ class STAT_BackEnd
             \param[out] errorThreads - a list of threads whose stack walks
                    ended in an error
             \param[out] outputRanks - the set of ranks in this stack walk
+            \param[out] outputRankThreadsMap - the set of rank-threads in this stack walk
             \param[out] abort - the callee indicates whether the caller should
                    abort (delete) the caller node
             \param[in] branches - the max branch factor of the current node's
                    ancestors
             \return STAT_OK on success
         */
-        StatError_t addFrameToGraph(Dyninst::Stackwalker::CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, Dyninst::Stackwalker::FrameNode *stackwalkerNode, std::string nodeIdNames, std::set<std::pair<Dyninst::Stackwalker::Walker *, Dyninst::THR_ID> > *errorThreads, std::set<int> &outputRanks, bool &abort, int branches);
+        StatError_t addFrameToGraph(Dyninst::Stackwalker::CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, Dyninst::Stackwalker::FrameNode *stackwalkerNode, std::string nodeIdNames, std::set<std::pair<Dyninst::Stackwalker::Walker *, Dyninst::THR_ID> > *errorThreads, std::set<int> &outputRanks, std::map<int, std::set<Dyninst::THR_ID> > &outputRankThreadsMap, bool &abort, int branches);
 #endif
 
         //! Get a single stack trace
