@@ -2266,6 +2266,9 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
 #ifdef GRAPHLIB_3_0
     static int threadCountWarning = 0;
 #endif
+#ifdef OMP_STACKWALKER
+    OpenMPStackWalker *ompWalker = NULL;
+#endif
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d of %d\n", rank, proctabSize_);
 
@@ -2296,6 +2299,10 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                 threads.push_back(NULL_THR_ID);
             else
             {
+#ifdef OMP_STACKWALKER
+                if (sampleType_ & STAT_SAMPLE_OPENMP)
+                    ompWalker = new OpenMPStackWalker(proc);
+#endif
                 boolRet = proc->getAvailableThreads(threads);
                 if (boolRet != true)
                 {
@@ -2308,11 +2315,6 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
         }
     }
 
-#ifdef OMP_STACKWALKER
-    OpenMPStackWalker *ompWalker;
-    if (sampleType_ & STAT_SAMPLE_OPENMP)
-        ompWalker = new OpenMPStackWalker(proc);
-#endif
 
     /* Loop over the threads and get the traces */
     for (j = 0; j < threads.size(); j++)
@@ -2334,7 +2336,14 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
         partialTraceScore = 0;
 
         if (proc == NULL)
+        {
             trace.push_back("[task_exited]"); /* We're not attached so return a trace denoting the task has exited */
+#ifdef GRAPHLIB_3_0
+            map<string, string> nodeAttrs;
+            nodeAttrs["function"] = "StackWalker_Error";
+            nameToNodeAttrs["StackWalker_Error"] = nodeAttrs;
+#endif
+        }
         else
         {
             for (i = 0; i <= nRetries; i++)
@@ -2342,7 +2351,7 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                 currentStackWalk.clear();
 #ifdef OMP_STACKWALKER
                 boolRet = false;
-                if (sampleType_ & STAT_SAMPLE_OPENMP)
+                if (sampleType_ & STAT_SAMPLE_OPENMP && ompWalker != NULL)
                     boolRet = ompWalker->walkOpenMPStack(currentStackWalk, threads[j]);
                 if (!boolRet)
                 {
@@ -2417,6 +2426,11 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
             {
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "StackWalker reported an error in walking the stack: %s\n", Stackwalker::getLastErrorMsg());
                 trace.push_back("StackWalker_Error");
+#ifdef GRAPHLIB_3_0
+                map<string, string> nodeAttrs;
+                nodeAttrs["function"] = "StackWalker_Error";
+                nameToNodeAttrs["StackWalker_Error"] = nodeAttrs;
+#endif
             }
             else
             {
