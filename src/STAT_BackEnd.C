@@ -2490,13 +2490,17 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
 }
 
 #if defined(GROUP_OPS)
-StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, FrameNode *stackwalkerNode, string nodeIdNames, set<pair<Walker *, THR_ID> > *errorThreads, set<int> &outputRanks, bool &abort, int branches)
+StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, FrameNode *stackwalkerNode, string nodeIdNames, set<pair<Walker *, THR_ID> > *errorThreads, set<int> &outputRanks, std::map<int, std::set<THR_ID> > &outputRankThreadsMap, bool &abort, int branches)
 {
     int rank, newChildId, maxAncestorBranches;
     bool myAbort = false, allMyChildrenAbort = true;
     set<int> myRanks, kidsRanks;
     set<int>::iterator myRanksIter;
     map<string, string> nodeAttrs;
+    map<string, string>::iterator nodeAttrsIter;
+    map<string, map<string, string> > nameToNodeAttrs;
+    map<int, set<THR_ID> > myRankThreads, kidsRankThreads;
+    set<THR_ID>::iterator threadsIter;
     string name, newNodeIdNames;
     frame_set_t &children = stackwalkerNode->getChildren();
     frame_set_t::iterator childrenIter;
@@ -2512,6 +2516,9 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
     graphlib_error_t graphlibError;
     StatBitVectorEdge_t *edge;
     StatError_t statError;
+#ifdef GRAPHLIB_3_0
+    static int threadCountWarning = 0;
+#endif
 
     /* Add the Frame associated with stackwalkerNode to the graphlibGraph, below the given graphlibNode */
     /* Note: Lots of complexity here to deal with adding edge labels (all the std::set work). We could get rid of this if graphlib had graph traversal functions. */
@@ -2528,6 +2535,17 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
         {
             /* We hit a thread, that means the end of the callstack. Add the associated rank to our edge label set. */
             threadId = child->getThread();
+#ifdef GRAPHLIB_3_0
+            if (find(threadIds_.begin(), threadIds_.end(), threadId) == threadIds_.end())
+            {
+                threadIds_.push_back(threadId);
+                if (threadCountWarning == 0 and threadIds_.size() >= threadBvLength_)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
+                    threadCountWarning++;
+                }
+            }
+#endif
             if (threadId == NULL_LWP)
             {
                 printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Thread ID is NULL\n");
@@ -2555,10 +2573,12 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             }
             rank = procsToRanksIter->second;
             outputRanks.insert(rank);
+            outputRankThreadsMap[rank].insert(threadId);
             allMyChildrenAbort = false;
             continue;
         }
         name = getFrameName(nodeAttrs, *frame);
+        nameToNodeAttrs[name] = nodeAttrs;
         childrenNames[name].insert(child);
     }
 
@@ -2597,17 +2617,21 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             newChildId = statStringHash(newNodeIdNames.c_str());
             nodes2d_[newChildId] = name;
 #ifdef GRAPHLIB_3_0
-            nodeIdToAttrs_[newChildId]["function"] = name;
+            map<string, string> nodeAttrs = nameToNodeAttrs[name];
+            for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
+                nodeIdToAttrs_[newChildId][nodeAttrsIter->first] = nodeAttrsIter->second;
 #endif
         }
 
         /* Traversal 2.1: For each new node, recursively add its children to the graph */
         myRanks.clear();
+        myRankThreads.clear();
         for (kidsIter = kids.begin(); kidsIter != kids.end(); kidsIter++)
         {
             kidsRanks.clear();
+            kidsRankThreads.clear();
             child = *kidsIter;
-            statError = addFrameToGraph(stackwalkerGraph, newChildId, child, newNodeIdNames, errorThreads, kidsRanks, abort, maxAncestorBranches);
+            statError = addFrameToGraph(stackwalkerGraph, newChildId, child, newNodeIdNames, errorThreads, kidsRanks, kidsRankThreads, abort, maxAncestorBranches);
             if (statError != STAT_OK)
             {
                 printMsg(statError, __FILE__, __LINE__, "Error adding frame to graph\n");
@@ -2616,6 +2640,11 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             if (abort == false)
                 allMyChildrenAbort = false;
             myRanks.insert(kidsRanks.begin(), kidsRanks.end());
+            for (myRanksIter = myRanks.begin(); myRanksIter != myRanks.end(); myRanksIter++)
+            {
+                rank = *myRanksIter;
+                myRankThreads[rank].insert(kidsRankThreads[rank].begin(), kidsRankThreads[rank].end());
+            }
         }
 
         if (myRanks.empty())
@@ -2628,23 +2657,34 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
         /* Create the edge between this new node and our parent */
         if (graphlibNode != newChildId && abort == false)
         {
-            edge = initializeBitVectorEdge(proctabSize_);
-            if (edge == NULL)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
-                return STAT_ALLOCATE_ERROR;
-            }
             for (myRanksIter = myRanks.begin(); myRanksIter != myRanks.end(); myRanksIter++)
             {
+                edge = initializeBitVectorEdge(proctabSize_);
+                if (edge == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+                    return STAT_ALLOCATE_ERROR;
+                }
                 rank = *myRanksIter;
                 edge->bitVector[rank / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(rank % STAT_BITVECTOR_BITS);
+                for (threadsIter = myRankThreads[rank].begin(); threadsIter != myRankThreads[rank].end(); threadsIter++)
+                {
+                    threadId = *threadsIter;
+                    update2dEdge(graphlibNode, newChildId, edge, threadId);
+                }
+                statFreeEdge(edge);
             }
-            update2dEdge(graphlibNode, newChildId, edge, 0);
-            statFreeEdge(edge);
         } /* if (graphlibNode != newChildId) */
 
         if (abort == false)
+        {
             outputRanks.insert(myRanks.begin(), myRanks.end());
+            for (myRanksIter = outputRanks.begin(); myRanksIter != outputRanks.end(); myRanksIter++)
+            {
+                rank = *myRanksIter;
+                outputRankThreadsMap[rank].insert(myRankThreads[rank].begin(), myRankThreads[rank].end());
+            }
+        }
     } /* for (childrenNamesIter = childrenNames.begin()...) */
 
     abort = false;
@@ -2684,6 +2724,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
     bool swSuccess, dummyAbort = false;
     string dummyString;
     set<int> ranks;
+    map<int, set<THR_ID> > rankThreadsMap;
     StatError_t statError;
 
 #ifdef SW_VERSION_8_1_0
@@ -2833,7 +2874,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
     }
 
     isPyTrace_ = false;
-    statError = addFrameToGraph(&tree, 0, tree.getHead(), dummyString, NULL, ranks, dummyAbort, dummyBranches);
+    statError = addFrameToGraph(&tree, 0, tree.getHead(), dummyString, NULL, ranks, rankThreadsMap, dummyAbort, dummyBranches);
     if (statError != STAT_OK)
     {
         printMsg(statError, __FILE__, __LINE__, "Failed to getStackTraceFromAll\n");

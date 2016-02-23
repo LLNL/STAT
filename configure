@@ -21020,6 +21020,8 @@ fi
 
 ac_config_files="$ac_config_files scripts/stat-core-merger"
 
+ac_config_files="$ac_config_files scripts/attach-helper"
+
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -22178,6 +22180,7 @@ do
     "scripts/dysectc") CONFIG_FILES="$CONFIG_FILES scripts/dysectc" ;;
     "scripts/dysect-view") CONFIG_FILES="$CONFIG_FILES scripts/dysect-view" ;;
     "scripts/stat-core-merger") CONFIG_FILES="$CONFIG_FILES scripts/stat-core-merger" ;;
+    "scripts/attach-helper") CONFIG_FILES="$CONFIG_FILES scripts/attach-helper" ;;
 
   *) { { $as_echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5
 $as_echo "$as_me: error: invalid argument: $ac_config_target" >&2;}
