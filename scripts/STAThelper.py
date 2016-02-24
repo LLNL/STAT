@@ -436,6 +436,7 @@ def node_attr_to_label(attrs, full_path = True):
 #  \n
 def edge_attr_to_label(attrs):
     """Translates a set of edge attributes into a edge label."""
+    label = ''
     if not "bv" in attrs.keys():
         if "label" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
             return attrs["label"]

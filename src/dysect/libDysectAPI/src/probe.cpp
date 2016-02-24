@@ -24,6 +24,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Action.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "graphlib.h"
 
 #undef Probe // in Probe.h defined as #define Probe(...) Probe(__FILE__, __LINE__, __VA_ARGS__)
 
@@ -31,6 +32,13 @@ using namespace std;
 using namespace DysectAPI;
 using namespace Dyninst;
 using namespace ProcControlAPI;
+
+#ifdef GRAPHLIB_3_0
+extern const char *gNodeAttrs[];
+extern const char *gEdgeAttrs[];
+extern int gNumNodeAttrs;
+extern int gNumEdgeAttrs;
+#endif
 
 vector<ProbeRequest*> Probe::requestQueue;
 
@@ -227,6 +235,17 @@ string Probe::edgeStrs(int parent) {
   returnString += " -> ";
   snprintf(buf, 1024, "%d", getId());
   returnString += buf;
+#ifdef GRAPHLIB_3_0
+  returnString += " [";
+  for(int j = 0; j < gNumEdgeAttrs; j++)
+  {
+    if (j != 0)
+      returnString += ", ";
+    returnString += gEdgeAttrs[j];
+    returnString += "=\"(null)\"";
+  }
+  returnString += " ]";
+#endif
   returnString += "\n";
 
   return returnString;
