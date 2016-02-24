@@ -169,6 +169,8 @@ def get_num_tasks(label):
         # this is just a count and representative
         if label.find('[') != -1:
             count = label[0:label.find(':')]
+        else:
+            return 0
         ret = int(count)
     else:
         ret = len(get_task_list(label))
@@ -292,7 +294,9 @@ def create_temp(dot_filename, truncate, max_node_name):
                             num_threads = int(attrs["tbv"])
                         elif attrs["tcount"] != "(null)":
                             num_threads = int(attrs["tcount"])
-                        if label[0] != '[':
+                        if label == '':
+                            pass
+                        elif label[0] != '[':
                             # this is just a count and representative
                             representative = get_task_list(label)[0]
                             if num_tasks == 1:
@@ -1056,6 +1060,8 @@ class STATGraph(xdot.Graph):
     def get_label(self, x, y):
         """Get the label of the node that the coordinates fall into."""
         for node in self.nodes:
+            if not hasattr(node, "get_label"):
+                return None
             label = node.get_label(x, y)
             if label is not None:
                 return label
@@ -1849,6 +1855,8 @@ class STATGraph(xdot.Graph):
 
     def get_node_depth(self, node):
         """Determine the depth of the specified node."""
+        if not hasattr(node, "in_edge"):
+            return 1
         if node.in_edge is not None:
             return 1 + self.get_node_depth(node.in_edge.src)
         else:
@@ -1858,6 +1866,8 @@ class STATGraph(xdot.Graph):
         """Determine the equivalence class depth.
 
         i.e., number of colors along the path of the specified node."""
+        if not hasattr(node, "in_edge"):
+            return 1
         if node.in_edge is not None:
             parent_node = node.in_edge.src
             if parent_node.in_edge is None:
@@ -2229,6 +2239,8 @@ class STATGraph(xdot.Graph):
 
     def is_leaf(self, node):
         """Determine if the node is the leaf of any task's call path."""
+        if not hasattr(node, "node_name"):
+            return False
         if node.node_name == '0':
             return False
         child_task_list = []
@@ -2582,7 +2594,7 @@ class STATXDotParser(xdot.XDotParser):
         """Parse the dot file."""
         xdot.DotParser.parse(self)
         if ("type" in self.graph_attrs.keys()) and (self.graph_attrs["type"] == "dysect"):
-            raise Exception('This is a DySectAPI .dot graph')
+            raise Exception('This is a DySectAPI .dot graph, open with dysect-view')
         return STATGraph(self.width, self.height, (), self.nodes, self.edges)
 
     def handle_graph(self, attrs):
@@ -2643,6 +2655,8 @@ class STATNullAction(xdot.DragAction):
         if item is not None:
             node = dot_widget.get_node(event.x, event.y)
             if node is not None:
+                if not hasattr(node, "hide"):
+                    return False
                 if node.hide is False:
                     dot_widget.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.HAND2))
                     highlight_list = []

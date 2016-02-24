@@ -242,7 +242,7 @@ bool DepositCore::finishBE(struct packet*& p, int& len) {
     proc = &(procIter->second);
 
     DYSECTVERBOSE(true, "loading library %s into rank %d", libraryPath.c_str(), rank);
-    if (Backend::loadLibrary(*proc, libraryPath) != OK) {
+    if (Backend::loadLibrary(*proc, libraryPath) != OK) { // this will fail if we are in a CB
       return DYSECTWARN(false, "Failed to add library %s", libraryPath.c_str());
     }
     variableName = "globalMpiRank";
