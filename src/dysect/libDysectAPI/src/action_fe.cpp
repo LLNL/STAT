@@ -99,6 +99,14 @@ bool Signal::finishBE(struct packet*& p, int& len) {
   return false;
 }
 
+bool DepositCore::prepare() {
+#ifdef DYSECTAPI_DEPCORE
+  DYSECTVERBOSE(true, "Preparing deposit core action");
+  prepared = true;
+  findAggregates();
+  return true;
+#endif //ifdef DYSECTAPI_DEPCORE
+}
 
 bool DepositCore::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {

@@ -77,6 +77,7 @@ namespace DysectAPI {
     int awaitingNotifications;
     int awaitingActions;
     int processCount;
+    bool actionPendingImmediate;
 
     bool procSetInitialized;
     Dyninst::ProcControlAPI::ProcessSet::ptr waitingProcs;
@@ -128,6 +129,7 @@ namespace DysectAPI {
     bool releaseWaitingProcs();
     int numWaitingProcs();
     bool staticGroupWaiting();
+    bool getActionPendingImmediate() { return actionPendingImmediate; }
 
     int getId();
     int getProcessCount();
@@ -159,7 +161,8 @@ namespace DysectAPI {
     DysectErrorCode sendEnqueuedNotifications();
 
     DysectErrorCode triggerAction(Dyninst::ProcControlAPI::Process::const_ptr process,
-                      Dyninst::ProcControlAPI::Thread::const_ptr thread);
+                      Dyninst::ProcControlAPI::Thread::const_ptr thread,
+                      bool onlyTriggerImmediate = false);
 
     DysectErrorCode enqueueAction(Dyninst::ProcControlAPI::Process::const_ptr process,
                       Dyninst::ProcControlAPI::Thread::const_ptr thread);

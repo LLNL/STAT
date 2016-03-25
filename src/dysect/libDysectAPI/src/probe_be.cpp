@@ -276,7 +276,7 @@ ProcessSet::ptr& Probe::getWaitingProcs() {
   return waitingProcs;
 }
 
-DysectAPI::DysectErrorCode Probe::triggerAction(Process::const_ptr process, Thread::const_ptr thread) {
+DysectAPI::DysectErrorCode Probe::triggerAction(Process::const_ptr process, Thread::const_ptr thread, bool onlyTriggerImmediate) {
   struct packet* p;
   int len;
 
@@ -288,9 +288,12 @@ DysectAPI::DysectErrorCode Probe::triggerAction(Process::const_ptr process, Thre
   for(;actIter != actions.end(); actIter++) {
     Act* act = *actIter;
     if(act) {
-      act->collect(process, thread);
+      if(onlyTriggerImmediate == true && act->getActionPendingImmediate() == false)
+        continue;
+      if(onlyTriggerImmediate == false)
+        act->collect(process, thread);
       act->actionPending = true;
-      act->finishBE(p, len); // TODO: some actions cannot be run if we're in a CB, for example, if default probe for exit has Wait::NoWait, then detach will print warning
+      act->finishBE(p, len);
       act->actionPending = false;
     }
   }
@@ -310,6 +313,10 @@ DysectAPI::DysectErrorCode Probe::enqueueAction(Process::const_ptr process, Thre
     if(act) {
       act->collect(process, thread);
       act->actionPending = true;
+      if (act->getActionPendingImmediate()) {
+        DYSECTVERBOSE(true, "Queuing immediate action");
+        actionPendingImmediate = true;
+      }
       awaitingActions++;
     }
   }

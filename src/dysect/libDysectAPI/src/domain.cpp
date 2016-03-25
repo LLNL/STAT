@@ -284,6 +284,14 @@ std::map<int, Dyninst::ProcControlAPI::Process::ptr>* Domain::getMpiRankToProces
   return mpiRankToProcessMap;
 }
 
+Dyninst::ProcControlAPI::ProcessSet::ptr Domain::getAllProcesses() {
+  return allProcesses;
+}
+
+Dyninst::Stackwalker::WalkerSet* Domain::getAllWalkers() {
+  return allWalkers;
+}
+
 #ifdef __DYSECT_IS_BACKEND
 bool Domain::setBEContext(struct DysectBEContext_t* context) {
   assert(context != 0);

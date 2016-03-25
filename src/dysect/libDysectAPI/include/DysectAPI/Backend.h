@@ -42,7 +42,9 @@ namespace DysectAPI {
     static bool streamBindAckSent;
     static int pendingExternalAction;
     static std::vector<DysectAPI::Probe *> probesPendingAction;
-    static pthread_mutex_t probesPendingActionMutex; 
+    static pthread_mutex_t probesPendingActionMutex;
+    static std::vector<DysectAPI::Probe *> probesPendingImmediateAction;
+    static pthread_mutex_t probesPendingImmediateActionMutex;
     static std::vector<DysectAPI::Probe*> pendingProbesToEnable;
 
     static MRN::Stream* controlStream;
@@ -91,6 +93,7 @@ namespace DysectAPI {
 
     static DysectErrorCode handleTimerEvents();
     static DysectErrorCode handleTimerActions();
+    static DysectErrorCode handleImmediateActions();
     static DysectErrorCode handleQueuedOperations();
 
     static DysectErrorCode enqueueDetach(Dyninst::ProcControlAPI::Process::const_ptr process);

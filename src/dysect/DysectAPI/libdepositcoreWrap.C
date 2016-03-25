@@ -12,13 +12,19 @@ void depositcore_wrap_signal_handler(int signum);
 
 void depositcorewrap_init()
 {
-    //fprintf(stderr, "init depositcore wrapper\n");
+//    fprintf(stderr, "init depositcore wrapper\n");
     signal(SIGUSR1, depositcore_wrap_signal_handler);
 }
 
 void depositcore_wrap_signal_handler(int signum)
 {
-    //fprintf(stderr, "MPI rank %d caught signal %d\n", globalMpiRank, signum);
+//    fprintf(stderr, "MPI rank %d caught signal %d\n", globalMpiRank, signum);
+    LDC_Depcore_cont(globalMpiRank, 1);
+}
+
+void depositcore_wrap_cont(unsigned long rank)
+{
+//    fprintf(stderr, "MPI rank %d calling LDC_Depcore_cont %d\n", globalMpiRank, rank);
     LDC_Depcore_cont(globalMpiRank, 1);
 }
 

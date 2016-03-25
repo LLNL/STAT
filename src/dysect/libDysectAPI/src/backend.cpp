@@ -46,6 +46,8 @@ set<tag_t>      Backend::missingBindings;
 WalkerSet*      Backend::walkerSet;
 vector<Probe *> Backend::probesPendingAction;
 pthread_mutex_t Backend::probesPendingActionMutex;
+vector<Probe *> Backend::probesPendingImmediateAction;
+pthread_mutex_t Backend::probesPendingImmediateActionMutex;
 ProcessSet::ptr Backend::enqueuedDetach;
 map<string, SymtabAPI::Symtab *> Backend::symtabs;
 char *DaemonHostname;
@@ -197,6 +199,12 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               }
 
               probe->enqueueAction(curProcess, curThread);
+              if(probe->getActionPendingImmediate()) {
+                DYSECTVERBOSE(true, "Probe has actions that need to be triggered outside of callback");
+                pthread_mutex_lock(&probesPendingImmediateActionMutex);
+                probesPendingImmediateAction.push_back(probe);
+                pthread_mutex_unlock(&probesPendingImmediateActionMutex);
+              }
 
             } else { // No-wait probe
 
@@ -578,13 +586,15 @@ Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev)
 }
 
 Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
-  Process::cb_ret_t retState = Process::cbDefault;
+  bool anyStopRequests = false;
+  Process::cb_ret_t retState = Process::cbDefault, savedState = Process::cbDefault;
   // Shut down non-recoverable
   EventSignal::const_ptr signal = ev->getEventSignal();
   Process::const_ptr curProcess = ev->getProcess();
   Thread::const_ptr curThread = ev->getThread();
 
   int signum = signal->getSignal();
+  DYSECTINFO(true, "Received signal %d", signum);
 
   set<DysectAPI::Event*> subscribedEvents;
 
@@ -593,7 +603,11 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
     for(;eventIter != subscribedEvents.end(); eventIter++) {
       DYSECTVERBOSE(true, "Handling signal %d.", signum);
       DysectAPI::Event* dysectEvent = *eventIter;
-      handleEvent(curProcess, curThread, dysectEvent);
+      retState = handleEvent(curProcess, curThread, dysectEvent);
+      if(retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
+        anyStopRequests = true;
+        savedState = retState;
+      }
     }
   } else {
     DYSECTINFO(true, "No handlers for signal %d", signum);
@@ -618,7 +632,10 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
 
       // Non-fatal signals
       default:
-        retState = Process::cbDefault;
+        if(anyStopRequests == true)
+          retState = savedState;
+        else
+          retState = Process::cbDefault;
       break;
     }
   }
@@ -674,7 +691,7 @@ DysectErrorCode Backend::loadLibrary(Dyninst::ProcControlAPI::Process::ptr proce
 
   result = process->addLibrary(libraryPath);
   if (!result) {
-    DYSECTWARN(false, "Failed to add library %s", libraryPath.c_str());
+    DYSECTWARN(false, "Failed to add library %s: %s", libraryPath.c_str(), Stackwalker::getLastErrorMsg());
     return LibraryNotLoaded;
   }
 
@@ -918,8 +935,31 @@ DysectAPI::DysectErrorCode Backend::handleTimerActions() {
       lprocset->continueProcs();
 //      ProcessMgr::continueProcs(lprocset); //this is implemented in dyninst branch
       probe->releaseWaitingProcs();
-     }
-   }
+    }
+  }
+  return OK;
+}
+
+DysectAPI::DysectErrorCode Backend::handleImmediateActions() {
+  while (true) {
+    Probe* probe;
+
+    pthread_mutex_lock(&probesPendingActionMutex);
+    if(probesPendingImmediateAction.size() == 0) {
+      pthread_mutex_unlock(&probesPendingActionMutex);
+      break;
+    }
+    probe = probesPendingImmediateAction.back();
+    probesPendingImmediateAction.pop_back();
+    pthread_mutex_unlock(&probesPendingActionMutex);
+
+    Domain* dom = probe->getDomain();
+
+    DYSECTVERBOSE(true, "Triggering actions for immediate probe on domain %x", dom->getId());
+    Process::ptr process;
+    Thread::ptr thread;
+    probe->triggerAction(process, thread, true);
+  }
   return OK;
 }
 
