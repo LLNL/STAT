@@ -158,6 +158,7 @@ DysectErrorCode BE::handleAll() {
   if (ProcControlAPI::Process::handleEvents(false)) {
     // if was library event, then need to enable any pending probe roots outside of callback
     Backend::enablePending();
+    Backend::handleImmediateActions();
     count2 = getPendingExternalAction();
     DYSECTVERBOSE(true, "Event handled... %d %d", count1, count2);
     if (count2 > count1 && count2 != 0) {

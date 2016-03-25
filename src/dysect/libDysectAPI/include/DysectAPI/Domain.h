@@ -120,6 +120,8 @@ namespace DysectAPI {
 
     static std::map<int, Dyninst::ProcControlAPI::Process::ptr> *getMpiRankToProcessMap();
     static int getTotalNumProcs();
+    static Dyninst::ProcControlAPI::ProcessSet::ptr getAllProcesses();
+    static Dyninst::Stackwalker::WalkerSet* getAllWalkers();
 
     static bool setFEContext(struct DysectFEContext_t* context);
     static bool setBEContext(struct DysectBEContext_t* context);

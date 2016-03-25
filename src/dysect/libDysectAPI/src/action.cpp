@@ -151,6 +151,7 @@ DysectAPI::Act* Act::detach() {
 
 DysectAPI::Act::Act() : category(unknownCategory),
                         type(unknownAggType),
+                        actionPendingImmediate(false),
                         prepared(false){
 
   id = aggregateIdCounter++;
@@ -205,13 +206,8 @@ bool Signal::prepare() {
 }
 
 DepositCore::DepositCore() {
+  actionPendingImmediate = true;
   type = depositCoreType;
-}
-
-bool DepositCore::prepare() {
-  prepared = true;
-  findAggregates();
-  return true;
 }
 
 bool DepositCore::findAggregates() {

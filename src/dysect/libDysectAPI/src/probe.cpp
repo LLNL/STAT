@@ -80,6 +80,7 @@ Probe::Probe( const char *fileName,
                                awaitingNotifications(0),
                                awaitingActions(0),
                                processCount(0),
+                               actionPendingImmediate(false),
                                parent(0) {
 
   if(dom == 0) {
@@ -112,6 +113,7 @@ Probe::Probe( const char *fileName,
                                procSetInitialized(false),
                                awaitingActions(0),
                                processCount(0),
+                               actionPendingImmediate(false),
                                awaitingNotifications(0) {
   if(dom == 0) {
     dom = Domain::inherit();
@@ -141,6 +143,7 @@ Probe::Probe( const char *fileName,
                                awaitingNotifications(0),
                                awaitingActions(0),
                                processCount(0),
+                               actionPendingImmediate(false),
                                cond(0){
   if(dom == 0) {
     dom = Domain::inherit();
@@ -172,6 +175,7 @@ Probe::Probe( const char *fileName,
                                awaitingNotifications(0),
                                awaitingActions(0),
                                processCount(0),
+                               actionPendingImmediate(false),
                                cond(0){
   if(dom == 0) {
     dom = Domain::inherit();
@@ -199,6 +203,7 @@ Probe::Probe( const char *fileName,
                                procSetInitialized(false),
                                awaitingActions(0),
                                processCount(0),
+                               actionPendingImmediate(false),
                                awaitingNotifications(0) {
   dom = Domain::inherit();
 

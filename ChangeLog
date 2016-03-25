@@ -1,3 +1,9 @@
+2016-03-09 Gregory L. Lee <lee218@llnl.gov>
+	* : Modified libdepositcore action
+
+2016-03-04 Gregory L. Lee <lee218@llnl.gov>
+	* : Added immediate actions
+
 2015-12-01 Gregory L. Lee <lee218@llnl.gov>
 	* STAT_BackEnd.C : use edge attributes
 	* : track thread count in edges
