@@ -444,9 +444,69 @@ def edge_attr_to_label(attrs):
     if attrs["bv"] != "(null)":
         label = attrs["bv"]
     elif attrs["count"] != "(null)":
-        label = "%s:[%s](%s)" % (attrs["count"], attrs["rep"], attrs["sum"])
+        label = "%s:[%s]" % (attrs["count"], attrs["rep"])
     return label
 
+
+## \param label - the edge label
+#  \return the number of ranks
+#
+#  \n
+def get_num_tasks(label):
+    if label == '' or label == None:
+        return 0
+    ret = 0
+    if label[0] != '[':
+        # this is just a count and representative
+        if label.find('[') != -1:
+            count = label[0:label.find(':')]
+        else:
+            return 0
+        ret = int(count)
+    else:
+        ret = len(get_task_list(label))
+    return ret
+
+
+## \param attrs - the edge attributes
+#  \return - the truncated edge label
+#
+#  \n
+def get_truncated_edge_label(attrs):
+    label = attrs["label"]
+    max_size = 12
+    num_tasks = get_num_tasks(label)
+    num_threads = -1
+    if attrs["tbv"] != "(null)":
+        num_threads = int(attrs["tbv"])
+    elif attrs["tcount"] != "(null)":
+        num_threads = int(attrs["tcount"])
+    if label[0] != '[':
+        # this is just a count and representative
+        representative = get_task_list(label)[0]
+        if num_tasks == 1:
+            label = '[' + str(representative) + ']'
+        else:
+            label = '[' + str(representative) + ',...]'
+    else:
+        # this is a full node list
+        if len(label) > max_size and label.find('...') == -1:
+            # truncate long edge labels
+            new_label = label[0:max_size]
+            char = 'x'
+            i = max_size - 1
+            while char != ',' and i + 1 < len(label):
+                i += 1
+                char = label[i]
+                new_label += char
+            if i + 1 < len(label):
+                new_label += '...]'
+            label = new_label
+    if num_threads != -1:
+        ret = '%d(%d):%s' % (num_tasks, num_threads, label)
+    else:
+        ret = '%d:%s' % (num_tasks, label)
+    return ret
 
 ## \param var_spec - the variable specificaiton (location and name)
 #  \return a string representation of the variable specificaiton

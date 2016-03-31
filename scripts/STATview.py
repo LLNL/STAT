@@ -70,7 +70,7 @@ except Exception as e:
 
 try:
     import STAThelper
-    from STAThelper import which, color_to_string, DecomposedNode, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, has_module_offset_and_not_collapsed, label_has_source, label_has_module_offset, label_collapsed, translate, expr, node_attr_to_label, edge_attr_to_label
+    from STAThelper import which, color_to_string, DecomposedNode, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, has_module_offset_and_not_collapsed, label_has_source, label_has_module_offset, label_collapsed, translate, expr, node_attr_to_label, edge_attr_to_label, get_truncated_edge_label, get_num_tasks
 except Exception as e:
     sys.stderr.write('%s\n' % repr(e))
     sys.stderr.write('There was a problem loading the STAThelper module.\n')
@@ -154,26 +154,6 @@ def get_task_list(label):
         next_label_id += 1
         task_label_id_to_list[next_label_id] = ret
         task_label_to_id[label] = next_label_id
-    return ret
-
-
-## \param label - the edge label
-#  \return the number of ranks
-#
-#  \n
-def get_num_tasks(label):
-    if label == '' or label == None:
-        return 0
-    ret = 0
-    if label[0] != '[':
-        # this is just a count and representative
-        if label.find('[') != -1:
-            count = label[0:label.find(':')]
-        else:
-            return 0
-        ret = int(count)
-    else:
-        ret = len(get_task_list(label))
     return ret
 
 
@@ -285,42 +265,11 @@ def create_temp(dot_filename, truncate, max_node_name):
                 output_line = '\t%s -> %s [' % (src_id, dst_id)
                 for key in attrs.keys():
                     if key == 'label':
-                        label = attrs[key]
-                        original_label = label
-                        max_size = 12
-                        num_tasks = get_num_tasks(label)
-                        num_threads = -1
-                        if attrs["tbv"] != "(null)":
-                            num_threads = int(attrs["tbv"])
-                        elif attrs["tcount"] != "(null)":
-                            num_threads = int(attrs["tcount"])
-                        if label == '':
+                        if attrs["label"] == '':
                             pass
-                        elif label[0] != '[':
-                            # this is just a count and representative
-                            representative = get_task_list(label)[0]
-                            if num_tasks == 1:
-                                label = '[' + str(representative) + ']'
-                            else:
-                                label = '[' + str(representative) + ',...]'
-                        else:
-                            # this is a full node list
-                            if len(label) > max_size and label.find('...') == -1:
-                                # truncate long edge labels
-                                new_label = label[0:max_size]
-                                char = 'x'
-                                i = max_size - 1
-                                while char != ',' and i + 1 < len(label):
-                                    i += 1
-                                    char = label[i]
-                                    new_label += char
-                                if i + 1 < len(label):
-                                    new_label += '...]'
-                                label = new_label
-                        if num_threads != -1:
-                            output_line += '%s="%d(%d):%s",' % (key, num_tasks, num_threads, label)
-                        else:
-                            output_line += '%s="%d:%s",' % (key, num_tasks, label)
+                        original_label = attrs["label"]
+                        label = get_truncated_edge_label(attrs)
+                        output_line += '%s="%s",' % (key, label)
                     else:
                         output_line += '%s="%s",' % (key, attrs[key])
                 output_line += 'originallabel="%s"]\n' % original_label
@@ -1933,9 +1882,22 @@ class STATGraph(xdot.Graph):
                     if edge.hide:
                         continue
                     if full_edge_label is True:
-                        f.write('\t%s -> %s [label="%s"' % (edge.src.node_name, edge.dst.node_name, edge.dst.edge_label))
+                        output_label = edge.dst.edge_label
                     else:
-                        f.write('\t%s -> %s [label="%s"' % (edge.src.node_name, edge.dst.node_name, edge.attrs["label"]))
+                        output_label = get_truncated_edge_label(edge.attrs)
+                    num_tasks = get_num_tasks(edge.dst.edge_label)
+                    if output_label.find(':') == -1:
+                        num_threads = -1
+                        if edge.attrs["tbv"] != "(null)":
+                            num_threads = int(edge.attrs["tbv"])
+                        elif edge.attrs["tcount"] != "(null)":
+                            num_threads = int(edge.attrs["tcount"])
+                        counts_string = '%d' %num_threads
+                        if num_threads != -1:
+                            counts_string += '(%d)' %num_threads
+                        counts_string += ':'
+                        output_label = counts_string + output_label
+                    f.write('\t%s -> %s [label="%s"' % (edge.src.node_name, edge.dst.node_name, output_label))
                     for attr in edge.attrs.keys():
                         if attr not in ["label", "_draw_", "_ldraw_", "_hdraw_", "pos", "lp"]:
                             f.write(', %s="%s"' %(attr, edge.attrs[attr]))
