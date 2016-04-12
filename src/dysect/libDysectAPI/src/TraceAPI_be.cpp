@@ -109,7 +109,8 @@ void* DataTrace::convertSamplingPoints(SamplingPoints* points) {
   LoopSamplingPoints* loopPts;
   FunctionSamplingPoints* funcPts;
   BasicBlockSamplingPoints* blockPts;
-
+  FunctionCallSamplingPoints* funcCallPts;
+  
   if (multiPts = dynamic_cast<MultipleSamplingPoints*>(points)) {
     vector<SamplingPointsInstr*> instrPoints;
 
@@ -127,6 +128,8 @@ void* DataTrace::convertSamplingPoints(SamplingPoints* points) {
     pointsInstr = new FunctionSamplingPointsInstr(convertTime(funcPts->time));
   } else if (blockPts = dynamic_cast<BasicBlockSamplingPoints*>(points)) {
     pointsInstr = new BasicBlockSamplingPointsInstr(convertTime(blockPts->time));
+  } else if (funcCallPts = dynamic_cast<FunctionCallSamplingPoints*>(points)) {
+    pointsInstr = new FunctionCallSamplingPointsInstr(convertTime(funcCallPts->time));
   } else {
     assert(!"Unknown sampling point!");
   }
