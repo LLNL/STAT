@@ -527,9 +527,9 @@ DysectAPI::DysectErrorCode Backend::enablePending() {
 DysectAPI::DysectErrorCode Backend::registerEventHandlers() {
   Process::registerEventCallback(ProcControlAPI::EventType::Breakpoint, Backend::handleBreakpoint);
   Process::registerEventCallback(ProcControlAPI::EventType::Signal, Backend::handleSignal);
-  Process::registerEventCallback(ProcControlAPI::EventType::ThreadCreate, Backend::handleGenericEvent);
+  Process::registerEventCallback(ProcControlAPI::EventType::ThreadCreate, Backend::handleThreadCreateEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::ThreadDestroy, Backend::handleGenericEvent);
-  Process::registerEventCallback(ProcControlAPI::EventType::Fork, Backend::handleGenericEvent);
+  Process::registerEventCallback(ProcControlAPI::EventType::Fork, Backend::handleForkEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Exec, Backend::handleGenericEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Library, Backend::handleLibraryEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Exit, Backend::handleProcessExit);
@@ -864,6 +864,34 @@ Process::cb_ret_t Backend::handleGenericEvent(ProcControlAPI::Event::const_ptr e
   return Process::cbDefault;
 }
 
+
+Process::cb_ret_t Backend::handleThreadCreateEvent(ProcControlAPI::Event::const_ptr ev) {
+  DYSECTVERBOSE(true, "Handling Thread Create Event");
+
+  EventNewThread::const_ptr evNewThread = ev->getEventNewThread();
+  Thread::const_ptr thread = evNewThread->getNewThread();
+
+  return Process::cbDefault;
+}
+
+
+Process::cb_ret_t Backend::handleForkEvent(ProcControlAPI::Event::const_ptr ev) {
+  DYSECTVERBOSE(true, "Handling Fork Event");
+
+  EventFork::const_ptr evFork = ev->getEventFork();
+  Process::const_ptr process = evFork->getChildProcess();
+  Process::ptr proc;
+
+  //Walker *walker = Walker::newWalker(process->getPid()); // fails b/c can't attach in CB
+  ////Walker *walker = Walker::newWalker(process); //constructor takes Process::ptr, not const_ptr
+  //if (walker == NULL);
+  //  DYSECTWARN(false, "Failed to create walker for pid %d: %s", process->getPid(), Stackwalker::getLastErrorMsg());
+  //process->setData(walker);
+
+  //DYSECTVERBOSE(true, "Handled Fork Event for pid %d", process->getPid());
+
+  return Process::cbDefault;
+}
 
 Process::cb_ret_t Backend::handleLibraryEvent(ProcControlAPI::Event::const_ptr ev) {
   vector<Probe*> roots = ProbeTree::getPendingRoots();

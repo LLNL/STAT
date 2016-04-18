@@ -1,3 +1,6 @@
+2016-03-31 Gregory L. Lee <lee218@llnl.gov>
+	* STATview.py, STAThelper.py : truncate edge labels when exporting STAT graphs to non-.dot formats
+
 2016-03-09 Gregory L. Lee <lee218@llnl.gov>
 	* : Modified libdepositcore action
 

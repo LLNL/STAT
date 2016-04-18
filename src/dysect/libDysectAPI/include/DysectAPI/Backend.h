@@ -85,6 +85,8 @@ namespace DysectAPI {
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleSignal(Dyninst::ProcControlAPI::Event::const_ptr ev); //!< Called upon signal raised
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleProcessExit(ProcControlAPI::Event::const_ptr ev);
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleGenericEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
+    static Dyninst::ProcControlAPI::Process::cb_ret_t  handleThreadCreateEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
+    static Dyninst::ProcControlAPI::Process::cb_ret_t  handleForkEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleLibraryEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
 
     static DysectErrorCode loadLibrary(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath);

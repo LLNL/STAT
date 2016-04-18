@@ -53,7 +53,7 @@ bool LoadLibrary::finishBE(struct packet*& p, int& len) {
 
   for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
     if (Backend::loadLibrary(*procIter, library) != OK)
-      return DYSECTWARN(false, "Failed to add library %s", library.c_str());
+      return DYSECTWARN(false, "Failed to load library %s", library.c_str());
   }
   triggeredProcs.clear();
 
@@ -189,7 +189,7 @@ bool DepositCore::prepare() {
     // This will fail in launch mode since process hasn't been started yet. We will also try loading the library on finishBE
     // This will also be called multiple times if multiple probes use this action, but this won't result in any errors
     if (Backend::loadLibrary(*proc, libraryPath) != OK) {
-      return DYSECTWARN(false, "Failed to add library %s: %s", libraryPath.c_str(), Stackwalker::getLastErrorMsg());
+      return DYSECTWARN(false, "Failed to load library %s: %s", libraryPath.c_str(), Stackwalker::getLastErrorMsg());
     }
   }
 
@@ -285,7 +285,7 @@ bool DepositCore::finishBE(struct packet*& p, int& len) {
     // TODO: check to see if library already loaded
     DYSECTVERBOSE(true, "loading library %s into rank %d", libraryPath.c_str(), rank);
     if (Backend::loadLibrary(*proc, libraryPath) != OK) { // this will fail if we are in a CB
-      return DYSECTWARN(false, "Failed to add library %s: %s", libraryPath.c_str(), Stackwalker::getLastErrorMsg());
+      return DYSECTWARN(false, "Failed to load library %s: %s", libraryPath.c_str(), Stackwalker::getLastErrorMsg());
     }
     variableName = "globalMpiRank";
     if (Backend::writeModuleVariable(*proc, variableName, libraryPath, &rank, sizeof(int)) != OK) {
