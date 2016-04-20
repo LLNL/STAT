@@ -4,8 +4,10 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     [AS_HELP_STRING([--enable-stackwalker-rpm],[Enable the use of rpm-installed stackwalker, default=no])],
     [CXXFLAGS="$CXXFLAGS -I/usr/include/dyninst"
      LDFLAGS="$LDFLAGS -L/usr/lib64/dyninst"
+     STACKWALKERPREFIX="${withval}"
      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=/usr/lib64/dyninst"],
-    [CXXFLAGS="$CXXFLAGS"]
+    [CXXFLAGS="$CXXFLAGS"
+     STACKWALKERPREFIX="${withval}"]
   )  
   AC_ARG_ENABLE(libdwarf-rpm,
     [AS_HELP_STRING([--enable-libdwarf-rpm],[Enable the use of rpm-installed libdwarf, default=no])],
@@ -19,8 +21,10 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     )],
     [CXXFLAGS="$CXXFLAGS -I${withval}/include"
      LDFLAGS="$LDFLAGS -L${withval}/lib"
+     STACKWALKERPREFIX="${withval}"
      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"],
-    [CXXFLAGS="$CXXFLAGS"]
+    [CXXFLAGS="$CXXFLAGS"
+     STACKWALKERPREFIX="${withval}"]
   )
   AC_ARG_WITH(libdwarf, 
     [AS_HELP_STRING([--with-libdwarf=prefix],  
@@ -87,6 +91,7 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
       fi
     fi
   fi
+  AC_SUBST(STACKWALKERPREFIX)
   AC_MSG_RESULT($libstackwalk_found)
   AC_LANG_POP(C++)
 ])
