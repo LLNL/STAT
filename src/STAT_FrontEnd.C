@@ -1783,6 +1783,15 @@ StatError_t STAT_FrontEnd::setDaemonNodes()
         intRet = XPlat::NetUtils::GetHostName((*nodeIter)->get_HostName(), prettyHost);
         if (intRet != 0)
             prettyHost = (*nodeIter)->get_HostName();
+
+#ifdef STAT_ALIAS_SUFFIX
+        // TODO: this is an ugly way of dealing with aliased hostnames
+        size_t pub;
+        pub = prettyHost.find(STAT_ALIAS_SUFFIX);
+        if (pub != string::npos)
+            prettyHost = prettyHost.substr(0, pub);
+#endif
+
         leafInfo_.daemons.insert(prettyHost);
         printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%s=%s, ", (*nodeIter)->get_HostName().c_str(), prettyHost.c_str());
     }
@@ -1857,6 +1866,15 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
             dotPos = tempString.find_first_of(".");
             if (dotPos != string::npos)
                 tempString = tempString.substr(0, dotPos);
+
+#ifdef STAT_ALIAS_SUFFIX
+            // TODO: this is an ugly way of dealing with aliased hostnames
+            size_t pub;
+            pub = tempString.find(STAT_ALIAS_SUFFIX);
+            if (pub != string::npos)
+                tempString = tempString.substr(0, pub);
+#endif
+
             /* TODO: this won't work if we move to multiple daemons per node */
             hostToMrnetRankMap[tempString.c_str()] = node->get_Rank();
         }
