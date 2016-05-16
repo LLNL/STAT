@@ -79,6 +79,12 @@ AC_ARG_WITH(usagelog,
   [CXXFLAGS="$CXXFLAGS"]
 )
 
+AC_ARG_WITH(alias-suffix,
+  [AS_HELP_STRING([--with-alias-suffix=suffix],[drop suffix from the hostname alias])],
+  [CXXFLAGS="$CXXFLAGS -DSTAT_ALIAS_SUFFIX=\\\"${withval}\\\""],
+  [CXXFLAGS="$CXXFLAGS"]
+)
+
 AC_ARG_ENABLE(examples,
   [AS_HELP_STRING([--enable-examples],[Enable the compilation of example test codes])],
   [WITH_EXAMPLES=$enableval],
