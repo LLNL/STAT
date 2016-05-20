@@ -1181,7 +1181,8 @@ class STATGraph(xdot.Graph):
             node.hide = True
             node.in_edge.hide = True
         for attr in ["label", "function", "source", "line", "module", "offset", "pc", "vars"]:
-            node.attrs[attr] = node.attrs[attr] + '\\n' + attrs[attr]
+            if attr in node.attrs:
+                node.attrs[attr] = node.attrs[attr] + '\\n' + attrs[attr]
         return modified, (leaf_node, node.attrs)
 
     def expand_all(self, node):
@@ -1280,6 +1281,8 @@ class STATGraph(xdot.Graph):
         line_nums = []
         line_nums.append((cur_line_num, fill_color_string, font_color_string))
         for node_iter in self.nodes:
+            if not "source" in node_iter.attrs:
+                continue
             sources = node_iter.attrs["source"].split('\\n')
             for i, this_source in enumerate(sources):
                 if this_source in ["(null)", "?"]:
@@ -1885,12 +1888,11 @@ class STATGraph(xdot.Graph):
                         output_label = edge.dst.edge_label
                     else:
                         output_label = get_truncated_edge_label(edge.attrs)
-                    num_tasks = get_num_tasks(edge.dst.edge_label)
                     if output_label.find(':') == -1:
                         num_threads = -1
-                        if edge.attrs["tbv"] != "(null)":
+                        if "tbv" in edge.attrs and edge.attrs["tbv"] != "(null)":
                             num_threads = int(edge.attrs["tbv"])
-                        elif edge.attrs["tcount"] != "(null)":
+                        elif "tcount" in edge.attrs and edge.attrs["tcount"] != "(null)":
                             num_threads = int(edge.attrs["tcount"])
                         counts_string = '%d' %num_threads
                         if num_threads != -1:
@@ -4358,7 +4360,7 @@ enterered as a regular expression.
                     else:
                         button.connect("clicked", self.manipulate_cb, option, node)
                 elif option == 'Translate':
-                    if node.attrs["offset"].find("(null)") != -1 or node.attrs["module"].find("(null)") != -1 or node.attrs["source"].find("(null)") == -1:
+                    if ("offset" in node.attrs and node.attrs["offset"].find("(null)") != -1) or ("module" in node.attrs and node.attrs["module"].find("(null)") != -1) or ("source" in node.attrs and node.attrs["source"].find("(null)") == -1):
                         button.set_sensitive(False)
                     else:
                         button.connect("clicked", lambda x:self.on_translate())

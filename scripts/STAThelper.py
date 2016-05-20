@@ -413,19 +413,19 @@ def node_attr_to_label(attrs, full_path = True):
     lex_string = attrs.get("lex_string")
     if lex_string is not None:
         label += "@" + attrs["lex_string"]
-    elif attrs["source"] != "(null)":
+    elif "source" in attrs and attrs["source"] != "(null)":
         if full_path is True:
             label += "@" + attrs["source"] + attrs["line"]
         else:
             label += "@" + os.path.basename(attrs["source"]) + attrs["line"]
-    elif attrs["module"] != "(null)":
+    elif "module" in attrs and attrs["module"] != "(null)":
         if full_path is True:
             label = attrs["module"] + attrs["offset"]
         else:
             label = os.path.basename(attrs["module"]) + attrs["offset"]
-    elif attrs["pc"] != "(null)":
+    elif "pc" in attrs and attrs["pc"] != "(null)":
         label += attrs["pc"]
-    if attrs["vars"] != "(null)" and lex_string is not None:
+    if "vars" in attrs and attrs["vars"] != "(null)" and lex_string is not None:
         label += attrs["vars"]
     return label
 
@@ -438,7 +438,9 @@ def edge_attr_to_label(attrs):
     """Translates a set of edge attributes into a edge label."""
     label = ''
     if not "bv" in attrs.keys():
-        if "label" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
+        if "originallabel" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
+            return attrs["originallabel"]
+        elif "label" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
             return attrs["label"]
         return ""
     if attrs["bv"] != "(null)":
@@ -477,9 +479,9 @@ def get_truncated_edge_label(attrs):
     max_size = 12
     num_tasks = get_num_tasks(label)
     num_threads = -1
-    if attrs["tbv"] != "(null)":
+    if "tbv" in attrs and attrs["tbv"] != "(null)":
         num_threads = int(attrs["tbv"])
-    elif attrs["tcount"] != "(null)":
+    elif "tcount" in attrs and attrs["tcount"] != "(null)":
         num_threads = int(attrs["tcount"])
     if label[0] != '[':
         # this is just a count and representative

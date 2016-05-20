@@ -337,6 +337,7 @@ void *statCopyEdgeAttr(const char *key, const void *edge);
 void statFreeEdgeAttr(const char *key, void *edge);
 #endif
 
+#ifdef GRAPHLIB_3_0
 //! Calculate a checksum of a STAT edge object
 /*!
     \param key - the attribute key, or NULL if not applicable
@@ -344,6 +345,14 @@ void statFreeEdgeAttr(const char *key, void *edge);
     \return the checksum of the edge
 */
 long statEdgeCheckSum(const char *key, const void *edge);
+#else
+//! Calculate a checksum of a STAT edge object
+/*!
+    \param edge - a pointer to the edge object
+    \return the checksum of the edge
+*/
+long statEdgeCheckSum(const void *edge);
+#endif
 
 //! Deserialize a STAT edge object for the STAT filter.
 /*!
@@ -521,6 +530,7 @@ void *statCopyCountRepEdgeAttr(const char * key, const void *edge);
 void statFreeCountRepEdgeAttr(const char * key, void *edge);
 #endif
 
+#ifdef GRAPHLIB_3_0
 //! Calculate a checksum of a STAT count + rep edge object
 /*!
     \param key - the attribute key, or NULL if not applicable
@@ -528,23 +538,31 @@ void statFreeCountRepEdgeAttr(const char * key, void *edge);
     \return the checksum of the edge
 */
 long statCountRepEdgeCheckSum(const char *key, const void *edge);
-
-//! Translate a full bit vector edge into a count + representative edge
+#else
+//! Calculate a checksum of a STAT count + rep edge object
 /*!
     \param edge - a pointer to the edge object
-    \param relativeRankToAbsoluteRank - a pointer to a function that translates relative (daemon) rank into absolute (global/MPI) rank
-    \return the count + representative version of the edge
+    \return the checksum of the edge
 */
-StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int));
-
-#ifdef GRAPHLIB_3_0
-//! Translate a full bit vector edge into a count + representative edge
-/*!
-    \param edge - a pointer to the edge object
-    \param relativeRankToAbsoluteRank - a pointer to a function that translates relative (daemon) rank into absolute (global/MPI) rank
-    \return the count + representative version of the edge
-*/
-StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int));
+long statCountRepEdgeCheckSum(const void *edge);
 #endif
+
+//! Translate a full bit vector edge into a count + representative edge
+/*!
+    \param edge - a pointer to the edge object
+    \param relativeRankToAbsoluteRank - a pointer to a function that translates relative (daemon) rank into absolute (global/MPI) rank
+    \return the count + representative version of the edge
+*/
+StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int));
+
+//#ifdef GRAPHLIB_3_0
+////! Translate a full bit vector edge into a count + representative edge
+///*!
+//    \param edge - a pointer to the edge object
+//    \param relativeRankToAbsoluteRank - a pointer to a function that translates relative (daemon) rank into absolute (global/MPI) rank
+//    \return the count + representative version of the edge
+//*/
+//StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int));
+//#endif
 
 #endif

@@ -1,3 +1,6 @@
+2016-05-20 Gregory L. Lee <lee218@llnl.gov>
+	* : Graphlib 2.0 fixes
+
 2016-03-31 Gregory L. Lee <lee218@llnl.gov>
 	* STATview.py, STAThelper.py : truncate edge labels when exporting STAT graphs to non-.dot formats
 

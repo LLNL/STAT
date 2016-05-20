@@ -622,7 +622,7 @@ void statFreeEdge(void *edge)
         free(e->bitVector);
     free(e);
 }
-
+#ifdef GRAPHLIB_3_0
 long statEdgeCheckSum(const char *key, const void *edge)
 {
     int i;
@@ -645,6 +645,20 @@ long statEdgeCheckSum(const char *key, const void *edge)
     }
     return longRet;
 }
+#else
+long statEdgeCheckSum(const void *edge)
+{
+    int i;
+    long longRet = 0;
+    StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
+
+    if (edge == NULL)
+        return 0;
+    for (i = 0; i < e->length; i++)
+        longRet = longRet + e->bitVector[i] * (e->length - i + 1);
+    return longRet;
+}
+#endif
 
 void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLength)
 {
@@ -831,7 +845,7 @@ long statCountRepEdgeCheckSum(const char *key, const void *edge)
         return *(int64_t *)edge;
 }
 #else
-long statCountRepEdgeCheckSum(const char *key, const void *edge)
+long statCountRepEdgeCheckSum(const void *edge)
 {
     if (edge == NULL)
         return 0;
