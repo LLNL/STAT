@@ -1,3 +1,6 @@
+2016-05-23 Gregory L. Lee <lee218@llnl.gov>
+	* : Graphlib 2.0 fix with threads
+
 2016-05-20 Gregory L. Lee <lee218@llnl.gov>
 	* : Graphlib 2.0 fixes
 

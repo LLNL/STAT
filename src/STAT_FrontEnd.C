@@ -3022,11 +3022,13 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     }
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph, byteArrayLen = %d\n", byteArrayLen);
+#ifdef GRAPHLIB_3_0
     if (sampleType & STAT_SAMPLE_THREADS)
     {
         gStatBitVectorFunctions->edge_checksum = statCountRepEdgeCheckSum;
         gStatReorderFunctions->edge_checksum = statCountRepEdgeCheckSum;
     }
+#endif
     if (sampleType & STAT_SAMPLE_COUNT_REP)
         graphlibError = graphlib_deserializeBasicGraph(&stackTraces, gStatCountRepFunctions, byteArray, byteArrayLen);
     else
@@ -3310,11 +3312,13 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     if (statError != STAT_OK)
         printMsg(statError, __FILE__, __LINE__, "Failed to dump performance results\n");
 
+#ifdef GRAPHLIB_3_0
     if (sampleType & STAT_SAMPLE_THREADS)
     {
         gStatBitVectorFunctions->edge_checksum = statEdgeCheckSum;
         gStatReorderFunctions->edge_checksum = statEdgeCheckSum;
     }
+#endif
 
     if (stackTraces != NULL)
     {
