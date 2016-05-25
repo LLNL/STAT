@@ -7,6 +7,12 @@ if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
 fi
 
+if test -z $LD_LIBRARY_PATH
+then
+	export LD_LIBRARY_PATH=$prefix/lib
+else
+	export LD_LIBRARY_PATH=$prefix/lib:$LD_LIBRARY_PATH
+fi
 if test -z "$STAT_LMON_REMOTE_LOGIN" ; then
     export STAT_LMON_REMOTE_LOGIN=@rshcmd@
 fi
@@ -46,6 +52,13 @@ if test -z "$STAT_LMON_NEWLAUNCHMON_ENGINE_PATH" ; then
         export STAT_LMON_NEWLAUNCHMON_ENGINE_PATH=$LMON_PREFIX/bin/newlaunchmon
     else
         export STAT_LMON_NEWLAUNCHMON_ENGINE_PATH=@NEWLAUNCHMONBIN@
+    fi
+fi
+if test -z "$DYNINSTAPI_RT_LIB" ; then
+    if test -n "$STACKWALKER_PREFIX" ; then
+        export DYNINSTAPI_RT_LIB=$STACKWALKER_PREFIX/lib/libdyninstAPI_RT.so
+    else
+        export DYNINSTAPI_RT_LIB=@STACKWALKERPREFIX@/lib/libdyninstAPI_RT.so
     fi
 fi
 if test -z "$STAT_MRNET_DEBUG_LOG_DIRECTORY" ; then

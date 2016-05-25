@@ -114,8 +114,10 @@ AC_SUBST(MWLIBS)
 AC_SUBST(MRNETCOMMNODEBIN)
 AC_SUBST(DOTBINDIR)
 AC_SUBST(LAUNCHMONBIN)
+AC_SUBST(NEWLAUNCHMONBIN)
 AC_SUBST(LAUNCHMONPREFIX)
 AC_SUBST(GRAPHLIBPREFIX)
+AC_SUBST(STACKWALKERPREFIX)
 AC_SUBST(DEPCOREPREFIX)
 AC_SUBST(STATPYTHON)
 
@@ -134,6 +136,7 @@ AC_CONFIG_FILES([Makefile
                  src/dysect/libDysectAPI/Makefile
                  src/dysect/libDysectAPI/include/Makefile
                  src/dysect/libDysectAPI/src/Makefile
+                 src/analyticslib/Makefile
                  examples/Makefile
                  examples/src/Makefile
                  examples/scripts/Makefile
@@ -170,7 +173,7 @@ then
     AC_CONFIG_FILES([scripts/dysect-view])
   fi
 fi
-  
+
 AC_CONFIG_FILES([scripts/stat-core-merger])
 AC_CONFIG_FILES([scripts/attach-helper])
 

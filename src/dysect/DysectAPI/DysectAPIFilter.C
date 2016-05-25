@@ -147,8 +147,8 @@ struct packetAgg {
 }
 
 
-UpstreamFilter::UpstreamFilter(int streamId) :  numControlTags(10), 
-  inactive(-1), 
+UpstreamFilter::UpstreamFilter(int streamId) :  numControlTags(10),
+  inactive(-1),
   controlTagTemplate(0),
   controlPacketsAdded(false),
   streamId(streamId) {

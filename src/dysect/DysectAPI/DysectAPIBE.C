@@ -124,7 +124,7 @@ bool BE::isLoaded() {
 }
 
 DysectErrorCode BE::relayPacket(MRN::PacketPtr* packet, int tag, MRN::Stream* stream) {
-  return Backend::relayPacket(packet, tag, stream); 
+  return Backend::relayPacket(packet, tag, stream);
 }
 
 DysectErrorCode BE::handleTimerEvents() {
@@ -143,8 +143,11 @@ DysectErrorCode BE::handleAll() {
   int count1, count2;
   if (returnControlToDysect == true)
   {
-      handleTimerActions();
-      handleQueuedOperations();
+    TraceAPI::performPendingInstrumentations();
+    TraceAPI::performPendingAnalysis();
+
+    handleTimerActions();
+    handleQueuedOperations();
   }
   count1 = getPendingExternalAction();
   handleTimerEvents();
@@ -155,17 +158,26 @@ DysectErrorCode BE::handleAll() {
   }
 
   count1 = getPendingExternalAction();
-  if (ProcControlAPI::Process::handleEvents(false)) {
+
+  ///TODO: Fix this mess. We no longer poll ProcControl for changes,
+  ///  as this is part of bpatch.pollForStatusChange() (Dyninst).
+  ///  Add a flag to the DySect event handler and check this flag here.
+  if (true) { // gProcControlAPI::Process::handleEvents(false)) {
     // if was library event, then need to enable any pending probe roots outside of callback
     Backend::enablePending();
     Backend::handleImmediateActions();
     count2 = getPendingExternalAction();
-    DYSECTVERBOSE(true, "Event handled... %d %d", count1, count2);
+
     if (count2 > count1 && count2 != 0) {
       DYSECTVERBOSE(true, "STAT2 action detected %d %d, deferring control...", count1, count2);
       returnControlToDysect = false;
     }
   }
+
+  // if event requested instrumentation we must do so before continue
+  TraceAPI::performPendingInstrumentations();
+  TraceAPI::performPendingAnalysis();
+
   return OK;
 }
 
@@ -184,8 +196,8 @@ void BE::gracefulShutdown(int signal) {
     called = true;
 
     DYSECTVERBOSE(false, "Backend caught signal %d - shutting down", signal);
-  
-    ProcessMgr::detachAll(); 
+
+    ProcessMgr::detachAll();
 
     pthread_mutex_destroy(&Probe::requestQueueMutex);
   }

@@ -147,7 +147,7 @@ class DysectDotWidget(STATview.STATDotWidget):
         except:
             STATview.show_error_dialog('Failed to read temp dot file %s' % temp_dot_filename, self, exception=e)
             return False
-        #os.remove(temp_dot_filename)
+        os.remove(temp_dot_filename)
         xdot.DotWidget.set_dotcode(self, dotcode2, filename)
         self.graph.cur_filename = filename
         return True

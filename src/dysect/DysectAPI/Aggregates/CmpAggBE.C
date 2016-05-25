@@ -18,6 +18,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include "DysectAPI/Aggregates/Aggregate.h"
 #include "DysectAPI/Aggregates/CmpAgg.h"
+#include "DysectAPI/ProcMap.h"
 #include "DysectAPI.h"
 
 using namespace std;
@@ -36,12 +37,11 @@ bool CmpAgg::collect(void *process, void *thread) {
     return false;
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
-
+  Walker *proc = ProcMap::get()->getWalker(process_ptr);
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
   }
-  
+
   if (process_ptr->allThreadsRunning()) {
     wasRunning = true;
     pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
@@ -56,7 +56,7 @@ bool CmpAgg::collect(void *process, void *thread) {
 
   DataRef* ref = params_[0];
   Value val;
-  
+
   boolRet = ref->getVal(val, process_ptr, thread_ptr);
 
   if (wasRunning == true) {
@@ -72,7 +72,7 @@ bool CmpAgg::collect(void *process, void *thread) {
   string str;
   val.getStr(str);
   DYSECTVERBOSE(true, "Read value is %s", str.c_str());
-  
+
   if(curVal.getType() == Value::noType) {
     curVal = val;
   } else {
@@ -81,7 +81,7 @@ bool CmpAgg::collect(void *process, void *thread) {
   }
 
   count_++;
-  
+
   return true;
 }
 
@@ -90,7 +90,7 @@ Min::Min(std::string fmt, ...) : CmpAgg(minAgg, fmt) {
   va_start(args, fmt);
   va_copy(args_, args);
   va_end(args);
-  
+
   getParams(fmt, params_, args_);
 }
 
@@ -99,6 +99,25 @@ Max::Max(std::string fmt, ...) : CmpAgg(maxAgg, fmt) {
   va_start(args, fmt);
   va_copy(args_, args);
   va_end(args);
-  
+
+  getParams(fmt, params_, args_);
+}
+
+
+First::First(std::string fmt, ...) : CmpAgg(firstAgg, fmt) {
+  va_list args;
+  va_start(args, fmt);
+  va_copy(args_, args);
+  va_end(args);
+
+  getParams(fmt, params_, args_);
+}
+
+Last::Last(std::string fmt, ...) : CmpAgg(lastAgg, fmt) {
+  va_list args;
+  va_start(args, fmt);
+  va_copy(args_, args);
+  va_end(args);
+
   getParams(fmt, params_, args_);
 }

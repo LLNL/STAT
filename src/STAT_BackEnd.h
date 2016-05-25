@@ -74,7 +74,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 #ifdef DYSECTAPI
+  #include "BPatch.h"
   #include "DysectAPI/DysectAPIBE.h"
+  #include "DysectAPI/ProcMap.h"
 #endif
 
 //! An enum type to determine who launched the daemon
@@ -600,6 +602,8 @@ class STAT_BackEnd
         std::map<std::string, std::set<int> > exitedProcesses_;
   #ifdef DYSECTAPI
         std::map<int, Dyninst::ProcControlAPI::Process::ptr> mpiRankToProcessMap_;
+	vector<BPatch_process *> tmpProcSet_;
+	BPatch bpatch;
   #endif
 #endif
 

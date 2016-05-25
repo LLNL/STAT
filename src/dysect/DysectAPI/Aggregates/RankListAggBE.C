@@ -48,7 +48,7 @@ bool RankListAgg::collect(void* process, void *thread) {
   if (!mpiRankToProcessMap) {
     return DYSECTVERBOSE(false, "Could not find MPI rank map");
   }
-  
+
   int rank = -1;
   std::map<int, Dyninst::ProcControlAPI::Process::ptr>::iterator iter;
   for (iter = mpiRankToProcessMap->begin(); iter != mpiRankToProcessMap->end(); iter++) {

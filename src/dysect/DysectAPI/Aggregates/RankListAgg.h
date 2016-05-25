@@ -33,7 +33,7 @@ namespace DysectAPI {
 
     bool deserialize(void *payload);
     bool serialize(std::vector<int>& rankList);
-     
+
   public:
     RankListAgg(int id, int count, std::string fmt, void* payload);
     RankListAgg(Probe *inOwner);
@@ -41,12 +41,12 @@ namespace DysectAPI {
 
     std::vector<int>& getRankList();
     void getRankList(std::vector<int>& outRankList);
-    
+
     int getSize();
     int writeSubpacket(char *p);
     virtual bool collect(void* process, void* thread);
     bool clear();
-    
+
     bool getStr(std::string& str);
     virtual bool print();
     bool aggregate(AggregateFunction* agg);

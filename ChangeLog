@@ -39,6 +39,14 @@
 	* : added node and edge attributes to STAT graphs
 
 2015-09-11 Gregory L. Lee <lee218@llnl.gov>
+	* : changed tabs to spaces
+	* probe_be.cpp : fixed awaitingActions decrementating
+	* err.cpp : flush file handle
+	* action_be.cpp : clear aggregates upon finish
+	* TraceAPI_be.cpp : erase trace from pendingGlobalRes before continuing procs to avoid race!
+	* analytics.cpp : add DEBUG_ANALYTICS macro to print debug info
+
+2015-09-11 Gregory L. Lee <lee218@llnl.gov>
 	* probe_be.cpp : fixed awaitingActions decrementating
 	* err.cpp : flush file handle
 

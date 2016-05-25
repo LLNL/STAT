@@ -201,10 +201,16 @@ DysectAPI::DysectErrorCode SymbolTable::getLibraries(vector<LibAddrPair>& libs, 
 
   LibraryState *libState = proc->getProcessState()->getLibraryTracker();
   if(!libState) {
+    DYSECTWARN(Error, "Couldn't get libstate. Trying to set default librrary tracket\n");
+    proc->getProcessState()->setDefaultLibraryTracker();
+    libState = proc->getProcessState()->getLibraryTracker();
+    assert(libState);
+  }
+  if(!libState) {
     return DYSECTWARN(Error, "Library state could not be retrieved");
   }
 
-  if(!libState->getLibraries(libs)) {
+  if(!libState->getLibraries(libs, true)) {
     return DYSECTWARN(Error, "Cannot get libraries from library state");
   }
 

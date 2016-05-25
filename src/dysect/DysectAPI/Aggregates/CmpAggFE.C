@@ -31,3 +31,9 @@ Min::Min(std::string fmt, ...) : CmpAgg(minAgg, fmt) {
 
 Max::Max(std::string fmt, ...) : CmpAgg(maxAgg, fmt) {
 }
+
+First::First(std::string fmt, ...) : CmpAgg(firstAgg, fmt) {
+}
+
+Last::Last(std::string fmt, ...) : CmpAgg(lastAgg, fmt) {
+}

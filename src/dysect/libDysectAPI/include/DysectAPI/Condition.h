@@ -23,6 +23,12 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include <DysectAPI/Aggregates/Aggregate.h>
 #include <DysectAPI/Aggregates/Data.h>
+#include <DysectAPI/TraceAPI.h>
+
+/* Forward declare to resolve cyclic dependency */
+class CollectValues;
+class Average;
+class Buckets;
 
 namespace DysectAPI {
   class Cond;
@@ -40,7 +46,10 @@ namespace DysectAPI {
   typedef enum ConditionType {
     UnknownCondition,
     DataCondition,
-    SyntheticCondition
+    SyntheticCondition,
+    CVICondition,
+    AvgCondition,
+    BuckCondition
   } ConditionType;
 
   typedef enum ConditionResult {
@@ -140,16 +149,59 @@ namespace DysectAPI {
     CombinedCond(Cond* first, Cond* second, CondRel relation);
   };
 
-	class Position {
-	public:
-		static Cond* in(Range* range);
-		//static Cond* at(Location* location);
-		static Cond* caller(Function* function);
-		static Cond* onPath(Function* function);
+  class Position {
+  public:
+    static Cond* in(Range* range);
+    //static Cond* at(Location* location);
+    static Cond* caller(Function* function);
+    static Cond* onPath(Function* function);
 
     DysectErrorCode evaluate(ConditionResult &result);
     bool prepare();
-	};
+  };
+
+  class CollectValuesIncludes : public Cond {
+    CollectValues* analysis;
+
+    int value;
+
+  public:
+    CollectValuesIncludes(CollectValues* analysis, int value);
+
+    DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
+
+    bool prepare();
+  };
+
+  class AverageDeviates : public Cond {
+    Average* analysis;
+
+    double deviation;
+
+  public:
+    AverageDeviates(Average* analysis, double deviation);
+
+    DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
+
+    bool prepare();
+  };
+
+  class BucketContains : public Cond {
+    Buckets* analysis;
+
+    int bucket1;
+    int bucket2;
+
+  public:
+    BucketContains(Buckets* analysis, int bucket1, int bucket2 = -1);
+
+    DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
+
+    bool prepare();
+  };
+
+
 };
+
 
 #endif

@@ -19,10 +19,13 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DysectAPIProcessMgr_H
 #define __DysectAPIProcessMgr_H
 
+#include "DysectAPI/ProcWait.h"
+
 #include <string.h>
 #include <error.h>
 #include <dlfcn.h>
 #include <stdio.h>
+#include <map>
 
 namespace DysectAPI {
   class ProcessMgr {
@@ -32,6 +35,8 @@ namespace DysectAPI {
     static Dyninst::ProcControlAPI::ProcessSet::ptr wasStopped;
 
     static bool active;
+
+    static std::map<Dyninst::ProcControlAPI::Process::const_ptr, ProcWait> procWait;
 
   public:
     static bool init(Dyninst::ProcControlAPI::ProcessSet::ptr allProcs);
@@ -51,6 +56,16 @@ namespace DysectAPI {
     static bool detachAll();
 
     static bool isActive();
+
+    static bool stopProcs(Dyninst::ProcControlAPI::ProcessSet::ptr procs);
+    static bool continueProcs(Dyninst::ProcControlAPI::ProcessSet::ptr procs);
+
+    static bool continueProcsIfReady(Dyninst::ProcControlAPI::ProcessSet::const_ptr procs);
+    static bool continueProcIfReady(Dyninst::ProcControlAPI::Process::const_ptr pcProc);
+    static void waitFor(ProcWait::Events event, Dyninst::ProcControlAPI::ProcessSet::ptr procs);
+    static void waitFor(ProcWait::Events event, Dyninst::ProcControlAPI::Process::const_ptr proc);
+    static void handled(ProcWait::Events event, Dyninst::ProcControlAPI::ProcessSet::ptr procs);
+    static void handled(ProcWait::Events event, Dyninst::ProcControlAPI::Process::const_ptr proc);
   };
 }
 

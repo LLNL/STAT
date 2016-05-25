@@ -6,6 +6,8 @@ DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
     Probe *codeBreakpoint = new Probe(Code::location("dysect_test.cpp#81"),
                                 Domain::world(),
                                 Acts(Act::stackTrace(),
+                                     Act::trace("The ranks are: @ranks()"),
+                                     Act::trace("The times are: @time()"),
                                      Act::trace("Function is '@function()' and Location is '@location()'"),
                                      Act::stat()));
 
@@ -14,19 +16,21 @@ DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
     Probe *vars = new Probe(Code::location("dysect_test.cpp#102"),
                             Domain::group("1,4,5", 2000),
                             Acts(Act::stackTrace(),
-                                 Act::trace("Location is @function():@location()"),
-                                 Act::trace("rank is '@desc(rank)'"),
-                                 Act::trace("frank = rank * 1.1 is '@desc(frank)'"),
-                                 Act::trace("drank = rank * 2.2 is '@desc(drank)'"),
+                                 Act::trace("Location is @function():@location() and rank is '@desc(rank)'"),
+                                 Act::trace("frank = rank * 1.1 is '@desc(frank)' and drank = rank * 2.2 is '@desc(drank)'"),
                                  Act::trace("ip is '@desc(ip)'"),
+                                 Act::trace("The ranks are: @ranks() and The times are: @time()"),
+                                 Act::trace("First rank is @first(rank), last rank is @last(rank)"),
                                  Act::trace("Min lrank is '@min(lrank)', Max drank is '@max(drank)'"),
                                  Act::stat()),
                                  stay);
 
     // test a linked probe
     Probe *linked = new Probe(Time::within(0),
-                              Domain::group("4,5", 1000),
+                              Domain::group("1,4,5", 1000),
                               Acts(Act::trace("Linked probe is at @location()'"),
+                                   Act::trace("The ranks are: @ranks()"),
+                                   Act::trace("The times are: @time()"),
                                    Act::stackTrace(),
                                    Act::detach()));
 
@@ -50,7 +54,7 @@ DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
     ProbeTree::addRoot(vars);
     ProbeTree::addRoot(afterBarrier);
     ProbeTree::addRoot(inLoop);
-  
+
     return DysectOK;
 }
 

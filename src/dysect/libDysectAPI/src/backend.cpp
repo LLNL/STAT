@@ -24,6 +24,8 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Probe.h>
 #include <DysectAPI/ProbeTree.h>
 #include <DysectAPI/Backend.h>
+#include <DysectAPI/ProcMap.h>
+#include <DysectAPI/Action.h>
 
 using namespace std;
 using namespace MRN;
@@ -142,8 +144,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
 
   // Let event know that it was triggered.
   // Used for event composition
-  Walker* proc = (Walker*)curProcess->getData();
-
+  Walker* proc = ProcMap::get()->getWalker(curProcess);
   if(!proc) {
     DYSECTWARN(true, "Missing payload in process object: could not get walker for PID %d", curProcess->getPid());
   } else {
@@ -236,6 +237,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                     probe->sendEnqueuedActions();
               }
 
+              ProcessMgr::waitFor(ProcWait::probe, curProcess);
               retState = Process::cbThreadStop;
 
             } else {
@@ -243,11 +245,15 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               probe->enqueueEnable(curProcess);
 
               probe->addWaitingProc(curProcess);
+
+              ProcessMgr::waitFor(ProcWait::enableChildren, curProcess);
               retState = Process::cbProcStop;
 
               if(probe->getLifeSpan() == fireOnce) {
                 DYSECTVERBOSE(true, "Requesting disablement of probe");
                 probe->enqueueDisable(curProcess);
+
+                ProcessMgr::waitFor(ProcWait::disable, curProcess);
                 retState = Process::cbProcStop;
               }
             }
@@ -269,6 +275,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
             Err::warn(false, "Condition stalls not yet supported");
 
             Err::verbose(true, "Stopping thread in process %d", curProcess->getPid());
+            // Remember to add an appropriate wait event to process manager!
             retState = Process::cbProcStop;
 
             //retState = Process::cbThreadStop;
@@ -278,6 +285,8 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                 DYSECTVERBOSE(true, "Requesting disablement of unresolved probe");
                 // Get out of the way
                 probe->enqueueDisable(curProcess);
+
+                ProcessMgr::waitFor(ProcWait::disable, curProcess);
                 retState = Process::cbProcStop;
 
               } else {
@@ -297,6 +306,12 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
     }
   }
 
+  if (retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
+    // We must ask Dyninst "kindly" to cooperate on the process state
+    BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+    bproc->keepStopped();
+  }
+  
   return retState;
 }
 
@@ -318,7 +333,7 @@ DysectAPI::DysectErrorCode Backend::pauseApplication() {
   if(allProcs->empty())
     return OK;
 
-  if(allProcs->stopProcs()) {
+  if(ProcessMgr::stopProcs(allProcs)) {
     DYSECTLOG(true, "stop all processes");
     return OK;
   } else {
@@ -342,7 +357,7 @@ DysectAPI::DysectErrorCode Backend::resumeApplication() {
   if(allProcs->empty())
     return OK;
 
-  if(allProcs->continueProcs()) {
+  if(ProcessMgr::continueProcsIfReady(allProcs)) {
     DYSECTLOG(true, "continue all processes");
     return OK;
   } else {
@@ -361,8 +376,14 @@ void  Backend::setPendingExternalAction(int pending) {
 }
 
 DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stream* stream) {
+  if (tag == DysectGlobalActionTag) {
+    int streamId = (*packet)->get_StreamId();
+    DYSECTVERBOSE(true, "Got the action pack at stream id %d (%p)", streamId, stream);
 
-  if(tag == DysectGlobalReadyTag){
+    StopTrace::handleResultPackage(*packet, stream);
+
+    return OK;
+  } else if(tag == DysectGlobalReadyTag){
     // Stream to respond when all streams have been bound
     if(controlStream != 0) {
       return DYSECTWARN(Error, "Control stream already set");
@@ -532,9 +553,9 @@ DysectAPI::DysectErrorCode Backend::registerEventHandlers() {
   Process::registerEventCallback(ProcControlAPI::EventType::Fork, Backend::handleForkEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Exec, Backend::handleGenericEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Library, Backend::handleLibraryEvent);
-  Process::registerEventCallback(ProcControlAPI::EventType::Exit, Backend::handleProcessExit);
   Process::registerEventCallback(ProcControlAPI::EventType::Crash, Backend::handleCrash);
-
+  Process::registerEventCallback(ProcControlAPI::EventType(ProcControlAPI::EventType::Pre, ProcControlAPI::EventType::Exit),Backend::handleProcessExit);
+  
   return OK;
 }
 
@@ -544,6 +565,8 @@ WalkerSet* Backend::getWalkerset() {
 }
 
 Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev) {
+  //return Process::cbProcStop;
+
   Process::cb_ret_t retState = Process::cbThreadContinue;
 
   EventBreakpoint::const_ptr bpEvent = ev->getEventBreakpoint();
@@ -624,6 +647,7 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
       case SIGSEGV:
       case SIGFPE:
         DYSECTINFO(true, "Non recoverable signal %d - stopping process and enquing detach", signum);
+        ProcessMgr::waitFor(ProcWait::detach, curProcess);
         retState = Process::cbProcStop;
 
         // Enqueue termination
@@ -640,6 +664,12 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
     }
   }
 
+  if (retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
+    // We must ask Dyninst "kindly" to cooperate on the process state
+    BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+    bproc->keepStopped();
+  }
+  
   return retState;
 }
 
@@ -658,6 +688,10 @@ Process::cb_ret_t Backend::handleCrash(ProcControlAPI::Event::const_ptr ev) {
     }
   }
 
+  // We must ask Dyninst "kindly" to cooperate on the process state
+  BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+  bproc->keepStopped();
+  
   return Process::cbProcStop;
 }
 
@@ -682,6 +716,11 @@ Process::cb_ret_t Backend::handleProcessExit(ProcControlAPI::Event::const_ptr ev
   }
 
   Backend::enqueueDetach(curProcess);
+  ProcessMgr::waitFor(ProcWait::detach, curProcess);
+  
+  // We must ask Dyninst "kindly" to cooperate on the process state
+  BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+  bproc->keepStopped();
 
   return Process::cbProcStop;
 }
@@ -938,11 +977,18 @@ DysectAPI::DysectErrorCode Backend::handleTimerEvents() {
 
 
 DysectAPI::DysectErrorCode Backend::handleTimerActions() {
+
+  /* We cannot handle triggered probes while holding the mutex.
+     Handling probes may include calls to ProcControl, which
+     may call its internal event handler. If the event handler
+     finds new events, it will call DySect that will try to
+     enqueue them. To do this, the mutex must be available. */
+  
   while (true) {
     Probe* probe;
-
+    
     pthread_mutex_lock(&probesPendingActionMutex);
-    if(probesPendingAction.size() == 0) {
+    if (probesPendingAction.size() == 0) {
       pthread_mutex_unlock(&probesPendingActionMutex);
       break;
     }
@@ -960,9 +1006,8 @@ DysectAPI::DysectErrorCode Backend::handleTimerActions() {
       probe->enableChildren(lprocset);
       if(probe->getLifeSpan() == fireOnce)
         probe->disable(lprocset);
-      lprocset->continueProcs();
-//      ProcessMgr::continueProcs(lprocset); //this is implemented in dyninst branch
       probe->releaseWaitingProcs();
+      ProcessMgr::continueProcsIfReady(lprocset);
     }
   }
   return OK;
@@ -1052,7 +1097,7 @@ Process::cb_ret_t Backend::handleTimeEvent() {
       Process::ptr procPtr = *procIter;
       if(event && event->isEnabled(procPtr)) {
         Thread::ptr threadPtr = procPtr->threads().getInitialThread();
-        Walker *proc = (Walker *)procPtr->getData();
+        Walker *proc = ProcMap::get()->getWalker(procPtr);
         handleEvent(procPtr, threadPtr, event);
       }
     }

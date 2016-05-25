@@ -60,6 +60,12 @@ Value::Value(std::string fmt, void *lbuf) {
   buf = lbuf;
 }
 
+Value::Value(const Value& copy) : content(copy.content), len(copy.len) {
+  // Create a new buffer and copy the content
+  buf = malloc(copy.len);
+  memcpy(buf, copy.buf, copy.len);
+}
+
 Value::Value() : content(noType), len(0), buf(0) {}
 
 Value::Value(float fval) : content(floatType), len(0), buf(0){
@@ -294,6 +300,96 @@ bool Value::getStr(string& str) {
   str = std::string((char*)&outBuf);
 
   return true;
+}
+
+bool Value::isLongLike() {
+  switch (content) {
+    case intType:
+    case longType:
+    case pointerType:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+bool Value::isDoubleLike() {
+  switch (content) {
+    case floatType:
+    case doubleType:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+long Value::asLong() {
+  switch (content) {
+    case intType:
+    case longType:
+    case pointerType:
+      return getValue<long>();
+
+    default:
+      return 0;
+  }
+}
+
+double Value::asDouble() {
+  switch (content) {
+    case floatType:
+    case doubleType:
+      return getValue<double>();
+
+    default:
+      return 0.0;
+  }
+}
+
+Value Value::operator+(Value& rhs) {
+  Value res;
+
+  switch (content) {
+    case intType:
+      res.populate<int>(getValue<int>() + rhs.getValue<int>());
+      res.setType(intType);
+      return res;
+
+    case longType:
+      res.populate<long>(getValue<long>() + rhs.getValue<long>());
+      res.setType(longType);
+      return res;
+
+    case pointerType:
+      res.populate<void*>((void*)(getValue<long>() + rhs.getValue<long>()));
+      res.setType(pointerType);
+      return res;
+
+    case floatType:
+      res.populate<float>(getValue<float>() + rhs.getValue<float>());
+      res.setType(floatType);
+      return res;
+
+    case doubleType:
+      res.populate<double>(getValue<double>() + rhs.getValue<double>());
+      res.setType(doubleType);
+      return res;
+
+    default:
+      cerr << "Cannot add booleans!" << endl;
+  }
+
+  return *this;
+}
+
+bool Value::operator<=(Value& rhs) {
+  return isLessThanEqual(rhs);
+}
+
+bool Value::operator>=(Value& rhs) {
+  return isGreaterThanEqual(rhs);
 }
 
 Value& Value::operator=(Value& rhs) {

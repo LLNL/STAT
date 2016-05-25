@@ -19,6 +19,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include "DysectAPI/Aggregates/Aggregate.h"
 #include "DysectAPI/Aggregates/Location.h"
 #include "DysectAPI/Aggregates/CmpAgg.h"
+#include "DysectAPI/ProcMap.h"
 #include "DysectAPI.h"
 
 using namespace std;
@@ -37,8 +38,7 @@ bool FuncLocation::collect(void* process, void *thread) {
     return DYSECTVERBOSE(false, "Process object not available");
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
-
+  Walker *proc = ProcMap::get()->getWalker(process_ptr);
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
   }
@@ -111,8 +111,7 @@ bool FileLocation::collect(void* process, void *thread) {
     return DYSECTVERBOSE(false, "Cannot get program counter without thread object");
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
-
+  Walker *proc = ProcMap::get()->getWalker(process_ptr);
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
   }
@@ -142,9 +141,9 @@ bool FileLocation::collect(void* process, void *thread) {
   if(!curFrame.getName(frameName))
     Err::warn(false, "Failed to get frame name: %s", Stackwalker::getLastErrorMsg());
 
-  
+
   vector<LineNoTuple *> lines;
-  
+
   Architecture arch = process_ptr->getArchitecture();
   MachRegister pcReg = MachRegister::getPC(arch);
   MachRegisterVal pcVal;
@@ -209,8 +208,7 @@ bool FuncParamNames::collect(void* process, void* thread) {
     return DYSECTVERBOSE(false, "Cannot get program counter without thread object");
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
-
+  Walker *proc = ProcMap::get()->getWalker(process_ptr);
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
   }
@@ -238,18 +236,18 @@ bool FuncParamNames::collect(void* process, void* thread) {
 
     vector<string>::iterator paramIter = params.begin();
     int numParams = params.size();
-    for(int i = 1; paramIter != params.end(); paramIter++, i++) { 
+    for(int i = 1; paramIter != params.end(); paramIter++, i++) {
       string param = *paramIter;
 
       AggregateFunction* aggMinFunc = new Min("%d", param.c_str());
       paramBounds.push_back(aggMinFunc);
 
       //AggregateFunction* aggMaxFunc = new Max("%d", curDataExpr.c_str());
-      int id = aggMinFunc->getId(); 
+      int id = aggMinFunc->getId();
       bool lastParam = (i == numParams);
 
       sprintf((char*)&buf, "%s:%s%d%s", param.c_str(), "%d", id, lastParam ? "" : ", ");
-      
+
       paramList.append(string(buf));
     }
   }
@@ -286,8 +284,7 @@ bool StackTraces::collect(void* process, void* thread) {
     return DYSECTVERBOSE(false, "Cannot get program counter without thread object");
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
-
+  Walker *proc = ProcMap::get()->getWalker(process_ptr);
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
   }
@@ -315,7 +312,7 @@ bool StackTraces::collect(void* process, void* thread) {
   if(!boolRet) {
     return DYSECTWARN(false, "Could not walk stack: %s", Stackwalker::getLastErrorMsg());
   }
-  
+
   string trace = "";
   const int bufSize = 512;
   char buf[bufSize];
@@ -345,4 +342,6 @@ bool StackTraces::collect(void* process, void* thread) {
 
     countMap.insert(pair<string, int>(trace, count));
   }
+
+  return true;
 }

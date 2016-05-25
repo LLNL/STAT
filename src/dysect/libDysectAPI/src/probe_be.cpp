@@ -154,6 +154,8 @@ DysectAPI::DysectErrorCode Probe::enableChildren() {
 
 
 DysectAPI::DysectErrorCode Probe::enableChildren(Process::const_ptr process) {
+  ProcessMgr::handled(ProcWait::enableChildren, process);
+  
   if(linked.empty()) {
     return OK;
   }
@@ -164,6 +166,8 @@ DysectAPI::DysectErrorCode Probe::enableChildren(Process::const_ptr process) {
 }
 
 DysectAPI::DysectErrorCode Probe::enableChildren(ProcessSet::ptr procset) {
+  ProcessMgr::handled(ProcWait::enableChildren, procset);
+  
   if(linked.empty()) {
     return OK;
   }
@@ -235,6 +239,8 @@ bool Probe::releaseWaitingProcs() {
   if(waitingProcs && waitingProcs->size() > 0) {
     waitingProcs = ProcessMgr::filterDetached(waitingProcs);
 
+    ProcessMgr::handled(ProcWait::probe, waitingProcs);
+
     if(waitingProcs->size() > 0) {
       vector<Act*>::iterator actIter = actions.begin();
       for(;actIter != actions.end(); actIter++) {
@@ -242,7 +248,6 @@ bool Probe::releaseWaitingProcs() {
         if(act)
           awaitingActions -= processCount;
       }
-
       processCount = 0;
     }
 
@@ -293,7 +298,7 @@ DysectAPI::DysectErrorCode Probe::triggerAction(Process::const_ptr process, Thre
       if(onlyTriggerImmediate == false)
         act->collect(process, thread);
       act->actionPending = true;
-      act->finishBE(p, len);
+      act->finishBE(p, len); // TODO: some actions cannot be run if we're in a CB, for example, if default probe for exit has Wait::NoWait, then detach will print warning
       act->actionPending = false;
     }
   }
@@ -328,7 +333,7 @@ DysectAPI::DysectErrorCode Probe::enqueueAction(Process::const_ptr process, Thre
 }
 
 DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
-  struct packet* p = 0;
+  struct packet* p = 0; 
   int len = 0;
 
   DYSECTVERBOSE(true, "Sending %d enqueued actions for %x", awaitingActions, dom->getId());
@@ -375,21 +380,25 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
   assert(stream != 0);
 
   if(len > 0) {
-    DYSECTVERBOSE(true, "Sending %d byte aggregate packet", len);
+    DYSECTVERBOSE(true, "Sending %d byte aggregate packet with tag %d and process count %d", len, dom->getProbeEnabledTag(), processCount);
 
     if(stream->send(dom->getProbeEnabledTag(), "%d %auc", processCount, (char*)p, len) == -1) {
+      return DYSECTWARN(StreamError, "Send failed");
       return StreamError;
     }
 
     if(stream->flush() == -1) {
+      return DYSECTWARN(StreamError, "Flush failed");
       return StreamError;
     }
   } else {
     if(stream->send(dom->getProbeEnabledTag(), "%d %auc", processCount, "", 1) == -1) {
+      return DYSECTWARN(StreamError, "Send failed");
       return StreamError;
     }
 
     if(stream->flush() == -1) {
+      return DYSECTWARN(StreamError, "Flush failed");
       return StreamError;
     }
   }
@@ -414,6 +423,8 @@ bool Probe::disable() {
 }
 
 bool Probe::disable(Dyninst::ProcControlAPI::Process::const_ptr process) {
+  ProcessMgr::handled(ProcWait::disable, process);
+
   assert(event != 0);
   assert(dom != 0);
 
@@ -427,6 +438,8 @@ bool Probe::disable(Dyninst::ProcControlAPI::Process::const_ptr process) {
 }
 
 bool Probe::disable(Dyninst::ProcControlAPI::ProcessSet::ptr procset) {
+  ProcessMgr::handled(ProcWait::disable, procset);
+  
   assert(event != 0);
   assert(dom != 0);
 
@@ -591,8 +604,7 @@ bool Probe::processRequests() {
     stopSet = operationSet->getAnyThreadRunningSubset();
     if(stopSet && stopSet->size() > 0) {
       DYSECTVERBOSE(true, "Stopping %d processes", stopSet->size());
-
-      stopSet->stopProcs();
+      ProcessMgr::stopProcs(stopSet);
     }
 
     //
@@ -628,8 +640,7 @@ bool Probe::processRequests() {
       Process::ptr process = *procIter;
       DYSECTVERBOSE(true, "Continuing process %d", process->getPid());
     }
-
-    continueSet->continueProcs();
+    ProcessMgr::continueProcsIfReady(continueSet);
   }
 
   DYSECTVERBOSE(true, "Done handling requests");

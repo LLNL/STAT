@@ -19,6 +19,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include "DysectAPI/Aggregates/Aggregate.h"
 #include "DysectAPI/Aggregates/DescVar.h"
 #include "DysectAPI/Aggregates/CmpAgg.h"
+#include "DysectAPI/ProcMap.h"
 #include "DysectAPI.h"
 
 using namespace std;
@@ -36,12 +37,11 @@ bool DescribeVariable::collect(void* process, void *thread) {
     return DYSECTVERBOSE(false, "Process object not available");
   }
 
-  Walker* proc = (Walker*)process_ptr->getData();
-
+  Walker *proc = ProcMap::get()->getWalker(process_ptr);
   if(!proc) {
     return DYSECTVERBOSE(false, "Could not get walker from process");
   }
-  
+
   if (process_ptr->allThreadsRunning()) {
     wasRunning = true;
     pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
@@ -71,7 +71,7 @@ bool DescribeVariable::collect(void* process, void *thread) {
 
   if(varLocation) {
     if(!varLocation->isStructure()) {
-      
+
       // XXX: Add more sophisticated procedure to recognize
       // already prepared aggregates
       if(varSpecs.empty()) {
@@ -87,7 +87,7 @@ bool DescribeVariable::collect(void* process, void *thread) {
 
         minagg->collect(process, thread);
         maxagg->collect(process, thread);
-      
+
         aggregates.insert(pair<int, AggregateFunction*>(minagg->getId(), minagg));
         aggregates.insert(pair<int, AggregateFunction*>(maxagg->getId(), maxagg));
 
@@ -111,7 +111,7 @@ bool DescribeVariable::collect(void* process, void *thread) {
 
         snprintf((char*)&buf, bufSize, "%s[%s:%d:%d]", varName.c_str(), format.c_str(), minagg->getId(), maxagg->getId());
         varSpec.append(buf);
-  
+
         varSpecs.push_back(varSpec);
 
         DYSECTVERBOSE(true, "Var spec: %s", varSpec.c_str());
@@ -148,7 +148,7 @@ bool DescribeVariable::collect(void* process, void *thread) {
     }
   }
 
-  
+
 
   return true;
 }

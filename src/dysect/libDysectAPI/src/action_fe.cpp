@@ -21,6 +21,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Probe.h>
 #include <DysectAPI/Action.h>
 #include <DysectAPI/Frontend.h>
+#include <DysectAPI/Domain.h>
 #include <DysectAPI/Aggregates/RankListAgg.h>
 #include "STAT.h"
 #include "STAT_FrontEnd.h"
@@ -30,7 +31,6 @@ using namespace DysectAPI;
 using namespace Dyninst;
 using namespace ProcControlAPI;
 using namespace MRN;
-
 
 bool LoadLibrary::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
     Dyninst::ProcControlAPI::Thread::const_ptr thread) {
@@ -375,6 +375,114 @@ bool StackTrace::finishFE(int count) {
 }
 
 bool StackTrace::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+
+bool StartTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "StartTrace::collect");
+
+  return true;
+}
+
+bool StartTrace::finishFE(int count) {
+  DYSECTVERBOSE(true, "StartTrace::finishFE %d", count);
+}
+
+bool StartTrace::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+bool StopTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "StopTrace::collect");
+
+  return true;
+}
+
+bool StopTrace::finishFE(int count) {
+  DYSECTVERBOSE(true, "StopTrace::finishFE %d %d", count, lscope);
+
+  vector<AggregateFunction*>* aggs = trace->getAggregates();
+
+  for (vector<AggregateFunction*>::iterator it = aggs->begin(); it != aggs->end(); ++it) {
+    AggregateFunction* agg = *it;
+    int id = agg->getId();
+
+    DYSECTVERBOSE(true, "StopTrace::finishFE, evaluating aggregate %d", id);
+
+    AggregateFunction* receivedAgg = owner->getAggregate(id);
+    if (!trace->evaluateAggregate(receivedAgg)) {
+      return DYSECTWARN(false, "Could not evaluate aggregate %d!", id);
+    }
+  }
+
+  char* packet;
+  int size;
+  if (trace->usesGlobalResult() &&
+      trace->formatGlobalResult(packet, size)) {
+    owner->getDomain()->getStream()->send(DysectGlobalActionTag, "%ac", packet, size);
+  }
+
+  return true;
+}
+
+bool StopTrace::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+bool FullStackTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+
+  DYSECTVERBOSE(true, "FullStackTrace::collect");
+  return true;
+}
+
+bool FullStackTrace::finishFE(int count) {
+  Probe* probe = owner;
+  DYSECTVERBOSE(true, "FullStackTrace::finishFE %d %d", count, lscope);
+  if(!owner) {
+    return DYSECTVERBOSE(false, "No owner probe for action!");
+  }
+
+  if(!traces)
+    return false;
+
+  int id = traces->getId();
+
+  AggregateFunction* aggFunc = probe->getAggregate(id);
+  if(!aggFunc)
+    return false;
+
+  if(aggFunc->getType() != dataTracesAgg) {
+    return DYSECTWARN(false, "Aggregate mismatch for stack trace");
+  }
+
+  DataStackTrace* ltraces = dynamic_cast<DataStackTrace*>(aggFunc);
+
+  map<string, int> countMap;
+  ltraces->getCountMap(countMap);
+
+  if(!countMap.empty()) {
+    DYSECTINFO(true, "[%d] Stack trace%s:", count, countMap.size() > 1 ? "s" : "");
+  }
+
+  map<string, int>::iterator mapIter = countMap.begin();
+  for(; mapIter != countMap.end(); mapIter++) {
+    int countMapCount = mapIter->second;
+    string str = mapIter->first;
+
+    DYSECTINFO(true, "[%d] %s\n\n", countMapCount, str.c_str());
+  }
+
+  return true;
+}
+
+bool FullStackTrace::finishBE(struct packet*& p, int& len) {
   assert(!"Finish Backend-end should not be run on front-end!");
   return false;
 }

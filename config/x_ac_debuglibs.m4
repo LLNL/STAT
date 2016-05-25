@@ -4,9 +4,11 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     [AS_HELP_STRING([--enable-stackwalker-rpm],[Enable the use of rpm-installed stackwalker, default=no])],
     [CXXFLAGS="$CXXFLAGS -I/usr/include/dyninst"
      LDFLAGS="$LDFLAGS -L/usr/lib64/dyninst"
+     STACKWALKERPREFIX="${withval}"
      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=/usr/lib64/dyninst"],
-    [CXXFLAGS="$CXXFLAGS"]
-  )
+    [CXXFLAGS="$CXXFLAGS"
+     STACKWALKERPREFIX="${withval}"]
+  )  
   AC_ARG_ENABLE(libdwarf-rpm,
     [AS_HELP_STRING([--enable-libdwarf-rpm],[Enable the use of rpm-installed libdwarf, default=no])],
     [CXXFLAGS="$CXXFLAGS -I/usr/include/libdwarf"],
@@ -19,8 +21,10 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     )],
     [CXXFLAGS="$CXXFLAGS -I${withval}/include"
      LDFLAGS="$LDFLAGS -L${withval}/lib"
+     STACKWALKERPREFIX="${withval}"
      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"],
-    [CXXFLAGS="$CXXFLAGS"]
+    [CXXFLAGS="$CXXFLAGS"
+     STACKWALKERPREFIX="${withval}"]
   )
   AC_ARG_WITH(libdwarf,
     [AS_HELP_STRING([--with-libdwarf=prefix],
@@ -67,7 +71,7 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   )
   AC_MSG_CHECKING(for libstackwalk)
   TMP_LDFLAGS=$LDFLAGS
-  LDFLAGS="$LDFLAGS -lstackwalk -lpcontrol -lparseAPI -linstructionAPI -lsymtabAPI -lcommon -ldynElf -ldynDwarf -lsymLite -ldwarf -lelf -liberty -lpthread"
+  LDFLAGS="$LDFLAGS -ldyninstAPI -lstackwalk -lpcontrol -lparseAPI -linstructionAPI -lsymtabAPI -lcommon -ldynElf -ldynDwarf -lsymLite -ldwarf -lelf -liberty -lpthread"
   AC_LINK_IFELSE([AC_LANG_PROGRAM(#include "walker.h"
     using namespace Dyninst;
     using namespace Dyninst::Stackwalker;
@@ -77,7 +81,7 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   )
   LDFLAGS=$TMP_LDFLAGS
   if test "$libstackwalk_found" = yes; then
-    BELIBS="-lstackwalk -lpcontrol -lparseAPI -linstructionAPI -lsymtabAPI -lcommon -ldynElf -ldynDwarf -lsymLite -liberty $BELIBS"
+    BELIBS="-ldyninstAPI -lstackwalk -lpcontrol -lparseAPI -linstructionAPI -lsymtabAPI -lcommon -ldynElf -ldynDwarf -lsymLite -liberty $BELIBS"
   else
     LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lpcontrol -lparseAPI -linstruction -lcommon -ldwarf -lelf -liberty -lpthread"
     AC_LINK_IFELSE([AC_LANG_PROGRAM(#include "walker.h"
@@ -89,7 +93,7 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     )
     LDFLAGS=$TMP_LDFLAGS
     if test "$libstackwalk_found" = yes; then
-      BELIBS="-lstackwalk -lsymtabAPI -lpcontrol -lparseAPI -linstruction -lcommon -liberty $BELIBS"
+      BELIBS="-ldyninstAPI -lstackwalk -lsymtabAPI -lpcontrol -lparseAPI -linstruction -lcommon -liberty $BELIBS"
     else
       LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lcommon -ldwarf -lelf -liberty -lpthread"
       AC_LINK_IFELSE([AC_LANG_PROGRAM(#include "walker.h"
@@ -101,12 +105,13 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
       )
       LDFLAGS=$TMP_LDFLAGS
       if test "$libstackwalk_found" = yes; then
-        BELIBS="-lstackwalk -lsymtabAPI -lcommon -liberty $BELIBS"
+        BELIBS="-ldyninstAPI -lstackwalk -lsymtabAPI -lcommon -liberty $BELIBS"
       else
         AC_MSG_ERROR([libstackwalk is required.  Specify libstackwalk prefix with --with-stackwalker])
       fi
     fi
   fi
+  AC_SUBST(STACKWALKERPREFIX)
   AC_MSG_RESULT($libstackwalk_found)
 
   AC_MSG_CHECKING(for libompd_intel)

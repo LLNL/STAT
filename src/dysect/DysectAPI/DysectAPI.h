@@ -39,6 +39,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Action.h>
 #include <DysectAPI/ProbeTree.h>
 #include <DysectAPI/DysectAPIProcessMgr.h>
+#include <DysectAPI/TraceAPI.h>
 
 
 namespace DysectAPI {

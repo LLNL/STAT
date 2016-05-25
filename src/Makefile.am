@@ -1,5 +1,5 @@
 if ENABLE_DYSECTAPI
-  MAYBE_DYSECT = dysect
+  MAYBE_DYSECT = dysect analyticslib
 endif
 
 SUBDIRS = $(MAYBE_DYSECT)
@@ -22,6 +22,7 @@ stat_fe_cppflags_add_dysectapi = -D__DYSECT_IS_FRONTEND
 stat_be_ldadd_add_dysectapi = @LIBDYSECTAPIBE@ @LIBDYSECTBE@
 stat_fd_ldadd_add_dysectapi = @LIBDYSECTAPIFD@
 stat_ldflags_add_dysectapi = -L@LIBDYSECTAPILOC@ -L@LIBDYSECTLOC@
+##-L/collab/usr/global/tools/dyninst/stackwalker/chaos_5_x86_64_ib/sw8.2-1/lib
 endif
 
 if ENABLE_STATBENCH

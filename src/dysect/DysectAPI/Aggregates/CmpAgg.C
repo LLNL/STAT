@@ -37,20 +37,20 @@ CmpAgg::CmpAgg(agg_type ltype, int id, int count, std::string fmt, void* payload
 bool CmpAgg::aggregate(AggregateFunction* agg) {
   if(agg->getType() != type)
     return false;
-  
+
   if(agg->getId() != getId())
     return false;
-  
+
   CmpAgg* aggInstance = dynamic_cast<CmpAgg*>(agg);
-  
+
   Value val = aggInstance->getVal();
 
   if(compare(val, curVal)) {
     curVal = val;
   }
-  
+
   count_ += agg->getCount();
-  
+
   return true;
 }
 
@@ -60,7 +60,7 @@ bool CmpAgg::print() {
 
 bool CmpAgg::getStr(string& str) {
   str = "<none>";
-  
+
   if(curVal.getType() != Value::noType) {
     curVal.getStr(str);
   }
@@ -74,7 +74,7 @@ int CmpAgg::getSize() {
 
 int CmpAgg::writeSubpacket(char *p) {
   struct subPacket* packet;
-  
+
   packet = (struct subPacket*)p;
   packet->len = getSize();
   packet->id = getId();
@@ -119,4 +119,19 @@ Max::Max(int id, int count, std::string fmt, void* payload) : CmpAgg(maxAgg, id,
 
 bool Max::compare(Value& newVal, Value& oldVal) {
   return oldVal < newVal;
+}
+
+
+First::First(int id, int count, std::string fmt, void* payload) : CmpAgg(firstAgg, id, count, fmt, payload) {
+}
+
+bool First::compare(Value& newVal, Value& oldVal) {
+  return false;
+}
+
+Last::Last(int id, int count, std::string fmt, void* payload) : CmpAgg(lastAgg, id, count, fmt, payload) {
+}
+
+bool Last::compare(Value& newVal, Value& oldVal) {
+  return true;
 }

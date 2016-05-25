@@ -22,6 +22,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Action.h>
 #include "DysectAPI/Backend.h"
 #include <DysectAPI/Aggregates/RankListAgg.h>
+#include <DysectAPI/ProcMap.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -438,6 +439,132 @@ bool StackTrace::finishFE(int count) {
 
 bool StackTrace::finishBE(struct packet*& p, int& len) {
   DYSECTVERBOSE(true, "StackTrace::finishBE");
+  vector<AggregateFunction*> aggregates;
+
+  if(traces) {
+    aggregates.push_back(traces);
+
+    if(!AggregateFunction::getPacket(aggregates, len, p)) {
+      return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
+    }
+
+    traces->clear();
+  }
+
+  return true;
+}
+
+bool StartTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "StartTrace::collect %d", owner->getProcessCount());
+
+  Stackwalker::Walker* walker = ProcMap::get()->getWalker(process);
+
+  vector<Stackwalker::Frame> stackWalk;
+
+  if (!walker->walkStack(stackWalk)) {
+    return false;
+  }
+
+  string curFuncName;
+  stackWalk[0].getName(curFuncName);
+
+  TraceAPI::addPendingInstrumentation(process, trace, curFuncName);
+
+  return true;
+}
+
+bool StartTrace::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on bacakend-end!");
+  return false;
+}
+
+bool StartTrace::finishBE(struct packet*& p, int& len) {
+  return true;
+}
+
+bool StopTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "StopTrace::collect %d", owner->getProcessCount());
+
+  TraceAPI::addPendingAnalysis(process, trace);
+
+  return true;
+}
+
+bool StopTrace::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool StopTrace::finishBE(struct packet*& p, int& len) {
+  DYSECTVERBOSE(true, "StopTrace::finishBE");
+  vector<AggregateFunction*>* aggregates = trace->getAggregates();
+
+  if (aggregates->size() == 0) {
+    return true;
+  }
+
+  if(!AggregateFunction::getPacket(*aggregates, len, p)) {
+    return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
+  }
+
+  // we need to clear the counter in the CountInvocations case, make sure this doesn't break others
+  for (int i = 0; i < aggregates->size(); i++)
+    (*aggregates)[i]->clear();
+
+  if (trace->usesGlobalResult()) {
+    //TODO: This will not allow multiple StopTrace to share
+    //  the same domain, e.g. the same probe
+    Stream* stream = owner->getDomain()->getStream();
+    waitingForResults[stream] = this;
+  }
+
+  return true;
+}
+
+bool StopTrace::handleResultPackage(MRN::PacketPtr packet, MRN::Stream* stream) {
+  map<MRN::Stream*, StopTrace*>::iterator it = waitingForResults.find(stream);
+
+  if (it == waitingForResults.end()) {
+    return DYSECTWARN(false, "Unexpected packet on result stream!");
+  }
+
+  StopTrace* action = it->second;
+  char* data;
+  int dataSize;
+  if (packet->unpack("%ac", &data, &dataSize) != 0) {
+    return DYSECTFATAL(false, "Unexpected global result package content!");
+  }
+
+  action->trace->processGlobalResult(data, dataSize);
+
+  waitingForResults.erase(it);
+  TraceAPI::processedGlobalRes(action->trace);
+
+  free(data);
+
+  return true;
+}
+
+bool FullStackTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+
+  DYSECTVERBOSE(true, "FullStackTrace::collect");
+  if(traces) {
+    traces->collect((void*)&process, (void*)&thread);
+  }
+
+  return true;
+}
+
+bool FullStackTrace::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool FullStackTrace::finishBE(struct packet*& p, int& len) {
+  DYSECTVERBOSE(true, "FullStackTrace::finishBE");
   vector<AggregateFunction*> aggregates;
 
   if(traces) {

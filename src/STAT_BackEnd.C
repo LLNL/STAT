@@ -1106,6 +1106,16 @@ StatError_t STAT_BackEnd::mainLoop()
 
     do
     {
+#if defined(GROUP_OPS)
+        if (doGroupOps_)
+        {
+  #ifdef DYSECTAPI
+	    /* Let BPatch handle its events */
+	    bpatch.pollForStatusChange();
+  #endif
+	}
+#endif
+	
         /* Set the stackwalker notification file descriptor */
         if (processMap_.size() > 0 and processMapNonNull_ > 0)
             swNotificationFd = ProcDebug::getNotificationFD();
@@ -1466,7 +1476,8 @@ sleep(2);
 #endif /* FGFS */
 
 #ifdef DYSECTAPI
-            case PROT_LOAD_SESSION_LIB:
+            case PROT_LOAD_SESSION_LIB: 
+            {
                 char *libraryPath, *dysectBuf, **dysectArgv;
                 int dysectBufSize, dysectArgc, dysectBufOffset, i;
 
@@ -1483,6 +1494,17 @@ sleep(2);
 
                     return STAT_MRNET_ERROR;
                 }
+
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Checking walkerSet_ with size()=%d\n", walkerSet_->size());
+
+                WalkerSet::iterator procIter = walkerSet_->begin();
+                Walker *tmpWalker = *procIter;
+                ProcDebug *pDebug2 = static_cast<ProcDebug *>(tmpWalker->getProcessState());
+                Process::ptr pcProc2 = pDebug2->getProc();
+                assert(pcProc2);
+                assert(!pcProc2->isExited());
+                assert(!pcProc2->isCrashed());
+                assert(!pcProc2->isTerminated());
 
                 dysectBufOffset = 0;
                 dysectArgv = (char **)malloc(dysectArgc);
@@ -1501,9 +1523,9 @@ sleep(2);
                     }
                     dysectBufOffset += strlen(dysectBuf + dysectBufOffset) + 1;
                 }
-
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Library to load: %s, with %d args\n", libraryPath, dysectArgv);
                 dysectBE_ = new DysectAPI::BE(libraryPath, this, dysectArgc, dysectArgv);
+
                 DysectAPI::ProcessMgr::init(procSet_);
                 if(dysectBE_->isLoaded())
                     intRet = 0;
@@ -1514,6 +1536,7 @@ sleep(2);
                 }
 
                 break;
+            }
 #endif
 
             case PROT_EXIT:
@@ -1632,13 +1655,22 @@ StatError_t STAT_BackEnd::attach()
         aInfo.reserve(proctabSize_);
         for (i = 0; i < proctabSize_; i++)
         {
-//            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Group attach includes process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
             pAttach.pid = proctab_[i].pd.pid;
             pAttach.executable = proctab_[i].pd.executable_name;
             pAttach.error_ret = ProcControlAPI::err_none;
+    #ifdef DYSECTAPI
+            BPatch_process * bpatch_process = bpatch.processAttach(NULL, pAttach.pid);
+            tmpProcSet_.push_back(bpatch_process);
+    #else
             aInfo.push_back(pAttach);
+    #endif
         }
+    #ifndef DYSECTAPI
         procSet_ = ProcessSet::attachProcessSet(aInfo);
+    #else
+	procSet_ = ProcessSet::newProcessSet();
+    #endif
         walkerSet_ = WalkerSet::newWalkerSet();
     }
 #endif
@@ -1650,21 +1682,33 @@ StatError_t STAT_BackEnd::attach()
 
     for (i = 0; i < proctabSize_; i++)
     {
-//        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
 
 #if defined(GROUP_OPS)
         if (doGroupOps_)
         {
+  #ifdef DYSECTAPI
+            BPatch_process *bpatch_process = tmpProcSet_.at(i);
+	        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Got bpatch_process with pid=%d\n", bpatch_process->getPid());
+            if (!bpatch_process)
+            {
+  #else
             pcProc = aInfo[i].proc;
+
             if (!pcProc)
             {
+  #endif
                 stringstream ss;
-                ss << "[PC Attach Error - 0x" << std::hex << aInfo[i].error_ret << std::dec << "]";
+                ss << "[PC Attach Error - 0x" << std::hex << /*aInfo[i].error_ret <<*/ std::dec << "]";
                 mpiRankToErrMsg.insert(make_pair(proctab_[i].mpirank, ss.str()));
             }
             else
             {
+  #ifdef DYSECTAPI
+                proc = static_cast<Walker *>(bpatch_process->get_walker());
+  #else
                 proc = Walker::newWalker(pcProc);
+  #endif
                 if (!proc)
                 {
                     stringstream ss;
@@ -1673,10 +1717,38 @@ StatError_t STAT_BackEnd::attach()
                 }
                 else
                 {
-                    pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
                     walkerSet_->insert(proc);
 #ifdef DYSECTAPI
+
+                    ProcDebug *pDebug = static_cast<ProcDebug *>(proc->getProcessState());
+                    Process::ptr pcProc = pDebug->getProc();
+
+                    /* Verify that ProcControlAPI::Process looks ok */
+                    assert(pcProc);
+                    assert(!pcProc->isExited());
+                    assert(!pcProc->isCrashed());
+                    assert(!pcProc->isTerminated());
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "walkerSet_->size()=%d\n", walkerSet_->size());
+                    
+                    /* Also verify the first process as saved in the walkerSet_ */
+                    WalkerSet::iterator procIter = walkerSet_->begin();
+                    Walker * tmpWalker = *procIter;
+                    ProcDebug *pDebug2 = static_cast<ProcDebug *>(tmpWalker->getProcessState());
+                    Process::ptr pcProc2 = pDebug2->getProc();
+                    assert(pcProc2);
+                    assert(!pcProc2->isExited());
+                    assert(!pcProc2->isCrashed());
+                    assert(!pcProc2->isTerminated());
+
+		    ProcMap::get()->addProcess(pcProc, proc, bpatch_process, proctab_[i].mpirank);
+		    
                     mpiRankToProcessMap_.insert(pair<int, Process::ptr>(proctab_[i].mpirank, pcProc));
+
+		    /* Add the Dyninst::Process to the ProcessSet */
+		    procSet_->insert(pcProc);
+#else
+                    pcProc->setData(proc); /* Up ptr for mapping Process::ptr -> Walker */
+
 #endif
                 }
             }
@@ -1734,10 +1806,10 @@ StatError_t STAT_BackEnd::pause()
             DysectAPI::ProcessMgr::setWasRunning();
             ProcessSet::ptr allProcs = DysectAPI::ProcessMgr::getAllProcs();
             if(allProcs && !allProcs->empty())
-                allProcs->stopProcs();
+                DysectAPI::ProcessMgr::stopProcs(allProcs);
         }
         else
-            procSet_->stopProcs();
+            DysectAPI::ProcessMgr::stopProcs(procSet_);
     }
   #else
         procSet_->stopProcs();
@@ -1767,12 +1839,12 @@ StatError_t STAT_BackEnd::resume()
         {
             ProcessSet::ptr stopped = DysectAPI::ProcessMgr::getWasRunning();
             if(stopped && !stopped->empty())
-                stopped->continueProcs();
+                DysectAPI::ProcessMgr::continueProcsIfReady(stopped);
 
         }
         else {
             if(procSet_->anyThreadStopped()) {
-                procSet_->continueProcs();
+                DysectAPI::ProcessMgr::continueProcsIfReady(procSet_);
             }
         }
     }
@@ -2739,7 +2811,11 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         {
             stringstream ss;
             ss << "[Task Detached]";
+#ifdef DYSECTAPI
+	    Walker *walker = ProcMap::get()->getWalker(*i);
+#else
             Walker *walker = static_cast<Walker *>((*i)->getData());
+#endif
             map<Walker *, int>::iterator j = procsToRanks_.find(walker);
             if (j != procsToRanks_.end())
                 exitedProcesses_[ss.str()].insert(j->second);
@@ -2763,7 +2839,11 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         {
             stringstream ss;
             ss << "[Task Exited with " << (*i)->getExitCode() << "]";
+#ifdef DYSECTAPI
+	    Walker *walker = ProcMap::get()->getWalker(*i);
+#else
             Walker *walker = static_cast<Walker *>((*i)->getData());
+#endif
             map<Walker *, int>::iterator j = procsToRanks_.find(walker);
             if (j != procsToRanks_.end())
                 exitedProcesses_[ss.str()].insert(j->second);
@@ -2787,7 +2867,11 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         {
             stringstream ss;
             ss << "[Task Crashed with Signal " << (*i)->getCrashSignal() << "]";
+#ifdef DYSECTAPI
+	    Walker *walker = ProcMap::get()->getWalker(*i);
+#else
             Walker *walker = static_cast<Walker *>((*i)->getData());
+#endif
             map<Walker *, int>::iterator j = procsToRanks_.find(walker);
             if (j != procsToRanks_.end())
                 exitedProcesses_[ss.str()].insert(j->second);
@@ -2811,7 +2895,11 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         {
             stringstream ss;
             ss << "[Task Terminated]";
+#ifdef DYSECTAPI
+	    Walker *walker = ProcMap::get()->getWalker(*i);
+#else
             Walker *walker = static_cast<Walker *>((*i)->getData());
+#endif
             map<Walker *, int>::iterator j = procsToRanks_.find(walker);
             if (j != procsToRanks_.end())
                 exitedProcesses_[ss.str()].insert(j->second);
@@ -2852,8 +2940,11 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
                 stringstream ss;
                 ss << "[Stackwalk Error - 0x" << std::hex << err_proc->getLastError() << "]";
                 string err_string = ss.str();
-
+#ifdef DYSECTAPI
+		Walker *walker = ProcMap::get()->getWalker(err_proc);
+#else
                 Walker *walker = static_cast<Walker *>(err_proc->getData());
+#endif
                 map<Walker *, int>::iterator j = procsToRanks_.find(walker);
                 if (j != procsToRanks_.end())
                     exitedProcesses_[err_string].insert(j->second);
@@ -4052,5 +4143,4 @@ StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned i
 
     return STAT_OK;
 }
-
 

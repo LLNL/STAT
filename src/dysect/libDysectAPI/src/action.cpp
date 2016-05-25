@@ -141,6 +141,18 @@ DysectAPI::Act* Act::stackTrace() {
   return new StackTrace();
 }
 
+DysectAPI::Act* Act::fullStackTrace() {
+  return new FullStackTrace();
+}
+
+DysectAPI::Act* Act::startTrace(DataTrace* trace) {
+  return new StartTrace(trace);
+}
+
+DysectAPI::Act* Act::stopTrace(DataTrace* trace) {
+  return new StopTrace(trace);
+}
+
 DysectAPI::Act* Act::detachAll(AggScope scope) {
   return new DetachAll(scope);
 }
@@ -276,6 +288,34 @@ bool StackTrace::prepare() {
   return true;
 }
 
+StartTrace::StartTrace(DataTrace* trace) : trace(trace) {
+
+}
+
+bool StartTrace::prepare() {
+  return true;
+}
+
+std::map<MRN::Stream*, StopTrace*> StopTrace::waitingForResults;
+
+StopTrace::StopTrace(DataTrace* trace) : trace(trace) {
+
+}
+
+bool StopTrace::prepare() {
+  return true;
+}
+
+FullStackTrace::FullStackTrace() {
+  type = fullStackTraceType;
+  lscope = SatisfyingProcs;
+}
+
+bool FullStackTrace::prepare() {
+  traces = new DataStackTrace();
+  return true;
+}
+
 Trace::Trace(string str) : str(str) {
   type = traceType;
   lscope = SatisfyingProcs;
@@ -390,6 +430,12 @@ bool Trace::findAggregates() {
       case maxAgg:
         aggFunc = new Max("%d", curDataExpr.c_str());
       break;
+      case firstAgg:
+        aggFunc = new First("%d", curDataExpr.c_str());
+      break;
+      case lastAgg:
+        aggFunc = new Last("%d", curDataExpr.c_str());
+      break;
       case funcLocAgg:
         aggFunc = new FuncLocation();
       break;
@@ -407,6 +453,18 @@ bool Trace::findAggregates() {
       break;
       case rankListAgg:
         aggFunc = new RankListAgg(owner);
+      break;
+      case timeListAgg:
+        aggFunc = new TimeListAgg(owner);
+      break;
+      case bucketAgg:
+        aggFunc = new BucketAgg(owner, curDataExpr.c_str());
+      break;
+      case rankBucketAgg:
+        aggFunc = new RankBucketAgg(owner, curDataExpr.c_str());
+      break;
+      case dataTracesAgg:
+        aggFunc = new DataStackTrace();
       break;
       default:
         DYSECTWARN(false, "Unsupported aggregate function '%s'", curAggName.c_str());

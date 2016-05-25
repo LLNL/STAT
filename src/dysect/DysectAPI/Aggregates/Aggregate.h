@@ -33,9 +33,49 @@ enum agg_type {
 
   // Folds to aggregates
   descAgg = 8,
+  rankListAgg = 9,
 
-  rankListAgg = 9
+  // Dummy aggregate
+  firstAgg = 10,
+  lastAgg = 11,
+  bucketAgg = 13,
+  timeListAgg = 12,
+  rankBucketAgg = 14,
+  dataTracesAgg = 15,
+
+  // TraceAPI aggregates
+  collectValuesAgg = 16,
+  countInvocationsAgg = 17,
+  averageAgg = 18
 };
+
+#include <typeinfo>
+#include <vector>
+#include <string>
+#include <map>
+#include <iostream>
+#include <string.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "DysectAPI/Aggregates/Data.h"
+#include "DysectAPI/Aggregates/AggregateFunction.h"
+#include "DysectAPI/Aggregates/CmpAgg.h"
+#include "DysectAPI/Aggregates/StrAgg.h"
+#include "DysectAPI/Aggregates/RankListAgg.h"
+#include "DysectAPI/Aggregates/Location.h"
+#include "DysectAPI/Aggregates/DescVar.h"
+#include "DysectAPI/Aggregates/Packet.h"
+
+#include "DysectAPI/Aggregates/BucketAgg.h"
+#include "DysectAPI/Aggregates/TimeListAgg.h"
+#include "DysectAPI/Aggregates/RankBucketAgg.h"
+#include "DysectAPI/Aggregates/DataStackTrace.h"
+
+#include "DysectAPI/Aggregates/CollectValuesAgg.h"
+#include "DysectAPI/Aggregates/CountInvocationsAgg.h"
+#include "DysectAPI/Aggregates/AverageAgg.h"
 
 namespace DysectAPI {
   class Agg {

@@ -6,6 +6,8 @@ AC_DEFUN([X_AC_DYSECTAPI], [
     )],
     [ENABLE_DYSECT="yes"
       CXXFLAGS="$CXXFLAGS -DDYSECTAPI"
+      LDFLAGS="$LDFLAGS -ldyninstAPI"
+      BELIBS="-ldyninstAPI $BELIBS"
       AM_CONDITIONAL([ENABLE_DYSECTAPI], true)
       AC_SUBST(LIBDYSECTFE, [-lDysectFE])
       AC_SUBST(LIBDYSECTBE, [-lDysectBE])

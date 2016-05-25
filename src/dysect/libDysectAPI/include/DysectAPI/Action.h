@@ -26,6 +26,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <DysectAPI/Aggregates/Aggregate.h>
 #include <DysectAPI/Aggregates/AggregateFunction.h>
 #include <DysectAPI/Aggregates/Location.h>
+#include <DysectAPI/TraceAPI.h>
 
 namespace DysectAPI {
   class Act;
@@ -66,7 +67,8 @@ namespace DysectAPI {
       writeModuleVariableType = 9,
       signalType = 10,
       irpcType = 11,
-      nullType = 12
+      nullType = 12,
+      fullStackTraceType = 13
     } aggType;
 
     aggType type;
@@ -98,6 +100,9 @@ namespace DysectAPI {
     static Act* detachAll(AggScope scope = AllProcs);
     static Act* detach();
     static Act* stackTrace();
+    static Act* fullStackTrace();
+    static Act* startTrace(DataTrace* trace);
+    static Act* stopTrace(DataTrace* trace);
     static void resetAggregateIdCounter();
 
     int getId() { return id; }
@@ -266,6 +271,58 @@ namespace DysectAPI {
 
   public:
     StackTrace();
+
+    bool prepare();
+
+    bool collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                 Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+  class StartTrace : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::const_ptr> triggeredProcs;
+    DataTrace* trace;
+
+  public:
+    StartTrace(DataTrace* trace);
+
+    bool prepare();
+
+    bool collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                 Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+  class StopTrace : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::const_ptr> triggeredProcs;
+    DataTrace* trace;
+
+    static std::map<MRN::Stream*, StopTrace*> waitingForResults;
+
+  public:
+    StopTrace(DataTrace* trace);
+
+    bool prepare();
+
+    bool collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                 Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+
+    static bool handleResultPackage(MRN::PacketPtr packet, MRN::Stream* stream);
+  };
+
+  class FullStackTrace : public Act {
+    std::string str;
+    DataStackTrace* traces;
+
+  public:
+    FullStackTrace();
 
     bool prepare();
 
