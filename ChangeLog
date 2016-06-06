@@ -1,3 +1,6 @@
+2016-06-06 Gregory L. Lee <lee218@llnl.gov>
+	* : Renamed Cray build option to --with-cray-alps
+
 2016-05-23 Gregory L. Lee <lee218@llnl.gov>
 	* : Graphlib 2.0 fix with threads
 
