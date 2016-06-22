@@ -877,29 +877,11 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 #ifdef CRAYXT
         map<string, string> attrs;
         char apidString[BUFSIZE];
-    #ifdef MRNET31
+
         snprintf(apidString, BUFSIZE, "%d", launcherPid_);
         attrs["CRAY_ALPS_APRUN_PID"] = apidString;
         attrs["CRAY_ALPS_STAGE_FILES"] = filterPath_;
-    #else /* ifdef MRNET31 */
-        char *emsg;
-        int nid;
-        uint64_t apid;
-        emsg = alpsGetMyNid(&nid);
-        if (emsg)
-        {
-            printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get nid\n");
-            return STAT_SYSTEM_ERROR;
-        }
-        apid = alps_get_apid(nid, launcherPid_);
-        if (apid <= 0)
-        {
-            printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get apid from aprun PID %d\n", launcherPid_);
-            return STAT_SYSTEM_ERROR;
-        }
-        snprintf(apidString, BUFSIZE, "%d", apid);
-        attrs["apid"] = apidString;
-    #endif /* ifdef MRNET31 */
+
         network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
 #else /* ifdef CRAYXT */
         network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
