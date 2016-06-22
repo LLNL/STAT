@@ -642,6 +642,14 @@ StatError_t STAT_FrontEnd::launchDaemons()
         }
     } /* if (applicationOption_ != STAT_SERIAL_ATTACH) */
 
+    /* Get the resource manager information from LaunchMON */
+    lmonRet = LMON_fe_getRMInfo(lmonSession_, &lmonRmInfo_);
+    if (lmonRet != LMON_OK)
+    {
+        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get RM Info\n");
+        return STAT_LMON_ERROR;
+    }
+
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering application information\n");
 
     /* Iterate over all unique exe names and concatenate to app name */
@@ -875,18 +883,19 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     } /* if (applicationOption_ == STAT_SERIAL_ATTACH) */
     else
     {
-#ifdef CRAYXT
-        map<string, string> attrs;
-        char apidString[BUFSIZE];
+        if (lmonRmInfo_.rm_supported_types[lmonRmInfo_.index_to_cur_instance] == RC_alps)
+        {
+            map<string, string> attrs;
+            char apidString[BUFSIZE];
 
-        snprintf(apidString, BUFSIZE, "%d", launcherPid_);
-        attrs["CRAY_ALPS_APRUN_PID"] = apidString;
-        attrs["CRAY_ALPS_STAGE_FILES"] = filterPath_;
+            snprintf(apidString, BUFSIZE, "%d", launcherPid_);
+            attrs["CRAY_ALPS_APRUN_PID"] = apidString;
+            attrs["CRAY_ALPS_STAGE_FILES"] = filterPath_;
 
-        network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-#else /* ifdef CRAYXT */
-        network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
-#endif /* ifdef CRAYXT */
+            network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
+        }
+        else
+            network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
 
     } /* else branch of if (applicationOption_ == STAT_SERIAL_ATTACH) */
 
@@ -4595,10 +4604,9 @@ int lmonStatusCb(int *status)
 
 bool STAT_FrontEnd::checkNodeAccess(char *node)
 {
-#ifdef CRAYXT
     /* MRNet CPs launched through alps */
-    return true;
-#else
+    if (lmonRmInfo_.rm_supported_types[lmonRmInfo_.index_to_cur_instance] == RC_alps)
+        return true;
     char command[BUFSIZE], testOutput[BUFSIZE], runScript[BUFSIZE], checkHost[BUFSIZE], *rsh = NULL, *envValue;
     FILE *output, *temp;
 
@@ -4641,7 +4649,6 @@ bool STAT_FrontEnd::checkNodeAccess(char *node)
     if (strcmp(testOutput, "") == 0)
         return false;
     return true;
-#endif
 }
 
 
