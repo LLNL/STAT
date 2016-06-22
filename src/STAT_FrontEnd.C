@@ -227,15 +227,16 @@ STAT_FrontEnd::STAT_FrontEnd()
     statInitializeMergeFunctions();
 
     /* Get the FE hostname */
-#ifdef CRAYXT
     string temp;
     intRet = XPlat::NetUtils::GetLocalHostName(temp);
-    snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
-#else
-    intRet = gethostname(hostname_, BUFSIZE);
-#endif
-    if (intRet != 0)
-        printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
+    if (intRet == 0)
+        snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
+    else
+    {
+        intRet = gethostname(hostname_, BUFSIZE);
+        if (intRet != 0)
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
+    }
 
     /* Initialize variables */
     launcherPid_ = 0;
