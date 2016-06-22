@@ -227,15 +227,16 @@ STAT_FrontEnd::STAT_FrontEnd()
     statInitializeMergeFunctions();
 
     /* Get the FE hostname */
-#ifdef CRAYXT
     string temp;
     intRet = XPlat::NetUtils::GetLocalHostName(temp);
-    snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
-#else
-    intRet = gethostname(hostname_, BUFSIZE);
-#endif
-    if (intRet != 0)
-        printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
+    if (intRet == 0)
+        snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
+    else
+    {
+        intRet = gethostname(hostname_, BUFSIZE);
+        if (intRet != 0)
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
+    }
 
     /* Initialize variables */
     launcherPid_ = 0;
@@ -641,6 +642,14 @@ StatError_t STAT_FrontEnd::launchDaemons()
         }
     } /* if (applicationOption_ != STAT_SERIAL_ATTACH) */
 
+    /* Get the resource manager information from LaunchMON */
+    lmonRet = LMON_fe_getRMInfo(lmonSession_, &lmonRmInfo_);
+    if (lmonRet != LMON_OK)
+    {
+        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get RM Info\n");
+        return STAT_LMON_ERROR;
+    }
+
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering application information\n");
 
     /* Iterate over all unique exe names and concatenate to app name */
@@ -874,36 +883,19 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     } /* if (applicationOption_ == STAT_SERIAL_ATTACH) */
     else
     {
-#ifdef CRAYXT
-        map<string, string> attrs;
-        char apidString[BUFSIZE];
-    #ifdef MRNET31
-        snprintf(apidString, BUFSIZE, "%d", launcherPid_);
-        attrs["CRAY_ALPS_APRUN_PID"] = apidString;
-        attrs["CRAY_ALPS_STAGE_FILES"] = filterPath_;
-    #else /* ifdef MRNET31 */
-        char *emsg;
-        int nid;
-        uint64_t apid;
-        emsg = alpsGetMyNid(&nid);
-        if (emsg)
+        if (lmonRmInfo_.rm_supported_types[lmonRmInfo_.index_to_cur_instance] == RC_alps)
         {
-            printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get nid\n");
-            return STAT_SYSTEM_ERROR;
+            map<string, string> attrs;
+            char apidString[BUFSIZE];
+
+            snprintf(apidString, BUFSIZE, "%d", launcherPid_);
+            attrs["CRAY_ALPS_APRUN_PID"] = apidString;
+            attrs["CRAY_ALPS_STAGE_FILES"] = filterPath_;
+
+            network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
         }
-        apid = alps_get_apid(nid, launcherPid_);
-        if (apid <= 0)
-        {
-            printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get apid from aprun PID %d\n", launcherPid_);
-            return STAT_SYSTEM_ERROR;
-        }
-        snprintf(apidString, BUFSIZE, "%d", apid);
-        attrs["apid"] = apidString;
-    #endif /* ifdef MRNET31 */
-        network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-#else /* ifdef CRAYXT */
-        network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
-#endif /* ifdef CRAYXT */
+        else
+            network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
 
     } /* else branch of if (applicationOption_ == STAT_SERIAL_ATTACH) */
 
@@ -4612,10 +4604,9 @@ int lmonStatusCb(int *status)
 
 bool STAT_FrontEnd::checkNodeAccess(char *node)
 {
-#ifdef CRAYXT
     /* MRNet CPs launched through alps */
-    return true;
-#else
+    if (lmonRmInfo_.rm_supported_types[lmonRmInfo_.index_to_cur_instance] == RC_alps)
+        return true;
     char command[BUFSIZE], testOutput[BUFSIZE], runScript[BUFSIZE], checkHost[BUFSIZE], *rsh = NULL, *envValue;
     FILE *output, *temp;
 
@@ -4658,7 +4649,6 @@ bool STAT_FrontEnd::checkNodeAccess(char *node)
     if (strcmp(testOutput, "") == 0)
         return false;
     return true;
-#endif
 }
 
 

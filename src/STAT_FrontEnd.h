@@ -51,15 +51,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #include <fcntl.h>
 #endif
 
-#ifdef CRAYXT
-  #ifndef MRNET31
-extern "C"
-{
-    extern char *alpsGetMyNid(int32_t *);
-    extern uint64_t alps_get_apid(int, int);
-}
-  #endif
-#endif
 #define STAT_MAX_FILENAME_ID 8192
 #define STAT_MAX_FANOUT 64
 
@@ -956,6 +947,7 @@ class STAT_FrontEnd
         std::map<int, IntList_t *> mrnetRankToMpiRanksMap_; /*!< a map of MRNet ranks to ranks list used for bit vector reordering */
         std::set<int> missingRanks_;                        /*!< a set of MPI ranks whose daemon is not connected */
         std::vector<std::pair<std::string, double> > performanceData_;     /*!< the accumulated performance data to be dumped upon completion */
+        lmon_rm_info_t lmonRmInfo_;                         /*!< the resource manager information from LMON */
         LeafInfo_t leafInfo_;                               /*!< the MRNet leaf info */
         StatProt_t pendingAckTag_;                          /*!< the expected tag of the pending acknowledgement */
         StatError_t (STAT_FrontEnd::*pendingAckCb_)();      /*!< the function to call after acknowledgement received from daemons */
