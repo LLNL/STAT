@@ -129,7 +129,7 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
     gBePtr = this;
 	registerSignalHandlers(true);
 #ifdef GRAPHLIB_3_0
-    threadBvLength_ = STAT_BITVECTOR_BITS; // for now we restict to 64 threads per process
+    threadBvLength_ = STAT_BITVECTOR_BITS * 8; // for now we restict to 512 threads per STAT daemon (i.e., node)
 #endif
 }
 
@@ -353,7 +353,7 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
     edgeIdToAttrs_[dst]["bv"] = statCopyEdgeAttr("bv", (void *)edges2d_[dst].second);
     if (sampleType_ & STAT_SAMPLE_THREADS)
     {
-        newEdge = initializeBitVectorEdge(STAT_BITVECTOR_BITS);
+        newEdge = initializeBitVectorEdge(threadBvLength_);
         if (newEdge == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize newEdge\n");
@@ -377,7 +377,6 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
         // we need a unique checksum for threads across damons:
         int64_t tbvsum = countRepEdge->checksum * (myRank_ + 1);
         edgeIdToAttrs_[dst]["tbvsum"] = statMergeEdgeAttr("tbvsum", edgeIdToAttrs_[dst]["tbvsum"], (void *)&tbvsum);
-
         statFreeCountRepEdge(countRepEdge);
     } //if (sampleType_ & STAT_SAMPLE_THREADS)
 
