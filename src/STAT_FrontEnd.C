@@ -4312,7 +4312,7 @@ StatError_t STAT_FrontEnd::setRanksList()
     /* First we need to generate the list of STAT BE daemons */
     statError = setDaemonNodes();
 #ifdef DYSECTAPI
-    if (statError == STAT_APPLICATION_EXITED) 
+    if (statError == STAT_APPLICATION_EXITED)
         return statError;
 #endif
     if (statError != STAT_OK)
@@ -5005,7 +5005,7 @@ StatError_t STAT_FrontEnd::dysectListen(bool blocking)
         printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Dysect not setup\n");
         return STAT_DYSECT_ERROR;
     }
-    do 
+    do
     {
         dysectError = dysectFrontEnd_->handleEvents(blocking);
     } while (dysectError == DysectAPI::SessionCont && blocking == true);
