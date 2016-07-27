@@ -11,6 +11,8 @@
 #include "DysectAPI/TraceAPI.h"
 
 #include <set>
+#include <string>
+#include <vector>
 
 struct instTarget {
   BPatch_addressSpace* addrHandle;
@@ -28,7 +30,7 @@ public:
 class CollectValuesInstr : public AnalysisInstr {
   CollectValues* original;
 
-  string variableName;
+  std::string variableName;
   const int bufSize;
   const bool allValues;
 
@@ -39,7 +41,7 @@ class CollectValuesInstr : public AnalysisInstr {
   BPatch_variableExpr* bufferSize;
 
 public:
-  CollectValuesInstr(CollectValues* original, string variableName, int bufSize = 2048, bool allValues = false);
+  CollectValuesInstr(CollectValues* original, std::string variableName, int bufSize = 2048, bool allValues = false);
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
   virtual void finishAnalysis(struct instTarget& target);
@@ -74,7 +76,7 @@ class BucketsInstr : public AnalysisInstr {
   BPatch_variableExpr* bitmap;
   BPatch_variableExpr* procBkts;
 
-  string variableName;
+  std::string variableName;
   struct buckets bkts;
 
  public:
@@ -88,7 +90,7 @@ class BucketsInstr : public AnalysisInstr {
 class AverageInstr : public AnalysisInstr {
   Average* original;
 
-  string variableName;
+  std::string variableName;
 
   BPatch_function* collector;
   BPatch_variableExpr* variable;
@@ -97,7 +99,7 @@ class AverageInstr : public AnalysisInstr {
   BPatch_variableExpr* count;
 
 public:
-  AverageInstr(Average* original, string variableName);
+  AverageInstr(Average* original, std::string variableName);
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
   virtual void finishAnalysis(struct instTarget& target);
@@ -105,7 +107,7 @@ public:
 
 class InvariantGeneratorInstr : public AnalysisInstr {
   InvariantGenerator* original;
-  string variableName;
+  std::string variableName;
   BPatch_function* collector;
   BPatch_variableExpr* variable;
   BPatch_variableExpr* orgVal;
@@ -113,7 +115,7 @@ class InvariantGeneratorInstr : public AnalysisInstr {
   BPatch_variableExpr* initialized;
 
 public:
-  InvariantGeneratorInstr(InvariantGenerator* original, string variableName);
+  InvariantGeneratorInstr(InvariantGenerator* original, std::string variableName);
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
   virtual void finishAnalysis(struct instTarget& target);
@@ -122,7 +124,7 @@ public:
 class ExtractFeaturesInstr : public AnalysisInstr {
   ExtractFeatures* original;
 
-  string variableName;
+  std::string variableName;
   BPatch_function* collector;
   BPatch_variableExpr* variable;
   BPatch_variableExpr* min;
@@ -139,7 +141,7 @@ class ExtractFeaturesInstr : public AnalysisInstr {
   };
 
 public:
-  ExtractFeaturesInstr(ExtractFeatures* original, string variableName);
+  ExtractFeaturesInstr(ExtractFeatures* original, std::string variableName);
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
   virtual void finishAnalysis(struct instTarget& target);
@@ -148,13 +150,13 @@ public:
 class PrintChangesInstr : public AnalysisInstr {
   PrintChanges* original;
 
-  string variableName;
+  std::string variableName;
   BPatch_variableExpr* variable;
   BPatch_function* logAddrFunc;
   BPatch_variableExpr* lastVal;
 
 public:
-  PrintChangesInstr(PrintChanges* original, string variableName);
+  PrintChangesInstr(PrintChanges* original, std::string variableName);
   virtual void finishAnalysis(struct instTarget& target);
   virtual bool prepareInstrumentedFunction(struct instTarget& target, BPatch_function* function);
   virtual BPatch_snippet* getInstrumentationSnippet(struct instTarget& target, BPatch_point* instrumentationPoint);
@@ -169,7 +171,7 @@ public:
     StopSearch
   };
 
-  virtual ShouldInstrument shouldInstrument(vector<BPatch_function*>& instrumentedFunctions,
+  virtual ShouldInstrument shouldInstrument(std::vector<BPatch_function*>& instrumentedFunctions,
 				BPatch_function* function) = 0;
   virtual bool limitToCallPath();
 };
@@ -179,15 +181,15 @@ class FunctionScopeInstr : public ScopeInstr {
 
 public:
   FunctionScopeInstr(int maxCallPath);
-  ShouldInstrument shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
+  ShouldInstrument shouldInstrument(std::vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
 };
 
 class CallPathScopeInstr : public ScopeInstr {
-  vector<string> callPath;
+  std::vector<std::string> callPath;
 
 public:
-  CallPathScopeInstr(vector<string> callPath);
-  virtual ShouldInstrument shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
+  CallPathScopeInstr(std::vector<std::string> callPath);
+  virtual ShouldInstrument shouldInstrument(std::vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
 };
 
 class CalledFunctionInstr : public ScopeInstr {
@@ -195,13 +197,13 @@ class CalledFunctionInstr : public ScopeInstr {
 
  public:
   CalledFunctionInstr(std::string fname);
-  virtual ShouldInstrument shouldInstrument(vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
+  virtual ShouldInstrument shouldInstrument(std::vector<BPatch_function*>& instrumentedFunctions, BPatch_function* function);
   virtual bool limitToCallPath();
 };
 
 class SamplingPointsInstr {
 public:
-  virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function) = 0;
+  virtual std::vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function) = 0;
 
   enum SamplingTime {
     beginning, end, before, after
@@ -209,11 +211,11 @@ public:
 };
 
 class MultipleSamplingPointsInstr : public SamplingPointsInstr {
-  vector<SamplingPointsInstr*> pointGenerators;
+  std::vector<SamplingPointsInstr*> pointGenerators;
 
 public:
-  MultipleSamplingPointsInstr(vector<SamplingPointsInstr*> pointGenerators);
-  virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
+  MultipleSamplingPointsInstr(std::vector<SamplingPointsInstr*> pointGenerators);
+  virtual std::vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
 class StoreSamplingPointsInstr : public SamplingPointsInstr {
@@ -221,7 +223,7 @@ class StoreSamplingPointsInstr : public SamplingPointsInstr {
 
 public:
   StoreSamplingPointsInstr(SamplingTime time);
-  virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
+  virtual std::vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
 class LoopSamplingPointsInstr : public SamplingPointsInstr {
@@ -229,7 +231,7 @@ class LoopSamplingPointsInstr : public SamplingPointsInstr {
 
 public:
   LoopSamplingPointsInstr(SamplingTime time);
-  virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
+  virtual std::vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
 class FunctionSamplingPointsInstr : public SamplingPointsInstr {
@@ -237,7 +239,7 @@ class FunctionSamplingPointsInstr : public SamplingPointsInstr {
 
 public:
   FunctionSamplingPointsInstr(SamplingTime time);
-  virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
+  virtual std::vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
 class FunctionCallSamplingPointsInstr : public SamplingPointsInstr {
@@ -245,7 +247,7 @@ class FunctionCallSamplingPointsInstr : public SamplingPointsInstr {
 
 public:
   FunctionCallSamplingPointsInstr(SamplingTime time);
-  virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
+  virtual std::vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
 class BasicBlockSamplingPointsInstr : public SamplingPointsInstr {
@@ -253,7 +255,7 @@ class BasicBlockSamplingPointsInstr : public SamplingPointsInstr {
 
 public:
   BasicBlockSamplingPointsInstr(SamplingTime time);
-  virtual vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
+  virtual std::vector<BPatch_point*> getInstrumentationPoints(struct instTarget& target, BPatch_function* function);
 };
 
 class DataTraceInstr {
@@ -261,9 +263,9 @@ class DataTraceInstr {
   ScopeInstr* scope;
   SamplingPointsInstr* points;
 
-  set<string> instrumentedFunctions;
+  std::set<std::string> instrumentedFunctions;
 
-  void install_recursive(struct instTarget& target, vector<BPatch_function*>& instrumentedFuncStack,
+  void install_recursive(struct instTarget& target, std::vector<BPatch_function*>& instrumentedFuncStack,
 			 BPatch_function* currentFunction);
 
   void loadAnalyticsLibrary(struct instTarget& target);

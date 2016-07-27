@@ -602,15 +602,15 @@ class STAT_BackEnd
         std::map<std::string, std::set<int> > exitedProcesses_;
   #ifdef DYSECTAPI
         std::map<int, Dyninst::ProcControlAPI::Process::ptr> mpiRankToProcessMap_;
-	vector<BPatch_process *> tmpProcSet_;
-	BPatch bpatch;
+        std::vector<BPatch_process *> tmpProcSet_;
+        BPatch bpatch_;
   #endif
 #endif
 
 #ifdef STAT_FGFS
         FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_; /*< the FGFS communication fabric handle */
 #endif
-        
+
 #ifdef DYSECTAPI
         DysectAPI::BE* dysectBE_;
 #endif
