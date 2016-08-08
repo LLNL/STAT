@@ -59,8 +59,8 @@ namespace DysectAPI {
 
     void enableTimers();
     void disableTimers();
-    bool getPendingExternalAction();
-    void setPendingExternalAction(bool pending);
+    int getPendingExternalAction();
+    void setPendingExternalAction(int pending);
     bool getReturnControlToDysect();
     void setReturnControlToDysect(bool control);
 

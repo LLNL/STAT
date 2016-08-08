@@ -222,10 +222,10 @@ void BE::disableTimers() {
   //Timer::blockTimers();
 }
 
-bool BE::getPendingExternalAction() {
+int BE::getPendingExternalAction() {
   return Backend::getPendingExternalAction();
 }
 
-void BE::setPendingExternalAction(bool pending) {
+void BE::setPendingExternalAction(int pending) {
   Backend::setPendingExternalAction(pending);
 }
