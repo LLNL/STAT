@@ -1289,7 +1289,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 ackTag = PROT_SEND_LAST_TRACE_RESP;
 
 #ifdef DYSECTAPI
-                if(dysectBE_)
+                if (dysectBE_)
                     dysectBE_->setReturnControlToDysect(true);
 #endif
                 break;
@@ -1311,7 +1311,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 ackTag = PROT_SEND_TRACES_RESP;
 
 #ifdef DYSECTAPI
-                if(dysectBE_)
+                if (dysectBE_)
                     dysectBE_->setReturnControlToDysect(true);
 #endif
                 break;
@@ -1525,7 +1525,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 dysectBE_ = new DysectAPI::BE(libraryPath, this, dysectArgc, dysectArgv);
 
                 DysectAPI::ProcessMgr::init(procSet_);
-                if(dysectBE_->isLoaded())
+                if (dysectBE_->isLoaded())
                     intRet = 0;
                 if (sendAck(stream, PROT_LOAD_SESSION_LIB_RESP, intRet) != STAT_OK)
                 {
@@ -1541,7 +1541,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Shutting down\n");
 
 #ifdef DYSECTAPI
-                if(dysectBE_)
+                if (dysectBE_)
                 {
                     dysectBE_->disableTimers();
                 }
@@ -1551,11 +1551,11 @@ StatError_t STAT_BackEnd::mainLoop()
             default:
 #ifdef DYSECTAPI
                 /* DysectAPI tags encode additional details */
-                if(DysectAPI::isDysectTag(tag))
+                if (DysectAPI::isDysectTag(tag))
                 {
-                    if(dysectBE_)
+                    if (dysectBE_)
                     {
-                        if(dysectBE_->relayPacket(&packet, tag, stream) == DysectAPI::OK)
+                        if (dysectBE_->relayPacket(&packet, tag, stream) == DysectAPI::OK)
                         {
                             /* Packet dealt with by DysectAPI */
                         }
@@ -1656,7 +1656,7 @@ StatError_t STAT_BackEnd::attach()
             pAttach.executable = proctab_[i].pd.executable_name;
             pAttach.error_ret = ProcControlAPI::err_none;
     #ifdef DYSECTAPI
-            BPatch_process * bpatch_process = bpatch_.processAttach(NULL, pAttach.pid);
+            BPatch_process * bpatch_process = bpatch_.processAttach(proctab_[i].pd.executable_name, pAttach.pid);
             tmpProcSet_.push_back(bpatch_process);
         }
         procSet_ = ProcessSet::newProcessSet();
@@ -1796,11 +1796,11 @@ StatError_t STAT_BackEnd::pause()
     if (doGroupOps_)
   #ifdef DYSECTAPI
     {
-        if(DysectAPI::ProcessMgr::isActive())
+        if (DysectAPI::ProcessMgr::isActive())
         {
             DysectAPI::ProcessMgr::setWasRunning();
             ProcessSet::ptr allProcs = DysectAPI::ProcessMgr::getAllProcs();
-            if(allProcs && !allProcs->empty())
+            if (allProcs && !allProcs->empty())
                 DysectAPI::ProcessMgr::stopProcs(allProcs);
         }
         else
@@ -1830,15 +1830,16 @@ StatError_t STAT_BackEnd::resume()
     if (doGroupOps_)
   #ifdef DYSECTAPI
     {
-        if(DysectAPI::ProcessMgr::isActive())
+        if (DysectAPI::ProcessMgr::isActive())
         {
             ProcessSet::ptr stopped = DysectAPI::ProcessMgr::getWasRunning();
-            if(stopped && !stopped->empty())
+            if (stopped && !stopped->empty())
                 DysectAPI::ProcessMgr::continueProcsIfReady(stopped);
 
         }
-        else {
-            if(procSet_->anyThreadStopped()) {
+        else
+        {
+            if (procSet_->anyThreadStopped()) {
                 DysectAPI::ProcessMgr::continueProcsIfReady(procSet_);
             }
         }
@@ -3036,7 +3037,7 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
     if (doGroupOps_ && stopArrayLen == 0)
   #ifdef DYSECTAPI
     {
-        if(DysectAPI::ProcessMgr::isActive())
+        if (DysectAPI::ProcessMgr::isActive())
             DysectAPI::ProcessMgr::detachAll();
         else
             procSet_->temporaryDetach();
