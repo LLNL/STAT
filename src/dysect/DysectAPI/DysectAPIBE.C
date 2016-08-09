@@ -141,7 +141,7 @@ DysectErrorCode BE::handleQueuedOperations() {
 
 DysectErrorCode BE::handleAll() {
   int count1, count2;
-  if (returnControlToDysect == true)
+  if (returnControlToDysect == true && Backend::getReturnControlToDysect() == true)
   {
     TraceAPI::performPendingInstrumentations();
     TraceAPI::performPendingAnalysis();
@@ -187,6 +187,7 @@ bool BE::getReturnControlToDysect() {
 
 void BE::setReturnControlToDysect(bool control) {
   returnControlToDysect = control;
+  Backend::setReturnControlToDysect(control);
 }
 
 void BE::gracefulShutdown(int signal) {

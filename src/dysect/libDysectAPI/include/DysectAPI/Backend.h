@@ -46,6 +46,7 @@ namespace DysectAPI {
     static std::vector<DysectAPI::Probe *> probesPendingImmediateAction;
     static pthread_mutex_t probesPendingImmediateActionMutex;
     static std::vector<DysectAPI::Probe*> pendingProbesToEnable;
+    static bool returnControlToDysect;
 
     static MRN::Stream* controlStream;
     static std::set<tag_t> missingBindings; //!< Set of tags needed to be bound by incoming front-end packets
@@ -67,6 +68,8 @@ namespace DysectAPI {
   public:
     static DysectErrorCode pauseApplication();
     static DysectErrorCode resumeApplication();
+    static bool getReturnControlToDysect();
+    static void setReturnControlToDysect(bool control);
     static int getPendingExternalAction();
     static void setPendingExternalAction(int pending);
 
