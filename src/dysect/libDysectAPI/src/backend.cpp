@@ -41,6 +41,7 @@ using namespace SymtabAPI;
 
 enum            Backend::BackendState Backend::state = start;
 bool            Backend::streamBindAckSent = false;
+bool            Backend::returnControlToDysect = true;
 int             Backend::pendingExternalAction = 0;
 vector<DysectAPI::Probe*> Backend::pendingProbesToEnable;
 Stream*         Backend::controlStream = 0;
@@ -366,6 +367,16 @@ DysectAPI::DysectErrorCode Backend::resumeApplication() {
 }
 
 
+bool Backend::getReturnControlToDysect() {
+  return returnControlToDysect;
+}
+
+void  Backend::setReturnControlToDysect(bool control) {
+  DYSECTLOG(true, "set returnControlToDysect %d %d", returnControlToDysect, control);
+  returnControlToDysect = control;
+}
+
+
 int Backend::getPendingExternalAction() {
   return pendingExternalAction;
 }
@@ -599,8 +610,15 @@ Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev)
         continue;
       }
 
+      int count1, count2;
+      count1 = getPendingExternalAction();
       // XXX: What to do with different ret states?
       retState = handleEvent(curProcess, curThread, dysectEvent);
+      count2 = getPendingExternalAction();
+      if (count2 > count1 && count2 != 0) {
+        DYSECTVERBOSE(true, "STAT3 action detected %d %d, deferring control...", count1, count2);
+        returnControlToDysect = false;
+      }
     }
   }
 
