@@ -476,6 +476,8 @@ def get_num_tasks(label):
 #  \n
 def get_truncated_edge_label(attrs):
     label = attrs["label"]
+    if label == '':
+        return ''
     max_size = 12
     num_tasks = get_num_tasks(label)
     num_threads = -1
