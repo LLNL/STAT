@@ -2795,18 +2795,26 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
     set<int> ranks;
     map<int, set<THR_ID> > rankThreadsMap;
     StatError_t statError;
+#ifdef DYSECTAPI
     ProcessSet::ptr testProcessSet = DysectAPI::ProcessMgr::filterDetached(procSet_);
+#endif
 
 #ifdef SW_VERSION_8_1_0
     if (procSet_->getLWPTracking() && sampleType_ & STAT_SAMPLE_THREADS)
         procSet_->getLWPTracking()->refreshLWPs();
 #endif
+#ifdef DYSECTAPI
     testProcessSet = DysectAPI::ProcessMgr::filterDetached(procSet_);
     if (procSet_->size() != testProcessSet->size() || procSet_->anyDetached())
+#else
+    if (procSet_->anyDetached())
+#endif
     {
         ProcessSet::ptr detachedSubset = procSet_->getDetachedSubset();
+#ifdef DYSECTAPI
         if (detachedSubset->size() == 0) // with Dyninst integration, anyDetached may not detect detached procs
             detachedSubset = procSet_->set_difference(testProcessSet);
+#endif
         for (ProcessSet::iterator i = detachedSubset->begin(); i != detachedSubset->end(); i++)
         {
             stringstream ss;
@@ -2832,12 +2840,18 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         }
         procSet_ = procSet_->set_difference(detachedSubset);
     }
+#ifdef DYSECTAPI
     testProcessSet = DysectAPI::ProcessMgr::filterExited(procSet_);
     if (procSet_->size() != testProcessSet->size() || procSet_->anyExited())
+#else
+    if (procSet_->anyExited())
+#endif
     {
         ProcessSet::ptr exitedSubset = procSet_->getExitedSubset();
-        if (exitedSubset->size() == 0) // with Dyninst integration, anyDetached may not detect detached procs
+#ifdef DYSECTAPI
+        if (exitedSubset->size() == 0) // with Dyninst integration, anyExited may not detect detached procs
             exitedSubset = procSet_->set_difference(testProcessSet);
+#endif
         for (ProcessSet::iterator i = exitedSubset->begin(); i != exitedSubset->end(); i++)
         {
             stringstream ss;
