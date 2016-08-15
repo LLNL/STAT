@@ -1,10 +1,13 @@
 #!/bin/sh
 #set -ex
-
-prefix="/nfs/tmp2/lee218/delete/stat-prefix"
+#prefix="/nfs/tmp2/lee218/delete/spack-graphlib3/spack/opt/spack/linux-redhat6-x86_64/gcc-4.4.7/stat-3.0.0b-ak6btjinmvbf2ib7ihh7dwiowzlu2m3c"
+#prefix="/nfs/tmp2/lee218/delete/stat-prefix"
+#prefix="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-3.0.0b"
+prefix="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test"
 testnums="01 02 03"
 testmodes="attach launch"
-#testnums="01"
+testnums="01"
+testmodes="attach"
 #testmodes="launch"
 
 statcl_command="${prefix}/bin/stat-cl"
