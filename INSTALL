@@ -13,24 +13,26 @@ Dependent Packages
    Table 1. STAT Dependent Packages
    Package What It Does
    Package Web Page
-   Graphlib version 2.0 or greater Graph creation, merging, and
+   Graphlib version 3.0 or greater Graph creation, merging, and
    export
-   https://github.com/lee218llnl/STAT/
+   https://github.com/LLNL/graphlib/
    Launchmon Scalable daemon co-location
-   http://sourceforge.net/projects/launchmon/
+   https://github.com/LLNL/LaunchMON
    Libdwarf Debug information parsing (Required by StackWalker)
-   http://reality.sgiweb.org/davea/dwarf.html
+   https://www.prevanders.net/dwarf.html
    MRNet version 3.0 or greater Scalable multicast and reduction
    network
-   http://www.paradyn.org/mrnet/
+   https://github.com/dyninst/mrnet
    StackWalker Lightweight stack trace sampling
-   http://www.paradyn.org/html/downloads.html
+   https://github.com/dyninst/dyninst
 
    In addition, the STAT GUI requires Python with PyGTK, both of
    which are commonly preinstalled with many Linux operating
    systems. The Pygments Python module can optionally be installed
    to allow the STAT GUI to perform syntax highlighting of source
-   code.
+   code. The STAT GUI also requires SWIG to generate Python
+   wrappers for STAT's core functionality. Another GUI requirement
+   is the Graphviz package to render the DOT format graph files.
 
    STAT can also be optionally built with the Fast Global File
    Status (FGFS) library. This library helps STAT identify when a
@@ -40,8 +42,8 @@ Dependent Packages
    STAT frontend and distribute its contents to the daemons via
    the MRNet communication tree. The two necessary components of
    FGFS can be downloaded from
-   https://github.com/dongahn/MountPointAttributes and
-   https://github.com/dongahn/FastGlobalFileStatus
+   https://github.com/LLNL/MountPointAttributes and
+   https://github.com/LLNL/FastGlobalFileStatus
      __________________________________________________________
 
 Installation
@@ -49,14 +51,21 @@ Installation
    A script that downloads and installs STAT and all its
    dependencies for BlueGene/Q has been created and can be
    downloaded at
-   https://github.com/lee218llnl/STAT/blob/master/script-stat-inst
-   all or can be found in the top-level directory of the STAT
-   source. Note this script was developed for BlueGene/Q systems,
-   but can be used as guidance for other systems as well.
+   https://github.com/LLNL/STAT/blob/master/script-stat-install or
+   can be found in the top-level directory of the STAT source.
+   Note this script was developed for BlueGene/Q systems, but can
+   be used as guidance for other systems as well.
 
    STAT and its dependencies can also be built via the Spack
    package management tool, available at
-   http://scalability-llnl.github.io/spack/index.html.
+   https://github.com/LLNL/spack. Running spack install stat
+   should build STAT and all of its dependencies, including those
+   require for the STAT GUI. Note that two Spack variants exist.
+   The first is +examples, to enable building example MPI code
+   that STAT can be tested against. This is disabled by default to
+   avoid requiring an MPI library, but enabling it will trigger a
+   build of MPI. The second is +dysect to enable building of the
+   DySectAPI.
 
    When building STAT itself, first run configure. You will need
    to use the --with-package options to specify the install prefix
@@ -124,13 +133,12 @@ make install
    Note that STAT hardcodes the paths to its daemon and filter
    shared object, assuming that they are in $prefix/bin and
    $prefix/lib respectively, thus testing should be done in the
-   install prefix after running "make install" and the
-   installation directory should not be moved. The path to these
-   components can, however, be overridden with the --daemon and
-   --filter arguments. Further, the STAT_PREFIX environment
-   variable can be defined to override the hardcoded paths in
-   STAT. STAT will also, by default, add rpaths to dependent
-   libraries. This behavior can be disabled by specifying
-   "--with-rpath=no". However, when doing so, you must be sure to
-   set LD_LIBRARY_PATH to point to the directories containing the
-   dependent libraries.
+   install prefix after running make install and the installation
+   directory should not be moved. The path to these components
+   can, however, be overridden with the --daemon and --filter
+   arguments. Further, the STAT_PREFIX environment variable can be
+   defined to override the hardcoded paths in STAT. STAT will
+   also, by default, add rpaths to dependent libraries. This
+   behavior can be disabled by specifying --with-rpath=no.
+   However, when doing so, you must be sure to set LD_LIBRARY_PATH
+   to point to the directories containing the dependent libraries.

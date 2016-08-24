@@ -31,7 +31,7 @@ where
 .fi
 .SH "DESCRIPTION"
 .PP
-STAT (the Stack Trace Analysis Tool) is a highly scalable, lightweight tool that gathers and merges stack traces from all of the processes of a parallel application. After running the STAT command, STAT will create a stat_results directory in your current working directory. This directory will contain a subdirectory, based on your parallel application's executable name, with the merged stack traces in DOT format.
+STAT (the Stack Trace Analysis Tool) is a highly scalable, lightweight tool that gathers and merges stack traces from all of the processes of a parallel application. After running the \fBstat-cl\fR command, STAT will create a stat_results directory in your current working directory. This directory will contain a subdirectory, based on your parallel application's executable name, with the merged stack traces in DOT format.
 .SH "OPTIONS"
 .TP
 \fB-a, --autotopo\fR
@@ -48,6 +48,9 @@ Specify the number of communication nodes per layer in the tree topology, separa
 .TP
 \fB-n, --nodes \fInodelist\fB\fR
 Use the specified nodes in \fInodelist\fR\&. To be used with \fB--fanout\fR, \fB--depth\fR, or \fB--usertopology\fR\&. Example nodes lists: host1; host1,host2; host[1,5-7,9].
+.TP
+\fB-N, --nodesfile \fIfilename\fB\fR
+Use the file \fIfilename\fR, which should contain the list of nodes for communication processes
 .TP
 \fB-A, --appnodes\fR
 Allow tool communication processes to be co-located on nodes running application processes.
@@ -75,6 +78,9 @@ Sample module offset only.
 .TP
 \fB-i, --withline\fR
 Sample source line number in addition to function names.
+.TP
+\fB-o, --withopenmp\fR
+Translate OpenMP stacks to logical application view
 .TP
 \fB-c, --comprehensive\fR
 Gather 5 traces: function only; module offset; function + PC; function + line; and 3D function only.
@@ -120,6 +126,12 @@ Dump logging output into \fIlog_directory\fR\&. To be used with the \fB--log\fR 
 .TP
 \fB-M, --mrnetprintf\fR
 Use MRNet's printf for STAT debug logging.
+.TP
+\fB-X, --dysectapi \fIsession\fB\fR
+Run the specified DySectAPI \fIsession\fR\&.
+.TP
+\fB-b, --dysectapi_batch \fIsecs\fB\fR
+Run the specified DySectAPI in batch mode. Session stops after \fIsecs\fR seconds or detach action.
 .SH "EXAMPLE"
 .PP
 The most typical usage is to invoke STAT on the job launcher's PID:
@@ -140,7 +152,7 @@ The most typical usage is to invoke STAT on the job launcher's PID:
 .sp
 .fi
 .PP
-You can also launch your application under STAT's control with the -C option. All arguments after -C are used for job launch:
+You can also launch your application under STAT's control with the \fB-C\fR option. All arguments after \fB-C\fR are used for job launch:
 .PP
 .sp
 .nf
@@ -149,7 +161,7 @@ You can also launch your application under STAT's control with the -C option. Al
 .sp
 .fi
 .PP
-With the -a option (or when automatic topology is set as default), STAT will try to automatically create a scalable topology for large scale jobs. However, if you wish you may manually specify a topology at larger scales. For example, if you're running on 1024 nodes, you may want to try a fanout of sqrt(1024) = 32. You will need to specify a list of nodes that contains enough processors to accommodate the ceil(1024/32) = 32 communication processes being launched with the --nodes option. Be sure that you have login permissions to the specified nodes and that they contain the mrnet_commnode executable and the STAT_FilterDefinitions.so library.
+With the \fB-a\fR option (or when automatic topology is set as default), STAT will try to automatically create a scalable topology for large scale jobs. However, if you wish you may manually specify a topology at larger scales. For example, if you're running on 1024 nodes, you may want to try a fanout of sqrt(1024) = 32. You will need to specify a list of nodes that contains enough processors to accommodate the ceil(1024/32) = 32 communication processes being launched with the \fB--nodes\fR option. Be sure that you have login permissions to the specified nodes and that they contain the mrnet_commnode executable and the STAT_FilterDefinitions.so library.
 .PP
 .sp
 .nf

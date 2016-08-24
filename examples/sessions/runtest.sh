@@ -1,9 +1,9 @@
 #!/bin/sh
 #set -ex
-#prefix="/nfs/tmp2/lee218/delete/spack-graphlib3/spack/opt/spack/linux-redhat6-x86_64/gcc-4.4.7/stat-3.0.0b-ak6btjinmvbf2ib7ihh7dwiowzlu2m3c"
+prefix="/nfs/tmp2/lee218/delete/spack-graphlib3/spack/opt/spack/linux-redhat6-x86_64/gcc-4.4.7/stat-3.0.0b-m3z4ap2tywfmpyqehv6qr7purrqyrk7g"
 #prefix="/nfs/tmp2/lee218/delete/stat-prefix"
 #prefix="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-3.0.0b"
-prefix="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test"
+prefix2="/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test"
 testnums="01 02 03"
 testmodes="attach launch"
 testnums="01"
@@ -11,7 +11,7 @@ testmodes="attach"
 #testmodes="launch"
 
 statcl_command="${prefix}/bin/stat-cl"
-app_exe="${prefix}/share/STAT/examples/bin/dysect_test"
+app_exe="${prefix2}/share/STAT/examples/bin/dysect_test"
 logmode=" -l FE -l BE -l CP "
 topologymode=""
 #topologymode=" -u 1-1-1 -p 8 -A -n 8 "
