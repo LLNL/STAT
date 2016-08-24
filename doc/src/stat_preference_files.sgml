@@ -28,6 +28,14 @@ Here is a list of options:
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>Resource Manager = <replaceable class="parameter">Auto|Alps|Slurm</replaceable></term>
+    <listitem>
+        <para>
+        Sets the default resource manager to <replaceable class="parameter">Alps</replaceable> or <replaceable class="parameter">Slurm</replaceable> for searching for the job launcher process, or use <replaceable class="parameter">Auto</replaceable> to determine the resourece manager automatically.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>Job Launcher = <replaceable class="parameter">regex</replaceable></term>
     <listitem>
         <para>
@@ -136,6 +144,14 @@ Here is a list of options:
     <listitem>
         <para>
         Controls whether to gather stack traces from threads.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>With OpenMP = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to translate OpenMP stack traces to logical application view.
         </para>
     </listitem>
 </varlistentry>

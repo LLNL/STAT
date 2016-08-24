@@ -49,3 +49,8 @@ This is typically a mismatch in versions of the LaunchMON API and the LaunchMON 
 STAT may need additional time to launch all of its daemons.  You may need to set your $LMON_FE_ENGINE_TIMEOUT to a larger value, such as 600.
 </para></formalpara>
 
+<formalpara><title>UnboundLocalError: local variable 'count' referenced before assignment</title>
+<para>
+This error results from trying to open a STAT >3.0 output with a STAT 2.X GUI.
+</para></formalpara>
+

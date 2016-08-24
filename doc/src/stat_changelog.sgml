@@ -1,4 +1,30 @@
 <section>
+  <title>stat version 3.0</title>
+  <para>
+    <itemizedlist>
+      <listitem><para>
+        added OpenMP OMPD support and ehanced thread display
+      </para></listitem>
+      <listitem><para>
+        added data analytics to DySectAPI
+      </para></listitem>
+      <listitem><para>
+        added DySectAPI probe tree visualizer
+      </para></listitem>
+      <listitem><para>
+        fixes to FGFS and file broadcasting
+      </para></listitem>
+      <listitem><para>
+        STAT now requires graphlib 3.0 to support generic edge labels
+      </para></listitem>
+      <listitem><para>
+        as always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
+      </para></listitem>
+    </itemizedlist>
+  </para>
+</section>
+
+<section>
   <title>stat version 2.2</title>
   <para>
     <itemizedlist>
