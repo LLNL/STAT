@@ -95,6 +95,7 @@ int main(int argc, char **argv)
 {
     int i, j, samples = 1, traces;
     struct timeval timeStamp;
+    struct tm *localtimeResult;
     time_t currentTime;
     char timeBuf[BUFSIZE];
     STAT_FrontEnd *statFrontEnd;
@@ -106,8 +107,13 @@ int main(int argc, char **argv)
 
     gettimeofday(&timeStamp, NULL);
     currentTime = timeStamp.tv_sec;
-    strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtime(&currentTime));
-    statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT started at %s\n", timeBuf);
+    localtimeResult = localtime(&currentTime);
+    if (localtimeResult == NULL)
+        statFrontEnd->printMsg(STAT_WARNING, __FILE__, __LINE__, "localtime() returned NULL %s\n", strerror(errno));
+    else if (strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtimeResult) != 0)
+        statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT started at %s\n", timeBuf);
+    else
+        statFrontEnd->printMsg(STAT_WARNING, __FILE__, __LINE__, "strftime() returned 0\n");
 
     /* Parse arguments and fill in class variables */
     statArgs = (StatArgs_t *)calloc(1, sizeof(StatArgs_t));
