@@ -381,7 +381,7 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
     return DYSECTWARN(false, "Could not parse variable specification %s", name.c_str());
   }
 
-#if 0
+//#if 0
   string baseStr, memberStr;
   int len = name.size();
 
@@ -412,9 +412,9 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
   }
 
   if(!memberStr.empty()) {
-    name = baseStr;
+    variable = baseStr;
   }
-#endif
+//#endif
 
   // 1st approach - look for local variable (resident in function for current frame)
   vector<Stackwalker::Frame> stackWalk;
@@ -470,7 +470,7 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
 
     location = new LocalVariableLocation(stackWalk, frame, vars[0], symtab);
 
-# if 0
+//# if 0
     // XXX: Hack continued
     if(!memberStr.empty()) {
       Type* symType = location->getType();
@@ -487,12 +487,13 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
               if(field && (field->getName().compare(memberStr) == 0)) {
                 // Rebase
                 Err::verbose(true, "Rebasing to member '%s' from %s", field->getName().c_str(), memberStr.c_str());
-                int offset = field->getOffset();
+                int offset = field->getOffset() / 8;
                 Type* fieldType = field->getType();
 
                 DataLocation* fieldVariable = location->getInnerVariable(fieldType, offset);
                 if(fieldVariable) {
                   location = fieldVariable;
+                  return true;
                 }
               }
             }
@@ -500,7 +501,7 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
         }
       }
     }
-# endif
+//# endif
 
     return true;
   }
