@@ -41,6 +41,8 @@ namespace DysectAPI {
   public:
     static bool init(Dyninst::ProcControlAPI::ProcessSet::ptr allProcs);
 
+    static bool addProc(Dyninst::ProcControlAPI::Process::const_ptr process);
+
     static bool detach(Dyninst::ProcControlAPI::Process::const_ptr process);
     static bool detach(Dyninst::ProcControlAPI::ProcessSet::ptr procs);
 

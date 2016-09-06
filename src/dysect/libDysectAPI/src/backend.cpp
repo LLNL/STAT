@@ -310,7 +310,8 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
   if (retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
     // We must ask Dyninst "kindly" to cooperate on the process state
     BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
-    bproc->keepStopped();
+    if (bproc != NULL)
+      bproc->keepStopped();
   }
   
   return retState;
@@ -685,7 +686,8 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
   if (retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
     // We must ask Dyninst "kindly" to cooperate on the process state
     BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
-    bproc->keepStopped();
+    if (bproc != NULL)
+      bproc->keepStopped();
   }
   
   return retState;
@@ -708,7 +710,8 @@ Process::cb_ret_t Backend::handleCrash(ProcControlAPI::Event::const_ptr ev) {
 
   // We must ask Dyninst "kindly" to cooperate on the process state
   BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
-  bproc->keepStopped();
+  if (bproc != NULL)
+    bproc->keepStopped();
   
   return Process::cbProcStop;
 }
@@ -738,7 +741,8 @@ Process::cb_ret_t Backend::handleProcessExit(ProcControlAPI::Event::const_ptr ev
   
   // We must ask Dyninst "kindly" to cooperate on the process state
   BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
-  bproc->keepStopped();
+  if (bproc != NULL)
+    bproc->keepStopped();
 
   return Process::cbProcStop;
 }
@@ -937,7 +941,8 @@ Process::cb_ret_t Backend::handleForkEvent(ProcControlAPI::Event::const_ptr ev) 
 
   EventFork::const_ptr evFork = ev->getEventFork();
   Process::const_ptr process = evFork->getChildProcess();
-  Process::ptr proc;
+
+  ProcessMgr::addProc(process);
 
   //Walker *walker = Walker::newWalker(process->getPid()); // fails b/c can't attach in CB
   ////Walker *walker = Walker::newWalker(process); //constructor takes Process::ptr, not const_ptr
@@ -945,7 +950,7 @@ Process::cb_ret_t Backend::handleForkEvent(ProcControlAPI::Event::const_ptr ev) 
   //  DYSECTWARN(false, "Failed to create walker for pid %d: %s", process->getPid(), Stackwalker::getLastErrorMsg());
   //process->setData(walker);
 
-  //DYSECTVERBOSE(true, "Handled Fork Event for pid %d", process->getPid());
+  DYSECTVERBOSE(true, "Handled Fork Event for pid %d", process->getPid());
 
   return Process::cbDefault;
 }
