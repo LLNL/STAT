@@ -1,3 +1,23 @@
+2016-09-06 Gregory L. Lee <lee218@llnl.gov>
+	* backend.cpp : Re-enable struct member gathering, fix offset calculation (bits vs bytes)
+
+2016-08-24 Gregory L. Lee <lee218@llnl.gov>
+	* : Updatd documentation
+
+2016-08-24 Gregory L. Lee <lee218@llnl.gov>
+	* STAT_BackEnd.C : Encapsulate DySect BE code
+
+2016-08-10 Gregory L. Lee <lee218@llnl.gov>
+	* STAThelper.py : Handle empty edge labels
+	* STAT_BackEnd.C : fix test for detached/exited procs
+
+2016-08-09 Gregory L. Lee <lee218@llnl.gov>
+	* : fixed handling of external events
+	* : build system fixes
+
+2016-06-22 Gregory L. Lee <lee218@llnl.gov>
+	* : Cray fixes
+
 2016-06-06 Gregory L. Lee <lee218@llnl.gov>
 	* : Renamed Cray build option to --with-cray-alps
 
