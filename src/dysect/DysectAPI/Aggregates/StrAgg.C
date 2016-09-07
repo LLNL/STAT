@@ -107,11 +107,12 @@ std::map<string, int>& StrAgg::getCountMap() {
 bool StrAgg::deserialize(void* payload) {
   // Deserialize
   int num = *(int*)payload; // First bytes are for number of functions in payload
+  int ss = sizeof(int);
 
   //printf(">>> num %d\n", num);
 
   // Compute offsets
-  int *counts = (int*)((int*)payload + sizeof(int));
+  int *counts = (int*)((int*)payload + 1);
   char* strs = (char*)((char*)payload + sizeof(int) + (num * sizeof(int)));
 
   char *ptr = strs;
@@ -264,7 +265,6 @@ bool StrAgg::getStr(string& str) {
       string name = countMapIter->first;
 
       sprintf((char*)&buf, "%d:%s ", count, name.c_str());
-
       str.append(buf);
     }
 
