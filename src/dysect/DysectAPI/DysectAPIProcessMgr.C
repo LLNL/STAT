@@ -43,6 +43,18 @@ bool ProcessMgr::init(ProcessSet::ptr allProcs) {
   return true;
 }
 
+bool ProcessMgr::addProc(Process::const_ptr process) {
+  if(!process) {
+    return false;
+  }
+
+  ProcessSet::ptr addSet = ProcessSet::newProcessSet(process);
+  ProcessMgr::allProcs = allProcs->set_union(addSet);
+
+  return true;
+}
+
+
 bool ProcessMgr::detach(Process::const_ptr process) {
   if(!process) {
     return false;
@@ -97,10 +109,14 @@ bool ProcessMgr::detach(ProcessSet::ptr detachedSet) {
   for(ProcessSet::iterator procIter = detachedNow->begin(); procIter != detachedNow->end(); ++procIter) {
     Process::ptr pcProc = *procIter;
     BPatch_process *bpatchProcess = ProcMap::get()->getDyninstProcess(pcProc);
-    if (!bpatchProcess->isDetached()) {
-      bpatchProcess->detach(true);
-    } else {
+    if (bpatchProcess == NULL)
       res = false;
+    else {
+      if (!bpatchProcess->isDetached()) {
+        bpatchProcess->detach(true);
+      } else {
+        res = false;
+      }
     }
   }
 

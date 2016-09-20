@@ -41,6 +41,7 @@ using namespace SymtabAPI;
 
 enum            Backend::BackendState Backend::state = start;
 bool            Backend::streamBindAckSent = false;
+bool            Backend::returnControlToDysect = true;
 int             Backend::pendingExternalAction = 0;
 vector<DysectAPI::Probe*> Backend::pendingProbesToEnable;
 Stream*         Backend::controlStream = 0;
@@ -309,7 +310,8 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
   if (retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
     // We must ask Dyninst "kindly" to cooperate on the process state
     BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
-    bproc->keepStopped();
+    if (bproc != NULL)
+      bproc->keepStopped();
   }
   
   return retState;
@@ -363,6 +365,16 @@ DysectAPI::DysectErrorCode Backend::resumeApplication() {
   } else {
     return DYSECTWARN(Error, "Procset could not continue processes");
   }
+}
+
+
+bool Backend::getReturnControlToDysect() {
+  return returnControlToDysect;
+}
+
+void  Backend::setReturnControlToDysect(bool control) {
+  DYSECTLOG(true, "set returnControlToDysect %d %d", returnControlToDysect, control);
+  returnControlToDysect = control;
 }
 
 
@@ -599,8 +611,15 @@ Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev)
         continue;
       }
 
+      int count1, count2;
+      count1 = getPendingExternalAction();
       // XXX: What to do with different ret states?
       retState = handleEvent(curProcess, curThread, dysectEvent);
+      count2 = getPendingExternalAction();
+      if (count2 > count1 && count2 != 0) {
+        DYSECTVERBOSE(true, "STAT3 action detected %d %d, deferring control...", count1, count2);
+        returnControlToDysect = false;
+      }
     }
   }
 
@@ -667,7 +686,8 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
   if (retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
     // We must ask Dyninst "kindly" to cooperate on the process state
     BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
-    bproc->keepStopped();
+    if (bproc != NULL)
+      bproc->keepStopped();
   }
   
   return retState;
@@ -690,7 +710,8 @@ Process::cb_ret_t Backend::handleCrash(ProcControlAPI::Event::const_ptr ev) {
 
   // We must ask Dyninst "kindly" to cooperate on the process state
   BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
-  bproc->keepStopped();
+  if (bproc != NULL)
+    bproc->keepStopped();
   
   return Process::cbProcStop;
 }
@@ -720,7 +741,8 @@ Process::cb_ret_t Backend::handleProcessExit(ProcControlAPI::Event::const_ptr ev
   
   // We must ask Dyninst "kindly" to cooperate on the process state
   BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
-  bproc->keepStopped();
+  if (bproc != NULL)
+    bproc->keepStopped();
 
   return Process::cbProcStop;
 }
@@ -919,7 +941,8 @@ Process::cb_ret_t Backend::handleForkEvent(ProcControlAPI::Event::const_ptr ev) 
 
   EventFork::const_ptr evFork = ev->getEventFork();
   Process::const_ptr process = evFork->getChildProcess();
-  Process::ptr proc;
+
+  ProcessMgr::addProc(process);
 
   //Walker *walker = Walker::newWalker(process->getPid()); // fails b/c can't attach in CB
   ////Walker *walker = Walker::newWalker(process); //constructor takes Process::ptr, not const_ptr
@@ -927,7 +950,7 @@ Process::cb_ret_t Backend::handleForkEvent(ProcControlAPI::Event::const_ptr ev) 
   //  DYSECTWARN(false, "Failed to create walker for pid %d: %s", process->getPid(), Stackwalker::getLastErrorMsg());
   //process->setData(walker);
 
-  //DYSECTVERBOSE(true, "Handled Fork Event for pid %d", process->getPid());
+  DYSECTVERBOSE(true, "Handled Fork Event for pid %d", process->getPid());
 
   return Process::cbDefault;
 }

@@ -40,6 +40,14 @@
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>-N, --nodesfile <replaceable class="parameter">filename</replaceable></term>
+    <listitem>
+        <para>
+        Use the file <replaceable class="parameter">filename</replaceable>, which should contain the list of nodes for communication processes
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>-A, --appnodes</term>
     <listitem>
         <para>
@@ -108,6 +116,14 @@
     <listitem>
         <para>
         Sample source line number in addition to function names.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-o, --withopenmp</term>
+    <listitem>
+        <para>
+        Translate OpenMP stacks to logical application view
         </para>
     </listitem>
 </varlistentry>
@@ -228,6 +244,22 @@
     <listitem>
         <para>
         Use MRNet's printf for STAT debug logging.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-X, --dysectapi <replaceable class="parameter">session</replaceable></term>
+    <listitem>
+        <para>
+        Run the specified DySectAPI <replaceable class="parameter">session</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-b, --dysectapi_batch <replaceable class="parameter">secs</replaceable></term>
+    <listitem>
+        <para>
+        Run the specified DySectAPI in batch mode. Session stops after <replaceable class="parameter">secs</replaceable> seconds or detach action.
         </para>
     </listitem>
 </varlistentry>

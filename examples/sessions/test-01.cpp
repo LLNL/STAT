@@ -16,7 +16,7 @@ DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
     Probe *vars = new Probe(Code::location("dysect_test.cpp#102"),
                             Domain::group("1,4,5", 2000),
                             Acts(Act::stackTrace(),
-                                 Act::trace("Location is @function():@location() and rank is '@desc(rank)'"),
+                                 Act::trace("vars Location is @function():@location() and rank is '@desc(rank)'"),
                                  Act::trace("frank = rank * 1.1 is '@desc(frank)' and drank = rank * 2.2 is '@desc(drank)'"),
                                  Act::trace("ip is '@desc(ip)'"),
                                  Act::trace("The ranks are: @ranks() and The times are: @time()"),
@@ -40,13 +40,13 @@ DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
     // this should be rank 1 in its sleep loop
     Probe *inLoop = new Probe(Code::location("dysect_test.cpp#94"),
                               Domain::world(1001, true),
-                              Act::trace("Location is '@location(), rank = @desc(rank), i = '@desc(i)"),
+                              Act::trace("in Loop Location is '@location(), rank = @desc(rank), i = '@desc(i)"),
                               stay);
 
     // tasks 4 and 5 have detached and should not be in STAT trace
     Probe *afterBarrier = new Probe(Code::location("dysect_test.cpp#60"),
                                     Domain::world(5000, true),
-                                    Acts(Act::trace("Location is '@location()'"),
+                                    Acts(Act::trace("After Barrier Location is '@location()'"),
                                          Act::stat()));
 
 

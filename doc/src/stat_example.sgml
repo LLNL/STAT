@@ -16,7 +16,7 @@ The most typical usage is to invoke STAT on the job launcher's PID:
     </screen>
 </informalexample>
 <para>
-You can also launch your application under STAT's control with the -C option.  All arguments after -C are used for job launch:
+You can also launch your application under STAT's control with the <option>-C</option> option.  All arguments after <option>-C</option> are used for job launch:
 </para>
 <informalexample>
     <screen>
@@ -24,7 +24,7 @@ You can also launch your application under STAT's control with the -C option.  A
     </screen>
 </informalexample>
 <para>
-With the -a option (or when automatic topology is set as default), STAT will try to automatically create a scalable topology for large scale jobs.  However, if you wish you may manually specify a topology at larger scales.  For example, if you're running on 1024 nodes, you may want to try a fanout of sqrt(1024) = 32.  You will need to specify a list of nodes that contains enough processors to accommodate the ceil(1024/32) = 32 communication processes being launched with the --nodes option.  Be sure that you have login permissions to the specified nodes and that they contain the mrnet_commnode executable and the STAT_FilterDefinitions.so library.
+With the <option>-a</option> option (or when automatic topology is set as default), STAT will try to automatically create a scalable topology for large scale jobs.  However, if you wish you may manually specify a topology at larger scales.  For example, if you're running on 1024 nodes, you may want to try a fanout of sqrt(1024) = 32.  You will need to specify a list of nodes that contains enough processors to accommodate the ceil(1024/32) = 32 communication processes being launched with the <option>--nodes</option> option.  Be sure that you have login permissions to the specified nodes and that they contain the mrnet_commnode executable and the STAT_FilterDefinitions.so library.
 </para>
 <informalexample>
     <screen>

@@ -14,6 +14,14 @@ The node operations are defined as follows:
 </para>
 <variablelist>
 <varlistentry>
+    <term><GUIbutton>Advanced</GUIbutton></term>
+    <listitem>
+        <para>
+        Display the full node and edge attributes.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>Join Equivalence Class</GUIbutton></term>
     <listitem>
         <para>

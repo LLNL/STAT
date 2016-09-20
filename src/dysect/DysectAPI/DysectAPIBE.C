@@ -141,7 +141,7 @@ DysectErrorCode BE::handleQueuedOperations() {
 
 DysectErrorCode BE::handleAll() {
   int count1, count2;
-  if (returnControlToDysect == true)
+  if (returnControlToDysect == true && Backend::getReturnControlToDysect() == true)
   {
     TraceAPI::performPendingInstrumentations();
     TraceAPI::performPendingAnalysis();
@@ -187,6 +187,7 @@ bool BE::getReturnControlToDysect() {
 
 void BE::setReturnControlToDysect(bool control) {
   returnControlToDysect = control;
+  Backend::setReturnControlToDysect(control);
 }
 
 void BE::gracefulShutdown(int signal) {
@@ -222,10 +223,10 @@ void BE::disableTimers() {
   //Timer::blockTimers();
 }
 
-bool BE::getPendingExternalAction() {
+int BE::getPendingExternalAction() {
   return Backend::getPendingExternalAction();
 }
 
-void BE::setPendingExternalAction(bool pending) {
+void BE::setPendingExternalAction(int pending) {
   Backend::setPendingExternalAction(pending);
 }

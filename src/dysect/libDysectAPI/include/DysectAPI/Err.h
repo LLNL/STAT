@@ -22,6 +22,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include "LibDysectAPI.h"
 
 #define DYSECTVERBOSE(...) Err::verbose(__LINE__, __FILE__, __VA_ARGS__)
 #define DYSECTLOG(...) Err::log(__LINE__, __FILE__, __VA_ARGS__)

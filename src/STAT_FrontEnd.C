@@ -640,15 +640,15 @@ StatError_t STAT_FrontEnd::launchDaemons()
             printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get Process Table\n");
             return STAT_LMON_ERROR;
         }
-    } /* if (applicationOption_ != STAT_SERIAL_ATTACH) */
 
-    /* Get the resource manager information from LaunchMON */
-    lmonRet = LMON_fe_getRMInfo(lmonSession_, &lmonRmInfo_);
-    if (lmonRet != LMON_OK)
-    {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get RM Info\n");
-        return STAT_LMON_ERROR;
-    }
+        /* Get the resource manager information from LaunchMON */
+        lmonRet = LMON_fe_getRMInfo(lmonSession_, &lmonRmInfo_);
+        if (lmonRet != LMON_OK)
+        {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get RM Info\n");
+            return STAT_LMON_ERROR;
+        }
+    } /* if (applicationOption_ != STAT_SERIAL_ATTACH) */
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering application information\n");
 
@@ -4312,7 +4312,7 @@ StatError_t STAT_FrontEnd::setRanksList()
     /* First we need to generate the list of STAT BE daemons */
     statError = setDaemonNodes();
 #ifdef DYSECTAPI
-    if (statError == STAT_APPLICATION_EXITED) 
+    if (statError == STAT_APPLICATION_EXITED)
         return statError;
 #endif
     if (statError != STAT_OK)
@@ -5005,7 +5005,7 @@ StatError_t STAT_FrontEnd::dysectListen(bool blocking)
         printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Dysect not setup\n");
         return STAT_DYSECT_ERROR;
     }
-    do 
+    do
     {
         dysectError = dysectFrontEnd_->handleEvents(blocking);
     } while (dysectError == DysectAPI::SessionCont && blocking == true);

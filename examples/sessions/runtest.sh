@@ -1,17 +1,13 @@
 #!/bin/sh
 #set -ex
-
-prefix="/nfs/tmp2/lee218/delete/stat-prefix"
+prefix="/usr/local"
 testnums="01 02 03"
 testmodes="attach launch"
-#testnums="01"
-#testmodes="launch"
 
 statcl_command="${prefix}/bin/stat-cl"
 app_exe="${prefix}/share/STAT/examples/bin/dysect_test"
 logmode=" -l FE -l BE -l CP "
-topologymode=""
-#topologymode=" -u 1-1-1 -p 8 -A -n 8 "
+topologymode=" -u 1-1-1 -p 8 -A -n 8 "
 
 rm -rf test_results
 

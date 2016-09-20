@@ -44,12 +44,12 @@ int main (int argc, char *argv[])
 
     prev = rank-1;
     next = rank+1;
-    if (rank == 0)  
+    if (rank == 0)
         prev = numtasks - 1;
-    if (rank == (numtasks - 1))  
+    if (rank == (numtasks - 1))
         next = 0;
 
-    if(sleeptime < 0 && rank == 6) raise(SIGSEGV); 
+    if(sleeptime < 0 && rank == 6) raise(SIGSEGV);
 
     do_Receive(prev, tag, &buf[0], &reqs[0]);
 
@@ -93,7 +93,7 @@ void do_SendOrStall(int to, int tag, int rank, int* buf, MPI_Request* req, int n
             printf("%s, MPI task %d of %d proceeding\n", hostname, rank, n);
             fflush(stdout);
         }
-    }    
+    }
 
     MPI_Isend(buf, 1, MPI_INT, to, tag, MPI_COMM_WORLD, req);
 }

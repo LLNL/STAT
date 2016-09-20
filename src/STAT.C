@@ -95,6 +95,7 @@ int main(int argc, char **argv)
 {
     int i, j, samples = 1, traces;
     struct timeval timeStamp;
+    struct tm *localtimeResult;
     time_t currentTime;
     char timeBuf[BUFSIZE];
     STAT_FrontEnd *statFrontEnd;
@@ -104,10 +105,6 @@ int main(int argc, char **argv)
 
     statFrontEnd = new STAT_FrontEnd();
 
-    gettimeofday(&timeStamp, NULL);
-    currentTime = timeStamp.tv_sec;
-    strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtime(&currentTime));
-    statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT started at %s\n", timeBuf);
 
     /* Parse arguments and fill in class variables */
     statArgs = (StatArgs_t *)calloc(1, sizeof(StatArgs_t));
@@ -130,6 +127,16 @@ int main(int argc, char **argv)
         else
             return 0;
     }
+
+    gettimeofday(&timeStamp, NULL);
+    currentTime = timeStamp.tv_sec;
+    localtimeResult = localtime(&currentTime);
+    if (localtimeResult == NULL)
+        statFrontEnd->printMsg(STAT_WARNING, __FILE__, __LINE__, "localtime() returned NULL %s\n", strerror(errno));
+    else if (strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtimeResult) != 0)
+        statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT started at %s\n", timeBuf);
+    else
+        statFrontEnd->printMsg(STAT_WARNING, __FILE__, __LINE__, "strftime() returned 0\n");
 
     /* Push the arguments into the output file */
     invocationString = "STAT invoked with: ";
@@ -380,7 +387,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to detach from application\n");
 
     statFrontEnd->shutDown();
-    printf("\nResults written to %s\n\n", statFrontEnd->getOutDir());
+    statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "\nResults written to %s\n\n", statFrontEnd->getOutDir());
 
     delete statFrontEnd;
     free(statArgs);
@@ -462,6 +469,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"help",                no_argument,        0, 'h'},
         {"version",             no_argument,        0, 'V'},
         {"verbose",             no_argument,        0, 'v'},
+        {"quiet",               no_argument,        0, 'q'},
         {"withpc",              no_argument,        0, 'P'},
         {"withmoduleoffset",    no_argument,        0, 'P'},
         {"withline",            no_argument,        0, 'i'},
@@ -514,9 +522,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     while (1)
     {
 #ifdef DYSECTAPI
-        opt = getopt_long(argc, argv,"hVvPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:Y:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:Y:", longOptions, &optionIndex);
 #else
-        opt = getopt_long(argc, argv,"hVvPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
 #endif
         if (opt == -1)
             break;
@@ -542,6 +550,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
             break;
         case 'v':
             statFrontEnd->setVerbose(STAT_VERBOSE_FULL);
+            break;
+        case 'q':
+            statFrontEnd->setVerbose(STAT_VERBOSE_ERROR);
             break;
         case 'w':
             statArgs->withThreads = true;

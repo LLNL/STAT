@@ -33,7 +33,7 @@ int main (int argc, char *argv[])
 
     MPI_Init(&argc,&argv);
 
-    int timeout = 6;
+    int timeout = 16;
     sleep(timeout);
 
     if (argc > 1)
@@ -56,7 +56,7 @@ int main (int argc, char *argv[])
     do_SendOrStall(next, tag, rank, &buf[1], &reqs[1], numtasks);
     MPI_Waitall(2, reqs, stats);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD); sleep(5);
     MPI_Finalize(); // afterBarrier probe should be invoked here
     sleep(rank%3);
     if (rank == 0)
