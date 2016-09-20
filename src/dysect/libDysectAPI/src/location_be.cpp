@@ -17,7 +17,13 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Event.h>
+#include <DysectAPI/Parser.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Probe.h>
 #include <DysectAPI/Backend.h>
+#include <DysectAPI/ProcMap.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -35,7 +41,7 @@ Location::Location(string locationExpr, bool pendingEnabled) : locationExpr(loca
 
 bool Location::disable() {
   assert(owner != 0);
- 
+
   if(codeLocations.empty()) {
     return true;
   }
@@ -43,7 +49,7 @@ bool Location::disable() {
   Domain* dom = owner->getDomain();
 
   ProcessSet::ptr procset;
-  
+
   if(!dom->getAttached(procset)) {
     return DYSECTWARN(false, "Could not get procset from domain");
   }
@@ -57,7 +63,7 @@ bool Location::disable() {
 
 bool Location::disable(ProcessSet::ptr lprocset) {
   assert(owner != 0);
- 
+
   if(codeLocations.empty()) {
     return DYSECTVERBOSE(true, "No code locations");
 
@@ -73,7 +79,115 @@ bool Location::disable(ProcessSet::ptr lprocset) {
     Process::ptr procPtr = *procIter;
     ProcDebug *pDebug;
 
-    Walker* proc = (Walker*)procPtr->getData();
+    Walker *proc = ProcMap::get()->getWalker(procPtr);
+
+    if (procPtr->allThreadsRunning()) {
+      wasRunning = true;
+      pDebug = dynamic_cast<ProcDebug *>(proc->getProcessState());
+      if (pDebug == NULL) {
+        DYSECTWARN(false, "Failed to dynamic_cast ProcDebug pointer");
+        continue;
+      }
+      if (pDebug->isTerminated()) {
+        DYSECTWARN(false, "Process is terminated");
+        continue;
+      }
+      if (pDebug->pause() == false) {
+        DYSECTWARN(false, "Failed to pause process");
+        continue;
+      }
+    }
+
+    vector<DysectAPI::CodeLocation*>::iterator locationIter = codeLocations.begin();
+    for(;locationIter != codeLocations.end(); locationIter++) {
+      DysectAPI::CodeLocation* location = *locationIter;
+
+      if(!location->addProcLib(proc)) {
+        DYSECTWARN(false, "Symbol not found in process");
+        continue;
+      }
+
+      vector<Dyninst::Address> addrs;
+
+      if(!location->getAddrs(proc, addrs) || addrs.empty()) {
+        DYSECTWARN(false, "Addresses for symbol could not be determined");
+        continue;
+      }
+
+      // Breakpoint locations at hand
+      for(int i = 0; i < addrs.size() ; i++) {
+        Dyninst::Address addr = addrs[i];
+
+        if(!procPtr->rmBreakpoint(addr, bp)) {
+          DYSECTVERBOSE(false, "Breakpoint at %lx not removed! %s", addr, ProcControlAPI::getLastErrorMsg());
+        }
+        else
+          DYSECTVERBOSE(false, "Breakpoint at %lx removed for %d!", addr, procPtr->getPid());
+      }
+    }
+
+    if (wasRunning == true) {
+      if (pDebug->resume() == false) {
+        DYSECTWARN(false, "Failed to resume process");
+        continue;
+      }
+    }
+
+
+  }
+
+  return true;
+}
+
+bool Location::enable() {
+  assert(owner != 0);
+
+  if(codeLocations.empty()) {
+    return true;
+  }
+
+  Domain* dom = owner->getDomain();
+
+  ProcessSet::ptr procset;
+
+  if(!dom->getAttached(procset)) {
+    return DYSECTWARN(false, "Could not get procset from domain");
+  }
+
+  if(!procset) {
+    return DYSECTWARN(false, "Process set not present");
+  }
+
+  return enable(procset);
+}
+
+bool Location::enable(ProcessSet::ptr lprocset) {
+  assert(owner != 0);
+
+  if(codeLocations.empty()) {
+    return DYSECTVERBOSE(true, "No code locations");
+
+  }
+
+  if(!lprocset) {
+    return DYSECTWARN(false, "Process set not present");
+  }
+
+  ProcessSet::iterator procIter = lprocset->begin();
+
+  AddressSet::ptr addrset = AddressSet::newAddressSet();
+
+  if(lprocset->size() <= 0) {
+    return DYSECTINFO(true, "Process set empty!");
+  }
+
+  // Find library location for target processes
+  for(;procIter != lprocset->end(); procIter++) {
+    bool wasRunning = false;
+    Process::ptr procPtr = *procIter;
+    ProcDebug *pDebug;
+
+    Walker *proc = ProcMap::get()->getWalker(procPtr);
 
     if (procPtr->allThreadsRunning()) {
       wasRunning = true;
@@ -95,7 +209,7 @@ bool Location::disable(ProcessSet::ptr lprocset) {
       }
 
       vector<Dyninst::Address> addrs;
-      
+
       if(!location->getAddrs(proc, addrs) || addrs.empty()) {
         return DYSECTWARN(false, "Addresses for symbol could not be determined");
       }
@@ -103,13 +217,40 @@ bool Location::disable(ProcessSet::ptr lprocset) {
       // Breakpoint locations at hand
       for(int i = 0; i < addrs.size() ; i++) {
         Dyninst::Address addr = addrs[i];
-        
-        if(!procPtr->rmBreakpoint(addr, bp)) {
-          DYSECTVERBOSE(false, "Breakpoint at %lx not removed! %s", addr, ProcControlAPI::getLastErrorMsg());
+
+        if(addr == 0x2aaaaad02e7f)
+          addr = 0x2aaaaad02e28;
+#if 1
+        if(!procPtr->addBreakpoint(addr, bp)) {
+          return DYSECTVERBOSE(false, "Breakpoint not installed at %lx: %s", addr, ProcControlAPI::getLastErrorMsg());
+        } else {
+          DYSECTVERBOSE(true, "Breakpoint installed at %lx for %d", addr, procPtr->getPid());
         }
-        else
-          DYSECTVERBOSE(false, "Breakpoint at %lx removed for %d!", addr, procPtr->getPid());
+#else
+	/* Dyninst can also be used to insert breakpoints */
+	BPatch_process* bpatchProcess = ProcMap::get()->getDyninstProcess(procPtr);
+	BPatch_addressSpace* addrspace = dynamic_cast<BPatch_addressSpace*>(bpatchProcess);
+	BPatch_image* appImage = addrspace->getImage();
+
+	vector<BPatch_point*>* instr_points = new vector<BPatch_point*>();
+	if (!appImage->findPoints(addr, *instr_points)) {
+	  return DYSECTWARN(false, "Failed to find address in image");
+	}
+
+	if (instr_points->size() != 1) {
+	  return DYSECTWARN(false, "Unexpected number of instrumentation points");
+	}
+
+	BPatch_breakPointExpr* breakpoint = new BPatch_breakPointExpr();
+	addrspace->insertSnippet(*breakpoint, *(instr_points->at(0)));
+#endif
+	
+        //addrset->insert(addr, procPtr);
       }
+
+      //if(addrs.empty()) {
+      //  Err::verbose(true, "No addresses");
+      //}
     }
 
     if (wasRunning == true) {
@@ -120,96 +261,11 @@ bool Location::disable(ProcessSet::ptr lprocset) {
 
   }
 
-  return true;
-}
-
-bool Location::enable() {
-  assert(owner != 0);
- 
-  if(codeLocations.empty()) {
-    return true;
-  }
-
-  Domain* dom = owner->getDomain();
-
-  ProcessSet::ptr procset;
-  
-  if(!dom->getAttached(procset)) {
-    return DYSECTWARN(false, "Could not get procset from domain");
-  }
-
-  if(!procset) {
-    return DYSECTWARN(false, "Process set not present");
-  }
-
-  return enable(procset);
-}
-
-bool Location::enable(ProcessSet::ptr lprocset) {
-  assert(owner != 0);
- 
-  if(codeLocations.empty()) {
-    return DYSECTVERBOSE(true, "No code locations");
-
-  }
-
-  if(!lprocset) {
-    return DYSECTWARN(false, "Process set not present");
-  }
-  
-  ProcessSet::iterator procIter = lprocset->begin();
-
-  AddressSet::ptr addrset = AddressSet::newAddressSet();
-
-  if(lprocset->size() <= 0) {
-    return DYSECTINFO(true, "Process set empty!");
-  }
-
-  // Find library location for target processes
-  for(;procIter != lprocset->end(); procIter++) {
-    Process::ptr procPtr = *procIter;
-
-    Walker* proc = (Walker*)procPtr->getData();
-
-    vector<DysectAPI::CodeLocation*>::iterator locationIter = codeLocations.begin();
-    for(;locationIter != codeLocations.end(); locationIter++) {
-      DysectAPI::CodeLocation* location = *locationIter;
-
-      if(!location->addProcLib(proc)) {
-        return DYSECTWARN(false, "Symbol not found in process");
-      }
-
-      vector<Dyninst::Address> addrs;
-      
-      if(!location->getAddrs(proc, addrs) || addrs.empty()) {
-        return DYSECTWARN(false, "Addresses for symbol could not be determined");
-      }
-
-      // Breakpoint locations at hand
-      for(int i = 0; i < addrs.size() ; i++) {
-        Dyninst::Address addr = addrs[i];
-        
-        if(!procPtr->addBreakpoint(addr, bp)) {
-          return DYSECTVERBOSE(false, "Breakpoint not installed at %lx: %s", addr, ProcControlAPI::getLastErrorMsg());
-        } else {
-          DYSECTVERBOSE(true, "Breakpoint installed at %lx for %d", addr, procPtr->getPid());
-        }
-
-        //addrset->insert(addr, procPtr);
-      }
-
-      //if(addrs.empty()) {
-      //  Err::verbose(true, "No addresses");
-      //}
-    }
-
-  }
-  
   //if(addrset->size() <= 0) {
   //  return Err::verbose(true, "Empty address set");
   //}
 
-  
+
   //if(!lprocset->addBreakpoint(addrset, nbp)) {
   //  return Err::warn(false, "Could not insert breakpoints!");
   //} else {
@@ -249,7 +305,7 @@ bool Location::resolveExpression() {
   //             |  file '#' line
   //             |  symbol
   // ~symbol for function exit
-  
+
   vector<string> tokens = Parser::tokenize(locationExpr, '#');
   int numTokens = tokens.size();
   Walker* proc = 0;
@@ -280,8 +336,8 @@ bool Location::resolveExpression() {
         return DYSECTWARN(false, "No symbols found for symbol %s", symbol.c_str());
     }
 
-  } else if(numTokens == 2) { // file '#' line 
-    
+  } else if(numTokens == 2) { // file '#' line
+
     int line = atoi(tokens[1].c_str());
 
     if(line > 0) {  // File '#' line

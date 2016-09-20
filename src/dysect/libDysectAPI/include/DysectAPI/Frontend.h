@@ -31,6 +31,7 @@ namespace DysectAPI {
     static STAT_FrontEnd* statFE;
 
   public:
+    static DysectErrorCode createDotFile();
     static DysectErrorCode createStreams(struct DysectFEContext_t* context);
     static DysectErrorCode broadcastStreamInits();
     static DysectErrorCode listen(bool blocking = true);

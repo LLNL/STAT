@@ -17,12 +17,19 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #ifndef __BACKEND_H
-
 #define __BACKEND_H
 
-#include "STAT_BackEnd.h"
+#include <string>
+#include <vector>
+#include <map>
+#include <set>
+#include <pthread.h>
+
+#include <DysectAPI/Domain.h>
 
 namespace DysectAPI {
+    class Probe;
+
 	class Backend {
     static enum BackendState {
       start,
@@ -35,7 +42,11 @@ namespace DysectAPI {
     static bool streamBindAckSent;
     static int pendingExternalAction;
     static std::vector<DysectAPI::Probe *> probesPendingAction;
-    static pthread_mutex_t probesPendingActionMutex; 
+    static pthread_mutex_t probesPendingActionMutex;
+    static std::vector<DysectAPI::Probe *> probesPendingImmediateAction;
+    static pthread_mutex_t probesPendingImmediateActionMutex;
+    static std::vector<DysectAPI::Probe*> pendingProbesToEnable;
+    static bool returnControlToDysect;
 
     static MRN::Stream* controlStream;
     static std::set<tag_t> missingBindings; //!< Set of tags needed to be bound by incoming front-end packets
@@ -57,12 +68,15 @@ namespace DysectAPI {
   public:
     static DysectErrorCode pauseApplication();
     static DysectErrorCode resumeApplication();
+    static bool getReturnControlToDysect();
+    static void setReturnControlToDysect(bool control);
     static int getPendingExternalAction();
     static void setPendingExternalAction(int pending);
 
     static DysectErrorCode relayPacket(MRN::PacketPtr* packet, int tag, MRN::Stream* stream); //!< Incoming packages with DysectAPI signature in tag
 
     static DysectErrorCode prepareProbes(struct DysectBEContext_t* context, bool pending=false);
+    static DysectErrorCode enablePending();
 
     static DysectErrorCode registerEventHandlers();
 
@@ -74,6 +88,8 @@ namespace DysectAPI {
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleSignal(Dyninst::ProcControlAPI::Event::const_ptr ev); //!< Called upon signal raised
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleProcessExit(ProcControlAPI::Event::const_ptr ev);
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleGenericEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
+    static Dyninst::ProcControlAPI::Process::cb_ret_t  handleThreadCreateEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
+    static Dyninst::ProcControlAPI::Process::cb_ret_t  handleForkEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
     static Dyninst::ProcControlAPI::Process::cb_ret_t  handleLibraryEvent(Dyninst::ProcControlAPI::Event::const_ptr ev);
 
     static DysectErrorCode loadLibrary(Dyninst::ProcControlAPI::Process::ptr process, std::string libraryPath);
@@ -82,6 +98,7 @@ namespace DysectAPI {
 
     static DysectErrorCode handleTimerEvents();
     static DysectErrorCode handleTimerActions();
+    static DysectErrorCode handleImmediateActions();
     static DysectErrorCode handleQueuedOperations();
 
     static DysectErrorCode enqueueDetach(Dyninst::ProcControlAPI::Process::const_ptr process);

@@ -17,7 +17,12 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Probe.h>
+#include <DysectAPI/Action.h>
 #include "DysectAPI/Backend.h"
+#include <DysectAPI/Aggregates/RankListAgg.h>
+#include <DysectAPI/ProcMap.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -49,7 +54,7 @@ bool LoadLibrary::finishBE(struct packet*& p, int& len) {
 
   for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
     if (Backend::loadLibrary(*procIter, library) != OK)
-      return DYSECTWARN(false, "Failed to add library %s", library.c_str());
+      return DYSECTWARN(false, "Failed to load library %s", library.c_str());
   }
   triggeredProcs.clear();
 
@@ -151,6 +156,48 @@ bool Signal::finishBE(struct packet*& p, int& len) {
   return true;
 }
 
+bool DepositCore::prepare() {
+#ifdef DYSECTAPI_DEPCORE
+  DYSECTVERBOSE(true, "Preparing deposit core action");
+  prepared = true;
+  findAggregates();
+
+  string libraryPath;
+  char *envValue;
+  Domain *domain = owner->getDomain();
+  bool boolRet;
+  vector<Process::ptr>::iterator procIter;
+  ProcessSet::ptr procs;
+  WalkerSet *allWalkers;
+  Process::ptr *proc;
+
+  if(domain == NULL)
+    return DYSECTWARN(false, "Domain not found when preparing DepositCore action");
+
+  allWalkers = domain->getAllWalkers();
+  DYSECTVERBOSE(true, "Preparing deposit core action %d", allWalkers->size());
+
+  envValue = getenv("STAT_PREFIX");
+  if (envValue != NULL)
+    libraryPath = envValue;
+  else
+    libraryPath = STAT_PREFIX;
+  libraryPath += "/lib/libdepositcorewrap.so";
+  for (WalkerSet::iterator i = allWalkers->begin(); i != allWalkers->end(); i++) {
+    ProcDebug *pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
+    proc = &(pDebug->getProc());
+    DYSECTVERBOSE(true, "loading library %s", libraryPath.c_str());
+    // This will fail in launch mode since process hasn't been started yet. We will also try loading the library on finishBE
+    // This will also be called multiple times if multiple probes use this action, but this won't result in any errors
+    if (Backend::loadLibrary(*proc, libraryPath) != OK) {
+      return DYSECTWARN(false, "Failed to load library %s: %s", libraryPath.c_str(), Stackwalker::getLastErrorMsg());
+    }
+  }
+
+  return true;
+#endif //ifdef DYSECTAPI_DEPCORE
+}
+
 bool DepositCore::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
                    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
 #ifdef DYSECTAPI_DEPCORE
@@ -194,7 +241,6 @@ bool DepositCore::finishBE(struct packet*& p, int& len) {
   Process::ptr *proc;
   PID pid;
 
-
   DYSECTVERBOSE(true, "DepositCore::finishBE %d", owner->getProcessCount());
 
   if(aggregates.empty())
@@ -237,15 +283,23 @@ bool DepositCore::finishBE(struct packet*& p, int& len) {
     rank = procIter->first;
     proc = &(procIter->second);
 
+    // TODO: check to see if library already loaded
     DYSECTVERBOSE(true, "loading library %s into rank %d", libraryPath.c_str(), rank);
-    if (Backend::loadLibrary(*proc, libraryPath) != OK) {
-      return DYSECTWARN(false, "Failed to add library %s", libraryPath.c_str());
+    if (Backend::loadLibrary(*proc, libraryPath) != OK) { // this will fail if we are in a CB
+      return DYSECTWARN(false, "Failed to load library %s: %s", libraryPath.c_str(), Stackwalker::getLastErrorMsg());
     }
     variableName = "globalMpiRank";
     if (Backend::writeModuleVariable(*proc, variableName, libraryPath, &rank, sizeof(int)) != OK) {
       return DYSECTWARN(false, "Failed to write variable %s in %s", variableName.c_str(), libraryPath.c_str());
     }
 
+// When invoked via rpc, the stack may not be reassembled properly
+//    string funcName = "depositcore_wrap_cont";
+//    if (Backend::irpc(*proc, libraryPath, funcName, &rank, sizeof(unsigned long)) != OK) {
+//      return DYSECTWARN(false, "Failed to irpc func %s in %s with %ld", funcName.c_str(), libraryPath.c_str(), rank);
+//    }
+
+// When invoked via rpc, the stack may not be reassembled properly
 //    string funcName = "depositcorewrap_init";
 //    if (Backend::irpc(*proc, libraryPath, funcName, &rank, sizeof(unsigned long)) != OK) {
 //      return DYSECTWARN(false, "Failed to irpc func %s in %s with %ld", funcName.c_str(), libraryPath.c_str(), rank);
@@ -261,6 +315,22 @@ bool DepositCore::finishBE(struct packet*& p, int& len) {
 
 #endif //ifdef DYSECTAPI_DEPCORE
 
+  return true;
+}
+
+bool Null::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "Null::collect %d", owner->getProcessCount());
+  return true;
+}
+
+bool Null::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool Null::finishBE(struct packet*& p, int& len) {
+  DYSECTVERBOSE(true, "Null::finishBE %d", owner->getProcessCount());
   return true;
 }
 
@@ -384,6 +454,132 @@ bool StackTrace::finishBE(struct packet*& p, int& len) {
   return true;
 }
 
+bool StartTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "StartTrace::collect %d", owner->getProcessCount());
+
+  Stackwalker::Walker* walker = ProcMap::get()->getWalker(process);
+
+  vector<Stackwalker::Frame> stackWalk;
+
+  if (!walker->walkStack(stackWalk)) {
+    return false;
+  }
+
+  string curFuncName;
+  stackWalk[0].getName(curFuncName);
+
+  TraceAPI::addPendingInstrumentation(process, trace, curFuncName);
+
+  return true;
+}
+
+bool StartTrace::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on bacakend-end!");
+  return false;
+}
+
+bool StartTrace::finishBE(struct packet*& p, int& len) {
+  return true;
+}
+
+bool StopTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+  DYSECTVERBOSE(true, "StopTrace::collect %d", owner->getProcessCount());
+
+  TraceAPI::addPendingAnalysis(process, trace);
+
+  return true;
+}
+
+bool StopTrace::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool StopTrace::finishBE(struct packet*& p, int& len) {
+  DYSECTVERBOSE(true, "StopTrace::finishBE");
+  vector<AggregateFunction*>* aggregates = trace->getAggregates();
+
+  if (aggregates->size() == 0) {
+    return true;
+  }
+
+  if(!AggregateFunction::getPacket(*aggregates, len, p)) {
+    return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
+  }
+
+  // we need to clear the counter in the CountInvocations case, make sure this doesn't break others
+  for (int i = 0; i < aggregates->size(); i++)
+    (*aggregates)[i]->clear();
+
+  if (trace->usesGlobalResult()) {
+    //TODO: This will not allow multiple StopTrace to share
+    //  the same domain, e.g. the same probe
+    Stream* stream = owner->getDomain()->getStream();
+    waitingForResults[stream] = this;
+  }
+
+  return true;
+}
+
+bool StopTrace::handleResultPackage(MRN::PacketPtr packet, MRN::Stream* stream) {
+  map<MRN::Stream*, StopTrace*>::iterator it = waitingForResults.find(stream);
+
+  if (it == waitingForResults.end()) {
+    return DYSECTWARN(false, "Unexpected packet on result stream!");
+  }
+
+  StopTrace* action = it->second;
+  char* data;
+  int dataSize;
+  if (packet->unpack("%ac", &data, &dataSize) != 0) {
+    return DYSECTFATAL(false, "Unexpected global result package content!");
+  }
+
+  action->trace->processGlobalResult(data, dataSize);
+
+  waitingForResults.erase(it);
+  TraceAPI::processedGlobalRes(action->trace);
+
+  free(data);
+
+  return true;
+}
+
+bool FullStackTrace::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+
+  DYSECTVERBOSE(true, "FullStackTrace::collect");
+  if(traces) {
+    traces->collect((void*)&process, (void*)&thread);
+  }
+
+  return true;
+}
+
+bool FullStackTrace::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool FullStackTrace::finishBE(struct packet*& p, int& len) {
+  DYSECTVERBOSE(true, "FullStackTrace::finishBE");
+  vector<AggregateFunction*> aggregates;
+
+  if(traces) {
+    aggregates.push_back(traces);
+
+    if(!AggregateFunction::getPacket(aggregates, len, p)) {
+      return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
+    }
+
+    traces->clear();
+  }
+
+  return true;
+}
+
 bool Trace::collect(Process::const_ptr process,
                     Thread::const_ptr thread) {
 
@@ -447,6 +643,7 @@ bool Trace::finishFE(int count) {
 }
 
 bool DetachAll::prepare() {
+  prepared = true;
   return true;
 }
 
@@ -467,6 +664,7 @@ bool DetachAll::finishFE(int count) {
 }
 
 bool Detach::prepare() {
+  prepared = true;
   detachProcs = ProcessSet::newProcessSet();
   return true;
 }

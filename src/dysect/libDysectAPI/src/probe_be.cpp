@@ -17,7 +17,11 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
-#include "DysectAPI/Backend.h"
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Event.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Probe.h>
+#include <DysectAPI/Action.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -81,11 +85,11 @@ bool Probe::enable(ProcessSet::ptr procset) {
 bool Probe::wasTriggered(Process::const_ptr process, Thread::const_ptr thread) {
   assert(event != 0);
 
-  return event->wasTriggered(process, thread); 
+  return event->wasTriggered(process, thread);
 }
 
-DysectAPI::DysectErrorCode Probe::evaluateConditions(ConditionResult& result, 
-    Process::const_ptr process, 
+DysectAPI::DysectErrorCode Probe::evaluateConditions(ConditionResult& result,
+    Process::const_ptr process,
     Thread::const_ptr thread) {
   if(!cond) {
     result = ResolvedTrue;
@@ -150,6 +154,8 @@ DysectAPI::DysectErrorCode Probe::enableChildren() {
 
 
 DysectAPI::DysectErrorCode Probe::enableChildren(Process::const_ptr process) {
+  ProcessMgr::handled(ProcWait::enableChildren, process);
+  
   if(linked.empty()) {
     return OK;
   }
@@ -160,6 +166,8 @@ DysectAPI::DysectErrorCode Probe::enableChildren(Process::const_ptr process) {
 }
 
 DysectAPI::DysectErrorCode Probe::enableChildren(ProcessSet::ptr procset) {
+  ProcessMgr::handled(ProcWait::enableChildren, procset);
+  
   if(linked.empty()) {
     return OK;
   }
@@ -210,7 +218,7 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedNotifications() {
 
   assert(stream != 0);
 
-  DYSECTVERBOSE(true, "Sending %d notifications on stream id: %x", awaitingNotifications, stream->get_Id());
+  DYSECTVERBOSE(true, "Sending %d notifications with tag %d on stream id: %x", awaitingNotifications, dom->getProbeNotifyTag(), stream->get_Id());
 
   if(stream->send(dom->getProbeNotifyTag(), "%d %auc", awaitingNotifications, "", 1) == -1) {
     return StreamError;
@@ -231,8 +239,15 @@ bool Probe::releaseWaitingProcs() {
   if(waitingProcs && waitingProcs->size() > 0) {
     waitingProcs = ProcessMgr::filterDetached(waitingProcs);
 
+    ProcessMgr::handled(ProcWait::probe, waitingProcs);
+
     if(waitingProcs->size() > 0) {
-      awaitingActions -= processCount;
+      vector<Act*>::iterator actIter = actions.begin();
+      for(;actIter != actions.end(); actIter++) {
+        Act* act = *actIter;
+        if(act)
+          awaitingActions -= processCount;
+      }
       processCount = 0;
     }
 
@@ -240,7 +255,7 @@ bool Probe::releaseWaitingProcs() {
 
     DYSECTVERBOSE(true, "%d processes for %x released", count, dom->getId());
   } else {
-    //Err::warn(true, "No processes waiting to be released");  
+    //Err::warn(true, "No processes waiting to be released");
   }
 
   return true;
@@ -266,8 +281,8 @@ ProcessSet::ptr& Probe::getWaitingProcs() {
   return waitingProcs;
 }
 
-DysectAPI::DysectErrorCode Probe::triggerAction(Process::const_ptr process, Thread::const_ptr thread) {
-  struct packet* p; 
+DysectAPI::DysectErrorCode Probe::triggerAction(Process::const_ptr process, Thread::const_ptr thread, bool onlyTriggerImmediate) {
+  struct packet* p;
   int len;
 
   if(actions.empty()) {
@@ -278,7 +293,10 @@ DysectAPI::DysectErrorCode Probe::triggerAction(Process::const_ptr process, Thre
   for(;actIter != actions.end(); actIter++) {
     Act* act = *actIter;
     if(act) {
-      act->collect(process, thread);
+      if(onlyTriggerImmediate == true && act->getActionPendingImmediate() == false)
+        continue;
+      if(onlyTriggerImmediate == false)
+        act->collect(process, thread);
       act->actionPending = true;
       act->finishBE(p, len); // TODO: some actions cannot be run if we're in a CB, for example, if default probe for exit has Wait::NoWait, then detach will print warning
       act->actionPending = false;
@@ -300,6 +318,10 @@ DysectAPI::DysectErrorCode Probe::enqueueAction(Process::const_ptr process, Thre
     if(act) {
       act->collect(process, thread);
       act->actionPending = true;
+      if (act->getActionPendingImmediate()) {
+        DYSECTVERBOSE(true, "Queuing immediate action");
+        actionPendingImmediate = true;
+      }
       awaitingActions++;
     }
   }
@@ -312,8 +334,8 @@ DysectAPI::DysectErrorCode Probe::enqueueAction(Process::const_ptr process, Thre
 
 DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
   struct packet* p = 0; 
-  int len = 0, actionsHandled = 0;
-  
+  int len = 0;
+
   DYSECTVERBOSE(true, "Sending %d enqueued actions for %x", awaitingActions, dom->getId());
 
   if(actions.empty()) {
@@ -332,12 +354,11 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
 
     if(act) {
       DYSECTVERBOSE(true, "Getting packet from action");
-      
+
       act->finishBE(np, len);
       act->actionPending = false;
-      actionsHandled += 1;
 
-      DYSECTVERBOSE(true, "Aggregate packet length: %d", len);
+      DYSECTVERBOSE(true, "Aggregate packet with tag %d length: %d", dom->getProbeEnabledTag(), len);
     }
 
     if(!p) {
@@ -359,26 +380,28 @@ DysectAPI::DysectErrorCode Probe::sendEnqueuedActions() {
   assert(stream != 0);
 
   if(len > 0) {
-    DYSECTVERBOSE(true, "Sending %d byte aggregate packet", len);
+    DYSECTVERBOSE(true, "Sending %d byte aggregate packet with tag %d and process count %d", len, dom->getProbeEnabledTag(), processCount);
 
     if(stream->send(dom->getProbeEnabledTag(), "%d %auc", processCount, (char*)p, len) == -1) {
+      return DYSECTWARN(StreamError, "Send failed");
       return StreamError;
     }
 
     if(stream->flush() == -1) {
+      return DYSECTWARN(StreamError, "Flush failed");
       return StreamError;
     }
   } else {
     if(stream->send(dom->getProbeEnabledTag(), "%d %auc", processCount, "", 1) == -1) {
+      return DYSECTWARN(StreamError, "Send failed");
       return StreamError;
     }
 
     if(stream->flush() == -1) {
+      return DYSECTWARN(StreamError, "Flush failed");
       return StreamError;
     }
   }
-
-  processCount = 0;
 
   return OK;
 }
@@ -400,6 +423,8 @@ bool Probe::disable() {
 }
 
 bool Probe::disable(Dyninst::ProcControlAPI::Process::const_ptr process) {
+  ProcessMgr::handled(ProcWait::disable, process);
+
   assert(event != 0);
   assert(dom != 0);
 
@@ -413,6 +438,8 @@ bool Probe::disable(Dyninst::ProcControlAPI::Process::const_ptr process) {
 }
 
 bool Probe::disable(Dyninst::ProcControlAPI::ProcessSet::ptr procset) {
+  ProcessMgr::handled(ProcWait::disable, procset);
+  
   assert(event != 0);
   assert(dom != 0);
 
@@ -449,9 +476,9 @@ bool Probe::enqueueDisable(ProcessSet::ptr procset) {
     disabledProcs = disabledProcs->set_union(procset);
   }
 
-  pthread_mutex_lock(&requestQueueMutex); 
+  pthread_mutex_lock(&requestQueueMutex);
   requestQueue.push_back(request);
-  pthread_mutex_unlock(&requestQueueMutex); 
+  pthread_mutex_unlock(&requestQueueMutex);
 
   return true;
 }
@@ -462,7 +489,7 @@ bool Probe::isDisabled(Dyninst::ProcControlAPI::Process::const_ptr process) {
     return false;
 
   ProcessSet::iterator procIter = disabledProcs->find(process);
-  
+
   return (procIter != disabledProcs->end());
 }
 
@@ -482,14 +509,14 @@ bool Probe::enqueueEnable(ProcessSet::ptr procset) {
   }
   request->type = EnableType;
   request->probe = this;
-  
+
   DYSECTVERBOSE(true, "Adding enable request for probe %lx", (long)this);
 
   request->scope = procset;
 
-  pthread_mutex_lock(&requestQueueMutex); 
+  pthread_mutex_lock(&requestQueueMutex);
   requestQueue.push_back(request);
-  pthread_mutex_unlock(&requestQueueMutex); 
+  pthread_mutex_unlock(&requestQueueMutex);
 
   return true;
 }
@@ -500,13 +527,13 @@ bool Probe::processRequests() {
     return true;
   }
 
-  pthread_mutex_lock(&requestQueueMutex); 
+  pthread_mutex_lock(&requestQueueMutex);
   vector<ProbeRequest*> queue = requestQueue;
   requestQueue.clear();
-  pthread_mutex_unlock(&requestQueueMutex); 
+  pthread_mutex_unlock(&requestQueueMutex);
 
   ProcessSet::ptr continueSet = ProcessSet::newProcessSet();
- 
+
   // Sort queue
 
   deque<ProbeRequest*> sortedQueue;
@@ -573,12 +600,11 @@ bool Probe::processRequests() {
     //
     // Stop processes
     //
-  
+
     stopSet = operationSet->getAnyThreadRunningSubset();
     if(stopSet && stopSet->size() > 0) {
       DYSECTVERBOSE(true, "Stopping %d processes", stopSet->size());
-      
-      stopSet->stopProcs();
+      ProcessMgr::stopProcs(stopSet);
     }
 
     //
@@ -594,7 +620,7 @@ bool Probe::processRequests() {
         probe->enableChildren(operationSet);
       }
     }
-    
+
     //
     // Processes must be started when all operations have been carried out.
     //
@@ -614,8 +640,7 @@ bool Probe::processRequests() {
       Process::ptr process = *procIter;
       DYSECTVERBOSE(true, "Continuing process %d", process->getPid());
     }
-    
-    continueSet->continueProcs();
+    ProcessMgr::continueProcsIfReady(continueSet);
   }
 
   DYSECTVERBOSE(true, "Done handling requests");

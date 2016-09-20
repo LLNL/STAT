@@ -16,7 +16,11 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+#include <stdio.h>
+#include <string.h>
+
 #include "DysectAPI/Aggregates/Aggregate.h"
+#include "DysectAPI/Aggregates/RankListAgg.h"
 
 using namespace std;
 using namespace DysectAPI;
@@ -41,12 +45,12 @@ RankListAgg::RankListAgg(int id, int count, std::string fmt, void* payload) {
 bool RankListAgg::aggregate(AggregateFunction* agg) {
   if(agg->getType() != type)
     return false;
-  
+
   if(agg->getId() != getId())
     return false;
-  
+
   RankListAgg* rankListInstance = dynamic_cast<RankListAgg*>(agg);
-  
+
   if(!rankListInstance) {
     return false;
   }
@@ -55,7 +59,7 @@ bool RankListAgg::aggregate(AggregateFunction* agg) {
   rankList.insert(rankList.end(), aggRankList.begin(), aggRankList.end());
   aggRankList.clear();
   count_ += agg->getCount();
-  
+
   return true;
 }
 
@@ -68,7 +72,7 @@ bool RankListAgg::deserialize(void* payload) {
   char *ptr;
   int i;
   int numInts;
-  
+
   ptr = (char *)payload;
   numInts = *(int *)ptr;
   ptr += sizeof(int);
@@ -85,7 +89,7 @@ bool RankListAgg::deserialize(void* payload) {
 int RankListAgg::getSize() {
   //
   // Packet format
-  //  
+  //
   //  [ Header                   ]
   //  [ int numInts              ]
   //  [ int[numInts] rankList     ]
@@ -96,15 +100,15 @@ int RankListAgg::getSize() {
 
 int RankListAgg::writeSubpacket(char *p) {
   struct subPacket* packet;
- 
+
   packet = (struct subPacket*)p;
   packet->len = getSize();
   packet->id = getId();
   packet->count = count_;
   packet->type = type;
   memset(&(packet->fmt), 0, maxFmt); // Does not take format
- 
-  // Write 
+
+  // Write
   char* curpos = (char*)&(packet->payload);
 
   int numInts = rankList.size();
@@ -145,7 +149,7 @@ bool RankListAgg::getStr(string& str) {
 bool RankListAgg::print() {
   string str;
   bool ret;
-  
+
   ret = getStr(str);
   if (ret == false)
     return false;

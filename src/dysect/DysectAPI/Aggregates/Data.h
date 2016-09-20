@@ -19,6 +19,9 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DYSECTAPI_DATA_h
 #define __DYSECTAPI_DATA_h
 
+#include <string>
+#include <stdio.h>
+
 namespace DysectAPI {
   class Value {
     friend class DataLocation;
@@ -52,6 +55,7 @@ namespace DysectAPI {
     void setType(content_t type) { content = type; }
 
     Value();
+    Value(const Value& copy);
     Value(bool bval);
     Value(float fval);
     Value(double dval);
@@ -67,10 +71,10 @@ namespace DysectAPI {
         *(T*)buf = val;
       }
     }
-    
+
     template<typename T> T getValue() {
       T val = 0;
-      
+
       switch(content) {
         case noType:
           fprintf(stderr, "Can not get value for unknown data type\n", content);
@@ -120,18 +124,26 @@ namespace DysectAPI {
     bool isGreaterThan(Value& c);
     bool isGreaterThanEqual(Value& c);
 
+    bool isLongLike();
+    bool isDoubleLike();
+
+    long asLong();
+    double asDouble();
+
     void copy(const Value& rhs);
 
     int getLen() { return len; }
     void* getBuf() { return buf; }
 
     bool getStr(std::string& str);
-    char *getFmt();
+    const char *getFmt();
 
     Value& operator=(Value& rhs);
     bool operator<(Value &rhs);
     bool operator>(Value &rhs);
-
+    Value operator+(Value& rhs);
+    bool operator<=(Value& rhs);
+    bool operator>=(Value& rhs);
   private:
     enum content_t content;
   };

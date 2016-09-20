@@ -428,14 +428,9 @@ void statMerge(vector<PacketPtr> &inputPackets,
     {
         /* Initialize the result graphs */
         if (sampleType & STAT_SAMPLE_COUNT_REP)
-            graphlibError = graphlib_newGraph(&returnGraph, gStatCountRepFunctions);
+            returnGraph = statNewGraph(gStatCountRepFunctions);
         else
-            graphlibError = graphlib_newGraph(&returnGraph, gStatMergeFunctions);
-        if (GRL_IS_FATALERROR(graphlibError))
-        {
-            cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__,"Failed to create new graph\n");
-            return;
-        }
+            returnGraph = statNewGraph(gStatMergeFunctions);
 
         /* Loop around the packets in order of lowest task rank and merge into output */
         for (childrenOrderIter = childrenOrder.begin(), rank = 0; childrenOrderIter != childrenOrder.end(); childrenOrderIter++, rank++)

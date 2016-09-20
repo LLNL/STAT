@@ -16,7 +16,11 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+#include <stdlib.h>
+#include <string.h>
+#include <iostream>
 #include "DysectAPI/Aggregates/Aggregate.h"
+#include "DysectAPI/Aggregates/Data.h"
 
 using namespace std;
 using namespace DysectAPI;
@@ -56,6 +60,12 @@ Value::Value(std::string fmt, void *lbuf) {
   buf = lbuf;
 }
 
+Value::Value(const Value& copy) : content(copy.content), len(copy.len) {
+  // Create a new buffer and copy the content
+  buf = malloc(copy.len);
+  memcpy(buf, copy.buf, copy.len);
+}
+
 Value::Value() : content(noType), len(0), buf(0) {}
 
 Value::Value(float fval) : content(floatType), len(0), buf(0){
@@ -78,7 +88,7 @@ Value::Value(bool bval) : content(boolType), len(0), buf(0) {
   populate<bool>(bval);
 }
 
-char *Value::getFmt()
+const char *Value::getFmt()
 {
   if (content == intType)
     return "%d";
@@ -246,7 +256,7 @@ bool Value::isLessThan(Value& c) {
 bool Value::isLessThanEqual(Value& c) {
   int ret = compare(c);
 
-  return (((ret & lt) == gt) || ((ret & eq) == eq));
+  return (((ret & lt) == lt) || ((ret & eq) == eq));
 }
 
 bool Value::isGreaterThan(Value& c) {
@@ -290,6 +300,96 @@ bool Value::getStr(string& str) {
   str = std::string((char*)&outBuf);
 
   return true;
+}
+
+bool Value::isLongLike() {
+  switch (content) {
+    case intType:
+    case longType:
+    case pointerType:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+bool Value::isDoubleLike() {
+  switch (content) {
+    case floatType:
+    case doubleType:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+long Value::asLong() {
+  switch (content) {
+    case intType:
+    case longType:
+    case pointerType:
+      return getValue<long>();
+
+    default:
+      return 0;
+  }
+}
+
+double Value::asDouble() {
+  switch (content) {
+    case floatType:
+    case doubleType:
+      return getValue<double>();
+
+    default:
+      return 0.0;
+  }
+}
+
+Value Value::operator+(Value& rhs) {
+  Value res;
+
+  switch (content) {
+    case intType:
+      res.populate<int>(getValue<int>() + rhs.getValue<int>());
+      res.setType(intType);
+      return res;
+
+    case longType:
+      res.populate<long>(getValue<long>() + rhs.getValue<long>());
+      res.setType(longType);
+      return res;
+
+    case pointerType:
+      res.populate<void*>((void*)(getValue<long>() + rhs.getValue<long>()));
+      res.setType(pointerType);
+      return res;
+
+    case floatType:
+      res.populate<float>(getValue<float>() + rhs.getValue<float>());
+      res.setType(floatType);
+      return res;
+
+    case doubleType:
+      res.populate<double>(getValue<double>() + rhs.getValue<double>());
+      res.setType(doubleType);
+      return res;
+
+    default:
+      cerr << "Cannot add booleans!" << endl;
+  }
+
+  return *this;
+}
+
+bool Value::operator<=(Value& rhs) {
+  return isLessThanEqual(rhs);
+}
+
+bool Value::operator>=(Value& rhs) {
+  return isGreaterThanEqual(rhs);
 }
 
 Value& Value::operator=(Value& rhs) {

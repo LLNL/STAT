@@ -19,6 +19,11 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __ERR_H
 #define __ERR_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string>
+#include "LibDysectAPI.h"
+
 #define DYSECTVERBOSE(...) Err::verbose(__LINE__, __FILE__, __VA_ARGS__)
 #define DYSECTLOG(...) Err::log(__LINE__, __FILE__, __VA_ARGS__)
 #define DYSECTINFO(...) Err::info(__LINE__, __FILE__, __VA_ARGS__)
@@ -26,6 +31,21 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #define DYSECTFATAL(...) Err::fatal(__LINE__, __FILE__, __VA_ARGS__)
 
 namespace DysectAPI {
+
+//! An enum of bit flags to determine which components to log
+enum DysectVerbosityOptions_t {
+    DYSECT_VERBOSE_NONE = 0x00,
+    DYSECT_VERBOSE_VERBOSE = 0x01,
+    DYSECT_VERBOSE_LOG = 0x02,
+    DYSECT_VERBOSE_INFO = 0x04,
+    DYSECT_VERBOSE_WARN = 0x08,
+    DYSECT_VERBOSE_FATAL = 0x10,
+    DYSECT_VERBOSE_LOG_LINE = 0x20
+} ;
+
+#define DYSECT_VERBOSE_FULL 0xff
+#define DYSECT_VERBOSE_DEFAULT DYSECT_VERBOSE_FATAL|DYSECT_VERBOSE_WARN|DYSECT_VERBOSE_FULL
+
   class Err {
     enum msgType {
       Log,
@@ -39,13 +59,14 @@ namespace DysectAPI {
     static FILE* outStream;
     static FILE* outFile;
     static bool useStatOutFp_;
+    static int verbosityLevel_;
 
     static void write(const std::string fmt, va_list ap, enum msgType type);
     static void write(enum msgType type, const std::string fmt, ...);
 
   public:
-    static void init(FILE* estream, FILE* ostream, const char *outDir = NULL, bool useStatOutFp = false);
-    
+    static void init(FILE* estream, FILE* ostream, int verbosityLevel, const char *outDir = NULL, bool useStatOutFp = false);
+
     static void verbose(int line, const char *file, const std::string fmt, ...);
     static DysectErrorCode verbose(int line, const char *file, DysectErrorCode code, const std::string fmt, ...);
     static bool verbose(int line, const char *file, bool result, const std::string fmt, ...);

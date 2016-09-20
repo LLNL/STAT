@@ -17,6 +17,10 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Group.h>
+#include <DysectAPI/Probe.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -52,6 +56,47 @@ int Domain::maxFd = -1;
 const char tagSignature = 0x7E;
 const tag_t topSignature = (tagSignature << ((sizeof(tag_t) - sizeof(char)) * 8));
 
+string Domain::str() {
+  string returnString;
+  Group *group;
+  char buf[1024];
+
+  switch (domainType)
+  {
+    case InheritedDomain:
+        returnString = "Inherited(";
+        break;
+    case GroupDomain:
+        returnString = "Group((";
+        group = dynamic_cast<Group*>(this);
+        if(group != NULL)
+          returnString += group->getExpr();
+        returnString += "), ";
+        break;
+    case WorldDomain:
+        returnString = "World(";
+        break;
+    default:
+        returnString = "Unknown Domain(";
+        break;
+  }
+
+  if (waitTime == Wait::inf)
+    returnString += "Wait Time = infinite";
+  else {
+    snprintf(buf, 1024, "Wait Time = %ld", waitTime);
+    returnString += buf;
+  }
+
+  if (blocking)
+    returnString += ", Blocking";
+  else
+    returnString += ", Not Blocking";
+  returnString += ")";
+
+  return returnString;
+}
+
 bool Domain::isTag(tag_t tag, tag_t type) {
   return ((tag & 0xff) == type);
 }
@@ -61,9 +106,9 @@ Domain::Domain() { }
 Domain::~Domain() {
 }
 
-Domain::Domain(long waitTime, bool lblocking, DomainType domainType) : 
-                                waitTime(waitTime), 
-                                stream(0), 
+Domain::Domain(long waitTime, bool lblocking, DomainType domainType) :
+                                waitTime(waitTime),
+                                stream(0),
                                 domainType(domainType) {
 
   id = topSignature | ((++Domain::domainIdCounter) << (sizeof(char) * 8));
@@ -122,7 +167,7 @@ DysectAPI::DysectErrorCode Domain::createStreamGeneric() {
 
   int effectiveWaitTime = waitTime;
   if(depth > 0)
-    effectiveWaitTime = ceil(waitTime / depth); 
+    effectiveWaitTime = ceil(waitTime / depth);
 
   assert(stream != 0);
 
@@ -132,8 +177,8 @@ DysectAPI::DysectErrorCode Domain::createStreamGeneric() {
   }
 
   int dataEventDescriptor = stream->get_DataNotificationFd();
-  
-  DYSECTVERBOSE(true, "Domain %x has stream %d", getId(), stream->get_Id());
+
+  DYSECTVERBOSE(true, "Domain %x has stream %d, waitTime %d", getId(), stream->get_Id(), effectiveWaitTime);
 
   fdMap.insert(pair<int, Domain*>(dataEventDescriptor, this));
 
@@ -154,7 +199,7 @@ bool Domain::addToMap(Domain* dom) {
 
     return false;
   }
-  
+
   domainMap.insert(pair<tag_t, Domain*>(dom->getId(), dom));
 
   return true;
@@ -168,7 +213,7 @@ bool Domain::getDomainFromId(Domain*& dom, tag_t id) {
   if(mapIter == domainMap.end()) {
     return false;
   }
-  
+
   dom = mapIter->second;
 
   return true;
@@ -239,6 +284,26 @@ std::map<int, Dyninst::ProcControlAPI::Process::ptr>* Domain::getMpiRankToProces
   return mpiRankToProcessMap;
 }
 
+Dyninst::ProcControlAPI::ProcessSet::ptr Domain::getAllProcesses() {
+  return allProcesses;
+}
+
+Dyninst::Stackwalker::WalkerSet* Domain::getAllWalkers() {
+  return allWalkers;
+}
+
+#ifdef __DYSECT_IS_BACKEND
+bool Domain::setBEContext(struct DysectBEContext_t* context) {
+  assert(context != 0);
+
+  processTable = context->processTable;
+  processTableSize = context->processTableSize;
+  allWalkers = context->walkerSet;
+  mpiRankToProcessMap = context->mpiRankToProcessMap;
+
+  return true;
+}
+#else
 bool Domain::setFEContext(struct DysectFEContext_t* context) {
   assert(context != 0);
 
@@ -250,17 +315,7 @@ bool Domain::setFEContext(struct DysectFEContext_t* context) {
 
   return true;
 }
-
-bool Domain::setBEContext(struct DysectBEContext_t* context) {
-  assert(context != 0);
-
-  processTable = context->processTable;
-  processTableSize = context->processTableSize;
-  allWalkers = context->walkerSet;
-  mpiRankToProcessMap = context->mpiRankToProcessMap;
-
-  return true;
-}
+#endif
 
 void Domain::clearDomains() {
   network = 0;
@@ -328,7 +383,7 @@ DysectAPI::DysectErrorCode Domain::broadcastStreamInit() {
   if(stream->send(getInitTag(), "") == -1) {
     return DYSECTWARN(StreamError, "Send failed");
   }
-  
+
   if (stream->flush() == -1) {
     return DYSECTWARN(StreamError, "Flush failed");
   }
@@ -337,11 +392,12 @@ DysectAPI::DysectErrorCode Domain::broadcastStreamInit() {
 }
 
 World::World(long waitTime, bool lblocking) : Domain(waitTime, lblocking, WorldDomain) {
+  domainType = WorldDomain;
 }
 
 DysectAPI::DysectErrorCode World::createStream() {
   assert(network != 0);
-  
+
   DYSECTVERBOSE(true, "Creating world stream with broadcast comm");
   comm = network->get_BroadcastCommunicator();
 

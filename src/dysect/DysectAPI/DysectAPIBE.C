@@ -16,10 +16,12 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "DysectAPI/DysectAPIBE.h"
-#include "STAT_BackEnd.h"
-#include "DysectAPI/Backend.h"
 #include <unistd.h>
+
+#include "DysectAPI/DysectAPI.h"
+#include "DysectAPI/DysectAPIBE.h"
+#include "DysectAPI/Backend.h"
+#include "STAT_BackEnd.h"
 
 using namespace std;
 using namespace DysectAPI;
@@ -30,7 +32,8 @@ using namespace ProcControlAPI;
 STAT_BackEnd *BE::statBE;
 extern FILE *gStatOutFp;
 
-BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
+BE::BE(const char* libPath, STAT_BackEnd* be, int argc, char **argv) : loaded(false) {
+  int dysectVerbosity = DYSECT_VERBOSE_DEFAULT;
   assert(be != 0);
   assert(libPath != 0);
 
@@ -43,7 +46,7 @@ BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
     return ;
   }
 
-  DysectAPI::defaultProbes();
+  defaultProbes();
 
   if(sessionLib->mapMethod<proc_start_t>("on_proc_start", &lib_proc_start) != OK) {
     loaded = false;
@@ -61,12 +64,14 @@ BE::BE(const char* libPath, STAT_BackEnd* be) : loaded(false) {
   statBE = be;
 
   bool useStatOutFpPrintf = false;
-  if (be->logType_ & STAT_LOG_BE)
+  if (be->logType_ & STAT_LOG_BE) {
     useStatOutFpPrintf = true;
-  Err::init(be->errOutFp_, gStatOutFp, NULL, useStatOutFpPrintf);
+    dysectVerbosity = DYSECT_VERBOSE_FULL;
+  }
+  Err::init(be->errOutFp_, gStatOutFp, dysectVerbosity, NULL, useStatOutFpPrintf);
 
   // Setup session
-  lib_proc_start();
+  lib_proc_start(argc, argv);
 
   if(Backend::registerEventHandlers() != DysectAPI::OK) {
     loaded = false;
@@ -119,7 +124,7 @@ bool BE::isLoaded() {
 }
 
 DysectErrorCode BE::relayPacket(MRN::PacketPtr* packet, int tag, MRN::Stream* stream) {
-  return Backend::relayPacket(packet, tag, stream); 
+  return Backend::relayPacket(packet, tag, stream);
 }
 
 DysectErrorCode BE::handleTimerEvents() {
@@ -136,10 +141,13 @@ DysectErrorCode BE::handleQueuedOperations() {
 
 DysectErrorCode BE::handleAll() {
   int count1, count2;
-  if (returnControlToDysect == true)
+  if (returnControlToDysect == true && Backend::getReturnControlToDysect() == true)
   {
-      handleTimerActions();
-      handleQueuedOperations();
+    TraceAPI::performPendingInstrumentations();
+    TraceAPI::performPendingAnalysis();
+
+    handleTimerActions();
+    handleQueuedOperations();
   }
   count1 = getPendingExternalAction();
   handleTimerEvents();
@@ -150,14 +158,26 @@ DysectErrorCode BE::handleAll() {
   }
 
   count1 = getPendingExternalAction();
-  if (ProcControlAPI::Process::handleEvents(false)) {
+
+  ///TODO: Fix this mess. We no longer poll ProcControl for changes,
+  ///  as this is part of bpatch.pollForStatusChange() (Dyninst).
+  ///  Add a flag to the DySect event handler and check this flag here.
+  if (true) { // gProcControlAPI::Process::handleEvents(false)) {
+    // if was library event, then need to enable any pending probe roots outside of callback
+    Backend::enablePending();
+    Backend::handleImmediateActions();
     count2 = getPendingExternalAction();
-    DYSECTVERBOSE(true, "Event handled... %d %d", count1, count2);
+
     if (count2 > count1 && count2 != 0) {
       DYSECTVERBOSE(true, "STAT2 action detected %d %d, deferring control...", count1, count2);
       returnControlToDysect = false;
     }
   }
+
+  // if event requested instrumentation we must do so before continue
+  TraceAPI::performPendingInstrumentations();
+  TraceAPI::performPendingAnalysis();
+
   return OK;
 }
 
@@ -167,6 +187,7 @@ bool BE::getReturnControlToDysect() {
 
 void BE::setReturnControlToDysect(bool control) {
   returnControlToDysect = control;
+  Backend::setReturnControlToDysect(control);
 }
 
 void BE::gracefulShutdown(int signal) {
@@ -176,8 +197,8 @@ void BE::gracefulShutdown(int signal) {
     called = true;
 
     DYSECTVERBOSE(false, "Backend caught signal %d - shutting down", signal);
-  
-    ProcessMgr::detachAll(); 
+
+    ProcessMgr::detachAll();
 
     pthread_mutex_destroy(&Probe::requestQueueMutex);
   }
@@ -202,10 +223,10 @@ void BE::disableTimers() {
   //Timer::blockTimers();
 }
 
-bool BE::getPendingExternalAction() {
+int BE::getPendingExternalAction() {
   return Backend::getPendingExternalAction();
 }
 
-void BE::setPendingExternalAction(bool pending) {
+void BE::setPendingExternalAction(int pending) {
   Backend::setPendingExternalAction(pending);
 }

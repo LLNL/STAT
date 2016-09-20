@@ -17,6 +17,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Event.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -29,6 +30,10 @@ using namespace Dyninst;
 using namespace Stackwalker;
 
 DysectAPI::Event::Event() : triggeredMap() {
+}
+
+string DysectAPI::Event::str() {
+  return stringRepr;
 }
 
 DysectAPI::Event* DysectAPI::Event::And(DysectAPI::Event* first, DysectAPI::Event* second) {
@@ -62,7 +67,7 @@ Probe* DysectAPI::Event::getOwner() {
       if(curParent == 0)
         break;
     }
-    
+
     if(curParent && curParent->owner) {
       return curParent->owner;
     } else {
@@ -142,7 +147,7 @@ bool DysectAPI::Event::wasTriggered(Process::const_ptr process) {
   if(cIter == triggeredMap.end()) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -191,7 +196,7 @@ bool Time::prepare() {
 }
 
 
-bool Time::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+bool Time::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process,
                       Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   return wasTriggered(process);
 }
@@ -205,8 +210,12 @@ bool Time::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process) {
 
 Time::Time(TimeType type_, int timeout_) : type(type_), timeout(timeout_), Event() {
   struct timeval start;
+  char buf[1024];
+
   gettimeofday(&start, NULL);
   triggerTime = ((start.tv_sec) * 1000) + ((start.tv_usec) / 1000) + timeout;
+  snprintf(buf, 1024, "Timeout(%d)", timeout);
+  stringRepr += buf;
 }
 
 DysectAPI::Event* Time::within(int timeout) {
@@ -218,7 +227,7 @@ DysectAPI::Event* Time::within(int timeout) {
 Location* Code::location(string locationExpr, bool pendingEnabled) {
   Location* location = new Location(locationExpr, pendingEnabled);
 
-  return location; 
+  return location;
 }
 
 bool CombinedEvent::isEnabled(Dyninst::ProcControlAPI::Process::const_ptr process) {
@@ -232,9 +241,30 @@ CombinedEvent::CombinedEvent(DysectAPI::Event* first, DysectAPI::Event* second, 
   if(second) {
     assert(relation != NotRel);
   }
+  switch(relation)
+  {
+    case AndRel:
+      stringRepr += "And(";
+      break;
+    case OrRel:
+      stringRepr += "Or(";
+      break;
+    case NotRel:
+      stringRepr += "Not(";
+      break;
+    default:
+      stringRepr += "Unknown(";
+      break;
+  }
+  stringRepr += first->str();
+  if(second) {
+    stringRepr += ", ";
+    stringRepr += second->str();
+  }
+  stringRepr += ")";
 }
 
-bool CombinedEvent::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+bool CombinedEvent::wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process,
                       Dyninst::ProcControlAPI::Thread::const_ptr thread) {
   switch(relation)
   {
@@ -291,7 +321,41 @@ DysectAPI::Event* Async::signal(int sig) {
 }
 
 Async::Async(AsyncType type) : type(type), Event() {
+  switch (type)
+  {
+    case CrashType:
+      stringRepr += "Crash()";
+      break;
+    case SignalType:
+      stringRepr += "Signal()";
+      break;
+    case ExitType:
+      stringRepr += "Exit()";
+      break;
+    default:
+      stringRepr += "Unknown()";
+      break;
+  }
 }
 
 Async::Async(AsyncType type, int sig) : type(type), signum(sig), Event() {
+  char buf[1024];
+  switch (type)
+  {
+    case CrashType:
+      stringRepr += "Crash(";
+      break;
+    case SignalType:
+      stringRepr += "Signal(";
+      break;
+    case ExitType:
+      stringRepr += "Exit(";
+      break;
+    default:
+      stringRepr += "Unknown(";
+      break;
+
+  }
+  snprintf(buf, 1024, "%d)", sig);
+  stringRepr += buf;
 }

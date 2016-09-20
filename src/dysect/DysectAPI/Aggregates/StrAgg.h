@@ -19,6 +19,12 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DYSECTAPI_STRAGG_H
 #define __DYSECTAPI_STRAGG_H
 
+#include <string>
+#include <vector>
+#include <map>
+
+#include "DysectAPI/Aggregates/AggregateFunction.h"
+
 namespace DysectAPI {
   class StrAgg : public AggregateFunction {
   protected:

@@ -19,6 +19,12 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DYSECTAPI_LOCATION_H
 #define __DYSECTAPI_LOCATION_H
 
+#include <string>
+#include <vector>
+
+#include "DysectAPI/Aggregates/AggregateFunction.h"
+#include "DysectAPI/Aggregates/StrAgg.h"
+
 namespace DysectAPI {
   class FuncLocation : public StrAgg {
      

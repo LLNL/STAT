@@ -19,18 +19,39 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __CONDITION_H
 #define __CONDITION_H
 
+#include <string>
+
+#include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Aggregates/Data.h>
+#include <DysectAPI/TraceAPI.h>
+
+/* Forward declare to resolve cyclic dependency */
+class CollectValues;
+class Average;
+class Buckets;
+
 namespace DysectAPI {
   class Cond;
   class Local;
   class Global;
   class Range;
   class Probe;
-  class Cond;
   class Data;
   class ExprTree;
   class Event;
   class TargetVar;
-  
+  class Function;
+  class Value;
+
+  typedef enum ConditionType {
+    UnknownCondition,
+    DataCondition,
+    SyntheticCondition,
+    CVICondition,
+    AvgCondition,
+    BuckCondition
+  } ConditionType;
+
   typedef enum ConditionResult {
     Unresolved,
     Resolved,
@@ -50,15 +71,11 @@ namespace DysectAPI {
     Data* dataExpr;
 
     Cond(Data* dataExpr);
-
-    enum ConditionType {
-      UnknownCondition,
-      DataCondition,
-      SyntheticCondition
-    } conditionType;
+    ConditionType conditionType;
 
   public:
     Cond();
+    std::string str();
 
     Cond(ConditionType type);
 
@@ -76,7 +93,7 @@ namespace DysectAPI {
     std::string name;
 
     TargetVar* var;
-    
+
   public:
     DataRef() { }
 
@@ -110,6 +127,7 @@ namespace DysectAPI {
   public:
     Data(std::string expr);
 
+    std::string getExpr();
     static Cond* eval(std::string expr);
     DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
 
@@ -131,16 +149,59 @@ namespace DysectAPI {
     CombinedCond(Cond* first, Cond* second, CondRel relation);
   };
 
-	class Position {
-	public:
-		static Cond* in(Range* range);
-		//static Cond* at(Location* location);
-		static Cond* caller(Function* function);
-		static Cond* onPath(Function* function);
+  class Position {
+  public:
+    static Cond* in(Range* range);
+    //static Cond* at(Location* location);
+    static Cond* caller(Function* function);
+    static Cond* onPath(Function* function);
 
     DysectErrorCode evaluate(ConditionResult &result);
     bool prepare();
-	};
+  };
+
+  class CollectValuesIncludes : public Cond {
+    CollectValues* analysis;
+
+    int value;
+
+  public:
+    CollectValuesIncludes(CollectValues* analysis, int value);
+
+    DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
+
+    bool prepare();
+  };
+
+  class AverageDeviates : public Cond {
+    Average* analysis;
+
+    double deviation;
+
+  public:
+    AverageDeviates(Average* analysis, double deviation);
+
+    DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
+
+    bool prepare();
+  };
+
+  class BucketContains : public Cond {
+    Buckets* analysis;
+
+    int bucket1;
+    int bucket2;
+
+  public:
+    BucketContains(Buckets* analysis, int bucket1, int bucket2 = -1);
+
+    DysectErrorCode evaluate(ConditionResult& result, Dyninst::ProcControlAPI::Process::const_ptr process, Dyninst::THR_ID tid);
+
+    bool prepare();
+  };
+
+
 };
+
 
 #endif

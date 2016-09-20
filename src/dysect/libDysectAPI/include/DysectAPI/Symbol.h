@@ -19,6 +19,13 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __SYMBOL_H
 #define __SYMBOL_H
 
+#include <string>
+#include <vector>
+#include <map>
+
+#include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Aggregates/Data.h>
+
 namespace DysectAPI {
   class CodeLocation;
   class DataLocation;
@@ -94,7 +101,7 @@ namespace DysectAPI {
     virtual DysectErrorCode getValue(Value& val) = 0;
     virtual Dyninst::SymtabAPI::Type* getType() = 0;
 
-    virtual DataLocation* getInnerVariable(Type *newType, int offset) = 0;
+    virtual DataLocation* getInnerVariable(Dyninst::SymtabAPI::Type *newType, int offset) = 0;
   
   protected:
     LocationType locationType;
@@ -102,17 +109,17 @@ namespace DysectAPI {
 
   class LocalVariableLocation : public DataLocation {
     
-    localVar* var;
+    Dyninst::SymtabAPI::localVar* var;
     int frame;
-    std::vector<Stackwalker::Frame> walkedStack;
+    std::vector<Dyninst::Stackwalker::Frame> walkedStack;
 
   public:
-    LocalVariableLocation(std::vector<Stackwalker::Frame> &walkedStack, int frame, localVar* var, Dyninst::SymtabAPI::Symtab* symtab);
+    LocalVariableLocation(std::vector<Dyninst::Stackwalker::Frame> &walkedStack, int frame, Dyninst::SymtabAPI::localVar* var, Dyninst::SymtabAPI::Symtab* symtab);
 
     DysectErrorCode getValue(Value& val);
     Dyninst::SymtabAPI::Type* getType();
 
-    DataLocation* getInnerVariable(Type *newType, int offset);
+    DataLocation* getInnerVariable(Dyninst::SymtabAPI::Type *newType, int offset);
   };
 
   class GlobalVariableLocation : public DataLocation {
@@ -131,7 +138,7 @@ namespace DysectAPI {
     DysectErrorCode getValue(Value& val);
     Dyninst::SymtabAPI::Type* getType();
 
-    DataLocation* getInnerVariable(Type *newType, int offset);
+    DataLocation* getInnerVariable(Dyninst::SymtabAPI::Type *newType, int offset);
   };
  }
 

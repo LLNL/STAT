@@ -1,6 +1,7 @@
 *~
 .DS_Store
 *.pyc
+aclocal.m4
 autom4te.cache
 *.a
 *.so
@@ -17,9 +18,17 @@ autom4te.cache
 *.ptab
 *.top
 Makefile
+Makefile.in
 config.h
 config.log
 config.status
+config.h.in
+config/libtool.m4
+config/ltmain.sh
+config/ltoptions.m4
+config/ltversion.m4
+config/lt~obsolete.m4
+configure
 doc/refman/
 doc/src/INSTALL
 doc/src/LICENSE
@@ -44,6 +53,7 @@ scripts/STAT
 scripts/STATBench
 scripts/STATGUI
 scripts/STATview
+scripts/attach-helper
 scripts/core_stack_merge
 scripts/stat-core-merger
 scripts/stat-bench

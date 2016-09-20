@@ -17,6 +17,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Event.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -30,6 +31,7 @@ using namespace ProcControlAPI;
 //
 
 Location::Location(string locationExpr, bool pendingEnabled) : locationExpr(locationExpr), pendingEnabled(pendingEnabled) {
+  stringRepr = locationExpr;
 }
 
 bool Location::enable() {

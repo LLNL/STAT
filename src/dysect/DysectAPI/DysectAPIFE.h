@@ -23,20 +23,15 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <error.h>
 #include <dlfcn.h>
 #include <stdio.h>
-
-#include "mrnet/MRNet.h"
-#include "lmon_api/lmon_fe.h"
-#include "STAT_shared.h"
-#include "DysectAPI/DysectAPI.h"
-
 #include "LibDysectAPI.h"
+#include "DysectAPI/DysectAPIProcessMgr.h"
 
 class STAT_FrontEnd;
 
 namespace DysectAPI {
   class FE {
   private:
-    typedef int (*proc_start_t)();
+    typedef int (*proc_start_t)(int, char **);
     proc_start_t    lib_proc_start;
 
     MRN::Network      *network;
@@ -49,10 +44,10 @@ namespace DysectAPI {
     STAT_FrontEnd *statFE;
 
   public: 
-    FE(const char *libPath, class STAT_FrontEnd* fe, int timeout);
+    FE(const char *libPath, class STAT_FrontEnd* fe, int timeout, int argc, char **argv);
     ~FE();
 
-    DysectErrorCode requestBackendSetup(const char *libPath);
+    DysectErrorCode requestBackendSetup(const char *libPath, int argc, char **argv);
 
     DysectErrorCode handleEvents(bool blocking = true);
 

@@ -18,7 +18,7 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "2.2.0"
+__version__ = "3.0.0"
 
 import sys
 import os
@@ -391,6 +391,126 @@ def decompose_node(label, item=None):
     decomposed_node = DecomposedNode(function_name, source_line, iter_string, module, offset)
     return decomposed_node
 
+
+## \param attrs - the node attributes
+#  \return - the node label
+#
+#  \n
+def node_attr_to_label(attrs, full_path = True):
+    """Translates a set of node attributes into a node label."""
+    if not "function" in attrs.keys():
+        if "label" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
+            attrs["function"], source_line, iter_string, attrs["module"], attrs["offset"] = decompose_node(attrs["label"])
+            attrs["source"] = source_line[:source_line.find(":")]
+            attrs["line"] = source_line[source_line.find(":") + 1:]
+            return attrs["label"]
+        return ""
+    if "temporal_string" in attrs.keys():
+        return attrs["temporal_string"]
+    elif "eq_collapsed_label" in attrs.keys():
+        return attrs["eq_collapsed_label"]
+    label = attrs["function"]
+    lex_string = attrs.get("lex_string")
+    if lex_string is not None:
+        label += "@" + attrs["lex_string"]
+    elif "source" in attrs and attrs["source"] != "(null)":
+        if full_path is True:
+            label += "@" + attrs["source"] + attrs["line"]
+        else:
+            label += "@" + os.path.basename(attrs["source"]) + attrs["line"]
+    elif "module" in attrs and attrs["module"] != "(null)":
+        if full_path is True:
+            label = attrs["module"] + attrs["offset"]
+        else:
+            label = os.path.basename(attrs["module"]) + attrs["offset"]
+    elif "pc" in attrs and attrs["pc"] != "(null)":
+        label += attrs["pc"]
+    if "vars" in attrs and attrs["vars"] != "(null)" and lex_string is not None:
+        label += attrs["vars"]
+    return label
+
+
+## \param attrs - the edge attributes
+#  \return - the edge label
+#
+#  \n
+def edge_attr_to_label(attrs):
+    """Translates a set of edge attributes into a edge label."""
+    label = ''
+    if not "bv" in attrs.keys():
+        if "originallabel" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
+            return attrs["originallabel"]
+        elif "label" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
+            return attrs["label"]
+        return ""
+    if attrs["bv"] != "(null)":
+        label = attrs["bv"]
+    elif attrs["count"] != "(null)":
+        label = "%s:[%s]" % (attrs["count"], attrs["rep"])
+    return label
+
+
+## \param label - the edge label
+#  \return the number of ranks
+#
+#  \n
+def get_num_tasks(label):
+    if label == '' or label == None:
+        return 0
+    ret = 0
+    if label[0] != '[':
+        # this is just a count and representative
+        if label.find('[') != -1:
+            count = label[0:label.find(':')]
+        else:
+            return 0
+        ret = int(count)
+    else:
+        ret = len(get_task_list(label))
+    return ret
+
+
+## \param attrs - the edge attributes
+#  \return - the truncated edge label
+#
+#  \n
+def get_truncated_edge_label(attrs):
+    label = attrs["label"]
+    if label == '':
+        return ''
+    max_size = 12
+    num_tasks = get_num_tasks(label)
+    num_threads = -1
+    if "tbv" in attrs and attrs["tbv"] != "(null)":
+        num_threads = int(attrs["tbv"])
+    elif "tcount" in attrs and attrs["tcount"] != "(null)":
+        num_threads = int(attrs["tcount"])
+    if label[0] != '[':
+        # this is just a count and representative
+        representative = get_task_list(label)[0]
+        if num_tasks == 1:
+            label = '[' + str(representative) + ']'
+        else:
+            label = '[' + str(representative) + ',...]'
+    else:
+        # this is a full node list
+        if len(label) > max_size and label.find('...') == -1:
+            # truncate long edge labels
+            new_label = label[0:max_size]
+            char = 'x'
+            i = max_size - 1
+            while char != ',' and i + 1 < len(label):
+                i += 1
+                char = label[i]
+                new_label += char
+            if i + 1 < len(label):
+                new_label += '...]'
+            label = new_label
+    if num_threads != -1:
+        ret = '%d(%d):%s' % (num_tasks, num_threads, label)
+    else:
+        ret = '%d:%s' % (num_tasks, label)
+    return ret
 
 ## \param var_spec - the variable specificaiton (location and name)
 #  \return a string representation of the variable specificaiton

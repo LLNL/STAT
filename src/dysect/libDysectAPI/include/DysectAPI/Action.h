@@ -19,6 +19,15 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __ACTION_H
 #define __ACTION_H
 
+#include <string>
+#include <vector>
+#include <map>
+
+#include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Aggregates/AggregateFunction.h>
+#include <DysectAPI/Aggregates/Location.h>
+#include <DysectAPI/TraceAPI.h>
+
 namespace DysectAPI {
   class Act;
   class Probe;
@@ -58,6 +67,8 @@ namespace DysectAPI {
       writeModuleVariableType = 9,
       signalType = 10,
       irpcType = 11,
+      nullType = 12,
+      fullStackTraceType = 13
     } aggType;
 
     aggType type;
@@ -65,6 +76,9 @@ namespace DysectAPI {
     int id;
     int count;
     bool actionPending;
+    bool actionPendingImmediate;
+    std::string stringRepr;
+    bool prepared;
 
     bool getFromByteArray(std::vector<Act*>& aggregates);
 
@@ -73,20 +87,27 @@ namespace DysectAPI {
     Act();
 
   public:
+    std::string str();
     static Act* trace(std::string str);
+    static Act* null();
     static Act* totalview();
     static Act* depositCore();
     static Act* signal(int sigNum);
     static Act* loadLibrary(std::string library);
-    static Act* irpc(std::string libraryPath, std::string functionNAme, void *value, int size);
+    static Act* irpc(std::string libraryPath, std::string functionName, void *value, int size);
     static Act* writeModuleVariable(std::string libraryPath, std::string variableName, void *value, int size);
     static Act* stat(AggScope scope = SatisfyingProcs, int traces = 5, int frequency = 300, bool threads = false);
     static Act* detachAll(AggScope scope = AllProcs);
     static Act* detach();
     static Act* stackTrace();
+    static Act* fullStackTrace();
+    static Act* startTrace(DataTrace* trace);
+    static Act* stopTrace(DataTrace* trace);
     static void resetAggregateIdCounter();
 
     int getId() { return id; }
+    bool getActionPendingImmediate() { return actionPendingImmediate; }
+    bool isPrepared() { return prepared; }
     virtual bool prepare() = 0;
     virtual bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
                           Dyninst::ProcControlAPI::Thread::const_ptr thread) = 0;
@@ -177,6 +198,20 @@ namespace DysectAPI {
   };
 
 
+  class Null : public Act {
+    public:
+    Null();
+
+    bool prepare();
+
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
   class Totalview : public Act {
     std::vector<AggregateFunction*> aggregates;
     bool findAggregates();
@@ -236,6 +271,58 @@ namespace DysectAPI {
 
   public:
     StackTrace();
+
+    bool prepare();
+
+    bool collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                 Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+  class StartTrace : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::const_ptr> triggeredProcs;
+    DataTrace* trace;
+
+  public:
+    StartTrace(DataTrace* trace);
+
+    bool prepare();
+
+    bool collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                 Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+  class StopTrace : public Act {
+    std::vector<Dyninst::ProcControlAPI::Process::const_ptr> triggeredProcs;
+    DataTrace* trace;
+
+    static std::map<MRN::Stream*, StopTrace*> waitingForResults;
+
+  public:
+    StopTrace(DataTrace* trace);
+
+    bool prepare();
+
+    bool collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                 Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+
+    static bool handleResultPackage(MRN::PacketPtr packet, MRN::Stream* stream);
+  };
+
+  class FullStackTrace : public Act {
+    std::string str;
+    DataStackTrace* traces;
+
+  public:
+    FullStackTrace();
 
     bool prepare();
 

@@ -17,6 +17,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include "DysectAPI/Aggregates/Aggregate.h"
+#include "DysectAPI/Aggregates/CmpAgg.h"
 
 using namespace std;
 using namespace DysectAPI;
@@ -29,4 +30,10 @@ Min::Min(std::string fmt, ...) : CmpAgg(minAgg, fmt) {
 }
 
 Max::Max(std::string fmt, ...) : CmpAgg(maxAgg, fmt) {
+}
+
+First::First(std::string fmt, ...) : CmpAgg(firstAgg, fmt) {
+}
+
+Last::Last(std::string fmt, ...) : CmpAgg(lastAgg, fmt) {
 }

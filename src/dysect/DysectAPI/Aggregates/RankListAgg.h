@@ -19,6 +19,11 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DYSECTAPI_INTLISTAGG_H
 #define __DYSECTAPI_INTLISTAGG_H
 
+#include <string>
+#include <vector>
+
+#include "DysectAPI/Aggregates/AggregateFunction.h"
+
 namespace DysectAPI {
   class RankListAgg : public AggregateFunction {
   protected:
@@ -28,7 +33,7 @@ namespace DysectAPI {
 
     bool deserialize(void *payload);
     bool serialize(std::vector<int>& rankList);
-     
+
   public:
     RankListAgg(int id, int count, std::string fmt, void* payload);
     RankListAgg(Probe *inOwner);
@@ -36,12 +41,12 @@ namespace DysectAPI {
 
     std::vector<int>& getRankList();
     void getRankList(std::vector<int>& outRankList);
-    
+
     int getSize();
     int writeSubpacket(char *p);
     virtual bool collect(void* process, void* thread);
     bool clear();
-    
+
     bool getStr(std::string& str);
     virtual bool print();
     bool aggregate(AggregateFunction* agg);

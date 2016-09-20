@@ -20,10 +20,6 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 using namespace DysectAPI;
 
-namespace DysectAPI {
-  char* DaemonHostname = 0;
-}
-
 DysectErrorCode SessionLibrary::loadLibrary(const char *path) {
   libraryHandle = dlopen(path, RTLD_LAZY);
 

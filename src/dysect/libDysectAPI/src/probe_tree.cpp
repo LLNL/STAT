@@ -17,6 +17,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/ProbeTree.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -29,6 +30,18 @@ bool ProbeTree::addRoot(Probe* probe) {
 
   return true;
 }
+
+bool ProbeTree::removeRoot(Probe* probe) {
+  for(int i = 0; i < roots.size(); i++) {
+    if(roots[i] = probe) {
+      ProbeTree::roots.erase(roots.begin() + i);
+      break;
+    }
+  }
+
+  return true;
+}
+
 
 vector<Probe*>& ProbeTree::getRoots() {
   return roots;

@@ -133,16 +133,17 @@ Installation
 
    On BlueGene systems, also be sure to configure --with-bluegene. This
    will  enable  the BGL macro for BlueGene specific compilation.
-   Similarly, to compile on Cray XT systems, specify --with-cray-xt.
+   Similarly, to compile on Cray systems running alps, specify
+   --with-cray-alps.
 
-   An example configure line for Cray XT:
+   An example configure line for Cray with alps:
 
 ./configure --with-launchmon=/tmp/work/lee218/install \
 --with-mrnet=/tmp/work/lee218/install \
 --with-graphlib==/tmp/work/lee218/install \
 --with-stackwalker=/tmp/work/lee218/install \
 --with-libdwarf=/tmp/work/lee218/install \
---prefix=/tmp/work/lee218/install --with-cray-xt \
+--prefix=/tmp/work/lee218/install --with-cray-alps \
 MPICC=cc MPICXX=CC MPIF77=ftn --enable-shared LD=/usr/bin/ld.x
 
    Next you just need to run:

@@ -51,20 +51,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #include <fcntl.h>
 #endif
 
-#ifdef CRAYXT
-  #ifndef MRNET31
-extern "C"
-{
-    extern char *alpsGetMyNid(int32_t *);
-    extern uint64_t alps_get_apid(int, int);
-}
-  #endif
-#endif
 #define STAT_MAX_FILENAME_ID 8192
 #define STAT_MAX_FANOUT 64
 
 #ifdef DYSECTAPI
-  #include "STAT_shared.h"
   #include "DysectAPI/DysectAPIFE.h"
 #endif
 
@@ -309,7 +299,7 @@ class STAT_FrontEnd
                    gather along with the traces
             \return STAT_OK on success
         */
-        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, const char *variableSpecification = "NULL");
 
         //! Collect the most recent stack trace from all daemons
         /*!
@@ -401,6 +391,14 @@ class STAT_FrontEnd
             \return STAT_OK on success
         */
         StatError_t receiveAck(bool blocking = true);
+
+#ifdef STAT_FGFS
+        //! Check for file requests and serve any requests
+        /*!
+            \return STAT_OK on success, STAT_PENDING_ACK if no active requests
+        */
+        StatError_t checkFileRequest();
+#endif
 
         //! Collect the full incoming-edge label for the specified node
         /*!
@@ -649,7 +647,7 @@ class STAT_FrontEnd
         void getVersion(int *version);
 
 #ifdef DYSECTAPI
-        StatError_t dysectSetup(const char *dysectApiSessionPath, int dysectTimeout);
+        StatError_t dysectSetup(const char *dysectApiSessionPath, int dysectTimeout, int dysectArgc, char **dysectArgv);
         StatError_t dysectListen(bool blocking = true);
         StatError_t dysectStop();
 #endif
@@ -896,7 +894,14 @@ class STAT_FrontEnd
             \param[out] retval - the return value from MRNet recv
             \return STAT_OK on success
         */
-        StatError_t waitForFileRequests(unsigned int &streamId, int &returnTag, MRN::PacketPtr &packetPtr, int &retval);
+        StatError_t waitForFileRequests(unsigned int &streamId, int &returnTag, MRN::PacketPtr &packetPtr, int &retval, std::vector<MRN::Stream *> expectedStreams);
+
+        //! Send requested-file contents to daemons
+        /*!
+            \param[in] receiveFileName - the file to send
+            \return STAT_OK on success
+        */
+        StatError_t serveFileRequest(const char *receiveFileName);
 #endif
 
 
@@ -942,6 +947,7 @@ class STAT_FrontEnd
         std::map<int, IntList_t *> mrnetRankToMpiRanksMap_; /*!< a map of MRNet ranks to ranks list used for bit vector reordering */
         std::set<int> missingRanks_;                        /*!< a set of MPI ranks whose daemon is not connected */
         std::vector<std::pair<std::string, double> > performanceData_;     /*!< the accumulated performance data to be dumped upon completion */
+        lmon_rm_info_t lmonRmInfo_;                         /*!< the resource manager information from LMON */
         LeafInfo_t leafInfo_;                               /*!< the MRNet leaf info */
         StatProt_t pendingAckTag_;                          /*!< the expected tag of the pending acknowledgement */
         StatError_t (STAT_FrontEnd::*pendingAckCb_)();      /*!< the function to call after acknowledgement received from daemons */
@@ -963,5 +969,7 @@ class STAT_FrontEnd
         DysectAPI::FE* dysectFrontEnd_;
 #endif
 };
+
+void checkPendingActions(STAT_FrontEnd *statFE);
 
 #endif /* #define __STAT_FRONTEND_H */

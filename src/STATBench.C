@@ -97,10 +97,13 @@ int main(int argc, char **argv)
     snprintf(perfData, BUFSIZE, "STATBench invoked with: ");
     for (i = 0; i < argc; i++)
     {
-        strncat(perfData, argv[i], BUFSIZE);
-        strncat(perfData, " ", BUFSIZE);
+        if (strlen(perfData) + strlen(argv[i]) + 1 >= BUFSIZE)
+            break;
+        strcat(perfData, argv[i]);
+        strcat(perfData, " ");
     }
-    strncat(perfData, "\n", BUFSIZE);
+    if (strlen(perfData) < BUFSIZE - 1)
+        strcat(perfData, "\n");
     statFrontEnd->addPerfData(perfData, -1.0);
 
     /* Print the STATBench header to the output file and to the screen */

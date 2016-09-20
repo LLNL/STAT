@@ -17,11 +17,28 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Event.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Probe.h>
+#include <DysectAPI/Action.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "graphlib.h"
+
+#undef Probe // in Probe.h defined as #define Probe(...) Probe(__FILE__, __LINE__, __VA_ARGS__)
 
 using namespace std;
 using namespace DysectAPI;
 using namespace Dyninst;
 using namespace ProcControlAPI;
+
+#ifdef GRAPHLIB_3_0
+extern const char *gNodeAttrs[];
+extern const char *gEdgeAttrs[];
+extern int gNumNodeAttrs;
+extern int gNumEdgeAttrs;
+#endif
 
 vector<ProbeRequest*> Probe::requestQueue;
 
@@ -31,7 +48,7 @@ void Probe::linkComponents() {
   dom->owner = this;
 
   event->setOwner(this);
-  
+
   if(cond) {
     cond->owner = this;
   }
@@ -46,25 +63,30 @@ void Probe::linkComponents() {
   }
 }
 
-Probe::Probe( Event* event, 
-              Cond* cond, 
-              Domain* dom, 
-              DysectAPI::Act* act, 
-              lifeSpan life) : event(event), 
-                               cond(cond), 
-                               dom(dom), 
+Probe::Probe( const char *fileName,
+              int lineNo,
+              Event* event,
+              Cond* cond,
+              Domain* dom,
+              DysectAPI::Act* act,
+              lifeSpan life) : fileName(fileName),
+                               lineNo(lineNo),
+                               event(event),
+                               cond(cond),
+                               dom(dom),
                                life(life),
                                timerId(0),
                                procSetInitialized(false),
                                awaitingNotifications(0),
                                awaitingActions(0),
                                processCount(0),
+                               actionPendingImmediate(false),
                                parent(0) {
 
   if(dom == 0) {
     dom = Domain::inherit();
   }
-  
+
   assert(dom != 0);
   assert(event != 0);
 
@@ -74,11 +96,15 @@ Probe::Probe( Event* event,
   linkComponents();
 }
 
-Probe::Probe( Event* event, 
-              Cond* cond, 
-              Domain* dom, 
-              vector<Act*> acts, 
-              lifeSpan life) : event(event),
+Probe::Probe( const char *fileName,
+              int lineNo,
+              Event* event,
+              Cond* cond,
+              Domain* dom,
+              vector<Act*> acts,
+              lifeSpan life) : fileName(fileName),
+                               lineNo(lineNo),
+                               event(event),
                                cond(cond),
                                dom(dom),
                                life(life),
@@ -87,6 +113,7 @@ Probe::Probe( Event* event,
                                procSetInitialized(false),
                                awaitingActions(0),
                                processCount(0),
+                               actionPendingImmediate(false),
                                awaitingNotifications(0) {
   if(dom == 0) {
     dom = Domain::inherit();
@@ -95,23 +122,28 @@ Probe::Probe( Event* event,
   assert(dom != 0);
   assert(event != 0);
 
-  actions = acts; 
+  actions = acts;
 
   linkComponents();
 }
 
-Probe::Probe( Event* event, 
-              Domain* dom, 
+Probe::Probe( const char *fileName,
+              int lineNo,
+              Event* event,
+              Domain* dom,
               DysectAPI::Act *act,
-              lifeSpan life) : event(event), 
-                               dom(dom), 
+              lifeSpan life) : fileName(fileName),
+                               lineNo(lineNo),
+                               event(event),
+                               dom(dom),
                                life(life),
-                               parent(0), 
+                               parent(0),
                                timerId(0),
                                procSetInitialized(false),
                                awaitingNotifications(0),
                                awaitingActions(0),
                                processCount(0),
+                               actionPendingImmediate(false),
                                cond(0){
   if(dom == 0) {
     dom = Domain::inherit();
@@ -127,18 +159,23 @@ Probe::Probe( Event* event,
 }
 
 
-Probe::Probe( Event* event, 
-              Domain* dom, 
+Probe::Probe( const char *fileName,
+              int lineNo,
+              Event* event,
+              Domain* dom,
               vector<DysectAPI::Act*> acts,
-              lifeSpan life) : event(event), 
-                               dom(dom), 
+              lifeSpan life) : fileName(fileName),
+                               lineNo(lineNo),
+                               event(event),
+                               dom(dom),
                                life(life),
-                               parent(0), 
+                               parent(0),
                                timerId(0),
                                procSetInitialized(false),
                                awaitingNotifications(0),
                                awaitingActions(0),
                                processCount(0),
+                               actionPendingImmediate(false),
                                cond(0){
   if(dom == 0) {
     dom = Domain::inherit();
@@ -147,31 +184,129 @@ Probe::Probe( Event* event,
   assert(dom != 0);
   assert(event != 0);
 
-  actions = acts; 
+  actions = acts;
 
   linkComponents();
 }
 
-Probe::Probe( Event* event, 
+Probe::Probe( const char *fileName,
+              int lineNo,
+              Event* event,
               DysectAPI::Act *act,
-              lifeSpan life) : event(event), 
+              lifeSpan life) : fileName(fileName),
+                               lineNo(lineNo),
+                               event(event),
                                life(life),
-                               parent(0), 
-                               cond(0), 
+                               parent(0),
+                               cond(0),
                                timerId(0),
                                procSetInitialized(false),
                                awaitingActions(0),
                                processCount(0),
+                               actionPendingImmediate(false),
                                awaitingNotifications(0) {
   dom = Domain::inherit();
- 
+
   if(act)
     actions.push_back(act);
 
   linkComponents();
 }
 
+string Probe::str() {
+  string returnString = "";
+  vector<Act*>::iterator actIter;
+  for (actIter = actions.begin(); actIter != actions.end(); actIter++) {
+    Act* action = *actIter;
+    if (actIter != actions.begin())
+      returnString += ", ";
+    returnString += action->str();
+  }
+  returnString += "; ";
+  returnString += cond->str();
+  returnString += "; ";
+  returnString += event->str();
+  returnString += "; ";
+  returnString += dom->str();
+  return returnString;
+}
 
+string Probe::edgeStrs(int parent) {
+  string returnString = " ";
+  char buf[1024];
+
+  snprintf(buf, 1024, "%d", parent);
+  returnString += buf;
+  returnString += " -> ";
+  snprintf(buf, 1024, "%d", getId());
+  returnString += buf;
+#ifdef GRAPHLIB_3_0
+  returnString += " [";
+  for(int j = 0; j < gNumEdgeAttrs; j++)
+  {
+    if (j != 0)
+      returnString += ", ";
+    returnString += gEdgeAttrs[j];
+    returnString += "=\"(null)\"";
+  }
+  returnString += " ]";
+#endif
+  returnString += "\n";
+
+  return returnString;
+}
+
+string Probe::dotStr(int parentId) {
+  char buf[1024];
+  string returnString = "";
+
+  snprintf(buf, 1024, "%d", getId());
+  returnString += buf;
+  returnString += " [label=\"Probe";
+  returnString += buf;
+  returnString += "\", source=\"";
+  returnString += fileName;
+  snprintf(buf, 1024, "\", line=\"%d", lineNo);
+  returnString += buf;
+
+  returnString += "\", action=\"";
+  vector<Act*>::iterator actIter;
+  for (actIter = actions.begin(); actIter != actions.end(); actIter++) {
+    Act* action = *actIter;
+    if (actIter != actions.begin())
+      returnString += "; ";
+    returnString += action->str();
+  }
+
+  returnString += "\", condition=\"";
+  if (cond)
+    returnString += cond->str();
+  else
+    returnString += "NULL";
+
+  returnString += "\", event=\"";
+  if (event)
+    returnString += event->str();
+  else
+    returnString += "NULL";
+
+  returnString += "\", domain=\"";
+  if (dom)
+    returnString += dom->str();
+  else
+    returnString += "NULL";
+  returnString += "\"];\n";
+
+  vector<Probe*>::iterator probeIter = linked.begin();
+  for(;probeIter != linked.end(); probeIter++) {
+    Probe* probe = *probeIter;
+    returnString += probe->dotStr(getId());
+  }
+
+  returnString += this->edgeStrs(parentId);
+
+  return returnString;
+}
 
 Probe* Probe::link(Probe* probe) {
   linked.push_back(probe);
@@ -264,6 +399,10 @@ DysectAPI::DysectErrorCode Probe::prepareAction(treeCallBehavior callBehavior) {
     for(; actIter != actions.end(); actIter++) {
       Act* action = *actIter;
 
+      if (action->isPrepared()) {
+        DYSECTVERBOSE(true, "Action already prepared");
+        continue;
+      }
       if(!action->prepare()) {
         return Error;
       }

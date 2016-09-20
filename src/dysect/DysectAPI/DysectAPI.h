@@ -21,62 +21,47 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include <string.h>
 #include <error.h>
-#include <dlfcn.h>
 #include <stdio.h>
 
-#include "mrnet/MRNet.h"
-#include "lmon_api/lmon_fe.h"
-
-#include "PlatFeatures.h"
-#include "ProcessSet.h"
-#include "PCErrors.h"
-
-#include "Symtab.h"
-#include "walker.h"
-#include "procstate.h"
-#include "frame.h"
-#include "swk_errors.h"
-#include "Type.h"
-#include "dyntypes.h"
-#include "PCProcess.h"
-
-#include "lmon_api/lmon_fe.h"
-#include "STAT_shared.h"
 #include "LibDysectAPI.h"
+
+#include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Condition.h>
+#include <DysectAPI/Expr.h>
+#include <DysectAPI/Event.h>
+#include <DysectAPI/SafeTimer.h>
+#include <DysectAPI/Symbol.h>
+#include <DysectAPI/Parser.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Group.h>
+#include <DysectAPI/Probe.h>
+#include <DysectAPI/Action.h>
+#include <DysectAPI/ProbeTree.h>
+#include <DysectAPI/DysectAPIProcessMgr.h>
+#include <DysectAPI/TraceAPI.h>
+
 
 namespace DysectAPI {
 
-  class SessionLibrary {
-    void* libraryHandle;
-
-    bool loaded;
-
-  public:
-    SessionLibrary(const char* libPath, bool broadcast = false);
-
-    bool isLoaded();
-    DysectErrorCode loadLibrary(const char *path);
-
-    template<typename T> DysectErrorCode mapMethod(const char *name, T* method) {
-      if(!libraryHandle) {
-        return LibraryNotLoaded;
-      }
-
-      dlerror();
-      *method = (T) dlsym(libraryHandle, name);
-
-      const char *dlsym_error = dlerror();
-      if(dlsym_error) {
-        fprintf(stderr, "Cannot load symbol '%s': %s\n", name, dlsym_error);
-        dlclose(libraryHandle);
-
-        return SymbolNotFound;
-      }
-
-      return OK;
-    }
-  };
-
-  bool isDysectTag(int tag);
+  /**
+   * Stop debugged process on program start.
+   * Initial probe code goes here to start event chains.
+   * Debugger backs off from process if status code is DysectDetach.
+   */
+  DysectStatus onProcStart(int argc, char **argv);
+  DysectStatus defaultProbes();
 }
+
+extern "C" {
+  int on_proc_start(int argc, char **argv);
+}
+
+#ifdef __DYSECT_SESSION_BUILD
+int on_proc_start(int argc, char **argv) {
+  return DysectAPI::onProcStart(argc, argv);
+}
+#endif
+
+
 #endif

@@ -19,6 +19,9 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __PARSER_H
 #define __PARSER_H
 
+#include <string>
+#include <vector>
+
 namespace DysectAPI {
   class Parser {
   public:

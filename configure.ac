@@ -2,13 +2,13 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(STAT, 2.2.0, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
+AC_INIT(STAT, 3.0.0, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
 AC_COPYRIGHT([Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([config])
-AM_INIT_AUTOMAKE(STAT, 2.2.0)
+AM_INIT_AUTOMAKE(STAT, 3.0.0)
 AC_CANONICAL_HOST
 
 # Checks for programs.
@@ -79,6 +79,12 @@ AC_ARG_WITH(usagelog,
   [CXXFLAGS="$CXXFLAGS"]
 )
 
+AC_ARG_WITH(alias-suffix,
+  [AS_HELP_STRING([--with-alias-suffix=suffix],[drop suffix from the hostname alias])],
+  [CXXFLAGS="$CXXFLAGS -DSTAT_ALIAS_SUFFIX=\\\"${withval}\\\""],
+  [CXXFLAGS="$CXXFLAGS"]
+)
+
 AC_ARG_ENABLE(examples,
   [AS_HELP_STRING([--enable-examples],[Enable the compilation of example test codes])],
   [WITH_EXAMPLES=$enableval],
@@ -108,8 +114,10 @@ AC_SUBST(MWLIBS)
 AC_SUBST(MRNETCOMMNODEBIN)
 AC_SUBST(DOTBINDIR)
 AC_SUBST(LAUNCHMONBIN)
+AC_SUBST(NEWLAUNCHMONBIN)
 AC_SUBST(LAUNCHMONPREFIX)
 AC_SUBST(GRAPHLIBPREFIX)
+AC_SUBST(STACKWALKERPREFIX)
 AC_SUBST(DEPCOREPREFIX)
 AC_SUBST(STATPYTHON)
 
@@ -128,6 +136,7 @@ AC_CONFIG_FILES([Makefile
                  src/dysect/libDysectAPI/Makefile
                  src/dysect/libDysectAPI/include/Makefile
                  src/dysect/libDysectAPI/src/Makefile
+                 src/analyticslib/Makefile
                  examples/Makefile
                  examples/src/Makefile
                  examples/scripts/Makefile
@@ -159,8 +168,13 @@ fi
 if test "$ENABLE_DYSECT" = "yes"
 then
   AC_CONFIG_FILES([scripts/dysectc])
+  if test "$WITH_GUI" = "yes"
+  then
+    AC_CONFIG_FILES([scripts/dysect-view])
+  fi
 fi
-  
+
 AC_CONFIG_FILES([scripts/stat-core-merger])
+AC_CONFIG_FILES([scripts/attach-helper])
 
 AC_OUTPUT

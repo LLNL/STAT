@@ -20,10 +20,13 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "2.2.0"
+__version_major__ = 3
+__version_minor__ = 0
+__version_revision__ = 0
+__version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import STAThelper
-from STAThelper import var_spec_to_string, get_task_list, get_proctab, decompose_node, HAVE_PYGMENTS
+from STAThelper import var_spec_to_string, get_task_list, get_proctab, HAVE_PYGMENTS
 if HAVE_PYGMENTS:
     import pygments
     import pango
@@ -33,16 +36,28 @@ if HAVE_PYGMENTS:
     from STAThelper import STATviewFormatter
 import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO, run_gtk_main_loop
+
 import sys
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
 from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
+HAVE_OPENMP_SUPPORT = True
+try:
+    from STAT import STAT_SAMPLE_OPENMP
+except:
+    HAVE_OPENMP_SUPPORT = False
 HAVE_DYSECT = True
 try:
     from STAT import DysectAPI_OK, DysectAPI_Error, DysectAPI_InvalidSystemState, DysectAPI_LibraryNotLoaded, DysectAPI_SymbolNotFound, DysectAPI_SessionCont, DysectAPI_SessionQuit, DysectAPI_DomainNotFound, DysectAPI_NetworkError, DysectAPI_DomainExpressionError, DysectAPI_StreamError, DysectAPI_OptimizedOut
+    import DysectView
+    from DysectView import DysectDotWindow
 except:
     HAVE_DYSECT = False
-
+HAVE_ATTACH_HELPER = True
+try:
+    import attach_helper
+except:
+    HAVE_ATTACH_HELPER = False
 import commands
 import subprocess
 import time
@@ -85,10 +100,12 @@ class STATGUI(STATDotWindow):
         self.properties_window = None
         self.proctab_file_path = None
         self.proctab = None
+        self.marked_line_number = None
         self.attached = False
         self.reattach = False
         self.serial_process_list = None
         self.serial_attach = False
+        self.visualizer_window = None
         self.sample_task_list = ['Sample Stack Traces', 'Gather Stack Traces', 'Render Stack Traces']
         self.attach_task_list = ['Launch Daemons', 'Connect to Daemons', 'Attach to Application']
         self.attach_task_list += self.sample_task_list
@@ -97,6 +114,7 @@ class STATGUI(STATDotWindow):
                  'Sample Type':       ['function only', 'function and pc', 'module offset', 'function and line'],
                  'Edge Type':         ['full list', 'count and representative'],
                  'Remote Host Shell': ['rsh', 'ssh'],
+                 'Resource Manager':  ['Auto', 'Alps', 'Slurm'],
                  'CP Policy':         ['none', 'share app nodes', 'exclusive']}
         if not hasattr(self, "types"):
             self.types = {}
@@ -104,6 +122,7 @@ class STATGUI(STATDotWindow):
             self.types[opt] = types[opt]
         options = {'Remote Host':                      "localhost",
                    'Remote Host Shell':                "rsh",
+                   'Resource Manager':                 "Auto",
                    'PID':                              None,
                    'Launcher Exe':                     '',
                    'Serial PID':                       None,
@@ -115,7 +134,8 @@ class STATGUI(STATDotWindow):
                    'CP Policy':                        'share app nodes',
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
-                   'Job Launcher':                     'mpirun|srun|orterun|aprun|runjob|wreckrun',
+                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun',
+                   'Job ID':                           '',
                    'Filter Ranks':                     '',
                    'Filter Hosts':                     '',
                    'Log Dir':                          os.environ['HOME'],
@@ -133,12 +153,15 @@ class STATGUI(STATDotWindow):
                    'Num Retries':                      5,
                    'Retry Frequency (us)':             10,
                    'With Threads':                     False,
+                   'With OpenMP':                      False,
                    'Gather Python Traces':             False,
                    'Clear On Sample':                  True,
                    'Gather Individual Samples':        False,
                    'Run Time Before Sample (sec)':     0,
                    'Enable DySectAPI':                 False,
                    'DySectAPI Session':                '',
+                   'DySectAPI Session Args':           '',
+                   'DySectAPI Show Default Probes':    False,
                    'Sample Type':                      'function only',
                    'Edge Type':                        'full list',
                    'DDT Path':                         STAThelper.which('ddt'),
@@ -525,10 +548,28 @@ host[1-10,12,15-20];otherhost[30]
     def _on_update_process_listing2(self, attach_dialog, listing_filter, vbox, is_parallel):
         """Search for user processes."""
         self.options['Remote Host Shell'] = self.types['Remote Host Shell'][self.combo_boxes['Remote Host Shell'].get_active()]
+        pid_list = ''
+        if HAVE_ATTACH_HELPER and self.options['Job ID'] != '':
+            self.options['Remote Host'], rm_exe, pids = attach_helper.jobid_to_hostname_pid(self.options['Resource Manager'], self.options['Job ID'], self.options['Remote Host Shell'])
+            self.options['Job Launcher'] = rm_exe
+            if self.options['Remote Host'] == None:
+                show_error_dialog('Failed to find host for job ID %s' % self.options['Job ID'], attach_dialog)
+                self.options['Job ID'] = ''
+                return False
+            self.options['Job ID'] = ''
+            for i, pid in enumerate(pids):
+                if i != 0:
+                    pid_list += ','
+                pid_list += str(pid)
+            self.filter_entry.set_text(self.options['Job Launcher'])
+            self.rh_entry.set_text(self.options['Remote Host'])
         if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
             output = commands.getoutput('ps xw')
         else:
-            output = commands.getoutput('%s %s ps xw' % (self.options['Remote Host Shell'], self.options['Remote Host']))
+            if pid_list != '':
+                output = commands.getoutput('%s %s ps w -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
+            else:
+                output = commands.getoutput('%s %s ps xw' % (self.options['Remote Host Shell'], self.options['Remote Host']))
             if output.find('Hostname not found') != -1 or output.find('PID') == -1:
                 show_error_dialog('Failed to get process listing for %s' % self.options['Remote Host'], attach_dialog)
                 return False
@@ -547,7 +588,8 @@ host[1-10,12,15-20];otherhost[30]
                 pid_index = counter
             elif token == 'COMMAND':
                 command_index = counter
-        filter_compiled_re = re.compile(listing_filter.get_text())
+        if listing_filter is not None:
+            filter_compiled_re = re.compile(listing_filter.get_text())
         started = False
         for line in output[1:]:
             try:
@@ -606,6 +648,14 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(self.serial_sw)
         attach_dialog.show_all()
 
+    def on_update_job_id(self, w, frame, attach_dialog, entry):
+        """Callback to search a job id for resource manager processes."""
+        self.options['Job ID'] = entry.get_text()
+        entry.set_text(self.options['Job ID'])
+        self.options['Resource Manager'] = self.types['Resource Manager'][self.combo_boxes['Resource Manager'].get_active()]
+        self.on_update_process_listing(w, frame, attach_dialog, None)
+
+
     def on_update_remote_host(self, w, frame, attach_dialog, entry):
         """Callback to search a remote host for processes."""
         self.options['Remote Host'] = entry.get_text()
@@ -649,12 +699,11 @@ host[1-10,12,15-20];otherhost[30]
         If found, prompt user to gather stack trace with variable values."""
         found = False
         for node in self.get_current_graph().nodes:
-            if node.lex_string is not None:
-                if node.lex_string.find('$') != -1 and node.lex_string.find('=') == -1:
-                    decomposed_node = decompose_node(node.label)
-                    source = decomposed_node.source_line[:decomposed_node.source_line.find(':')]
-                    line = int(decomposed_node.source_line[decomposed_node.source_line.find(':') + 1:])
-                    temp = node.lex_string[node.lex_string.find('$') + 1:]
+            if node.attrs.get("lex_string") is not None:
+                if node.attrs["lex_string"].find('$') != -1 and node.attrs["lex_string"].find('=') == -1:
+                    source = node.attrs["source"]
+                    line = int(node.attrs["line"].strip(":"))
+                    temp = node.attrs["lex_string"][node.attrs["lex_string"].find('$') + 1:]
                     while 1:
                         var = temp[:temp.find('(')]
                         if var == 'iter#':
@@ -794,16 +843,36 @@ host[1-10,12,15-20];otherhost[30]
         # parallel attach
         process_frame = gtk.Frame('Current Process List')
         vbox = gtk.VBox()
+
+        self.rm_expander = gtk.Expander("Search for job by Resource Manager job ID")
         hbox = gtk.HBox()
-        self.pack_entry_and_button(self.options['Remote Host'], self.on_update_remote_host, process_frame, attach_dialog, "Search Remote Host", hbox)
+        self.jobid_entry = self.pack_entry_and_button(self.options['Job ID'], self.on_update_job_id, process_frame, attach_dialog, "Search for Job", hbox, True, True, 0)
         hbox.pack_start(gtk.VSeparator(), False, False, 5)
+        self.pack_combo_box(hbox, 'Resource Manager')
+        self.rm_expander.add(hbox)
+        vbox.pack_start(self.rm_expander, False, False, 0)
+
+        self.hn_expander = gtk.Expander("Search for job by hostname")
+        hbox = gtk.HBox()
+        self.rh_entry = self.pack_entry_and_button(self.options['Remote Host'], self.on_update_remote_host, process_frame, attach_dialog, "Search Remote Host", hbox)
+        self.hn_expander.add(hbox)
+        self.hn_expander.set_expanded(True)
+        vbox.pack_start(self.hn_expander, False, False, 0)
+
+        self.rm_expander.connect("activate", lambda w: self.hn_expander.set_expanded(self.rm_expander.get_expanded()))
+        self.hn_expander.connect("activate", lambda w: self.rm_expander.set_expanded(self.hn_expander.get_expanded()))
+
+        vbox.pack_start(gtk.HSeparator(), False, False, 0)
+        hbox = gtk.HBox()
         self.pack_combo_box(hbox, 'Remote Host Shell')
         vbox.pack_start(hbox, False, False, 0)
+
+        vbox.pack_start(process_frame, True, True, 0)
+
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label('Filter Process List'), False, False, 5)
         self.filter_entry = self.pack_entry_and_button(self.options['Job Launcher'], self.on_update_process_listing, process_frame, attach_dialog, "Filter", hbox, True, True, 0)
         vbox.pack_start(hbox, False, False, 0)
-        vbox.pack_start(process_frame, True, True, 0)
         hbox = gtk.HBox()
         button = gtk.Button("Refresh Process List")
         button.connect("clicked", lambda w: self.on_update_process_listing(w, process_frame, attach_dialog, self.filter_entry))
@@ -896,6 +965,7 @@ host[1-10,12,15-20];otherhost[30]
             button = gtk.Button('Select DySectAPI Session')
             button.connect("clicked", lambda w: self.on_choose_dysect_session(attach_dialog, dysect_vbox))
             dysect_vbox.pack_start(button, False, False, 0)
+            self.pack_string_option(dysect_vbox, 'DySectAPI Session Args', attach_dialog)
             frame.add(dysect_vbox)
             vbox.pack_start(frame, False, False, 0)
             hbox = gtk.HBox()
@@ -1007,6 +1077,7 @@ host[1-10,12,15-20];otherhost[30]
 
     def destroy_dysect_dialog(self, dialog):
         self.dysect_dialog = None
+        self.close_visualizer(None)
         self.on_detach(dialog)
 
     def update_dysect_active_bar(self):
@@ -1014,6 +1085,44 @@ host[1-10,12,15-20];otherhost[30]
         if self.dysect_timer != None:
             self.dysect_progress_bar.pulse()
         return True
+
+    def close_visualizer(self, action):
+        if self.visualizer_window:
+            self.visualizer_window.destroy()
+            self.visualizer_window = None
+
+    def open_visualizer(self):
+        """ Open a visualization window """
+        DysectView.show_default_probes = self.options["DySectAPI Show Default Probes"]
+        if self.visualizer_window == None:
+            if hasattr(self, "out_dir"):
+                self.visualizer_window = DysectDotWindow(os.path.join(self.out_dir, 'dysect_session.dot'), self)
+            elif self.STAT != None:
+                self.visualizer_window = DysectDotWindow(os.path.join(self.STAT.getOutDir(), 'dysect_session.dot'), self)
+            else:
+                sys.stderr.write('could not determine dysect session dot file path\n')
+                return False
+            self.visualizer_window.connect('destroy', self.close_visualizer)
+        else:
+            self.visualizer_window.present()
+
+    def scroll_probe_window(self, filename, line):
+        if line == None:
+            return
+        (session_file_directory, session_filename) = os.path.split(self.options['DySectAPI Session'])
+        if filename != session_filename and filename != self.options['DySectAPI Session']:
+            return
+        text_buffer = self.probe_text_view.get_buffer()
+        if text_buffer == None:
+            return
+        if self.marked_line_number != None:
+            (marked_line_start, marked_line_end) = self.marked_line_number
+            text_buffer.remove_tag_by_name("bold_tag", marked_line_start, marked_line_end)
+        probe_line_start = text_buffer.get_iter_at_line(int(line) - 1)
+        self.probe_text_view.scroll_to_iter(probe_line_start, 0.0, True, 0.0, 0.7)
+        probe_line_end = text_buffer.get_iter_at_line_offset(int(line) - 1, self.line_number_width + 2)
+        text_buffer.apply_tag_by_name("bold_tag", probe_line_start, probe_line_end)
+        self.marked_line_number = (probe_line_start, probe_line_end)
 
     def stop_dysect_session(self, button):
         self.dysect_session = False
@@ -1348,6 +1457,8 @@ host[1-10,12,15-20];otherhost[30]
             sample_type += STAT_SAMPLE_COUNT_REP
         if self.options['With Threads']:
             sample_type += STAT_SAMPLE_THREADS
+        if self.options['With OpenMP'] and HAVE_OPENMP_SUPPORT:
+            sample_type += STAT_SAMPLE_OPENMP
         if self.options['Gather Python Traces']:
             sample_type += STAT_SAMPLE_PYTHON
         if self.options['Clear On Sample']:
@@ -1435,6 +1546,8 @@ host[1-10,12,15-20];otherhost[30]
                 sample_type += STAT_SAMPLE_COUNT_REP
             if self.options['With Threads']:
                 sample_type += STAT_SAMPLE_THREADS
+            if self.options['With OpenMP'] and HAVE_OPENMP_SUPPORT:
+                sample_type += STAT_SAMPLE_OPENMP
             if self.options['Gather Python Traces']:
                 sample_type += STAT_SAMPLE_PYTHON
             if self.options['Clear On Sample']:
@@ -1570,7 +1683,8 @@ host[1-10,12,15-20];otherhost[30]
             show_error_dialog('Compiled session %s not found' % session_so)
             self.on_fatal_error()
             return -1
-        ret = self.STAT.dysectSetup(session_so, -1)
+        dysect_args = self.options["DySectAPI Session Args"].split()
+        ret = self.STAT.dysectSetup(session_so, -1, len(dysect_args), dysect_args)
         if ret != STAT_OK:
             show_error_dialog('Failed to setup DySect Session %s:\n%s' % (session_so, self.STAT.getLastErrorMessage()), self)
             self.on_fatal_error()
@@ -1578,7 +1692,7 @@ host[1-10,12,15-20];otherhost[30]
         self.dysect_session = True
 
         self.dysect_dialog = gtk.Dialog("DySectAPI Console", self)
-        self.dysect_dialog.set_default_size(1048, 600)
+        self.dysect_dialog.set_default_size(1048, 630)
         self.dysect_dialog.set_destroy_with_parent(True)
         self.dysect_dialog.connect('destroy', lambda w: self.destroy_dysect_dialog(w))
         vpaned = gtk.VPaned()
@@ -1586,6 +1700,7 @@ host[1-10,12,15-20];otherhost[30]
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         text_view = gtk.TextView()
+        self.probe_text_view = text_view
         text_view.set_editable(False)
         text_view.set_cursor_visible(False)
         text_view_buffer = text_view.get_buffer()
@@ -1602,6 +1717,7 @@ host[1-10,12,15-20];otherhost[30]
                 lines = STAThelper.pygments_lines
                 iterator = text_view_buffer.get_iter_at_offset(0)
                 width = len(str(len(lines)))
+                self.line_number_width = width
                 for i, line in enumerate(lines):
                     source_string = "%0*d| " % (width, i + 1)
                     text_view_buffer.insert_with_tags_by_name(iterator, source_string, "monospace")
@@ -1628,8 +1744,8 @@ host[1-10,12,15-20];otherhost[30]
         self.separator = gtk.HSeparator()
         self.dysect_dialog.vbox.pack_start(self.separator, False, True, 5)
 
-        out_dir = self.STAT.getOutDir()
-        dysect_outfile = os.path.join(out_dir, 'dysect_output.txt')
+        self.out_dir = self.STAT.getOutDir()
+        dysect_outfile = os.path.join(self.out_dir, 'dysect_output.txt')
         my_frame = gtk.Frame("Output %s:" % dysect_outfile)
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -1646,6 +1762,13 @@ host[1-10,12,15-20];otherhost[30]
         self.dysect_dialog.vbox.pack_start(vpaned, True, True, 5)
         self.separator = gtk.HSeparator()
         self.dysect_dialog.vbox.pack_start(self.separator, False, True, 5)
+
+        # Visualization button
+        vis_box = gtk.HButtonBox()
+        vis_button = gtk.Button("_Visualize Probe Tree")
+        vis_button.connect("clicked", lambda w: self.open_visualizer())
+        vis_box.pack_end(vis_button, False, True, 5)
+
         box2 = gtk.HButtonBox()
         stop_button = gtk.Button(stock=gtk.STOCK_STOP)
         stop_button.connect("clicked", lambda w: self.stop_dysect_session(w))
@@ -1660,6 +1783,7 @@ host[1-10,12,15-20];otherhost[30]
         dyysect_ok_button.set_sensitive(False)
         box2.pack_end(dyysect_ok_button, False, True, 5)
         self.dysect_dialog.vbox.pack_end(box2, False, False, 0)
+        self.dysect_dialog.vbox.pack_end(vis_box, False, False, 5)
         self.dysect_dialog.show_all()
 
         if not os.path.exists(dysect_outfile):
@@ -1670,15 +1794,15 @@ host[1-10,12,15-20];otherhost[30]
             prev = ''
             dot_file_list = []
             break_next_iter = False
-            while 1 and self.dysect_session is True:
+            while 1 and self.dysect_session is True and self.STAT != None:
                 filename = self.STAT.getLastDotFilename()
                 if filename != "NULL" and filename != prev:
                     prev = filename
-                    for file in os.listdir(out_dir):
-                        if file.find('.dot') == -1 or file in dot_file_list:
+                    for file in os.listdir(self.out_dir):
+                        if file.find('.dot') == -1 or file in dot_file_list or file == "dysect_session.dot":
                             continue
                         dot_file_list.append(file)
-                        filename = os.path.join(out_dir, file)
+                        filename = os.path.join(self.out_dir, file)
                         if len(dot_file_list) > 1:
                             page = self.notebook.get_current_page()
                             self.create_new_tab(page + 1)
@@ -1699,7 +1823,7 @@ host[1-10,12,15-20];otherhost[30]
                 run_gtk_main_loop()
                 if break_next_iter is True:
                     break
-                if self.dysect_session:
+                if self.dysect_session and self.STAT:
                     ret = self.STAT.dysectListen(False)
                     if ret != DysectAPI_SessionCont and ret != STAT_PENDING_ACK:
                         break_next_iter = True
@@ -2099,6 +2223,8 @@ host[1-10,12,15-20];otherhost[30]
         frame = gtk.Frame('Per Sample Options')
         vbox2 = gtk.VBox()
         self.pack_check_button(vbox2, 'With Threads', False, False, 5)
+        if HAVE_OPENMP_SUPPORT:
+            self.pack_check_button(vbox2, 'With OpenMP', False, False, 5)
         self.pack_check_button(vbox2, 'Gather Python Traces', False, False, 5)
         frame2 = gtk.Frame('Stack Frame (node) Sample Options')
         vbox3 = gtk.VBox()

@@ -17,7 +17,13 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Probe.h>
+#include <DysectAPI/Action.h>
+#include <DysectAPI/ProbeTree.h>
 #include <DysectAPI/Frontend.h>
+#include "STAT_FrontEnd.h"
 #include <signal.h>
 
 using namespace std;
@@ -34,6 +40,7 @@ bool Frontend::breakOnTimeout = true;
 class STAT_FrontEnd* Frontend::statFE = 0;
 extern bool checkAppExit();
 extern bool checkDaemonExit();
+extern void checkPendingActions(class STAT_FrontEnd *statFE);
 
 DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
   int ret = 0;
@@ -90,14 +97,16 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
       return DysectAPI::OK;
     }
 
+#ifdef STAT_FGFS
+    checkPendingActions(statFE);
+#endif
+
     if(ret == 0 && !blocking) {
       return DysectAPI::SessionCont;
     }
 
     // Look for owners
     vector<Domain*> doms = Domain::getFdsFromSet(fdRead);
-    if (iter_count % 10 == 0)
-        DYSECTLOG(true, "Listening over %d domains", doms.size());
 
     if(doms.size() == 0) {
       if(Frontend::breakOnTimeout && (--Frontend::numEvents < 0)) {
@@ -109,6 +118,9 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
     }
 
     for(int i = 0; i < doms.size(); i++) {
+      //TODO: when multiple packets from different domains present, this doesn't processes in time order
+      // also a problem when collect and finish packets received (processing finish before collect)
+      // could do network->recv() and getDomainFromTag
       Domain* dom = doms[i];
 
       PacketPtr packet;
@@ -134,6 +146,7 @@ DysectAPI::DysectErrorCode Frontend::listen(bool blocking) {
         if(packet->unpack("%d %auc", &count, &payload, &len) == -1) {
           return DYSECTWARN(Error, "Unpack error");
         }
+        DYSECTLOG(OK, "received packet with tag %d, count %d, len %d on domain %x", tag, count, len, dom->getId());
 
         if(Domain::isProbeEnabledTag(tag) || Domain::isProbeNotifyTag(tag)) {
           Domain* dom = 0;
@@ -184,6 +197,34 @@ DysectAPI::DysectErrorCode Frontend::broadcastStreamInits() {
 
   return OK;
 
+}
+
+DysectAPI::DysectErrorCode Frontend::createDotFile() {
+  int i;
+  FILE *file;
+  vector<Probe*> &roots = ProbeTree::getRoots();
+  long numRoots = roots.size();
+  string filename;
+
+  filename = statFE->getOutDir();
+  filename += "/dysect_session.dot";
+  file = fopen(filename.c_str(), "w");
+  if (file == NULL)
+    return DYSECTWARN(Error, "Failed to open %s", filename.c_str());
+
+  fprintf(file, "digraph G {\n");
+  fprintf(file, "  graph [type = \"dysect\"]\n");
+  fprintf(file, "  node [shape=record,style=filled,labeljust=c,height=0.2];\n");
+  fprintf(file, "  0 [label=\"/\", fillcolor=\"#aaaaaa\",fontcolor=\"#ffffff\"];\n");
+  for(i = 0; i < numRoots; i++) {
+    Probe* probe = roots[i];
+    string str = probe->dotStr();
+    fprintf(file, " %s", str.c_str());
+  }
+  fprintf(file, "}\n");
+  fclose(file);
+
+  return OK;
 }
 
 DysectAPI::DysectErrorCode Frontend::createStreams(struct DysectFEContext_t* context) {

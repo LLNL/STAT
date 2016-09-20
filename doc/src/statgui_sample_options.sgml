@@ -22,6 +22,14 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term><GUIbutton>With OpenMP</GUIbutton></term>
+    <listitem>
+        <para>
+        Translate OpenMP stacks into logical application view
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>Gather Python Traces</GUIbutton></term>
     <listitem>
         <para>

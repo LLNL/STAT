@@ -19,6 +19,8 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DYSECTAPI_AGGREGATE_h
 #define __DYSECTAPI_AGGREGATE_h
 
+#include <string>
+
 enum agg_type {
   minAgg = 1,
   maxAgg = 2,
@@ -31,8 +33,20 @@ enum agg_type {
 
   // Folds to aggregates
   descAgg = 8,
+  rankListAgg = 9,
 
-  rankListAgg = 9
+  // Dummy aggregate
+  firstAgg = 10,
+  lastAgg = 11,
+  bucketAgg = 13,
+  timeListAgg = 12,
+  rankBucketAgg = 14,
+  dataTracesAgg = 15,
+
+  // TraceAPI aggregates
+  collectValuesAgg = 16,
+  countInvocationsAgg = 17,
+  averageAgg = 18
 };
 
 #include <typeinfo>
@@ -53,6 +67,15 @@ enum agg_type {
 #include "DysectAPI/Aggregates/Location.h"
 #include "DysectAPI/Aggregates/DescVar.h"
 #include "DysectAPI/Aggregates/Packet.h"
+
+#include "DysectAPI/Aggregates/BucketAgg.h"
+#include "DysectAPI/Aggregates/TimeListAgg.h"
+#include "DysectAPI/Aggregates/RankBucketAgg.h"
+#include "DysectAPI/Aggregates/DataStackTrace.h"
+
+#include "DysectAPI/Aggregates/CollectValuesAgg.h"
+#include "DysectAPI/Aggregates/CountInvocationsAgg.h"
+#include "DysectAPI/Aggregates/AverageAgg.h"
 
 namespace DysectAPI {
   class Agg {

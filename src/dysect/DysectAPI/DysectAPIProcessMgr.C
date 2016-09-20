@@ -16,7 +16,9 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "DysectAPIProcessMgr.h"
+#include "DysectAPI/DysectAPI.h"
+#include "DysectAPI/ProcMap.h"
+#include "BPatch.h"
 
 using namespace std;
 using namespace DysectAPI;
@@ -28,6 +30,7 @@ ProcessSet::ptr ProcessMgr::detached = ProcessSet::newProcessSet();
 ProcessSet::ptr ProcessMgr::wasRunning = ProcessSet::newProcessSet();
 ProcessSet::ptr ProcessMgr::wasStopped = ProcessSet::newProcessSet();
 bool ProcessMgr::active = false;
+map<Process::const_ptr, ProcWait> ProcessMgr::procWait;
 
 bool ProcessMgr::init(ProcessSet::ptr allProcs) {
   if(!allProcs) {
@@ -40,13 +43,25 @@ bool ProcessMgr::init(ProcessSet::ptr allProcs) {
   return true;
 }
 
+bool ProcessMgr::addProc(Process::const_ptr process) {
+  if(!process) {
+    return false;
+  }
+
+  ProcessSet::ptr addSet = ProcessSet::newProcessSet(process);
+  ProcessMgr::allProcs = allProcs->set_union(addSet);
+
+  return true;
+}
+
+
 bool ProcessMgr::detach(Process::const_ptr process) {
   if(!process) {
     return false;
   }
 
   ProcessSet::ptr detachedSet = ProcessSet::newProcessSet(process);
-  
+
   return detach(detachedSet);
 }
 
@@ -55,19 +70,61 @@ bool ProcessMgr::detach(ProcessSet::ptr detachedSet) {
     return DYSECTWARN(false, "detach from empty detachSet");
   }
 
-  bool ret = detachedSet->temporaryDetach();
-  if (ret == false) {
-    return DYSECTWARN(false, "detach from detachSet failed: %s", ProcControlAPI::getLastErrorMsg());
+  ProcessSet::ptr alreadyDetached = detached->set_intersection(detachedSet);
+  ProcessSet::ptr detachedNow;
+
+  for(ProcessSet::iterator procIter = detachedSet->begin(); procIter != detachedSet->end(); ++procIter) {
+    Process::ptr pcProc = *procIter;
+    int rank = ProcMap::get()->getRank(pcProc);
+
+    DYSECTVERBOSE(true, "Detaching from process %d", rank);
   }
 
-  allProcs = allProcs->set_difference(detachedSet);
-  detached = detached->set_union(detachedSet);
+  if (alreadyDetached->size() != 0) {
+    DYSECTWARN(false, "ProcessMgr::detach: %d processes were already detached", alreadyDetached->size());
+    detachedNow = detachedSet->set_difference(alreadyDetached);
+  } else {
+    detachedNow = detachedSet;
+  }
 
-  return true;
+  if (detachedNow->size() == 0) {
+    return false;
+  }
+
+  DYSECTVERBOSE(true, "Detaching from %d processes", detachedNow->size());
+
+  // Calls to bpatchProcess->detach might block and process incomming dyninst events
+  //  this can cause race conditions if we do not mark the processes we are going to
+  //  detach beforehand. The incomming events might invoke detach and will think that
+  //  all processes are still attached.
+  allProcs = allProcs->set_difference(detachedNow);
+  detached = detached->set_union(detachedNow);
+
+  ProcessMgr::handled(ProcWait::detach, detachedSet);
+
+  DYSECTVERBOSE(true, "%d processes are detached", detached->size());
+  DYSECTVERBOSE(true, "%d processes remains running", allProcs->size());
+
+  bool res = true;
+  for(ProcessSet::iterator procIter = detachedNow->begin(); procIter != detachedNow->end(); ++procIter) {
+    Process::ptr pcProc = *procIter;
+    BPatch_process *bpatchProcess = ProcMap::get()->getDyninstProcess(pcProc);
+    if (bpatchProcess == NULL)
+      res = false;
+    else {
+      if (!bpatchProcess->isDetached()) {
+        bpatchProcess->detach(true);
+      } else {
+        res = false;
+      }
+    }
+  }
+
+  return res;
 }
 
 bool ProcessMgr::detachAll() {
-  
+
   DYSECTVERBOSE(true, "Detaching from all!");
 
   if(!allProcs)
@@ -88,7 +145,7 @@ bool ProcessMgr::detachAll() {
   DYSECTVERBOSE(true, "Get running set!");
   // Continue stopped processes
   ProcessSet::ptr runningProcs = allProcs->getAnyThreadRunningSubset();
- 
+
   if(runningProcs && (runningProcs->size() > 0)) {
     DYSECTVERBOSE(true, "Stopping %d processes...", runningProcs->size());
     runningProcs->stopProcs();
@@ -97,7 +154,7 @@ bool ProcessMgr::detachAll() {
 
   if(allProcs && allProcs->size() > 0) {
     DYSECTVERBOSE(true, "Detaching from %d processes...", allProcs->size());
-    allProcs->temporaryDetach();
+    detach(allProcs);
   }
 
   DYSECTVERBOSE(true, "Done");
@@ -113,7 +170,7 @@ bool ProcessMgr::isActive() {
   return active;
 }
 
-ProcessSet::ptr ProcessMgr::filterExited(ProcessSet::ptr inSet) { 
+ProcessSet::ptr ProcessMgr::filterExited(ProcessSet::ptr inSet) {
   if(!inSet)
     return inSet;
 
@@ -132,7 +189,7 @@ ProcessSet::ptr ProcessMgr::filterExited(ProcessSet::ptr inSet) {
 
     procs->insert(process);
   }
-  
+
   return procs;
 }
 
@@ -163,3 +220,91 @@ void ProcessMgr::setWasStopped() {
 ProcessSet::ptr ProcessMgr::getWasStopped() {
   return wasStopped;
 }
+
+bool ProcessMgr::stopProcs(ProcessSet::ptr procs) {
+  bool ret = true;
+  for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    Process::ptr pcProc = *procIter;
+    BPatch_process *bpatchProcess = ProcMap::get()->getDyninstProcess(pcProc);
+    if(!bpatchProcess->stopExecution())
+      ret = false;
+  }
+  return ret;
+}
+
+bool ProcessMgr::continueProcs(ProcessSet::ptr procs) {
+  bool ret = true;
+  for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    Process::ptr pcProc = *procIter;
+    BPatch_process *bpatchProcess = ProcMap::get()->getDyninstProcess(pcProc);
+    if(!bpatchProcess->continueExecution())
+      ret = false;
+  }
+  return ret;
+}
+
+bool ProcessMgr::continueProcsIfReady(Dyninst::ProcControlAPI::ProcessSet::const_ptr procs) {
+  bool ret = true;
+
+  for(ProcessSet::const_iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    continueProcIfReady(*procIter);
+  }
+
+  return ret;
+}
+
+bool ProcessMgr::continueProcIfReady(Dyninst::ProcControlAPI::Process::const_ptr pcProc) {
+  map<Process::const_ptr, ProcWait>::iterator it = procWait.find(pcProc);
+  if (it == procWait.end() || it->second.ready()) {
+    BPatch_process *bpatchProcess = ProcMap::get()->getDyninstProcess(pcProc);
+    if(!bpatchProcess->continueExecution()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void ProcessMgr::waitFor(ProcWait::Events event, Dyninst::ProcControlAPI::ProcessSet::ptr procs) {
+  for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    waitFor(event, *procIter);
+  }
+}
+
+void ProcessMgr::waitFor(ProcWait::Events event, Dyninst::ProcControlAPI::Process::const_ptr proc) {
+  ProcWait waitStatus;
+  map<Process::const_ptr, ProcWait>::iterator it = procWait.find(proc);
+  if (it != procWait.end()) {
+    waitStatus = it->second;
+  }
+
+  waitStatus.waitFor(event);
+  procWait[proc] = waitStatus;
+}
+
+void ProcessMgr::handled(ProcWait::Events event, Dyninst::ProcControlAPI::ProcessSet::ptr procs) {
+  for(ProcessSet::iterator procIter = procs->begin(); procIter != procs->end(); ++procIter) {
+    handled(event, *procIter);
+  }
+}
+
+void ProcessMgr::handled(ProcWait::Events event, Dyninst::ProcControlAPI::Process::const_ptr proc) {
+  ProcWait waitStatus;
+
+  map<Process::const_ptr, ProcWait>::iterator it = procWait.find(proc);
+  if (it != procWait.end()) {
+    waitStatus = it->second;
+  }
+
+  bool ready = waitStatus.handled(event);
+  procWait[proc] = waitStatus;
+
+  //TODO: Even if we are ready, we cannot resume the processes yet.
+  //  Right now the semantics of the handled method will only
+  //  schedule the process next time continueIfReady is called.
+  //  This should probably be changed, but right now the handled
+  //  method is called before the process is ready to resume
+  //  many places in the code base.
+}
+
+

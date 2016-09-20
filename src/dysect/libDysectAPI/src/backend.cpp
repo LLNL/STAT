@@ -17,7 +17,15 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Event.h>
+#include <DysectAPI/SafeTimer.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Probe.h>
+#include <DysectAPI/ProbeTree.h>
 #include <DysectAPI/Backend.h>
+#include <DysectAPI/ProcMap.h>
+#include <DysectAPI/Action.h>
 
 using namespace std;
 using namespace MRN;
@@ -33,14 +41,19 @@ using namespace SymtabAPI;
 
 enum            Backend::BackendState Backend::state = start;
 bool            Backend::streamBindAckSent = false;
+bool            Backend::returnControlToDysect = true;
 int             Backend::pendingExternalAction = 0;
+vector<DysectAPI::Probe*> Backend::pendingProbesToEnable;
 Stream*         Backend::controlStream = 0;
 set<tag_t>      Backend::missingBindings;
 WalkerSet*      Backend::walkerSet;
 vector<Probe *> Backend::probesPendingAction;
 pthread_mutex_t Backend::probesPendingActionMutex;
+vector<Probe *> Backend::probesPendingImmediateAction;
+pthread_mutex_t Backend::probesPendingImmediateActionMutex;
 ProcessSet::ptr Backend::enqueuedDetach;
 map<string, SymtabAPI::Symtab *> Backend::symtabs;
+char *DaemonHostname;
 
 DysectAPI::DysectErrorCode Backend::bindStream(int tag, Stream* stream) {
   int index = Domain::tagToId(tag);
@@ -132,8 +145,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
 
   // Let event know that it was triggered.
   // Used for event composition
-  Walker* proc = (Walker*)curProcess->getData();
-
+  Walker* proc = ProcMap::get()->getWalker(curProcess);
   if(!proc) {
     DYSECTWARN(true, "Missing payload in process object: could not get walker for PID %d", curProcess->getPid());
   } else {
@@ -189,6 +201,12 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               }
 
               probe->enqueueAction(curProcess, curThread);
+              if(probe->getActionPendingImmediate()) {
+                DYSECTVERBOSE(true, "Probe has actions that need to be triggered outside of callback");
+                pthread_mutex_lock(&probesPendingImmediateActionMutex);
+                probesPendingImmediateAction.push_back(probe);
+                pthread_mutex_unlock(&probesPendingImmediateActionMutex);
+              }
 
             } else { // No-wait probe
 
@@ -220,6 +238,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                     probe->sendEnqueuedActions();
               }
 
+              ProcessMgr::waitFor(ProcWait::probe, curProcess);
               retState = Process::cbThreadStop;
 
             } else {
@@ -227,21 +246,28 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
               probe->enqueueEnable(curProcess);
 
               probe->addWaitingProc(curProcess);
+
+              ProcessMgr::waitFor(ProcWait::enableChildren, curProcess);
               retState = Process::cbProcStop;
 
               if(probe->getLifeSpan() == fireOnce) {
                 DYSECTVERBOSE(true, "Requesting disablement of probe");
                 probe->enqueueDisable(curProcess);
+
+                ProcessMgr::waitFor(ProcWait::disable, curProcess);
                 retState = Process::cbProcStop;
               }
             }
 
-            if(probe->waitForOthers() && (probe->getProcessCount() >= lprocset->size())) {
-              DYSECTVERBOSE(true, "%d/%d group members reported, triggering action", probe->getProcessCount(), lprocset->size());
-              if (!DysectAPI::SafeTimer::resetSyncTimer(probe)) {
-                DYSECTWARN(false, "Failed to reset timer (%ld) and invoke: %x", dom->getWaitTime(), dom->getId());
-              }
-            }
+// TODO: the code below casues a problem when some daemons timeout while others get full set triggering
+// on the other hand, we waste a lot of time when full set triggered by everyone!
+//            if(probe->waitForOthers() && (probe->getProcessCount() >= lprocset->size())) {
+//              DYSECTVERBOSE(true, "%d/%d group members reported, triggering action", probe->getProcessCount(), lprocset->size());
+//              if (!DysectAPI::SafeTimer::resetSyncTimer(probe)) {
+//                DYSECTWARN(false, "Failed to reset timer (%ld) and invoke: %x", dom->getWaitTime(), dom->getId());
+//              }
+//            }
+
 #if 0
           } else if(result == CollectiveResolvable) {
             // Block process and await resolution of collective operations
@@ -250,6 +276,7 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
             Err::warn(false, "Condition stalls not yet supported");
 
             Err::verbose(true, "Stopping thread in process %d", curProcess->getPid());
+            // Remember to add an appropriate wait event to process manager!
             retState = Process::cbProcStop;
 
             //retState = Process::cbThreadStop;
@@ -259,6 +286,8 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
                 DYSECTVERBOSE(true, "Requesting disablement of unresolved probe");
                 // Get out of the way
                 probe->enqueueDisable(curProcess);
+
+                ProcessMgr::waitFor(ProcWait::disable, curProcess);
                 retState = Process::cbProcStop;
 
               } else {
@@ -271,13 +300,20 @@ Process::cb_ret_t Backend::handleEvent(Dyninst::ProcControlAPI::Process::const_p
         } else {
           DYSECTWARN(false, "Could not evaluate conditions for probe");
         }
-      } else {
+      } else { // if(probe->wasTriggered(curProcess, curThread))
         retState = Process::cbProcContinue;
       }
 
     }
   }
 
+  if (retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
+    // We must ask Dyninst "kindly" to cooperate on the process state
+    BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+    if (bproc != NULL)
+      bproc->keepStopped();
+  }
+  
   return retState;
 }
 
@@ -299,7 +335,7 @@ DysectAPI::DysectErrorCode Backend::pauseApplication() {
   if(allProcs->empty())
     return OK;
 
-  if(allProcs->stopProcs()) {
+  if(ProcessMgr::stopProcs(allProcs)) {
     DYSECTLOG(true, "stop all processes");
     return OK;
   } else {
@@ -323,12 +359,22 @@ DysectAPI::DysectErrorCode Backend::resumeApplication() {
   if(allProcs->empty())
     return OK;
 
-  if(allProcs->continueProcs()) {
+  if(ProcessMgr::continueProcsIfReady(allProcs)) {
     DYSECTLOG(true, "continue all processes");
     return OK;
   } else {
     return DYSECTWARN(Error, "Procset could not continue processes");
   }
+}
+
+
+bool Backend::getReturnControlToDysect() {
+  return returnControlToDysect;
+}
+
+void  Backend::setReturnControlToDysect(bool control) {
+  DYSECTLOG(true, "set returnControlToDysect %d %d", returnControlToDysect, control);
+  returnControlToDysect = control;
 }
 
 
@@ -342,8 +388,14 @@ void  Backend::setPendingExternalAction(int pending) {
 }
 
 DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stream* stream) {
+  if (tag == DysectGlobalActionTag) {
+    int streamId = (*packet)->get_StreamId();
+    DYSECTVERBOSE(true, "Got the action pack at stream id %d (%p)", streamId, stream);
 
-  if(tag == DysectGlobalReadyTag){
+    StopTrace::handleResultPackage(*packet, stream);
+
+    return OK;
+  } else if(tag == DysectGlobalReadyTag){
     // Stream to respond when all streams have been bound
     if(controlStream != 0) {
       return DYSECTWARN(Error, "Control stream already set");
@@ -366,7 +418,7 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
           return DYSECTWARN(StreamError, "Failed to bind stream!");
         }
       } else {
-        assert(!"Save packet until all streams have been bound to domains - not yet supported");
+        return DYSECTWARN(StreamError, "Save packet until all streams have been bound to domains - not yet supported");
       }
     }
     break;
@@ -401,8 +453,10 @@ DysectAPI::DysectErrorCode Backend::relayPacket(PacketPtr* packet, int tag, Stre
 }
 
 
-DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* context, bool pending) {
-  if(!pending) {
+DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* context, bool processingPending) {
+  vector<Probe*> roots;
+
+  if(!processingPending) {
     assert(context);
     assert(context->walkerSet);
 
@@ -410,11 +464,10 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
 
     Domain::setBEContext(context);
 
-    DysectAPI::DaemonHostname = context->hostname;
+    DaemonHostname = context->hostname;
   }
 
-  vector<Probe*> roots, removePending;
-  if(pending)
+  if(processingPending)
     roots = ProbeTree::getPendingRoots();
   else
     roots = ProbeTree::getRoots();
@@ -422,54 +475,48 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
   for(int i = 0; i < roots.size(); i++) {
     Probe* probe = roots[i];
 
-    // Prepare all streams ie. ensure all domain ids and tags are created
-    // for stream -> domain binding
-    if(probe->prepareStream(recursive) != OK) {
-      DYSECTWARN(Error, "Error occured while preparing streams");
-      if(!pending)
-        ProbeTree::addPendingRoot(probe);
-      continue;
+    if(!processingPending) {
+      // Prepare all streams ie. ensure all domain ids and tags are created
+      // for stream -> domain binding
+      if(probe->prepareStream(recursive) != OK) {
+        DYSECTWARN(Error, "Error occured while preparing streams");
+        continue;
+      }
     }
 
     if(probe->prepareEvent(recursive) != OK) {
-      if(!pending) {
+      if(!processingPending) {
         DYSECTLOG(Error, "Error occured while preparing events, adding to pending events");
         ProbeTree::addPendingRoot(probe);
       }
-      continue;
-      DYSECTWARN(Error, "Error occured while preparing events");
+      else {
+        DYSECTLOG(Error, "Error occured while preparing pending events, retaining in queue");
+        continue;
+      }
     }
 
     DYSECTVERBOSE(true, "Starting preparation of conditions");
 
     if(probe->prepareCondition(recursive) != OK) {
       DYSECTWARN(Error, "Error occured while preparing conditions");
-      if(!pending)
-        ProbeTree::addPendingRoot(probe);
       continue;
     }
 
     if(probe->prepareAction(recursive) != OK) {
       DYSECTWARN(Error, "Error occured while preparing actions");
-      if(!pending)
-        ProbeTree::addPendingRoot(probe);
       continue;
     }
 
-    if(pending) {
-      DYSECTVERBOSE(true, "Enabled pending probe %x", probe);
-      removePending.push_back(probe);
+    if(processingPending) {
+      DYSECTVERBOSE(true, "Prepared pending probe %x", probe);
+      pendingProbesToEnable.push_back(probe);
     }
   }
 
-  if(pending) {
-    if(removePending.size() == 0)
+  if(processingPending)
       return OK;
-    for(int i = 0; i < removePending.size(); i++)
-      ProbeTree::removePendingRoot(removePending[i]);
-  }
 
-  // Add all domains to missing bindings
+  // Add all domains to missing bindingsa
   map<tag_t, Domain*> domainMap = Domain::getDomainMap();
   map<tag_t, Domain*>::iterator domainIter = domainMap.begin();
   for(;domainIter != domainMap.end(); domainIter++) {
@@ -492,25 +539,35 @@ DysectAPI::DysectErrorCode Backend::prepareProbes(struct DysectBEContext_t* cont
       DYSECTVERBOSE(true, "No domains need to be bound - send ack");
       ackBindings();
     }
- } else {
+  } else {
+    DYSECTVERBOSE(true, "%d missing bindings", missingBindings.size());
     state = bindingStreams;
-
   }
 
   return OK;
 }
 
+DysectAPI::DysectErrorCode Backend::enablePending() {
+  for(int i = 0; i < pendingProbesToEnable.size(); i++) {
+    pendingProbesToEnable[i]->enable();
+    ProbeTree::removePendingRoot(pendingProbesToEnable[i]);
+  }
+  pendingProbesToEnable.clear();
+  return OK;
+}
+
+
 DysectAPI::DysectErrorCode Backend::registerEventHandlers() {
   Process::registerEventCallback(ProcControlAPI::EventType::Breakpoint, Backend::handleBreakpoint);
   Process::registerEventCallback(ProcControlAPI::EventType::Signal, Backend::handleSignal);
-  Process::registerEventCallback(ProcControlAPI::EventType::ThreadCreate, Backend::handleGenericEvent);
+  Process::registerEventCallback(ProcControlAPI::EventType::ThreadCreate, Backend::handleThreadCreateEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::ThreadDestroy, Backend::handleGenericEvent);
-  Process::registerEventCallback(ProcControlAPI::EventType::Fork, Backend::handleGenericEvent);
+  Process::registerEventCallback(ProcControlAPI::EventType::Fork, Backend::handleForkEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Exec, Backend::handleGenericEvent);
   Process::registerEventCallback(ProcControlAPI::EventType::Library, Backend::handleLibraryEvent);
-  Process::registerEventCallback(ProcControlAPI::EventType::Exit, Backend::handleProcessExit);
   Process::registerEventCallback(ProcControlAPI::EventType::Crash, Backend::handleCrash);
-
+  Process::registerEventCallback(ProcControlAPI::EventType(ProcControlAPI::EventType::Pre, ProcControlAPI::EventType::Exit),Backend::handleProcessExit);
+  
   return OK;
 }
 
@@ -520,6 +577,8 @@ WalkerSet* Backend::getWalkerset() {
 }
 
 Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev) {
+  //return Process::cbProcStop;
+
   Process::cb_ret_t retState = Process::cbThreadContinue;
 
   EventBreakpoint::const_ptr bpEvent = ev->getEventBreakpoint();
@@ -552,8 +611,15 @@ Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev)
         continue;
       }
 
+      int count1, count2;
+      count1 = getPendingExternalAction();
       // XXX: What to do with different ret states?
       retState = handleEvent(curProcess, curThread, dysectEvent);
+      count2 = getPendingExternalAction();
+      if (count2 > count1 && count2 != 0) {
+        DYSECTVERBOSE(true, "STAT3 action detected %d %d, deferring control...", count1, count2);
+        returnControlToDysect = false;
+      }
     }
   }
 
@@ -562,13 +628,15 @@ Process::cb_ret_t Backend::handleBreakpoint(ProcControlAPI::Event::const_ptr ev)
 }
 
 Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
-  Process::cb_ret_t retState = Process::cbDefault;
+  bool anyStopRequests = false;
+  Process::cb_ret_t retState = Process::cbDefault, savedState = Process::cbDefault;
   // Shut down non-recoverable
   EventSignal::const_ptr signal = ev->getEventSignal();
   Process::const_ptr curProcess = ev->getProcess();
   Thread::const_ptr curThread = ev->getThread();
 
   int signum = signal->getSignal();
+  DYSECTINFO(true, "Received signal %d", signum);
 
   set<DysectAPI::Event*> subscribedEvents;
 
@@ -577,7 +645,11 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
     for(;eventIter != subscribedEvents.end(); eventIter++) {
       DYSECTVERBOSE(true, "Handling signal %d.", signum);
       DysectAPI::Event* dysectEvent = *eventIter;
-      handleEvent(curProcess, curThread, dysectEvent);
+      retState = handleEvent(curProcess, curThread, dysectEvent);
+      if(retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
+        anyStopRequests = true;
+        savedState = retState;
+      }
     }
   } else {
     DYSECTINFO(true, "No handlers for signal %d", signum);
@@ -594,6 +666,7 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
       case SIGSEGV:
       case SIGFPE:
         DYSECTINFO(true, "Non recoverable signal %d - stopping process and enquing detach", signum);
+        ProcessMgr::waitFor(ProcWait::detach, curProcess);
         retState = Process::cbProcStop;
 
         // Enqueue termination
@@ -602,11 +675,21 @@ Process::cb_ret_t Backend::handleSignal(ProcControlAPI::Event::const_ptr ev) {
 
       // Non-fatal signals
       default:
-        retState = Process::cbDefault;
+        if(anyStopRequests == true)
+          retState = savedState;
+        else
+          retState = Process::cbDefault;
       break;
     }
   }
 
+  if (retState.parent == Process::cbProcStop || retState.parent == Process::cbThreadStop) {
+    // We must ask Dyninst "kindly" to cooperate on the process state
+    BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+    if (bproc != NULL)
+      bproc->keepStopped();
+  }
+  
   return retState;
 }
 
@@ -625,6 +708,11 @@ Process::cb_ret_t Backend::handleCrash(ProcControlAPI::Event::const_ptr ev) {
     }
   }
 
+  // We must ask Dyninst "kindly" to cooperate on the process state
+  BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+  if (bproc != NULL)
+    bproc->keepStopped();
+  
   return Process::cbProcStop;
 }
 
@@ -649,6 +737,12 @@ Process::cb_ret_t Backend::handleProcessExit(ProcControlAPI::Event::const_ptr ev
   }
 
   Backend::enqueueDetach(curProcess);
+  ProcessMgr::waitFor(ProcWait::detach, curProcess);
+  
+  // We must ask Dyninst "kindly" to cooperate on the process state
+  BPatch_process* bproc = ProcMap::get()->getDyninstProcess(curProcess);
+  if (bproc != NULL)
+    bproc->keepStopped();
 
   return Process::cbProcStop;
 }
@@ -658,7 +752,7 @@ DysectErrorCode Backend::loadLibrary(Dyninst::ProcControlAPI::Process::ptr proce
 
   result = process->addLibrary(libraryPath);
   if (!result) {
-    DYSECTWARN(false, "Failed to add library %s", libraryPath.c_str());
+    DYSECTWARN(false, "Failed to add library %s: %s", libraryPath.c_str(), Stackwalker::getLastErrorMsg());
     return LibraryNotLoaded;
   }
 
@@ -832,6 +926,35 @@ Process::cb_ret_t Backend::handleGenericEvent(ProcControlAPI::Event::const_ptr e
 }
 
 
+Process::cb_ret_t Backend::handleThreadCreateEvent(ProcControlAPI::Event::const_ptr ev) {
+  DYSECTVERBOSE(true, "Handling Thread Create Event");
+
+  EventNewThread::const_ptr evNewThread = ev->getEventNewThread();
+  Thread::const_ptr thread = evNewThread->getNewThread();
+
+  return Process::cbDefault;
+}
+
+
+Process::cb_ret_t Backend::handleForkEvent(ProcControlAPI::Event::const_ptr ev) {
+  DYSECTVERBOSE(true, "Handling Fork Event");
+
+  EventFork::const_ptr evFork = ev->getEventFork();
+  Process::const_ptr process = evFork->getChildProcess();
+
+  ProcessMgr::addProc(process);
+
+  //Walker *walker = Walker::newWalker(process->getPid()); // fails b/c can't attach in CB
+  ////Walker *walker = Walker::newWalker(process); //constructor takes Process::ptr, not const_ptr
+  //if (walker == NULL);
+  //  DYSECTWARN(false, "Failed to create walker for pid %d: %s", process->getPid(), Stackwalker::getLastErrorMsg());
+  //process->setData(walker);
+
+  DYSECTVERBOSE(true, "Handled Fork Event for pid %d", process->getPid());
+
+  return Process::cbDefault;
+}
+
 Process::cb_ret_t Backend::handleLibraryEvent(ProcControlAPI::Event::const_ptr ev) {
   vector<Probe*> roots = ProbeTree::getPendingRoots();
   EventLibrary::const_ptr evLib = ev->getEventLibrary();
@@ -877,29 +1000,62 @@ DysectAPI::DysectErrorCode Backend::handleTimerEvents() {
 
 
 DysectAPI::DysectErrorCode Backend::handleTimerActions() {
-  pthread_mutex_lock(&probesPendingActionMutex);
-  if (probesPendingAction.size() > 0) {
-    DYSECTVERBOSE(true, "Handle timer actions");
-    vector<Probe*>::iterator probeIter = probesPendingAction.begin();
-    for(;probeIter != probesPendingAction.end(); probeIter++) {
-      Probe* probe = *probeIter;
-      Domain* dom = probe->getDomain();
 
-      DYSECTVERBOSE(true, "Sending enqueued actions for timed probe: %x", dom->getId());
-      probe->sendEnqueuedActions();
-
-      if(probe->numWaitingProcs() > 0) {
-        ProcessSet::ptr lprocset = probe->getWaitingProcs();
-        probe->enableChildren(lprocset);
-        if(probe->getLifeSpan() == fireOnce)
-          probe->disable(lprocset);
-        lprocset->continueProcs();
-        probe->releaseWaitingProcs();
-      }
+  /* We cannot handle triggered probes while holding the mutex.
+     Handling probes may include calls to ProcControl, which
+     may call its internal event handler. If the event handler
+     finds new events, it will call DySect that will try to
+     enqueue them. To do this, the mutex must be available. */
+  
+  while (true) {
+    Probe* probe;
+    
+    pthread_mutex_lock(&probesPendingActionMutex);
+    if (probesPendingAction.size() == 0) {
+      pthread_mutex_unlock(&probesPendingActionMutex);
+      break;
     }
-    probesPendingAction.clear();
+    probe = probesPendingAction.back();
+    probesPendingAction.pop_back();
+    pthread_mutex_unlock(&probesPendingActionMutex);
+
+    Domain* dom = probe->getDomain();
+
+    DYSECTVERBOSE(true, "Sending enqueued actions for timed probe: %x", dom->getId());
+    probe->sendEnqueuedActions();
+
+    if(probe->numWaitingProcs() > 0) {
+      ProcessSet::ptr lprocset = probe->getWaitingProcs();
+      probe->enableChildren(lprocset);
+      if(probe->getLifeSpan() == fireOnce)
+        probe->disable(lprocset);
+      probe->releaseWaitingProcs();
+      ProcessMgr::continueProcsIfReady(lprocset);
+    }
   }
-  pthread_mutex_unlock(&probesPendingActionMutex);
+  return OK;
+}
+
+DysectAPI::DysectErrorCode Backend::handleImmediateActions() {
+  while (true) {
+    Probe* probe;
+
+    pthread_mutex_lock(&probesPendingActionMutex);
+    if(probesPendingImmediateAction.size() == 0) {
+      pthread_mutex_unlock(&probesPendingActionMutex);
+      break;
+    }
+    probe = probesPendingImmediateAction.back();
+    probesPendingImmediateAction.pop_back();
+    pthread_mutex_unlock(&probesPendingActionMutex);
+
+    Domain* dom = probe->getDomain();
+
+    DYSECTVERBOSE(true, "Triggering actions for immediate probe on domain %x", dom->getId());
+    Process::ptr process;
+    Thread::ptr thread;
+    probe->triggerAction(process, thread, true);
+  }
   return OK;
 }
 
@@ -964,7 +1120,7 @@ Process::cb_ret_t Backend::handleTimeEvent() {
       Process::ptr procPtr = *procIter;
       if(event && event->isEnabled(procPtr)) {
         Thread::ptr threadPtr = procPtr->threads().getInitialThread();
-        Walker *proc = (Walker *)procPtr->getData();
+        Walker *proc = ProcMap::get()->getWalker(procPtr);
         handleEvent(procPtr, threadPtr, event);
       }
     }

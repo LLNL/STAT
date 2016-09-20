@@ -17,6 +17,9 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Parser.h>
+#include <DysectAPI/Group.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -26,6 +29,7 @@ using namespace ProcControlAPI;
 // Look-up tables for domain expression resolving
 Group::Group(string groupExpr, long waitTime, bool lblocking) : groupExpr(groupExpr), 
                                                 Domain(waitTime, lblocking, GroupDomain) {
+  domainType = GroupDomain;
 }
 
 

@@ -30,6 +30,9 @@
 <!ENTITY stat_preference_files SYSTEM "stat_preference_files.sgml">
 <!ENTITY stat_preferences SYSTEM "stat_preferences.sgml">
 <!ENTITY stat_environment_variables SYSTEM "stat_environment_variables.sgml">
+<!ENTITY dysectapi_overview SYSTEM "dysectapi_overview.sgml">
+<!ENTITY dysectapi_installation SYSTEM "dysectapi_installation.sgml">
+<!ENTITY dysectapi_usage SYSTEM "dysectapi_usage.sgml">
 <!ENTITY stat_troubleshoot SYSTEM "stat_troubleshoot.sgml">
 <!ENTITY stat_bibliography SYSTEM "stat_bibliography.sgml">
 <!ENTITY stat_batch_script SYSTEM "stat_batch_script.sgml">
@@ -54,8 +57,11 @@
     <author><firstname>Dorian C.</firstname><surname>Arnold</surname></author>
     <author><firstname>Dong H.</firstname><surname>Ahn</surname></author>
     <author><firstname>Bronis R.</firstname><surname>de Supinski</surname></author>
+    <author><firstname>Nicklas B.</firstname><surname>Jensen</surname></author>
+    <author><firstname>Sven</firstname><surname>Karlsson</surname></author>
     <author><firstname>Matthew P.</firstname><surname>LeGendre</surname></author>
     <author><firstname>Barton P.</firstname><surname>Miller</surname></author>
+    <author><firstname>Niklas Q.</firstname><surname>Nielsen</surname></author>
     <author><firstname>Martin</firstname><surname>Schulz</surname></author>
 </bookinfo>
 <preface>
@@ -106,6 +112,12 @@
     <section><title>Preference Files</title>&stat_preference_files</section>
     <section><title>Loading and Saving Preferences</title>&stat_preferences</section>
     <section><title>Environment Variables</title>&stat_environment_variables</section>
+</chapter>
+<chapter>
+    <title>Prescription-Based Debugging With Prototype DySectAPI</title>
+    <section><title>Overview</title>&dysectapi_overview</section>
+    <section><title>Installation</title>&dysectapi_installation</section>
+    <section><title>Usage</title>&dysectapi_usage</section>
 </chapter>
 <chapter>
     <title>Tips and Tricks Using STAT</title>

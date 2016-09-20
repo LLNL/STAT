@@ -16,10 +16,10 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-#include "DysectAPI/DysectAPIFE.h" 
-#include "STAT_FrontEnd.h"
-
+#include "DysectAPI/DysectAPI.h"
+#include "DysectAPI/DysectAPIFE.h"
 #include "DysectAPI/Frontend.h"
+#include "STAT_FrontEnd.h"
 
 using namespace std;
 using namespace DysectAPI;
@@ -28,7 +28,8 @@ extern FILE *gStatOutFp;
 
 // XXX: Refactoring work: move logic to API
 
-FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
+FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout, int argc, char **argv) : controlStream(0) {
+  int dysectVerbosity = DYSECT_VERBOSE_DEFAULT;
   assert(fe != 0);
   assert(libPath != 0);
 
@@ -44,9 +45,11 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
   filterPath = fe->filterPath_;
 
   bool useStatOutFpPrintf = false;
-  if (fe->logging_ & STAT_LOG_FE)
+  if (fe->logging_ & STAT_LOG_FE) {
+    dysectVerbosity = DYSECT_VERBOSE_FULL;
     useStatOutFpPrintf = true;
-  Err::init(stderr, gStatOutFp, fe->outDir_, useStatOutFpPrintf);
+  }
+  Err::init(stderr, gStatOutFp, dysectVerbosity, fe->outDir_, useStatOutFpPrintf);
 
   sessionLib = new SessionLibrary(libPath);
 
@@ -72,14 +75,14 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
   // Map front-end related library methods
   //
 
-  DysectAPI::defaultProbes();
+  defaultProbes();
 
   if(sessionLib->mapMethod<proc_start_t>("on_proc_start", &lib_proc_start) != OK) {
     loaded = false;
     return ;
   }
   // Setup session
-  lib_proc_start();
+  lib_proc_start(argc, argv);
 
   int upstreamFilterId = network->load_FilterFunc(filterPath, "dysectAPIUpStream");
   if (upstreamFilterId == -1)
@@ -97,6 +100,8 @@ FE::FE(const char* libPath, STAT_FrontEnd* fe, int timeout) : controlStream(0) {
     return ;
   }
 
+  Frontend::createDotFile();
+
   loaded = true;
 }
 
@@ -106,9 +111,26 @@ FE::~FE() {
   }
 }
 
-DysectErrorCode FE::requestBackendSetup(const char *libPath) {
+DysectErrorCode packArgs(int argc, char **argv, char **buf, int &bufSize) {
+  int i, offset = 0;
+
+  for (i = 0; i < argc; i++) {
+    bufSize += strlen(argv[i]) + 1;
+    *buf = (char *)realloc(*buf, bufSize);
+    if (buf == NULL) {
+      return Error;
+    }
+    strcpy(*buf + offset, argv[i]);
+    offset += strlen(argv[i]) + 1;
+  }
+  return OK;
+}
+
+DysectErrorCode FE::requestBackendSetup(const char *libPath, int argc, char **argv) {
 
   struct timeval start, end;
+  char *buf = NULL;
+  int bufSize = 0;
   gettimeofday(&start, NULL);
 
   MRN::Communicator* broadcastCommunicator = network->get_BroadcastCommunicator();
@@ -127,13 +149,16 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
   //
   // Send library path to all backends
   //
-  if (controlStream->send(PROT_LOAD_SESSION_LIB, "%s", libPath) == -1) {
+  if (packArgs(argc, argv, &buf, bufSize) != OK) {
     return Error;
   }
-
+  if (controlStream->send(PROT_LOAD_SESSION_LIB, "%s %d %ac", libPath, argc, buf, bufSize) == -1) {
+    return Error;
+  }
   if (controlStream->flush() == -1) {
     return Error;
   }
+  free(buf);
 
   //
   // Block and wait for all backends to acknowledge
@@ -145,10 +170,12 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
 #ifdef STAT_FGFS
   unsigned int streamId = 0;
   StatError_t statError;
+  vector<MRN::Stream *> expectedStreams;
 
+  expectedStreams.push_back(controlStream);
   do
   {
-    statError = statFE->waitForFileRequests(streamId, tag, packet, ret);
+    statError = statFE->waitForFileRequests(streamId, tag, packet, ret, expectedStreams);
     if (statError == STAT_PENDING_ACK)
     {
         usleep(1000);
@@ -214,7 +241,7 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
     fprintf(stderr, "Frontend: %d backends reported error while bindings streams\n", numIllBackends);
     return Error;
   }
-  
+
   //
   // Kick off session
   //
@@ -235,9 +262,9 @@ DysectErrorCode FE::requestBackendSetup(const char *libPath) {
   long endms = ((end.tv_sec) * 1000) + ((end.tv_usec) / 1000);
 
   long elapsedms = endms - startms;
-  
+
   DYSECTVERBOSE(true, "DysectAPI setup took %ld ms", elapsedms);
-  
+
   return OK;
 }
 

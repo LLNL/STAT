@@ -19,12 +19,16 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __DOMAIN_H
 #define __DOMAIN_H
 
+#include <string>
+#include <vector>
+#include <map>
+
 namespace DysectAPI {
   class World;
   class Group;
   class Domain;
   class Inherit;
-  
+
   namespace Wait {
     enum WaitTime {
       inherit = - 2,
@@ -51,7 +55,7 @@ namespace DysectAPI {
   protected:
     static MRN::Network *network;
     static int upstreamFilterId;
-    
+
     static MPIR_PROCDESC_EXT *processTable;
     static long processTableSize;
 
@@ -79,7 +83,7 @@ namespace DysectAPI {
 
     MRN::Communicator *comm;
     MRN::Stream *stream;
-    
+
     tag_t initTag;
     tag_t initAckTag;
     tag_t exitTag;
@@ -98,6 +102,7 @@ namespace DysectAPI {
 
   public:
 
+    std::string str();
     static tag_t tagToId(tag_t tag);
     static bool addToMap(Domain* dom);
     static std::map<tag_t, Domain*>& getDomainMap();
@@ -115,6 +120,8 @@ namespace DysectAPI {
 
     static std::map<int, Dyninst::ProcControlAPI::Process::ptr> *getMpiRankToProcessMap();
     static int getTotalNumProcs();
+    static Dyninst::ProcControlAPI::ProcessSet::ptr getAllProcesses();
+    static Dyninst::Stackwalker::WalkerSet* getAllWalkers();
 
     static bool setFEContext(struct DysectFEContext_t* context);
     static bool setBEContext(struct DysectBEContext_t* context);

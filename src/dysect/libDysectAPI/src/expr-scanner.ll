@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <LibDysectAPI.h>
+#include <DysectAPI/Expr.h>
 #include <expr-parser.h>
 
 extern int yyerror(const char *p, ...);

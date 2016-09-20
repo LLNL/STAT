@@ -34,6 +34,42 @@ namespace std{
 %include "carrays.i"
 %array_class(int, intArray)
 
+// This tells SWIG to treat char ** as a special case
+%typemap(in) char **
+{
+    /* Check if is a list */
+    if (PyList_Check($input))
+    {
+        int size = PyList_Size($input);
+        int i = 0;
+        $1 = (char **) malloc((size+1)*sizeof(char *));
+        for (i = 0; i < size; i++)
+        {
+            PyObject *o = PyList_GetItem($input,i);
+            if (PyString_Check(o))
+                $1[i] = PyString_AsString(PyList_GetItem($input,i));
+            else
+            {
+                PyErr_SetString(PyExc_TypeError,"list must contain strings");
+                free($1);
+                return NULL;
+            }
+        }
+        $1[i] = 0;
+    }
+    else
+    {
+        PyErr_SetString(PyExc_TypeError,"not a list");
+        return NULL;
+    }
+}
+
+// This cleans up the char ** array we mallocd before the function call
+%typemap(freearg) char **
+{
+    free((char *) $1);
+}
+
 #define STAT_UNKNOWN -1
 
 enum StatLogOptions_t {
@@ -54,7 +90,10 @@ enum StatSampleOptions_t {
     STAT_SAMPLE_THREADS = 0x08,
     STAT_SAMPLE_CLEAR_ON_SAMPLE = 0x10,
     STAT_SAMPLE_PYTHON = 0x20,
-    STAT_SAMPLE_MODULE_OFFSET = 0x40
+    STAT_SAMPLE_MODULE_OFFSET = 0x40,
+#ifdef OMP_STACKWALKER
+    STAT_SAMPLE_OPENMP = 0x80
+#endif
 } ;
 
 typedef enum {
@@ -208,7 +247,7 @@ class STAT_FrontEnd
         const char *getInstallPrefix();
         void getVersion(int *version);
 #ifdef DYSECTAPI
-        StatError_t dysectSetup(const char *dysectApiSessionPath, int dysectTimeout);
+        StatError_t dysectSetup(const char *dysectApiSessionPath, int dysectTimeout, int argc, char **argv);
         StatError_t dysectListen(bool blocking = true);
         StatError_t dysectStop();
 #endif

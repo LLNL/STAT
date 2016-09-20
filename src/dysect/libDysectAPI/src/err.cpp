@@ -17,6 +17,7 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -26,6 +27,10 @@ FILE* Err::outStream;
 FILE* Err::outFile;
 extern FILE *gStatOutFp;
 bool Err::useStatOutFp_ = false;
+int Err::verbosityLevel_ = DYSECT_VERBOSE_DEFAULT;
+#ifdef __DYSECT_IS_BACKEND
+extern char * DaemonHostname;
+#endif
 
 #define DYSECT_LOG
 #define DYSECT_INFO
@@ -33,26 +38,30 @@ bool Err::useStatOutFp_ = false;
 #define DYSECT_VERBOSE
 #define DYSECT_LOG_LINE
 
-void Err::init(FILE* estream, FILE* ostream, const char *outDir, bool useStatOutFp) {
-    char outFilename[1024];
+void Err::init(FILE* estream, FILE* ostream, int verbosityLevel, const char *outDir, bool useStatOutFp) {
+    char outFilename[8192];
     errStream = estream;
     outStream = ostream;
     useStatOutFp_ = useStatOutFp;
+    verbosityLevel_ = verbosityLevel;
     if(environment == FrontendEnvironment && outDir != NULL) {
-        snprintf(outFilename, 1024, "%s/dysect_output.txt", outDir);
+        snprintf(outFilename, 8192, "%s/dysect_output.txt", outDir);
         outFile = fopen(outFilename, "w");
     }
 }
 
 DysectErrorCode Err::log(int line, const char *file, DysectErrorCode code, const std::string fmt, ...) {
 #ifdef DYSECT_LOG
+  if(verbosityLevel_ & DYSECT_VERBOSE_LOG) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Log, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Log);
     va_end (args);
+  }
 #endif
 
     return code;
@@ -60,13 +69,16 @@ DysectErrorCode Err::log(int line, const char *file, DysectErrorCode code, const
 
 bool Err::log(int line, const char *file, bool result, const std::string fmt, ...) {
 #ifdef DYSECT_LOG
+  if(verbosityLevel_ & DYSECT_VERBOSE_LOG) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Log, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Log);
     va_end (args);
+  }
 #endif
 
     return result;
@@ -74,25 +86,31 @@ bool Err::log(int line, const char *file, bool result, const std::string fmt, ..
 
 void Err::log(int line, const char *file, const std::string fmt, ...) {
 #ifdef DYSECT_LOG
+  if(verbosityLevel_ & DYSECT_VERBOSE_LOG) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Log, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Log);
     va_end (args);
+  }
 #endif
 }
 
 DysectErrorCode Err::verbose(int line, const char *file, DysectErrorCode code, const std::string fmt, ...) {
 #ifdef DYSECT_VERBOSE
+  if(verbosityLevel_ & DYSECT_VERBOSE_VERBOSE) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Verbose, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Verbose);
     va_end (args);
+  }
 #endif
 
     return code;
@@ -100,13 +118,16 @@ DysectErrorCode Err::verbose(int line, const char *file, DysectErrorCode code, c
 
 bool Err::verbose(int line, const char *file, bool result, const std::string fmt, ...) {
 #ifdef DYSECT_VERBOSE
+  if(verbosityLevel_ & DYSECT_VERBOSE_VERBOSE) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Verbose, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Verbose);
     va_end (args);
+  }
 #endif
 
     return result;
@@ -114,25 +135,31 @@ bool Err::verbose(int line, const char *file, bool result, const std::string fmt
 
 void Err::verbose(int line, const char *file, const std::string fmt, ...) {
 #ifdef DYSECT_VERBOSE
+  if(verbosityLevel_ & DYSECT_VERBOSE_VERBOSE) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Verbose, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Verbose);
     va_end (args);
+  }
 #endif
 }
 
 DysectErrorCode Err::info(int line, const char *file, DysectErrorCode code, const std::string fmt, ...) {
 #ifdef DYSECT_INFO
+  if(verbosityLevel_ & DYSECT_VERBOSE_INFO) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Info, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Info);
     va_end (args);
+  }
 #endif
 
     return code;
@@ -140,13 +167,16 @@ DysectErrorCode Err::info(int line, const char *file, DysectErrorCode code, cons
 
 bool Err::info(int line, const char *file, bool result, const std::string fmt, ...) {
 #ifdef DYSECT_INFO
+  if(verbosityLevel_ & DYSECT_VERBOSE_INFO) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Info, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Info);
     va_end (args);
+  }
 #endif
 
     return result;
@@ -154,25 +184,31 @@ bool Err::info(int line, const char *file, bool result, const std::string fmt, .
 
 void Err::info(int line, const char *file, const std::string fmt, ...) {
 #ifdef DYSECT_INFO
+  if(verbosityLevel_ & DYSECT_VERBOSE_INFO) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Info, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Info);
     va_end (args);
+  }
 #endif
 }
 
 DysectErrorCode Err::warn(int line, const char *file, DysectErrorCode code, const std::string fmt, ...) {
 #ifdef DYSECT_WARN
+  if(verbosityLevel_ & DYSECT_VERBOSE_INFO) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Warn, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Warn);
     va_end (args);
+  }
 #endif
 
     return code;
@@ -180,13 +216,16 @@ DysectErrorCode Err::warn(int line, const char *file, DysectErrorCode code, cons
 
 bool Err::warn(int line, const char *file, bool result, const std::string fmt, ...) {
 #ifdef DYSECT_WARN
+  if(verbosityLevel_ & DYSECT_VERBOSE_INFO) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Warn, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Warn);
     va_end (args);
+  }
 #endif
 
     return result;
@@ -194,19 +233,25 @@ bool Err::warn(int line, const char *file, bool result, const std::string fmt, .
 
 void Err::warn(int line, const char *file, const std::string fmt, ...) {
 #ifdef DYSECT_WARN
+  if(verbosityLevel_ & DYSECT_VERBOSE_INFO) {
   #ifdef DYSECT_LOG_LINE
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Warn, "%s[%d]: ", file, line);
   #endif
     va_list args;
     va_start (args, fmt);
     write(fmt, args, Warn);
     va_end (args);
+  }
 #endif
 }
 
 DysectErrorCode Err::fatal(int line, const char *file, DysectErrorCode code, const std::string fmt, ...) {
 #ifdef DYSECT_LOG_LINE
+  if(verbosityLevel_ & DYSECT_VERBOSE_FATAL) {
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Fatal, "%s[%d]: ", file, line);
+  }
 #endif
     va_list args;
     va_start (args, fmt);
@@ -218,7 +263,10 @@ DysectErrorCode Err::fatal(int line, const char *file, DysectErrorCode code, con
 
 bool Err::fatal(int line, const char *file, bool result, const std::string fmt, ...) {
 #ifdef DYSECT_LOG_LINE
+  if(verbosityLevel_ & DYSECT_VERBOSE_FATAL) {
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Fatal, "%s[%d]: ", file, line);
+  }
 #endif
     va_list args;
     va_start (args, fmt);
@@ -230,7 +278,10 @@ bool Err::fatal(int line, const char *file, bool result, const std::string fmt, 
 
 void Err::fatal(int line, const char *file, const std::string fmt, ...) {
 #ifdef DYSECT_LOG_LINE
+  if(verbosityLevel_ & DYSECT_VERBOSE_FATAL) {
+   if(verbosityLevel_ & DYSECT_VERBOSE_LOG_LINE)
     write(Fatal, "%s[%d]: ", file, line);
+  }
 #endif
     va_list args;
     va_start (args, fmt);
@@ -251,7 +302,7 @@ void Err::write(const std::string fmt, va_list args, enum msgType type) {
     struct tm *localTime = localtime(&currentTime);
     const char *timeFormat = "%b %d %T";
 
-    const int bufSize = 512;
+    const int bufSize = 2048;
 
     char timeString[bufSize];
     char strBuf[bufSize];
@@ -283,11 +334,14 @@ void Err::write(const std::string fmt, va_list args, enum msgType type) {
 
     char environmentStr[bufSize];
     if(environment == BackendEnvironment) {
-      if(DysectAPI::DaemonHostname != 0) {
-        snprintf(environmentStr, bufSize, "Backend(%s)", DysectAPI::DaemonHostname);
-      } else {
+#ifdef __DYSECT_IS_BACKEND
+//      if(DysectAPI::DaemonHostname != 0) {
+        snprintf(environmentStr, bufSize, "Backend(%s)", DaemonHostname);
+#else
+//      } else {
         snprintf(environmentStr, bufSize, "Backend(?)");
-      }
+#endif
+//      }
     } else if(environment == FrontendEnvironment) {
       snprintf(environmentStr, bufSize, "Frontend");
     } else {
@@ -311,6 +365,7 @@ void Err::write(const std::string fmt, va_list args, enum msgType type) {
 
     if(useStatOutFp_) {
       fprintf(gStatOutFp, "%s", msg);
+      fflush(gStatOutFp);
       if(type == Info && environment == FrontendEnvironment)
         fprintf(stdout, "%s", msg);
         fflush(stdout);
@@ -339,6 +394,7 @@ void Err::write(enum msgType type, const std::string fmt, ...) {
     vsnprintf(msg, 512, fmt.c_str(), arg);
     if(useStatOutFp_) {
       fprintf(gStatOutFp, "%s", msg);
+      fflush(gStatOutFp);
       if(type == Info && environment == FrontendEnvironment && fmt != "%s[%d]: ")
         fprintf(stdout, "%s", msg);
         fflush(stdout);

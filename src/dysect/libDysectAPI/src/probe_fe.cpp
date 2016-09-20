@@ -17,6 +17,10 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Domain.h>
+#include <DysectAPI/Probe.h>
+#include <DysectAPI/Action.h>
 
 using namespace std;
 using namespace DysectAPI;

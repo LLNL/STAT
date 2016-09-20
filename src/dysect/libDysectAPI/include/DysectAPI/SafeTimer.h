@@ -19,6 +19,9 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __SAFE_TIMER_H
 #define __SAFE_TIMER_H
 
+#include <vector>
+#include <map>
+
 namespace DysectAPI {
   class Probe;
 

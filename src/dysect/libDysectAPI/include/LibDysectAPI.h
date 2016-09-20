@@ -19,86 +19,94 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __LIBDYSECT_API_H
 #define __LIBDYSECT_API_H
 
-typedef enum DysectStatus {
-  DysectOK = 0,
-  DysectFailure = 1,
-  DysectDetach
-} DysectStatus;
-
-namespace DysectAPI {
-  /**
-   * Stop debugged process on program start.
-   * Initial probe code goes here to start event chains.
-   * Debugger backs off from process if status code is DysectDetach.
-   */
-  DysectStatus onProcStart();
-  DysectStatus defaultProbes();
-}
-
-extern "C" {
-  int on_proc_start();
-}
-
-#ifdef __DYSECT_SESSION_BUILD
-int on_proc_start() {
-  return DysectAPI::onProcStart();
-}
-#endif
-
 #include <map>
-#include <sys/select.h>
-#include <iostream>
-#include <vector>
-#include <string>
-#include <list>
 #include <stdio.h>
-#include <string>
-#include <stdarg.h>
-#include <pthread.h>
-
-// Communication headers
-#include "mrnet/MRNet.h"
-#include "lmon_api/lmon_fe.h"
-
-#include <signal.h>
-#include <time.h>
-#include <unistd.h>
+#include <dlfcn.h>
 
 #define CLOCKID CLOCK_REALTIME
 #define SIG SIGRTMIN
 
-// Dyninst headers
+#include "mrnet/MRNet.h"
+#include "lmon_api/lmon_proctab.h"
+
+#ifdef __DYSECT_IS_BACKEND
+#include "Event.h"
+#include "PCErrors.h"
+#include "local_var.h"
+#include "PlatFeatures.h"
+#include "ProcessSet.h"
+#include "PCErrors.h"
 #include "Symtab.h"
 #include "walker.h"
 #include "procstate.h"
 #include "frame.h"
 #include "swk_errors.h"
 #include "Type.h"
-#include "Event.h"
-#include "PlatFeatures.h"
-#include "ProcessSet.h"
-#include "PCErrors.h"
-#include "local_var.h"
+#else
+  #if defined(__DYSECT_IS_FRONTEND) || defined(__DYSECT_SESSION_BUILD)
+    #include "DysectAPI/FEDummyDyninst.h"
+  #endif
+#endif
 
-#include "STAT_shared.h"
 
-#include "DysectAPI/Aggregates/Aggregate.h"
+typedef enum DysectStatus {
+  DysectOK = 0,
+  DysectFailure = 1,
+  DysectDetach
+} DysectStatus;
 
-#include <DysectAPI/Err.h>
-#include <DysectAPI/Condition.h>
-#include <DysectAPI/Expr.h>
-#include <DysectAPI/Event.h>
-//#include <DysectAPI/Timer.h>
-#include <DysectAPI/SafeTimer.h>
-#include <DysectAPI/Symbol.h>
-#include <DysectAPI/Parser.h>
-#include <DysectAPI/Domain.h>
-#include <DysectAPI/Group.h>
-#include <DysectAPI/Probe.h>
-#include <DysectAPI/Action.h>
-#include <DysectAPI/ProbeTree.h>
 
-#include "DysectAPI/DysectAPIProcessMgr.h"
+namespace DysectAPI {
+  typedef enum RunTimeErrorCode {
+    OK,
+    Error,
+    InvalidSystemState,
+    LibraryNotLoaded,
+    SymbolNotFound,
+    SessionCont,
+    SessionQuit,
+    DomainNotFound,
+    NetworkError,
+    DomainExpressionError,
+    StreamError,
+    OptimizedOut,
+  } DysectErrorCode;
+
+
+
+  class SessionLibrary {
+    void* libraryHandle;
+
+    bool loaded;
+
+  public:
+    SessionLibrary(const char* libPath, bool broadcast = false);
+
+    bool isLoaded();
+    DysectErrorCode loadLibrary(const char *path);
+
+    template<typename T> DysectErrorCode mapMethod(const char *name, T* method) {
+      if(!libraryHandle) {
+        return LibraryNotLoaded;
+      }
+
+      dlerror();
+      *method = (T) dlsym(libraryHandle, name);
+
+      const char *dlsym_error = dlerror();
+      if(dlsym_error) {
+        fprintf(stderr, "Cannot load symbol '%s': %s\n", name, dlsym_error);
+        dlclose(libraryHandle);
+
+        return SymbolNotFound;
+      }
+
+      return OK;
+    }
+  };
+
+  bool isDysectTag(int tag);
+
 
 enum environmentType_t {
   BackendEnvironment,
@@ -106,7 +114,6 @@ enum environmentType_t {
   unknownEnvironment
 };
 
-namespace DysectAPI {
 #ifdef __DYSECT_IS_FRONTEND
   const environmentType_t environment = FrontendEnvironment;
 #elif __DYSECT_IS_BACKEND
@@ -115,7 +122,38 @@ namespace DysectAPI {
   const environmentType_t environment = unknownEnvironment;
 #endif
 
-  extern char *DaemonHostname;
 }
+
+typedef struct
+{
+    int count;
+    int *list;
+} IntList_t;
+
+#ifdef __DYSECT_IS_BACKEND
+struct DysectBEContext_t {
+  MPIR_PROCDESC_EXT *processTable;
+  int processTableSize;
+  Dyninst::Stackwalker::WalkerSet *walkerSet;
+  char *hostname;
+  std::map<int, Dyninst::ProcControlAPI::Process::ptr> *mpiRankToProcessMap;
+  class STAT_BackEnd* statBE;
+};
+#else
+struct DysectFEContext_t {
+  MRN::Network* network;
+  MPIR_PROCDESC_EXT *processTable;
+  int processTableSize;
+  std::map<int, IntList_t *>* mrnetRankToMpiRanksMap;
+  int upstreamFilterId;
+  class STAT_FrontEnd* statFE;
+};
+#endif
+
+
+const int DysectGlobalReadyTag     = 0x7e000009;
+const int DysectGlobalReadyRespTag = 0x7e00000A;
+const int DysectGlobalStartTag     = 0x7e00000B;
+const int DysectGlobalActionTag    = 0x7e00000C;
 
 #endif

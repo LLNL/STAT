@@ -19,6 +19,14 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __PROBE_H
 #define __PROBE_H
 
+#include <map>
+#include <vector>
+
+#include <DysectAPI/Aggregates/Aggregate.h>
+#include <DysectAPI/Aggregates/AggregateFunction.h>
+#include <DysectAPI/Condition.h>
+#include <DysectAPI/DysectAPIProcessMgr.h>
+
 namespace DysectAPI {
   class Probe;
   class Cond;
@@ -63,9 +71,13 @@ namespace DysectAPI {
 
     lifeSpan life;
 
+    const char *fileName;
+    int lineNo;
+
     int awaitingNotifications;
     int awaitingActions;
     int processCount;
+    bool actionPendingImmediate;
 
     bool procSetInitialized;
     Dyninst::ProcControlAPI::ProcessSet::ptr waitingProcs;
@@ -73,23 +85,26 @@ namespace DysectAPI {
 
     void linkComponents();
 
-    static pthread_mutex_t requestQueueMutex; 
+    static pthread_mutex_t requestQueueMutex;
     static std::vector<ProbeRequest*> requestQueue;
 
     std::map<int, AggregateFunction*> aggregates;
 
   public:
 
-    Probe(Event* event, Cond* cond = 0, Domain* dom = 0, DysectAPI::Act *act = 0, lifeSpan life = fireOnce);
-    Probe(Event* event, Cond* cond, Domain* dom, std::vector<DysectAPI::Act*> acts, lifeSpan life = fireOnce);
-    
-    Probe(Event* event, Domain* dom, DysectAPI::Act *act = 0, lifeSpan life = fireOnce);
-    Probe(Event* event, Domain* dom, std::vector<DysectAPI::Act*> acts, lifeSpan life = fireOnce);
+    Probe(const char *fileName, int lineNo, Event* event, Cond* cond = 0, Domain* dom = 0, DysectAPI::Act *act = 0, lifeSpan life = fireOnce);
+    Probe(const char *fileName, int lineNo, Event* event, Cond* cond, Domain* dom, std::vector<DysectAPI::Act*> acts, lifeSpan life = fireOnce);
 
-    Probe(Event* event, DysectAPI::Act *act, lifeSpan life = fireOnce);
-      
+    Probe(const char *fileName, int lineNo, Event* event, Domain* dom, DysectAPI::Act *act = 0, lifeSpan life = fireOnce);
+    Probe(const char *fileName, int lineNo, Event* event, Domain* dom, std::vector<DysectAPI::Act*> acts, lifeSpan life = fireOnce);
+
+    Probe(const char *fileName, int lineNo, Event* event, DysectAPI::Act *act, lifeSpan life = fireOnce);
+
     Probe* link(Probe* prob); //!< Adds prob as child to this probe
-    
+
+    std::string str();
+    std::string dotStr(int parentId = 0);
+    std::string edgeStrs(int parent);
     bool doNotify();
 
     bool enable(); //!< Arm probe
@@ -114,14 +129,15 @@ namespace DysectAPI {
     bool releaseWaitingProcs();
     int numWaitingProcs();
     bool staticGroupWaiting();
+    bool getActionPendingImmediate() { return actionPendingImmediate; }
 
     int getId();
     int getProcessCount();
 
     DysectErrorCode prepareStream(treeCallBehavior callBehavior = single); //!< Used by backend to bind stream to probe
-    
+
     DysectErrorCode prepareEvent(treeCallBehavior callBehavior = single);
-    
+
     DysectErrorCode prepareCondition(treeCallBehavior callBehavior = single);
 
     DysectErrorCode prepareAction(treeCallBehavior callBehavior = single);
@@ -133,21 +149,22 @@ namespace DysectAPI {
     DysectErrorCode broadcastStreamInit(treeCallBehavior callBehavior = single);
 
 
-    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process, 
+    bool wasTriggered(Dyninst::ProcControlAPI::Process::const_ptr process,
                       Dyninst::ProcControlAPI::Thread::const_ptr thread);
 
-    DysectErrorCode evaluateConditions(ConditionResult& result, 
-                                 Dyninst::ProcControlAPI::Process::const_ptr process, 
+    DysectErrorCode evaluateConditions(ConditionResult& result,
+                                 Dyninst::ProcControlAPI::Process::const_ptr process,
                                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
 
     DysectErrorCode notifyTriggered();
     DysectErrorCode enqueueNotifyPacket();
     DysectErrorCode sendEnqueuedNotifications();
 
-    DysectErrorCode triggerAction(Dyninst::ProcControlAPI::Process::const_ptr process, 
-                      Dyninst::ProcControlAPI::Thread::const_ptr thread);
+    DysectErrorCode triggerAction(Dyninst::ProcControlAPI::Process::const_ptr process,
+                      Dyninst::ProcControlAPI::Thread::const_ptr thread,
+                      bool onlyTriggerImmediate = false);
 
-    DysectErrorCode enqueueAction(Dyninst::ProcControlAPI::Process::const_ptr process, 
+    DysectErrorCode enqueueAction(Dyninst::ProcControlAPI::Process::const_ptr process,
                       Dyninst::ProcControlAPI::Thread::const_ptr thread);
 
     DysectErrorCode sendEnqueuedActions();
@@ -180,5 +197,7 @@ namespace DysectAPI {
     ProbeRequest() {}
   };
 }
+
+#define Probe(...) Probe(__FILE__, __LINE__, __VA_ARGS__)
 
 #endif

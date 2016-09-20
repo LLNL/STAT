@@ -17,6 +17,10 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Expr.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Symbol.h>
+#include <DysectAPI/ProcMap.h>
 #include <expr-parser.h>
 #include <expr-scanner.h>
 
@@ -57,7 +61,7 @@ DysectAPI::DysectErrorCode TargetVar::getValue(ConditionResult& result, Value& c
   vector<THR_ID> threads;
   int ret;
 
-  Walker* proc = (Walker*)process->getData();
+  Walker *proc = ProcMap::get()->getWalker(process);
   if(!proc) {
     return DYSECTWARN(Error, "Walker not found for process: %d", process->getPid());
   }

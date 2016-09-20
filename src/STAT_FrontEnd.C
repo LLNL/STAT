@@ -74,6 +74,11 @@ int gNumCallbacks;
 //! A mutex to protect data/events during a callback
 pthread_mutex_t gMrnetCallbackMutex = PTHREAD_MUTEX_INITIALIZER;
 
+extern const char *gNodeAttrs[];
+extern const char *gEdgeAttrs[];
+extern int gNumNodeAttrs;
+extern int gNumEdgeAttrs;
+
 
 STAT_FrontEnd::STAT_FrontEnd()
 {
@@ -222,15 +227,16 @@ STAT_FrontEnd::STAT_FrontEnd()
     statInitializeMergeFunctions();
 
     /* Get the FE hostname */
-#ifdef CRAYXT
     string temp;
     intRet = XPlat::NetUtils::GetLocalHostName(temp);
-    snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
-#else
-    intRet = gethostname(hostname_, BUFSIZE);
-#endif
-    if (intRet != 0)
-        printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
+    if (intRet == 0)
+        snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
+    else
+    {
+        intRet = gethostname(hostname_, BUFSIZE);
+        if (intRet != 0)
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
+    }
 
     /* Initialize variables */
     launcherPid_ = 0;
@@ -634,6 +640,14 @@ StatError_t STAT_FrontEnd::launchDaemons()
             printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get Process Table\n");
             return STAT_LMON_ERROR;
         }
+
+        /* Get the resource manager information from LaunchMON */
+        lmonRet = LMON_fe_getRMInfo(lmonSession_, &lmonRmInfo_);
+        if (lmonRet != LMON_OK)
+        {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get RM Info\n");
+            return STAT_LMON_ERROR;
+        }
     } /* if (applicationOption_ != STAT_SERIAL_ATTACH) */
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering application information\n");
@@ -869,36 +883,19 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     } /* if (applicationOption_ == STAT_SERIAL_ATTACH) */
     else
     {
-#ifdef CRAYXT
-        map<string, string> attrs;
-        char apidString[BUFSIZE];
-    #ifdef MRNET31
-        snprintf(apidString, BUFSIZE, "%d", launcherPid_);
-        attrs["CRAY_ALPS_APRUN_PID"] = apidString;
-        attrs["CRAY_ALPS_STAGE_FILES"] = filterPath_;
-    #else /* ifdef MRNET31 */
-        char *emsg;
-        int nid;
-        uint64_t apid;
-        emsg = alpsGetMyNid(&nid);
-        if (emsg)
+        if (lmonRmInfo_.rm_supported_types[lmonRmInfo_.index_to_cur_instance] == RC_alps)
         {
-            printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get nid\n");
-            return STAT_SYSTEM_ERROR;
+            map<string, string> attrs;
+            char apidString[BUFSIZE];
+
+            snprintf(apidString, BUFSIZE, "%d", launcherPid_);
+            attrs["CRAY_ALPS_APRUN_PID"] = apidString;
+            attrs["CRAY_ALPS_STAGE_FILES"] = filterPath_;
+
+            network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
         }
-        apid = alps_get_apid(nid, launcherPid_);
-        if (apid <= 0)
-        {
-            printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to get apid from aprun PID %d\n", launcherPid_);
-            return STAT_SYSTEM_ERROR;
-        }
-        snprintf(apidString, BUFSIZE, "%d", apid);
-        attrs["apid"] = apidString;
-    #endif /* ifdef MRNET31 */
-        network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-#else /* ifdef CRAYXT */
-        network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
-#endif /* ifdef CRAYXT */
+        else
+            network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
 
     } /* else branch of if (applicationOption_ == STAT_SERIAL_ATTACH) */
 
@@ -1340,122 +1337,195 @@ StatError_t STAT_FrontEnd::sendFileRequestStream()
 }
 
 
-StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int &streamId, int &returnTag, PacketPtr &packetPtr, int &intRetVal)
+StatError_t STAT_FrontEnd::waitForFileRequests(unsigned int &streamId, int &returnTag, PacketPtr &packetPtr, int &intRetVal, vector<Stream *> expectedStreams)
 {
-    int tag, intRet;
-    long signedFileSize;
-    uint64_t fileSize;
-    char *receiveFileName = NULL, *fileContents = NULL, errorMsg[BUFSIZE];
-    FILE *file = NULL;
+    char *receiveFileName = NULL;
     Stream *stream;
+    StatError_t statError;
 
     while (1)
     {
-        intRetVal = network_->recv(&returnTag, packetPtr, &stream, false);
+        // first check for file request
+        intRetVal = fileRequestStream_->recv(&returnTag, packetPtr, false);
         if (intRetVal == 0)
+        {
+            // no pending file request, check for other messages to forward
+            vector<Stream *>::iterator iter;
+            for (iter = expectedStreams.begin(); iter != expectedStreams.end(); iter++)
+            {
+                stream = *iter;
+                intRetVal = stream->recv(&returnTag, packetPtr, false);
+                if (intRetVal == 0)
+                    continue;
+                else if (intRetVal < 0)
+                {
+                    printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::recv() failure for stream ID %d\n", stream->get_Id());
+                    return STAT_MRNET_ERROR;
+                }
+                streamId = stream->get_Id();
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waitForFileRequests returing tag %d, stream ID %d\n", returnTag, streamId);
+                return STAT_OK;
+            }
             return STAT_PENDING_ACK;
+        }
         else if (intRetVal < 0)
         {
-            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "network::recv() failure\n");
+            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "fileRequestStream_::recv() failure\n");
             return STAT_MRNET_ERROR;
         }
 
-        if (returnTag != PROT_LIB_REQ)
-        {
-            streamId = stream->get_Id();
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "waitForFileRequests returing tag %d, stream ID %d\n", returnTag, streamId);
-            return STAT_OK;
-        }
+        // file request received
         if (packetPtr->unpack("%s", &receiveFileName) == -1)
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "packetPtr::unpack() failure\n");
             return STAT_MRNET_ERROR;
         }
 
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "received request for file %s\n", receiveFileName);
+        statError = serveFileRequest(receiveFileName);
+        if (statError != STAT_OK)
+        {
+            printMsg(statError, __FILE__, __LINE__, "Failed to serve file %s\n", receiveFileName);
+            isPendingAck_ = false;
+            return statError;
+        }
 
-        file = fopen(receiveFileName, "r");
-        if (file == NULL)
-        {
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%s: Failed to open file %s\n", strerror(errno), receiveFileName);
-            snprintf(errorMsg, BUFSIZE, "STAT FE failed to open file %s", receiveFileName);
-            fileSize = strlen(errorMsg) + 1;
-            fileContents = strdup(errorMsg);
-            if (fileContents == NULL)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %lu bytes\n", strerror(errno), fileSize);
-                return STAT_ALLOCATE_ERROR;
-            }
-            tag = PROT_LIB_REQ_ERR;
-        }
-        else
-        {
-            intRet = fseek(file, 0, SEEK_END);
-            if (intRet == -1)
-            {
-                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: failed to fseek file %s\n", strerror(errno), receiveFileName);
-                fclose(file);
-                return STAT_FILE_ERROR;
-            }
-            signedFileSize = ftell(file);
-            if (signedFileSize < 0)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: ftell returned %ld for %s\n", strerror(errno), signedFileSize, receiveFileName);
-                fclose(file);
-                return STAT_ALLOCATE_ERROR;
-            }
-            fileSize = signedFileSize;
-            intRet = fseek(file, 0, SEEK_SET);
-            if (intRet == -1)
-            {
-                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: failed to fseek file %s\n", strerror(errno), receiveFileName);
-                fclose(file);
-                return STAT_FILE_ERROR;
-            }
-            fileContents = (char *)malloc(fileSize * sizeof(char));
-            if (fileContents == NULL)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %lu bytes for contents\n", strerror(errno), fileSize);
-                fclose(file);
-                return STAT_ALLOCATE_ERROR;
-            }
-            intRet = fread(fileContents, fileSize, 1, file);
-            if (intRet < 1)
-            {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to fread %d, %d bytes for file %s, with return code %d\n", strerror(errno), fileSize, 1, receiveFileName, intRet);
-                fclose(file);
-                return STAT_ALLOCATE_ERROR;
-            }
-            intRet = ferror(file);
-            if (intRet == -1)
-            {
-                printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: ferror returned %d on fread of %s\n", strerror(errno), intRet, receiveFileName);
-                fclose(file);
-                return STAT_FILE_ERROR;
-            }
-            fclose(file);
-            tag = PROT_LIB_REQ_RESP;
-        }
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "sending contents of file %s, length %lu bytes\n", receiveFileName, fileSize);
-#ifdef MRNET40
-        if (stream->send(tag, "%Ac %s", fileContents, fileSize, receiveFileName) == -1)
-#else
-        if (stream->send(tag, "%ac %s", fileContents, fileSize, receiveFileName) == -1)
-#endif
-        {
-            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send file contents\n");
-            return STAT_MRNET_ERROR;
-        }
-        if (stream->flush() == -1)
-        {
-            printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to flush file contents\n");
-            return STAT_MRNET_ERROR;
-        }
-        if (fileContents != NULL)
-            free(fileContents);
         if (receiveFileName != NULL)
             free(receiveFileName);
     }
+    return STAT_OK;
+}
+
+StatError_t STAT_FrontEnd::serveFileRequest(const char *receiveFileName)
+{
+    int tag, intRet;
+    long signedFileSize;
+    uint64_t fileSize;
+    char *fileContents = NULL, errorMsg[BUFSIZE];
+    FILE *file = NULL;
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "received request for file %s\n", receiveFileName);
+
+    file = fopen(receiveFileName, "r");
+    if (file == NULL)
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%s: Failed to open file %s\n", strerror(errno), receiveFileName);
+        snprintf(errorMsg, BUFSIZE, "STAT FE failed to open file %s", receiveFileName);
+        fileSize = strlen(errorMsg) + 1;
+        fileContents = strdup(errorMsg);
+        if (fileContents == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %lu bytes\n", strerror(errno), fileSize);
+            return STAT_ALLOCATE_ERROR;
+        }
+        tag = PROT_LIB_REQ_ERR;
+    }
+    else
+    {
+        intRet = fseek(file, 0, SEEK_END);
+        if (intRet == -1)
+        {
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: failed to fseek file %s\n", strerror(errno), receiveFileName);
+            fclose(file);
+            return STAT_FILE_ERROR;
+        }
+        signedFileSize = ftell(file);
+        if (signedFileSize < 0)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: ftell returned %ld for %s\n", strerror(errno), signedFileSize, receiveFileName);
+            fclose(file);
+            return STAT_ALLOCATE_ERROR;
+        }
+        fileSize = signedFileSize;
+        intRet = fseek(file, 0, SEEK_SET);
+        if (intRet == -1)
+        {
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: failed to fseek file %s\n", strerror(errno), receiveFileName);
+            fclose(file);
+            return STAT_FILE_ERROR;
+        }
+        fileContents = (char *)malloc(fileSize * sizeof(char));
+        if (fileContents == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to malloc %lu bytes for contents\n", strerror(errno), fileSize);
+            fclose(file);
+            return STAT_ALLOCATE_ERROR;
+        }
+        intRet = fread(fileContents, fileSize, 1, file);
+        if (intRet < 1)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to fread %d, %d bytes for file %s, with return code %d\n", strerror(errno), fileSize, 1, receiveFileName, intRet);
+            fclose(file);
+            return STAT_ALLOCATE_ERROR;
+        }
+        intRet = ferror(file);
+        if (intRet == -1)
+        {
+            printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: ferror returned %d on fread of %s\n", strerror(errno), intRet, receiveFileName);
+            fclose(file);
+            return STAT_FILE_ERROR;
+        }
+        fclose(file);
+        tag = PROT_LIB_REQ_RESP;
+    }
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "sending contents of file %s, length %lu bytes\n", receiveFileName, fileSize);
+#ifdef MRNET40
+    if (fileRequestStream_->send(tag, "%Ac %s", fileContents, fileSize, receiveFileName) == -1)
+#else
+    if (fileRequestStream_->send(tag, "%ac %s", fileContents, fileSize, receiveFileName) == -1)
+#endif
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send file contents\n");
+        return STAT_MRNET_ERROR;
+    }
+    if (fileRequestStream_->flush() == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to flush file contents\n");
+        return STAT_MRNET_ERROR;
+    }
+    if (fileContents != NULL)
+        free(fileContents);
+    return STAT_OK;
+}
+
+StatError_t STAT_FrontEnd::checkFileRequest()
+{
+    int tag, intRetVal;
+    char *receiveFileName = NULL;
+    StatError_t statError;
+    PacketPtr packetPtr;
+
+    intRetVal = fileRequestStream_->recv(&tag, packetPtr, false);
+    if (intRetVal == 0)
+        return STAT_PENDING_ACK;
+    else if (intRetVal < 0)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "network::recv() failure\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    if (tag != PROT_LIB_REQ)
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "checkFileRequest received unexpected tag %d\n", tag);
+        return STAT_OK;
+    }
+    if (packetPtr->unpack("%s", &receiveFileName) == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "packetPtr::unpack() failure\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    statError = serveFileRequest(receiveFileName);
+    if (statError != STAT_OK)
+    {
+        printMsg(statError, __FILE__, __LINE__, "Failed to serve file %s\n", receiveFileName);
+        isPendingAck_ = false;
+        return statError;
+    }
+
+    if (receiveFileName != NULL)
+        free(receiveFileName);
+
+    return STAT_OK;
 }
 
 #endif /* STAT_FGFS */
@@ -1568,10 +1638,12 @@ StatError_t STAT_FrontEnd::startLog(unsigned int logType, char *logOutDir, bool 
 
 StatError_t STAT_FrontEnd::receiveAck(bool blocking)
 {
+    //TODO: break this into receiveAck and processAck?
     int tag, intRet;
     unsigned int streamId = 0;
     StatError_t statError;
     PacketPtr packet;
+    vector<Stream *> expectedStreams; //TODO: make this part of the FE class?
 
     if (isPendingAck_ == false)
         return STAT_OK;
@@ -1589,6 +1661,8 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
     }
 
     /* Receive an acknowledgement packet that all daemons have completed */
+    expectedStreams.push_back(broadcastStream_);
+    expectedStreams.push_back(mergeStream_);
     do
     {
         if (hasFatalError_ == true)
@@ -1598,7 +1672,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
             return STAT_DAEMON_ERROR;
         }
 #ifdef STAT_FGFS
-        statError = waitForFileRequests(streamId, tag, packet, intRet);
+        statError = waitForFileRequests(streamId, tag, packet, intRet, expectedStreams);
         if (statError == STAT_PENDING_ACK)
         {
             if (!WIFBESPAWNED(gsLmonState))
@@ -1675,6 +1749,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
     return STAT_OK;
 }
 
+
 StatError_t STAT_FrontEnd::setDaemonNodes()
 {
     set<MRN::NetworkTopology::Node *> nodes;
@@ -1700,6 +1775,15 @@ StatError_t STAT_FrontEnd::setDaemonNodes()
         intRet = XPlat::NetUtils::GetHostName((*nodeIter)->get_HostName(), prettyHost);
         if (intRet != 0)
             prettyHost = (*nodeIter)->get_HostName();
+
+#ifdef STAT_ALIAS_SUFFIX
+        // TODO: this is an ugly way of dealing with aliased hostnames
+        size_t pub;
+        pub = prettyHost.find(STAT_ALIAS_SUFFIX);
+        if (pub != string::npos)
+            prettyHost = prettyHost.substr(0, pub);
+#endif
+
         leafInfo_.daemons.insert(prettyHost);
         printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%s=%s, ", (*nodeIter)->get_HostName().c_str(), prettyHost.c_str());
     }
@@ -1774,6 +1858,15 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
             dotPos = tempString.find_first_of(".");
             if (dotPos != string::npos)
                 tempString = tempString.substr(0, dotPos);
+
+#ifdef STAT_ALIAS_SUFFIX
+            // TODO: this is an ugly way of dealing with aliased hostnames
+            size_t pub;
+            pub = tempString.find(STAT_ALIAS_SUFFIX);
+            if (pub != string::npos)
+                tempString = tempString.substr(0, pub);
+#endif
+
             /* TODO: this won't work if we move to multiple daemons per node */
             hostToMrnetRankMap[tempString.c_str()] = node->get_Rank();
         }
@@ -2449,6 +2542,16 @@ bool checkDaemonExit()
     return !WIFBESPAWNED(gsLmonState);
 }
 
+void checkPendingActions(STAT_FrontEnd *statFE)
+{
+#ifdef STAT_FGFS
+    StatError_t statError;
+    statError = statFE->checkFileRequest();
+    if (statError != STAT_OK && statError != STAT_PENDING_ACK)
+      statFE->printMsg(statError, __FILE__, __LINE__, "Unable to process file requests\n");
+#endif
+}
+
 StatError_t STAT_FrontEnd::attachApplication(bool blocking)
 {
     int tag;
@@ -2683,7 +2786,7 @@ bool STAT_FrontEnd::isRunning()
     return isRunning_;
 }
 
-StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, char *variableSpecification)
+StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, const char *variableSpecification)
 {
     StatError_t statError;
 
@@ -2850,6 +2953,9 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     uint64_t byteArrayLen;
     unsigned int sampleType;
     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL;
+#ifdef GRAPHLIB_3_0
+    char **graphAttrKeys, **graphAttrValues, tmpStr[BUFSIZE];
+#endif
     list<int>::iterator ranksIter;
     set<int>::iterator missingRanksIter;
     graphlib_graph_p stackTraces = NULL, sortedStackTraces = NULL, withMissingStackTraces = NULL;
@@ -2907,7 +3013,14 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         return STAT_MRNET_ERROR;
     }
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph\n");
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph, byteArrayLen = %d\n", byteArrayLen);
+#ifdef GRAPHLIB_3_0
+    if (sampleType & STAT_SAMPLE_THREADS)
+    {
+        gStatBitVectorFunctions->edge_checksum = statCountRepEdgeCheckSum;
+        gStatReorderFunctions->edge_checksum = statCountRepEdgeCheckSum;
+    }
+#endif
     if (sampleType & STAT_SAMPLE_COUNT_REP)
         graphlibError = graphlib_deserializeBasicGraph(&stackTraces, gStatCountRepFunctions, byteArray, byteArrayLen);
     else
@@ -2936,8 +3049,8 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating sorted graph\n");
         gStartTime.setTime();
         offset = 0;
-        graphlibError = graphlib_newGraph(&sortedStackTraces, gStatReorderFunctions);
-        if (GRL_IS_FATALERROR(graphlibError))
+        sortedStackTraces = statNewGraph(gStatReorderFunctions);
+        if (sortedStackTraces == NULL)
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to create new graph\n");
             return STAT_GRAPHLIB_ERROR;
@@ -2987,6 +3100,24 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating rooted graph\n");
             return STAT_GRAPHLIB_ERROR;
         }
+#ifdef GRAPHLIB_3_0
+        int functionIndex;
+        map<string, string>::iterator nodeAttrIter;
+
+        nodeAttr.attr_values = (void **)calloc(1, gNumNodeAttrs * sizeof(void *));
+        if (nodeAttr.attr_values == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error callocing %d nodeAttr.attr_values\n", strerror(errno), gNumNodeAttrs);
+            return STAT_ALLOCATE_ERROR;
+        }
+        graphlibError = graphlib_getNodeAttrIndex(withMissingStackTraces, "function", &functionIndex);
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get node attr index for function\n");
+            return STAT_GRAPHLIB_ERROR;
+        }
+        nodeAttr.attr_values[functionIndex] = statCopyNodeAttr("function", nodeAttr.label);
+#endif
         nodeId = statStringHash((char *)nodeAttr.label);
         graphlibError = graphlib_addNode(withMissingStackTraces, nodeId, &nodeAttr);
         if (GRL_IS_FATALERROR(graphlibError))
@@ -2994,7 +3125,19 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
             return STAT_GRAPHLIB_ERROR;
         }
+#ifdef GRAPHLIB_3_0
+        free(nodeAttr.attr_values);
+#endif
 
+#ifdef GRAPHLIB_3_0
+        map<string, string>::iterator edgeAttrIter;
+        edgeAttr.attr_values = (void **)calloc(1, gNumEdgeAttrs * sizeof(void *));
+        if (edgeAttr.attr_values == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error callocing %d edgeAttr.attr_values\n", strerror(errno), gNumEdgeAttrs);
+            return STAT_ALLOCATE_ERROR;
+        }
+#endif
         if (sampleType & STAT_SAMPLE_COUNT_REP)
         {
             countRepEdge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
@@ -3023,11 +3166,54 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             edgeAttr.label = (void *)edge;
         }
 
+#ifdef GRAPHLIB_3_0
+        int index;
+        if (sampleType & STAT_SAMPLE_COUNT_REP)
+        {
+            graphlib_getEdgeAttrIndex(withMissingStackTraces, "count", &index);
+            edgeAttr.attr_values[index] = statCopyEdgeAttr("count", (void *)&countRepEdge->count);
+            graphlib_getEdgeAttrIndex(withMissingStackTraces, "rep", &index);
+            edgeAttr.attr_values[index] = statCopyEdgeAttr("rep", (void *)&countRepEdge->representative);
+            graphlib_getEdgeAttrIndex(withMissingStackTraces, "sum", &index);
+            edgeAttr.attr_values[index] = statCopyEdgeAttr("sum", (void *)&countRepEdge->checksum);
+        }
+        else if (sampleType & STAT_SAMPLE_THREADS)
+        {
+            graphlib_getEdgeAttrIndex(withMissingStackTraces, "bv", &index);
+            edgeAttr.attr_values[index] = statCopyEdgeAttr("bv", (void *)edge);
+        }
+        else
+        {
+            graphlib_getEdgeAttrIndex(withMissingStackTraces, "bv", &index);
+            edgeAttr.attr_values[index] = statCopyEdgeAttr("bv", (void *)edge);
+        }
+#endif
+
         graphlibError = graphlib_addDirectedEdge(withMissingStackTraces, 0, nodeId, &edgeAttr);
+        if (GRL_IS_FATALERROR(graphlibError))
+        {
+            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
+            return STAT_GRAPHLIB_ERROR;
+        }
         if (countRepEdge != NULL)
             statFreeCountRepEdge(countRepEdge);
         if (edge != NULL)
             statFreeEdge(edge);
+#ifdef GRAPHLIB_3_0
+        int i;
+        char *edgeAttrKey;
+        for (i = 0; i < gNumEdgeAttrs; i++)
+        {
+            graphlibError = graphlib_getEdgeAttrKey(withMissingStackTraces, i, &edgeAttrKey);
+            if (GRL_IS_FATALERROR(graphlibError))
+            {
+                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get edge attr key for index %d\n", i);
+                return STAT_GRAPHLIB_ERROR;
+            }
+            statFreeEdgeAttr(edgeAttrKey, edgeAttr.attr_values[i]);
+        }
+        free(edgeAttr.attr_values);
+#endif
         if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
@@ -3053,11 +3239,19 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Exporting %s graph to dot\n", outSuffix);
     gStartTime.setTime();
-
+#ifdef GRAPHLIB_3_0
+    if (sampleType & STAT_SAMPLE_COUNT_REP)
+        graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "sum");
+    else if (sampleType & STAT_SAMPLE_THREADS)
+        graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "tbvsum");
+    else
+        graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "bv");
+#else
     graphlibError = graphlib_colorGraphByLeadingEdgeLabel(sortedStackTraces);
+#endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
-        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error coloring graph by leading edge label\n");
+        printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error coloring graph by leading edge\n");
         return STAT_GRAPHLIB_ERROR;
     }
     graphlibError = graphlib_scaleNodeWidth(sortedStackTraces, 80, 160);
@@ -3071,7 +3265,31 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     else
         snprintf(outFile, BUFSIZE, "%s/%02d_%s.%s.dot", outDir_, sMergeCount, filePrefix_, outSuffix);
     snprintf(lastDotFileName_, BUFSIZE, "%s", outFile);
+
+#ifdef GRAPHLIB_3_0
+    graphAttrKeys = (char **)malloc(sizeof(char *));
+    if (graphAttrKeys == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate for graph attr keys\n", strerror(errno));
+        return STAT_ALLOCATE_ERROR;
+    }
+    graphAttrKeys[0] = strdup("type");
+    graphAttrValues = (char **)malloc(sizeof(char *));
+    if (graphAttrValues == NULL)
+    {
+        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate for graph attr values\n", strerror(errno));
+        return STAT_ALLOCATE_ERROR;
+    }
+    snprintf(tmpStr, BUFSIZE, "stat_%d_%d", STAT_MAJOR_VERSION, STAT_MINOR_VERSION);
+    graphAttrValues[0] = strdup(tmpStr);
+    graphlibError = graphlib_exportAttributedGraph(outFile, GRF_DOT, sortedStackTraces, 1, graphAttrKeys, graphAttrValues);
+    free(graphAttrKeys[0]);
+    free(graphAttrValues[0]);
+    free(graphAttrKeys);
+    free(graphAttrValues);
+#else
     graphlibError = graphlib_exportGraph(outFile, GRF_DOT, sortedStackTraces);
+#endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error exporting graph to dot format\n");
@@ -3085,6 +3303,14 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     statError = dumpPerf();
     if (statError != STAT_OK)
         printMsg(statError, __FILE__, __LINE__, "Failed to dump performance results\n");
+
+#ifdef GRAPHLIB_3_0
+    if (sampleType & STAT_SAMPLE_THREADS)
+    {
+        gStatBitVectorFunctions->edge_checksum = statEdgeCheckSum;
+        gStatReorderFunctions->edge_checksum = statEdgeCheckSum;
+    }
+#endif
 
     if (stackTraces != NULL)
     {
@@ -4086,7 +4312,7 @@ StatError_t STAT_FrontEnd::setRanksList()
     /* First we need to generate the list of STAT BE daemons */
     statError = setDaemonNodes();
 #ifdef DYSECTAPI
-    if (statError == STAT_APPLICATION_EXITED) 
+    if (statError == STAT_APPLICATION_EXITED)
         return statError;
 #endif
     if (statError != STAT_OK)
@@ -4378,10 +4604,9 @@ int lmonStatusCb(int *status)
 
 bool STAT_FrontEnd::checkNodeAccess(char *node)
 {
-#ifdef CRAYXT
     /* MRNet CPs launched through alps */
-    return true;
-#else
+    if (lmonRmInfo_.rm_supported_types[lmonRmInfo_.index_to_cur_instance] == RC_alps)
+        return true;
     char command[BUFSIZE], testOutput[BUFSIZE], runScript[BUFSIZE], checkHost[BUFSIZE], *rsh = NULL, *envValue;
     FILE *output, *temp;
 
@@ -4424,7 +4649,6 @@ bool STAT_FrontEnd::checkNodeAccess(char *node)
     if (strcmp(testOutput, "") == 0)
         return false;
     return true;
-#endif
 }
 
 
@@ -4742,21 +4966,21 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
 }
 
 #ifdef DYSECTAPI
-StatError_t STAT_FrontEnd::dysectSetup(const char *dysectApiSessionPath, int dysectTimeout)
+StatError_t STAT_FrontEnd::dysectSetup(const char *dysectApiSessionPath, int dysectTimeout, int argc, char **argv)
 {
     StatError_t statError;
 
     /* TODO: Refactoring work: Move sequence to Dysect::FE class */
     /* TODO: GUI will need to setenv("STAT_GROUP_OPS", "1", 1); prior to attach*/
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Setting up frontend session '%s'...\n", dysectApiSessionPath);
-    dysectFrontEnd_ = new DysectAPI::FE((const char*)dysectApiSessionPath, this, dysectTimeout);
+    dysectFrontEnd_ = new DysectAPI::FE((const char*)dysectApiSessionPath, this, dysectTimeout, argc, argv);
     if (dysectFrontEnd_->isLoaded() == false)
     {
         printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Failed to load Dysect session %s\n", dysectApiSessionPath);
         return STAT_DYSECT_ERROR;
     }
 
-    if (dysectFrontEnd_->requestBackendSetup((const char*)dysectApiSessionPath) != DysectAPI::OK)
+    if (dysectFrontEnd_->requestBackendSetup((const char*)dysectApiSessionPath, argc, argv) != DysectAPI::OK)
     {
         printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Failed to setup backends with session %s\n", dysectApiSessionPath);
         return STAT_DYSECT_ERROR;
@@ -4781,7 +5005,7 @@ StatError_t STAT_FrontEnd::dysectListen(bool blocking)
         printMsg(STAT_DYSECT_ERROR, __FILE__, __LINE__, "Dysect not setup\n");
         return STAT_DYSECT_ERROR;
     }
-    do 
+    do
     {
         dysectError = dysectFrontEnd_->handleEvents(blocking);
     } while (dysectError == DysectAPI::SessionCont && blocking == true);

@@ -17,6 +17,9 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
 #include <LibDysectAPI.h>
+#include <DysectAPI/Err.h>
+#include <DysectAPI/Symbol.h>
+#include <DysectAPI/Parser.h>
 
 using namespace std;
 using namespace DysectAPI;
@@ -118,7 +121,7 @@ bool DysectAPI::CodeLocation::findSymbol(SymtabAPI::Symtab* symtab, string name,
   bool exit = false;
   vector<SymtabAPI::Symbol *> symtabSymbols;
   vector<SymtabAPI::Symbol *> foundSymtabSymbols;
-  vector<Dyninst::Address> lOffsets;
+  set<pair<Dyninst::Address, string> > lOffsets;
 
   foundSymtabSymbols.clear();
   symtabSymbols.clear();
@@ -152,13 +155,13 @@ bool DysectAPI::CodeLocation::findSymbol(SymtabAPI::Symtab* symtab, string name,
 
     string* str = new string(ssym->getPrettyName());
     Dyninst::Address offset = ssym->getOffset();
-    if (exit == true)
+    if (exit == true) //TODO: This may not work if code optimized (i.e. MPI functions)
       offset = offset + ssym->getSize() - 1; // this is computing the exit!
 
-    // XXX: Search for pair instead of plain offset
-    if(dsym->offsets.find(offset) != dsym->offsets.end()) {
+    if(lOffsets.find(pair<Dyninst::Address, string> (offset, *str)) != lOffsets.end()) {
       continue;
     }
+    lOffsets.insert(pair<Dyninst::Address, string> (offset, *str));
 
     dsym->offsets.insert(pair<Dyninst::Address, string*>(offset, str));
 
@@ -198,10 +201,16 @@ DysectAPI::DysectErrorCode SymbolTable::getLibraries(vector<LibAddrPair>& libs, 
 
   LibraryState *libState = proc->getProcessState()->getLibraryTracker();
   if(!libState) {
+    DYSECTWARN(Error, "Couldn't get libstate. Trying to set default librrary tracket\n");
+    proc->getProcessState()->setDefaultLibraryTracker();
+    libState = proc->getProcessState()->getLibraryTracker();
+    assert(libState);
+  }
+  if(!libState) {
     return DYSECTWARN(Error, "Library state could not be retrieved");
   }
 
-  if(!libState->getLibraries(libs)) {
+  if(!libState->getLibraries(libs, true)) {
     return DYSECTWARN(Error, "Cannot get libraries from library state");
   }
 
@@ -372,7 +381,7 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
     return DYSECTWARN(false, "Could not parse variable specification %s", name.c_str());
   }
 
-#if 0
+//#if 0
   string baseStr, memberStr;
   int len = name.size();
 
@@ -403,9 +412,9 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
   }
 
   if(!memberStr.empty()) {
-    name = baseStr;
+    variable = baseStr;
   }
-#endif
+//#endif
 
   // 1st approach - look for local variable (resident in function for current frame)
   vector<Stackwalker::Frame> stackWalk;
@@ -461,7 +470,7 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
 
     location = new LocalVariableLocation(stackWalk, frame, vars[0], symtab);
 
-# if 0
+//# if 0
     // XXX: Hack continued
     if(!memberStr.empty()) {
       Type* symType = location->getType();
@@ -478,12 +487,13 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
               if(field && (field->getName().compare(memberStr) == 0)) {
                 // Rebase
                 Err::verbose(true, "Rebasing to member '%s' from %s", field->getName().c_str(), memberStr.c_str());
-                int offset = field->getOffset();
+                int offset = field->getOffset() / 8;
                 Type* fieldType = field->getType();
 
                 DataLocation* fieldVariable = location->getInnerVariable(fieldType, offset);
                 if(fieldVariable) {
                   location = fieldVariable;
+                  return true;
                 }
               }
             }
@@ -491,7 +501,7 @@ bool DataLocation::findVariable(Process::const_ptr process, Walker* proc, string
         }
       }
     }
-# endif
+//# endif
 
     return true;
   }

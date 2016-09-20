@@ -1,23 +1,23 @@
 <para>
-A script that downloads and installs STAT and all its dependencies for BlueGene/Q has been created and can be downloaded at <ulink url="https://github.com/lee218llnl/STAT/blob/master/script-stat-install"></ulink> or can be found in the top-level directory of the STAT source.  Note this script was developed for BlueGene/Q systems, but can be used as guidance for other systems as well.
+A script that downloads and installs STAT and all its dependencies for BlueGene/Q has been created and can be downloaded at <ulink url="https://github.com/LLNL/STAT/blob/master/script-stat-install"></ulink> or can be found in the top-level directory of the STAT source.  Note this script was developed for BlueGene/Q systems, but can be used as guidance for other systems as well.
 </para>
 <para>
-STAT and its dependencies can also be built via the Spack package management tool, available at http://scalability-llnl.github.io/spack/index.html.
+STAT and its dependencies can also be built via the Spack package management tool, available at <ulink url="https://github.com/LLNL/spack"></ulink>. Running <command>spack install stat</command> should build STAT and all of its dependencies, including those require for the STAT GUI. Note that two Spack variants exist. The first is <command>+examples</command>, to enable building example MPI code that STAT can be tested against. This is disabled by default to avoid requiring an MPI library, but enabling it will trigger a build of MPI. The second is <command>+dysect</command> to enable building of the DySectAPI.
 </para>
 <para>
-When building STAT itself, first run configure.  You will need to use the --with-package options to specify the install prefix for mrnet, graphlib, launchmon, libdwarf, and stackwalker.  These options will add the necessary include and library search paths to the compile options.  Refer to configure --help for exact options.  You may also wish to specify the maximum number of communication processes to launch per node with the option --with-procspernode=number, generally set to the number of cores per node. 
+When building STAT itself, first run <command>configure</command>.  You will need to use the <option>--with-package</option> options to specify the install prefix for mrnet, graphlib, launchmon, libdwarf, and stackwalker.  These options will add the necessary include and library search paths to the compile options.  Refer to <command>configure --help</command> for exact options.  You may also wish to specify the maximum number of communication processes to launch per node with the option <option>--with-procspernode=number</option>, generally set to the number of cores per node. 
 </para>
 <para>
-STAT creates wrapper scripts for the stat-cl and stat-gui commands.  These wrappers set appropriate paths for the launchmon and mrnet_commnode executables, based on the the --with-launchmon and --with-mrnet configure options, thus it is important to specify both of these even if they share a prefix.
+STAT creates wrapper scripts for the <command>stat-cl</command> and <command>stat-gui</command> commands.  These wrappers set appropriate paths for the launchmon and mrnet_commnode executables, based on the the <option>--with-launchmon</option> and <option>--with-mrnet</option> configure options, thus it is important to specify both of these even if they share a prefix.
 </para>
 <para>
-STAT will try to build the GUI by default.  If you need to modify your PYTHONPATH envirnment variable to search for side installed site-packages, you can do this by specifying STAT_PYTHONPATH=path during configure.  This will add the appropriate directory to the $PYTHONPATH environment variable within the stat-gui script.  To disable the building of the GUI, use the --enable-gui=no configure option.
+STAT will try to build the GUI by default.  Building and running the STAT GUI requires SWIG and pygtk.  If you need to modify your PYTHONPATH envirnment variable to search for side installed site-packages, you can do this by specifying <option>STAT_PYTHONPATH=path</option> during configure.  This will add the appropriate directory to the $PYTHONPATH environment variable within the stat-gui script.  To disable the building of the GUI, use the <option>--enable-gui=no</option> configure option.
 </para>
 <para>
-On BlueGene systems, be sure to configure --with-bluegene.  This will enable the BGL macro for BlueGene specific compilation.  It is important to note that on BlueGene systems, you may need to use an alternate hostname for the front-end node in order to get MRNet to bind to the appropriate network interface that can communicate with the I/O nodes.  By default, STAT will append "-io" to the hostname.  Alternatively, you can specify the hostname with the STAT_FE_HOSTNAME environment variable.  A script that downloads and install STAT and all its dependencies for BlueGene/Q has been created and can be downloaded at <ulink url="https://github.com/lee218llnl/STAT/blob/master/script-stat-install"></ulink> or can be found in the top-level directory of the STAT source.  Due to system configurations, this may not completely work out of the box, but it provides good guidance on the steps required.
+On BlueGene systems, be sure to <command>configure --with-bluegene</command>.  This will enable the BGL macro for BlueGene specific compilation.  It is important to note that on BlueGene systems, you may need to use an alternate hostname for the front-end node in order to get MRNet to bind to the appropriate network interface that can communicate with the I/O nodes.  By default, STAT will append "-io" to the hostname.  Alternatively, you can specify the hostname with the STAT_FE_HOSTNAME environment variable.  A script that downloads and install STAT and all its dependencies for BlueGene/Q has been created and can be downloaded at <ulink url="https://github.com/lee218llnl/STAT/blob/master/script-stat-install"></ulink> or can be found in the top-level directory of the STAT source.  Due to system configurations, this may not completely work out of the box, but it provides good guidance on the steps required.
 </para>
 <para>
-To compile on Cray systems, specify --with-cray-xt.  An example configure line for Cray:
+To compile on Cray systems runnig alps, you no longer need to specify <option>--with-cray-alps</option>.  An example configure line for Cray:
 </para>
 <informalexample>
     <screen>
@@ -26,12 +26,12 @@ To compile on Cray systems, specify --with-cray-xt.  An example configure line f
 --with-graphlib==/tmp/work/lee218/install \
 --with-stackwalker=/tmp/work/lee218/install \
 --with-libdwarf=/tmp/work/lee218/install \
---prefix=/tmp/work/lee218/install --with-cray-xt \
+--prefix=/tmp/work/lee218/install \
 MPICC=cc MPICXX=CC MPIF77=ftn --enable-shared LD=/usr/bin/ld   
     </screen>
 </informalexample>
 <para>
-Note that specifying LD=/usr/bin/ld may be required on Cray systems to avoid using the compute node linker.  It is also worth noting that Cray includes a build of STAT as part of their system software stack.  It is typically installed in /opt/cray/stat and can be loaded via modules.  
+Note that specifying <option>LD=/usr/bin/ld</option> may be required on Cray systems to avoid using the compute node linker.  It is also worth noting that Cray includes a build of STAT as part of their system software stack.  It is typically installed in /opt/cray/stat and can be loaded via modules.  
 </para>
 <para>
 After running configure you just need to run:
@@ -43,7 +43,7 @@ make install
     </screen>
 </informalexample>
 <para>
-Note that STAT hardcodes the paths to its daemon and filter shared object, assuming that they are in $prefix/bin and $prefix/lib respectively, thus testing should be done in the install prefix after running "make install" and the installation directory should not be moved.  The path to these components can, however, be overridden with the --daemon and --filter arguments.  Further, the STAT_PREFIX environment variable can be defined to override the hardcoded paths in STAT.
+Note that STAT hardcodes the paths to its daemon and filter shared object, assuming that they are in $prefix/bin and $prefix/lib respectively, thus testing should be done in the install prefix after running <command>make install</command> and the installation directory should not be moved.  The path to these components can, however, be overridden with the <option>--daemon</option> and <option>--filter</option> arguments.  Further, the STAT_PREFIX environment variable can be defined to override the hardcoded paths in STAT.
 
-STAT will also, by default, add rpaths to dependent libraries.  This behavior can be disabled by specifying "--with-rpath=no".  However, when doing so, you must be sure to set LD_LIBRARY_PATH to point to the directories containing the dependent libraries.
+STAT will also, by default, add rpaths to dependent libraries.  This behavior can be disabled by specifying <option>--with-rpath=no</option>.  However, when doing so, you must be sure to set LD_LIBRARY_PATH to point to the directories containing the dependent libraries.
 </para>

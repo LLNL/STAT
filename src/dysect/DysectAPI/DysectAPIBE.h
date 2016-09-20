@@ -24,18 +24,15 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #include <dlfcn.h>
 #include <stdio.h>
 
-#include "mrnet/MRNet.h"
-#include "lmon_api/lmon_fe.h"
-#include "STAT_shared.h"
-#include "DysectAPI/DysectAPI.h"
-
 #include "LibDysectAPI.h"
+#include "DysectAPI/DysectAPIProcessMgr.h"
 
 class STAT_BackEnd;
 
 namespace DysectAPI {
+
   class BE {
-    typedef int (*proc_start_t)();
+    typedef int (*proc_start_t)(int, char **);
 
     static STAT_BackEnd *statBE;
 
@@ -48,7 +45,7 @@ namespace DysectAPI {
     bool returnControlToDysect;
 
   public:
-    BE(const char *libPath, STAT_BackEnd *be);
+    BE(const char *libPath, STAT_BackEnd *be, int argc, char **argv);
     ~BE();
 
     bool isLoaded();
@@ -62,8 +59,8 @@ namespace DysectAPI {
 
     void enableTimers();
     void disableTimers();
-    bool getPendingExternalAction();
-    void setPendingExternalAction(bool pending);
+    int getPendingExternalAction();
+    void setPendingExternalAction(int pending);
     bool getReturnControlToDysect();
     void setReturnControlToDysect(bool control);
 

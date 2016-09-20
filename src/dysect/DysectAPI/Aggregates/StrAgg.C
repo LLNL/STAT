@@ -16,7 +16,11 @@ You should have received a copy of the GNU Lesser General Public License along w
 Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+#include <stdio.h>
+#include <string.h>
+
 #include "DysectAPI/Aggregates/Aggregate.h"
+#include "DysectAPI/Aggregates/StrAgg.h"
 
 using namespace std;
 using namespace DysectAPI;
@@ -37,12 +41,12 @@ StrAgg::StrAgg(agg_type ltype, int id, int count, string fmt, void* payload) {
 bool StrAgg::aggregate(AggregateFunction* agg) {
   if(agg->getType() != type)
     return false;
-  
+
   if(agg->getId() != getId())
     return false;
-  
+
   StrAgg* strInstance = dynamic_cast<StrAgg*>(agg);
-  
+
   if(!strInstance) {
     return false;
   }
@@ -52,7 +56,7 @@ bool StrAgg::aggregate(AggregateFunction* agg) {
 
   map<string, int>::iterator localMapIter = localCountMap.begin();
   map<string, int>::iterator aggMapIter;
-  
+
   countMap.clear();
 
   int totalStrLength = 0;
@@ -92,7 +96,7 @@ bool StrAgg::aggregate(AggregateFunction* agg) {
   strsLen = totalStrLength;
 
   count_ += agg->getCount();
-  
+
   return true;
 }
 
@@ -103,12 +107,13 @@ std::map<string, int>& StrAgg::getCountMap() {
 bool StrAgg::deserialize(void* payload) {
   // Deserialize
   int num = *(int*)payload; // First bytes are for number of functions in payload
+  int ss = sizeof(int);
 
   //printf(">>> num %d\n", num);
 
   // Compute offsets
-  int *counts = (int*)(payload + sizeof(int));
-  char* strs = (char*)((char *)payload + sizeof(int) + (num * sizeof(int)));
+  int *counts = (int*)((int*)payload + 1);
+  char* strs = (char*)((char*)payload + sizeof(int) + (num * sizeof(int)));
 
   char *ptr = strs;
   char *curStr = ptr;
@@ -143,7 +148,7 @@ bool StrAgg::deserialize(void* payload) {
 int StrAgg::getSize() {
   //
   // Packet format
-  //  
+  //
   //  [ Header                   ]
   //  [ int numFuncs             ]
   //  [ int[numFuncs] countArray ]
@@ -167,7 +172,7 @@ int StrAgg::getSize() {
 
 int StrAgg::writeSubpacket(char *p) {
   struct subPacket* packet;
- 
+
   //printf(">> Start address: 0x%08lx\n", (long)p);
 
   packet = (struct subPacket*)p;
@@ -176,8 +181,8 @@ int StrAgg::writeSubpacket(char *p) {
   packet->count = count_;
   packet->type = type;
   memset(&(packet->fmt), 0, maxFmt); // Does not take format
- 
-  // Write 
+
+  // Write
   char* curpos = (char*)&(packet->payload);
 
   //printf(">> Payload address: 0x%08lx\n", (long)curpos);
@@ -228,7 +233,7 @@ int StrAgg::writeSubpacket(char *p) {
   //}
   //printf("\n");
 
-  
+
   return size;
 }
 
@@ -240,11 +245,11 @@ bool StrAgg::clear() {
 }
 
 bool StrAgg::getStr(string& str) {
-  const int bufSize = 512;
+  const int bufSize = 1024;
   char buf[bufSize];
 
   map<string, int>::iterator countMapIter;
-  
+
   if(countMap.size() == 1) {
     countMapIter = countMap.begin();
     string name = countMapIter->first;
@@ -260,7 +265,6 @@ bool StrAgg::getStr(string& str) {
       string name = countMapIter->first;
 
       sprintf((char*)&buf, "%d:%s ", count, name.c_str());
-
       str.append(buf);
     }
 

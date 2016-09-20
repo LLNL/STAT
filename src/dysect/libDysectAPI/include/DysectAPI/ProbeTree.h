@@ -19,6 +19,8 @@ Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef __PROBE_TREE_H
 #define __PROBE_TREE_H
 
+#include <vector>
+
 namespace DysectAPI {
   class Probe;
 
@@ -30,6 +32,7 @@ namespace DysectAPI {
     static bool addRoot(Probe* probe);
     static std::vector<Probe*>& getRoots();
     static bool addPendingRoot(Probe* probe);
+    static bool removeRoot(Probe* probe);
     static bool removePendingRoot(Probe* probe);
     static std::vector<Probe*>& getPendingRoots();
     static void clearRoots();

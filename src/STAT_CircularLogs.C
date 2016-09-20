@@ -121,8 +121,8 @@ bool CircularBuffer::getBuffer(char* &buffer1, size_t &buffer1Size, char* &buffe
 int CircularBuffer::flushBufferTo(int fd)
 {
     int numWritten = 0, result;
-    char *buffer1, *buffer2;
-    size_t buffer1Size, buffer2Size;
+    char *buffer1 = NULL, *buffer2 = NULL;
+    size_t buffer1Size = 0, buffer2Size = 0;
 
     getBuffer(buffer1, buffer1Size, buffer2, buffer2Size);
     if (buffer1)

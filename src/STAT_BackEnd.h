@@ -63,6 +63,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #include "Variable.h"
   #include "Function.h"
 #endif
+#ifdef OMP_STACKWALKER
+  #include "OpenMPStackWalker.h"
+#endif
 
 #ifdef STAT_FGFS
   #include "Comm/MRNetCommFabric.h"
@@ -71,8 +74,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #endif
 
 #ifdef DYSECTAPI
-  #include "DysectAPI/DysectAPIProcessMgr.h"
+  #include "BPatch.h"
   #include "DysectAPI/DysectAPIBE.h"
+  #include "DysectAPI/ProcMap.h"
 #endif
 
 //! An enum type to determine who launched the daemon
@@ -169,6 +173,7 @@ bool statFrameCmp(const Dyninst::Stackwalker::Frame &frame1, const Dyninst::Stac
     \return the absolute rank
 */
 int statRelativeRankToAbsoluteRank(int rank);
+int statDummyRelativeRankToAbsoluteRank(int rank);
 
 
 //! The STAT daemon object used to gather and send stack traces
@@ -229,13 +234,14 @@ class STAT_BackEnd
 
         //! Return the STAT name that should be given for a specific frame
         /*!
+            \param nodeAttrs[out] - the node attributes for this frame
             \param frame - the Frame to gather the name from
             \param depth - [optional] the depth of this frame in the stack walk.
                    This is necessary for identifying the appropriate frame for
                    variable extraction.
             \return the name to use for this frame
         */
-        std::string getFrameName(const Dyninst::Stackwalker::Frame &frame, int depth = -1);
+        std::string getFrameName(std::map<std::string, std::string> &nodeAttrs, const Dyninst::Stackwalker::Frame &frame, int depth = -1);
 
         //! Print the STAT error type and error message
         /*!
@@ -375,13 +381,14 @@ class STAT_BackEnd
             \param[out] errorThreads - a list of threads whose stack walks
                    ended in an error
             \param[out] outputRanks - the set of ranks in this stack walk
+            \param[out] outputRankThreadsMap - the set of rank-threads in this stack walk
             \param[out] abort - the callee indicates whether the caller should
                    abort (delete) the caller node
             \param[in] branches - the max branch factor of the current node's
                    ancestors
             \return STAT_OK on success
         */
-        StatError_t addFrameToGraph(Dyninst::Stackwalker::CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, Dyninst::Stackwalker::FrameNode *stackwalkerNode, std::string nodeIdNames, std::set<std::pair<Dyninst::Stackwalker::Walker *, Dyninst::THR_ID> > *errorThreads, std::set<int> &outputRanks, bool &abort, int branches);
+        StatError_t addFrameToGraph(Dyninst::Stackwalker::CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, Dyninst::Stackwalker::FrameNode *stackwalkerNode, std::string nodeIdNames, std::set<std::pair<Dyninst::Stackwalker::Walker *, Dyninst::THR_ID> > *errorThreads, std::set<int> &outputRanks, std::map<int, std::set<Dyninst::THR_ID> > &outputRankThreadsMap, bool &abort, int branches);
 #endif
 
         //! Get a single stack trace
@@ -494,11 +501,12 @@ class STAT_BackEnd
             \param src - the source node
             \param dst - the destination node
             \param edge - the edge bit vector
+            \param tid - the thread ID
             \return STAT_OK on success
 
             If the edge does not exist, create it, otherwise just merge
         */
-        StatError_t update2dEdge(int src, int dst, StatBitVectorEdge_t *edge);
+        StatError_t update2dEdge(int src, int dst, StatBitVectorEdge_t *edge, Dyninst::THR_ID tid);
 
         //! generate the 2d and 3d prefix trees based on nodes and edges maps
         /*!
@@ -564,6 +572,13 @@ class STAT_BackEnd
         MRN::Port parentPort_;          /*!< the MRNet parent's port */
         MRN::Stream *broadcastStream_;  /*!< the main broadcast and
                                              acknowledgement stream */
+#ifdef GRAPHLIB_3_0
+        std::map<int, std::map<std::string, std::string> > nodeIdToAttrs_;
+        std::map<int, std::map<std::string, void *> > edgeIdToAttrs_;
+        std::map<int, std::map<std::string, void *> > edgeIdToAttrs3d_;
+        int threadBvLength_;
+        std::vector<Dyninst::THR_ID> threadIds_;
+#endif
         std::map<int, std::string> nodes2d_; /*!< the 2D prefix tree nodes */
         std::map<int, std::string> nodes3d_; /*!< the 3D prefix tree nodes */
         std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges2d_; /*!< the 2D prefix tree edges */
@@ -587,13 +602,15 @@ class STAT_BackEnd
         std::map<std::string, std::set<int> > exitedProcesses_;
   #ifdef DYSECTAPI
         std::map<int, Dyninst::ProcControlAPI::Process::ptr> mpiRankToProcessMap_;
+        std::vector<BPatch_process *> tmpProcSet_;
+        BPatch bpatch_;
   #endif
 #endif
 
 #ifdef STAT_FGFS
         FastGlobalFileStatus::CommLayer::CommFabric *fgfsCommFabric_; /*< the FGFS communication fabric handle */
 #endif
-        
+
 #ifdef DYSECTAPI
         DysectAPI::BE* dysectBE_;
 #endif

@@ -50,10 +50,15 @@ typedef struct
     bool countRep;                          /*!< whether to gather just a count and representative */
     bool withPython;                        /*!< whether to gather Python script level traces */
     bool withThreads;                       /*!< whether to gather traces from threads */
-    StatCpPolicy_t cpPolicy;                     /*!< whether to use the application nodes to run communication processes */
+    bool withOpenMP;                        /*!< whether to translate OpenMP stack walks */
+    StatCpPolicy_t cpPolicy;                /*!< whether to use the application nodes to run communication processes */
     StatLaunch_t applicationOption;         /*!< attach or launch case */
     unsigned int sampleType;                /*!< the sample level of detail */
     StatTopology_t topologyType;            /*!< the topology specification type */
+#ifdef DYSECTAPI
+    int dysectArgc;
+    char **dysectArgv;
+#endif
 } StatArgs_t;
 
 //! Prints the usage directions
@@ -90,6 +95,7 @@ int main(int argc, char **argv)
 {
     int i, j, samples = 1, traces;
     struct timeval timeStamp;
+    struct tm *localtimeResult;
     time_t currentTime;
     char timeBuf[BUFSIZE];
     STAT_FrontEnd *statFrontEnd;
@@ -99,10 +105,6 @@ int main(int argc, char **argv)
 
     statFrontEnd = new STAT_FrontEnd();
 
-    gettimeofday(&timeStamp, NULL);
-    currentTime = timeStamp.tv_sec;
-    strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtime(&currentTime));
-    statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT started at %s\n", timeBuf);
 
     /* Parse arguments and fill in class variables */
     statArgs = (StatArgs_t *)calloc(1, sizeof(StatArgs_t));
@@ -125,6 +127,16 @@ int main(int argc, char **argv)
         else
             return 0;
     }
+
+    gettimeofday(&timeStamp, NULL);
+    currentTime = timeStamp.tv_sec;
+    localtimeResult = localtime(&currentTime);
+    if (localtimeResult == NULL)
+        statFrontEnd->printMsg(STAT_WARNING, __FILE__, __LINE__, "localtime() returned NULL %s\n", strerror(errno));
+    else if (strftime(timeBuf, BUFSIZE, "%Y-%m-%d-%T", localtimeResult) != 0)
+        statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT started at %s\n", timeBuf);
+    else
+        statFrontEnd->printMsg(STAT_WARNING, __FILE__, __LINE__, "strftime() returned 0\n");
 
     /* Push the arguments into the output file */
     invocationString = "STAT invoked with: ";
@@ -188,7 +200,11 @@ int main(int argc, char **argv)
     }
 
     /* If we're launching, sleep here to let the job start */
+#ifdef DYSECTAPI
+    if (statArgs->applicationOption == STAT_LAUNCH && dysectApiEnabled == false)
+#else
     if (statArgs->applicationOption == STAT_LAUNCH)
+#endif
     {
         statError = statFrontEnd->resume();
         if (statError != STAT_OK)
@@ -212,7 +228,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "\n## Prototype DysectAPI enabled ##\n");
         statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "Notice: Traditional sampling is disabled troughout session!\n");
 
-        statError = statFrontEnd->dysectSetup(dysectApiSessionPath, dysectTimeout);
+        statError = statFrontEnd->dysectSetup(dysectApiSessionPath, dysectTimeout, statArgs->dysectArgc, statArgs->dysectArgv);
         if (statError != STAT_OK)
         {
             statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to setup Dysect session\n");
@@ -221,6 +237,17 @@ int main(int argc, char **argv)
             free(statArgs);
             return -1;
         }
+
+        statError = statFrontEnd->resume();
+        if (statError != STAT_OK)
+        {
+            statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to resume application\n");
+            statFrontEnd->shutDown();
+            delete statFrontEnd;
+            free(statArgs);
+            return -1;
+        }
+        mySleep(statArgs->sleepTime);
 
         statError = statFrontEnd->dysectListen(true);
         if (statError != STAT_OK)
@@ -252,6 +279,10 @@ int main(int argc, char **argv)
             statArgs->sampleType |= STAT_SAMPLE_CLEAR_ON_SAMPLE;
             if (statArgs->withThreads == true)
                 statArgs->sampleType |= STAT_SAMPLE_THREADS;
+#ifdef OMP_STACKWALKER
+            if (statArgs->withOpenMP == true)
+                statArgs->sampleType |= STAT_SAMPLE_OPENMP;
+#endif
             if (statArgs->withPython == true)
                 statArgs->sampleType |= STAT_SAMPLE_PYTHON;
             if (statArgs->countRep == true)
@@ -356,7 +387,7 @@ int main(int argc, char **argv)
         statFrontEnd->printMsg(statError, __FILE__, __LINE__, "Failed to detach from application\n");
 
     statFrontEnd->shutDown();
-    printf("\nResults written to %s\n\n", statFrontEnd->getOutDir());
+    statFrontEnd->printMsg(STAT_STDOUT, __FILE__, __LINE__, "\nResults written to %s\n\n", statFrontEnd->getOutDir());
 
     delete statFrontEnd;
     free(statArgs);
@@ -380,6 +411,9 @@ void printUsage()
     fprintf(stderr, "  -P, --withpc\t\t\tsample program counter in addition to\n\t\t\t\tfunction name\n");
     fprintf(stderr, "  -m, --withmoduleoffset\tsample module offset only\n");
     fprintf(stderr, "  -i, --withline\t\tsample source line number in addition\n\t\t\t\tto function name\n");
+#ifdef OMP_STACKWALKER
+    fprintf(stderr, "  -o, --withopenmp\t\ttranslate OpenMP stacks to logical application\n\t\t\t\tview\n");
+#endif
     fprintf(stderr, "  -c, --comprehensive\t\tgather 5 traces: function only; module offset;\n\t\t\t\tfunction + pc; function + line; and 3D function\n\t\t\t\tonly\n");
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
@@ -435,9 +469,11 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"help",                no_argument,        0, 'h'},
         {"version",             no_argument,        0, 'V'},
         {"verbose",             no_argument,        0, 'v'},
+        {"quiet",               no_argument,        0, 'q'},
         {"withpc",              no_argument,        0, 'P'},
         {"withmoduleoffset",    no_argument,        0, 'P'},
         {"withline",            no_argument,        0, 'i'},
+        {"withopenmp",          no_argument,        0, 'o'},
         {"comprehensive",       no_argument,        0, 'c'},
         {"withthreads",         no_argument,        0, 'w'},
         {"pythontrace",         no_argument,        0, 'y'},
@@ -468,6 +504,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
 #ifdef DYSECTAPI
         {"dysectapi",           required_argument, 0, 'X'},
         {"dysectapi_batch",     required_argument, 0, 'b'},
+        {"dysectapi_arg",       required_argument, 0, 'Y'},
 #endif
         {0,                     0,                  0, 0}
     };
@@ -485,9 +522,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     while (1)
     {
 #ifdef DYSECTAPI
-        opt = getopt_long(argc, argv,"hVvPmicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:Y:", longOptions, &optionIndex);
 #else
-        opt = getopt_long(argc, argv,"hVvPmicwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
 #endif
         if (opt == -1)
             break;
@@ -514,6 +551,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         case 'v':
             statFrontEnd->setVerbose(STAT_VERBOSE_FULL);
             break;
+        case 'q':
+            statFrontEnd->setVerbose(STAT_VERBOSE_ERROR);
+            break;
         case 'w':
             statArgs->withThreads = true;
             statArgs->sampleType |= STAT_SAMPLE_THREADS;
@@ -533,6 +573,12 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         case 'i':
             statArgs->sampleType |= STAT_SAMPLE_LINE;
             statArgs->comprehensive = false;
+            break;
+        case 'o':
+            statArgs->withOpenMP = true;
+#ifdef OMP_STACKWALKER
+            statArgs->sampleType |= STAT_SAMPLE_OPENMP;
+#endif
             break;
         case 'c':
             statArgs->comprehensive = true;
@@ -655,6 +701,16 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
                 statFrontEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "'%s' is not a valid timeout, must be a positive integer\n", optarg);
                 return STAT_ARG_ERROR;
             }
+            break;
+        case 'Y':
+            statArgs->dysectArgc++;
+            statArgs->dysectArgv = (char **)realloc(statArgs->dysectArgv, statArgs->dysectArgc);
+            if (statArgs->dysectArgv == NULL)
+            {
+                statFrontEnd->printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to realloc dysectArgv %d for %s\n", statArgs->dysectArgc, optarg);
+                return STAT_ALLOCATE_ERROR;
+            }
+            statArgs->dysectArgv[statArgs->dysectArgc - 1] = strdup(optarg);
             break;
 #endif
         case '?':

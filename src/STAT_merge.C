@@ -22,8 +22,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <errno.h>
 #include "STAT_GraphRoutines.h"
 
-#define BUFSIZE 16384
-
 using namespace std;
 
 extern "C" {
