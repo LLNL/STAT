@@ -2137,34 +2137,18 @@ host[1-10,12,15-20];otherhost[30]
                 show_error_dialog('Failed to locate executable ddt\ndefault: %s\n' % filepath, self)
                 return
 
-            # Look for LaunchMON installation for DDT 2.5+
-            ddt_lmon_prefix = self.options['DDT LaunchMON Prefix']
-            ddt_lmon_lib = '%s/lib' % (ddt_lmon_prefix)
-            ddt_lmon_launchmon = '%s/bin/launchmon' % (ddt_lmon_prefix)
-            if not ddt_lmon_launchmon or not os.access(ddt_lmon_launchmon, os.X_OK) or not ddt_lmon_lib or self.serial_attach is True:
-                # DDT 2.4 / DDT 2.5+ w/o LanchMON / serial processes
-                arg_list.append(filepath)
-                arg_list.append('-attach')
-                arg_list.append(self.executable_path)
-                for counter, pid in enumerate(pids):
-                    arg_list.append('%s:%d' % (hosts[counter], pid))
-            else:
-                # DDT 2.5+ with LaunchMON
-                arg_list.append("env")
-                arg_list.append("LD_LIBRARY_PATH=%s" % (ddt_lmon_lib))
-                arg_list.append("LMON_LAUNCHMON_ENGINE_PATH=%s" % (ddt_lmon_launchmon))
-                arg_list.append(filepath)
-                arg_list.append("-attach-mpi")
-                arg_list.append(str(self.proctab.launcher_pid))
-                arg_list.append("-subset")
-                rank_list_arg = ''
-                for rank in subset_list:
-                    if rank == subset_list[0]:
-                        rank_list_arg += '%d' % rank
-                    else:
-                        rank_list_arg += ',%d' % rank
-                arg_list.append(rank_list_arg)
-                arg_list.append(self.executable_path)
+            arg_list.append(filepath)
+            arg_list.append("--attach-mpi")
+            arg_list.append(str(self.proctab.launcher_pid))
+            arg_list.append("--subset")
+            rank_list_arg = ''
+            for rank in subset_list:
+                if rank == subset_list[0]:
+                    rank_list_arg += '%d' % rank
+                else:
+                    rank_list_arg += ',%d' % rank
+            arg_list.append(rank_list_arg)
+            arg_list.append(self.executable_path)
 
         for arg in self.options['Additional Debugger Args'].split():
             arg_list.insert(-1, arg)
