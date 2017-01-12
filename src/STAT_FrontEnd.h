@@ -484,6 +484,18 @@ class STAT_FrontEnd
         */
         unsigned int getJobId();
 
+        //! Set the number of daemons per node
+        /*!
+            \return the number of daemons per node
+        */
+        void setNDaemonsPerNode(int nDaemonsPerNode);
+
+        //! Get the number of daemons per node
+        /*!
+            \return the number of daemons per node
+        */
+        int getNDaemonsPerNode();
+
         //! Gets the name of the application executable
         /*!
             \return the application executable name
@@ -917,6 +929,7 @@ class STAT_FrontEnd
         unsigned int launcherArgc_;                         /*!< the number of job launch arguments*/
         unsigned int topologySize_;                         /*!< the size of the MRNet topology */
         unsigned int logging_;                              /*!< the logging level */
+        unsigned int nDaemonsPerNode_;                      /*!< the number of daemons per node */
         int jobId_;                                         /*!< the batch job ID */
         int lmonSession_;                                   /*!< the LaunchMON session ID */
         int mrnetOutputLevel_;                              /*!< the MRNet output level */

@@ -47,6 +47,7 @@ int main(int argc, char **argv)
         {"pid",                 required_argument,  0, 'p'},
         {"logdir",              required_argument,  0, 'L'},
         {"log",                 required_argument,  0, 'l'},
+        {"daemonspernode",      required_argument,  0, 'd'},
         {0,                     0,                  0, 0}
     };
 
@@ -84,7 +85,7 @@ int main(int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVmsMo:p:L:l:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVmsMo:p:L:l:d:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'M')
@@ -131,6 +132,9 @@ int main(int argc, char **argv)
             break;
         case 'm':
             logType |= STAT_LOG_MRN;
+            break;
+        case 'd':
+            statBackEnd->setNDaemonsPerNode(atoi(optarg));
             break;
         case '?':
             statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);

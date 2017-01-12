@@ -113,6 +113,8 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
     myRank_ = 0;
     parentRank_ = 0;
     parentPort_ = 0;
+    nDaemonsPerNode_ = 1;
+    myNodeRank_ = 0;
     broadcastStream_ = NULL;
     proctab_ = NULL;
     sampleType_ = 0;
@@ -927,10 +929,13 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
 
 StatError_t STAT_BackEnd::connect(int argc, char **argv)
 {
-    int i;
+    int i, newProctabSize, oldProctabSize, index;
+    unsigned int nextNodeRank;
     bool found;
     char *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
+    pid_t pid;
     string prettyHost, leafPrettyHost;
+    MPIR_PROCDESC_EXT *oldProctab, *newProctab;
     lmon_rc_e lmonRet;
     StatLeafInfoArray_t leafInfoArray;
 
@@ -1010,6 +1015,75 @@ StatError_t STAT_BackEnd::connect(int argc, char **argv)
         }
 
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found MRNet connection info, parent hostname = %s, parent port = %d, my MRNet rank = %d\n", parentHostName_, parentPort_, myRank_);
+
+        if (nDaemonsPerNode_ > 1)
+        {
+            nextNodeRank = myNodeRank_;
+            pid = 1;
+            for (i = 1; i < nDaemonsPerNode_ && pid > 0; i++)
+            {
+                nextNodeRank++;
+                pid = fork();
+                if (pid == 0)
+                {
+                    myNodeRank_ = nextNodeRank;
+                    myRank_ = leafInfoArray.size * myNodeRank_ + myRank_;
+                }
+                else if (pid < 0)
+                {
+                    printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to fork with pid %d\n", pid);
+                    return STAT_SYSTEM_ERROR;
+                }
+            }
+            newProctabSize = proctabSize_ / nDaemonsPerNode_;
+            if (proctabSize_ % nDaemonsPerNode_ > myNodeRank_)
+                newProctabSize++;
+            newProctab = (MPIR_PROCDESC_EXT *)malloc(newProctabSize * sizeof(MPIR_PROCDESC_EXT));
+            if (newProctab == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error allocating %d new process table\n", strerror(errno), newProctabSize);
+                return STAT_ALLOCATE_ERROR;
+            }
+            index = myNodeRank_ * (proctabSize_ / nDaemonsPerNode_);
+            if (proctabSize_ % nDaemonsPerNode_ > 0)
+            {
+                if (myNodeRank_ <= proctabSize_ % nDaemonsPerNode_)
+                    index += myNodeRank_;
+                else
+                    index += proctabSize_ % nDaemonsPerNode_;
+            }
+            for (i = 0; i < newProctabSize; i++)
+            {
+                newProctab[i].mpirank = proctab_[index].mpirank;
+                newProctab[i].pd.pid = proctab_[index].pd.pid;
+                newProctab[i].pd.executable_name = strdup(proctab_[index].pd.executable_name);
+                if (newProctab[i].pd.executable_name == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error allocating exe name for %d %d %s\n", strerror(errno), i, index, proctab_[i].pd.executable_name);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                newProctab[i].pd.host_name = strdup(proctab_[index].pd.host_name);
+                if (newProctab[i].pd.host_name == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error allocating exe name for %d %d %s\n", strerror(errno), i, index, proctab_[i].pd.host_name);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                index++;
+            }
+
+            oldProctabSize = proctabSize_;
+            oldProctab = proctab_;
+            proctabSize_ = newProctabSize;
+            proctab_ = newProctab;
+            for (i = 0; i < oldProctabSize; i++)
+            {
+                if (oldProctab[i].pd.executable_name != NULL)
+                    free(oldProctab[i].pd.executable_name);
+                if (oldProctab[i].pd.host_name != NULL)
+                    free(oldProctab[i].pd.host_name);
+            }
+            free(oldProctab);
+        }
 
         /* Connect to the MRNet Network */
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Connecting to MRNet network\n");
@@ -3262,10 +3336,18 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     {
         fprintf(errOutFp_, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
         if (statError == STAT_WARNING)
-            fprintf(errOutFp_, "%s: STAT_WARNING: ", localHostName_);
+        {
+            if (nDaemonsPerNode_ > 1)
+                fprintf(errOutFp_, "%s.%d: STAT_WARNING: ", localHostName_, myNodeRank_);
+            else
+                fprintf(errOutFp_, "%s: STAT_WARNING: ", localHostName_);
+        }
         else
         {
-            fprintf(errOutFp_, "%s: STAT returned error type ", localHostName_);
+            if (nDaemonsPerNode_ > 1)
+                fprintf(errOutFp_, "%s.%d: STAT returned error type ", localHostName_, myNodeRank_);
+            else
+                fprintf(errOutFp_, "%s: STAT returned error type ", localHostName_);
             statPrintErrorType(statError, errOutFp_);
             fprintf(errOutFp_, ": ");
         }
@@ -3277,6 +3359,8 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     /* Print the message to the log */
     if (gStatOutFp != NULL && logType_ & STAT_LOG_BE)
     {
+        if (nDaemonsPerNode_ > 1)
+            fprintf(gStatOutFp, "%d: ", myNodeRank_);
         if (logType_ & STAT_LOG_MRN)
         {
             va_start(args, fmt);
@@ -3802,6 +3886,25 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
     return STAT_OK;
 }
 
+int STAT_BackEnd::getNDaemonsPerNode()
+{
+    return nDaemonsPerNode_;
+}
+
+void STAT_BackEnd::setNDaemonsPerNode(int nDaemonsPerNode)
+{
+    nDaemonsPerNode_ = nDaemonsPerNode;
+}
+
+int STAT_BackEnd::getMyNodeRank()
+{
+    return myNodeRank_;
+}
+
+void STAT_BackEnd::setMyNodeRank(int myNodeRank)
+{
+    myNodeRank_ = myNodeRank;
+}
 
 /******************
  * STATBench Code *

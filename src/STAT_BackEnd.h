@@ -311,6 +311,29 @@ class STAT_BackEnd
         */
         StatError_t statBenchConnect();
 
+        //! Get the number of daemons per node
+        /*!
+            \return the number of daemons per node
+        */
+        int getNDaemonsPerNode();
+
+        //! Set the number of daemons per node
+        /*!
+            \param nDaemonsPerNode - the number of daemons per node
+        */
+        void setNDaemonsPerNode(int nDaemonsPerNode);
+
+        //! Get the local node rank
+        /*!
+            \return the number of daemons per node
+        */
+        int getMyNodeRank();
+
+        //! Set the local node rank
+        /*!
+            \param localNodeRank - the local node rank
+        */
+        void setMyNodeRank(int localNodeRank);
 #ifdef DYSECTAPI
         DysectAPI::BE *getDysectBe();
 #endif
@@ -546,6 +569,8 @@ class STAT_BackEnd
         int proctabSize_;               /*!< the size of the process table */
         int processMapNonNull_;         /*!< the number of active processes */
         unsigned int logType_;          /*!< the logging level */
+        unsigned int nDaemonsPerNode_;  /*!< the number of daemons per node */
+        unsigned int myNodeRank_;       /*!< the daemon rank on this node */
         char *parentHostName_;          /*!< the hostname of the MRNet parent */
         char logOutDir_[BUFSIZE];       /*!< the directory for log files */
         char outDir_[BUFSIZE];          /*!< the output directory */

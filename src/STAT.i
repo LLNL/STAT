@@ -222,6 +222,8 @@ class STAT_FrontEnd
         unsigned int getNumApplNodes();
         void setJobId(unsigned int jobId);
         unsigned int getJobId();
+        void setNDaemonsPerNode(unsigned int nDaemonsPerNode);
+        unsigned int getNDaemonsPerNode();
         const char *getApplExe();
         StatError_t setToolDaemonExe(const char *toolDaemonExe);
         const char *getToolDaemonExe();

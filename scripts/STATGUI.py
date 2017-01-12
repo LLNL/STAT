@@ -132,6 +132,7 @@ class STATGUI(STATDotWindow):
                    'Topology':                         '1',
                    'Check Node Access':                False,
                    'CP Policy':                        'share app nodes',
+                   'Daemons per Node':                 1,
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
                    'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun',
@@ -997,6 +998,7 @@ host[1-10,12,15-20];otherhost[30]
         self.pack_check_button(vbox2, 'Check Node Access', False, False, 5)
         self.pack_combo_box(vbox2, 'CP Policy')
         self.pack_spinbutton(vbox2, 'Communication Processes per Node')
+        self.pack_spinbutton(vbox2, 'Daemons per Node')
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 0)
         hbox = gtk.HBox()
@@ -1146,6 +1148,7 @@ host[1-10,12,15-20];otherhost[30]
         self.options['CP Policy'] = self.types['CP Policy'][self.combo_boxes['CP Policy'].get_active()]
         self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
         self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
+        self.options['Daemons per Node'] = int(self.spinners['Daemons per Node'].get_value())
         if self.options['Check Node Access'] == True:
             os.environ['STAT_CHECK_NODE_ACCESS'] = '1'
         if self.STAT is None:
@@ -1190,6 +1193,7 @@ host[1-10,12,15-20];otherhost[30]
         if HAVE_DYSECT is True and self.options['Enable DySectAPI'] is True:
             os.environ['STAT_GROUP_OPS'] = "1"
         self.STAT.setProcsPerNode(self.options['Communication Processes per Node'])
+        self.STAT.setNDaemonsPerNode(self.options['Daemons per Node'])
         stat_wait_dialog.update_progress_bar(0.05)
 
         self.STAT.setApplicationOption(application_option)

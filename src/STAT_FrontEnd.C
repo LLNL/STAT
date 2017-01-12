@@ -243,6 +243,7 @@ STAT_FrontEnd::STAT_FrontEnd()
     nApplNodes_ = 0;
     proctabSize_ = 0;
     nApplProcs_ = 0;
+    nDaemonsPerNode_ = 1;
 #ifdef STAT_PROCS_PER_NODE
     procsPerNode_ = STAT_PROCS_PER_NODE;
 #else
@@ -500,7 +501,7 @@ StatError_t STAT_FrontEnd::launchDaemons()
 {
     int i, daemonArgc = 1;
     unsigned int proctabSize;
-    char **daemonArgv = NULL;
+    char **daemonArgv = NULL, tempString[BUFSIZE];
     static bool iIsFirstRun = true;
     string applName;
     set<string> exeNames;
@@ -570,12 +571,26 @@ StatError_t STAT_FrontEnd::launchDaemons()
             return STAT_ARG_ERROR;
         }
 
+        daemonArgc += 2;
+        daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+        if (daemonArgv == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
+            return STAT_ALLOCATE_ERROR;
+        }
+        daemonArgv[daemonArgc - 3] = strdup("-d");
+        snprintf(tempString, BUFSIZE, "%d", nDaemonsPerNode_);
+        daemonArgv[daemonArgc - 2] = strdup(tempString);
+        daemonArgv[daemonArgc - 1] = NULL;
+
         statError = addDaemonLogArgs(daemonArgc, daemonArgv);
         if (statError != STAT_OK)
         {
             printMsg(statError, __FILE__, __LINE__, "Failed to add daemon logging args\n");
             return statError;
         }
+        for (i = 0; i < daemonArgc; i++)
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "daemonArgv[%d] = %s\n", i, daemonArgv[i]);
 
         if (applicationOption_ == STAT_ATTACH)
         {
@@ -1027,7 +1042,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking)
         }
         if (sConnectAttempt < sConnectTimeout * 100)
         {
-            if (gNumCallbacks < nApplNodes_)
+            if (gNumCallbacks < nApplNodes_ * nDaemonsPerNode_)
             {
                 usleep(10000);
                 return STAT_PENDING_ACK;
@@ -1043,14 +1058,14 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking)
                 printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
                 return STAT_DAEMON_ERROR;
             }
-            if (gNumCallbacks == nApplNodes_)
+            if (gNumCallbacks == nApplNodes_ * nDaemonsPerNode_)
                 break;
             usleep(10000);
         }
     }
 
     /* Make sure all expected BEs registered within timeout limit */
-    if (sConnectAttempt >= sConnectTimeout * 100 || gNumCallbacks < nApplNodes_)
+    if (sConnectAttempt >= sConnectTimeout * 100 || gNumCallbacks < nApplNodes_ * nDaemonsPerNode_)
     {
         printMsg(STAT_WARNING, __FILE__, __LINE__, "Connection timed out after %d/%d seconds with %d of %d Backends reporting.\n", sConnectAttempt/100, sConnectTimeout, gNumCallbacks, nApplNodes_);
         if (gNumCallbacks == 0)
@@ -1818,9 +1833,9 @@ StatError_t STAT_FrontEnd::setAppNodeList()
 
 StatError_t STAT_FrontEnd::createDaemonRankMap()
 {
-    unsigned int i, j;
+    unsigned int i, j, k, l, mrnetRank, rank;
     char *currentNode;
-    IntList_t *daemonRanks;
+    IntList_t *daemonRanks, *newDaemonRanks;
     map<string, vector<int> > tempMap;
     map<string, vector<int> >::iterator tempMapIter;
     map<string, int> hostToMrnetRankMap;
@@ -1896,7 +1911,42 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
             daemonRanks->list[j] = (tempMapIter->second)[j];
         }
         if (hostToMrnetRankMap.size() == 0) /* MRNet BEs not connected */
-            mrnetRankToMpiRanksMap_[topologySize_ + i] = daemonRanks;
+        {
+            if (nDaemonsPerNode_ > 1)
+            {
+                l = -1;
+                for (j = 0; j < nDaemonsPerNode_; j++)
+                {
+                    mrnetRank = topologySize_ + i + nApplNodes_ * j;
+                    newDaemonRanks = (IntList_t *)malloc(sizeof(IntList_t));
+                    if (newDaemonRanks == NULL)
+                    {
+                        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for newDaemonRanks\n", strerror(errno));
+                        return STAT_ALLOCATE_ERROR;
+                    }
+                    newDaemonRanks->count = daemonRanks->count / nDaemonsPerNode_;
+                    if (daemonRanks->count % nDaemonsPerNode_ > j)
+                        newDaemonRanks->count = newDaemonRanks->count + 1;
+                    newDaemonRanks->list = (int *)malloc(newDaemonRanks->count * sizeof(int));
+                    if (newDaemonRanks->list == NULL)
+                    {
+                        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for newDaemonRanks->list\n", strerror(errno));
+                        return STAT_ALLOCATE_ERROR;
+                    }
+                    for (k = 0; k < newDaemonRanks->count; k++)
+                    {
+                        l++;
+                        rank = daemonRanks->list[l];
+                        printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%d, ", rank);
+                        newDaemonRanks->list[k] = rank;
+                    }
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "; ");
+                    mrnetRankToMpiRanksMap_[mrnetRank] = newDaemonRanks;
+                }
+            }
+            else
+                mrnetRankToMpiRanksMap_[topologySize_ + i] = daemonRanks;
+        }
         else /* MRNet BEs connected */
         {
             if (hostToMrnetRankMap.find(tempMapIter->first) != hostToMrnetRankMap.end())
@@ -4800,6 +4850,16 @@ StatError_t STAT_FrontEnd::addDaemonLogArgs(int &daemonArgc, char ** &daemonArgv
         daemonArgv[current] = NULL;
     }
     return STAT_OK;
+}
+
+void STAT_FrontEnd::setNDaemonsPerNode(int nDaemonsPerNode)
+{
+    nDaemonsPerNode_ = nDaemonsPerNode;
+}
+
+int STAT_FrontEnd::getNDaemonsPerNode()
+{
+    return nDaemonsPerNode_;
 }
 
 
