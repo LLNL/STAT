@@ -33,6 +33,7 @@ int main(int argc, char **argv)
     int opt, optionIndex = 0, mrnetOutputLevel = 1, i;
     unsigned int logType = 0;
     char logOutDir[BUFSIZE], *pid;
+    string invocationString;
     vector<string> serialProcesses;
     StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
     StatError_t statError;
@@ -63,6 +64,12 @@ int main(int argc, char **argv)
         }
     }
 
+    invocationString = "STAT invoked with: ";
+    for (i = 0; i < argc; i++)
+    {
+        invocationString.append(argv[i]);
+        invocationString.append(" ");
+    }
     if (argc > 2)
         if (strcmp(argv[1], "-s") == 0 || strcmp(argv[1], "--serial") == 0)
             launchType = STATD_MRNET_LAUNCH;
@@ -138,11 +145,13 @@ int main(int argc, char **argv)
             break;
         case '?':
             statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "STATD invoked with %s\n", invocationString.c_str());
             delete statBackEnd;
             statFinalize(launchType);
             return STAT_ARG_ERROR;
         default:
             statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "STATD invoked with %s\n", invocationString.c_str());
             delete statBackEnd;
             statFinalize(launchType);
             return STAT_ARG_ERROR;
@@ -159,6 +168,7 @@ int main(int argc, char **argv)
             statFinalize(launchType);
             return statError;
         }
+        statBackEnd->printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STATD invoked with %s\n", invocationString.c_str());
     }
 
     if (serialProcesses.size() > 0)
