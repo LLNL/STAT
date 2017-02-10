@@ -24,20 +24,20 @@ AC_DEFUN([X_AC_GRAPHLIB], [
 
   AC_MSG_CHECKING([Checking Graphlib Version])
   graphlib_vers=1
-  AC_COMPILE_IFELSE([#include "graphlib.h"
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "graphlib.h"
     #include <stdlib.h>
     #include <stdio.h>
     int main()
     {
       graphlib_functiontable_p functions;
       return 0;
-    }],
+    }])],
     [AC_DEFINE([GRAPHLIB20], [], [Graphlib 2.0])
       graphlib_vers=2.0
       AM_CONDITIONAL([ENABLE_GRAPHLIB20], true)
     ]
   )
-  AC_COMPILE_IFELSE([#include "graphlib.h"
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "graphlib.h"
     #include <stdlib.h>
     #include <stdio.h>
     int main()
@@ -45,7 +45,7 @@ AC_DEFUN([X_AC_GRAPHLIB], [
       int numNodeAttrs;
       graphlib_getNumNodeAttrs(NULL, &numNodeAttrs);
       return 0;
-    }],
+    }])],
     [AC_DEFINE([GRAPHLIB_3_0], [], [Graphlib 3.0])
       graphlib_vers=3.0
       AM_CONDITIONAL([ENABLE_GRAPHLIB30], true)

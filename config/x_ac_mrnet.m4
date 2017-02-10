@@ -25,7 +25,7 @@ AC_DEFUN([X_AC_MRNET], [
   )
   AC_MSG_CHECKING([Checking MRNet Version])
   mrnet_vers=-1
-  AC_COMPILE_IFELSE([#include "mrnet/MRNet.h"
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "mrnet/MRNet.h"
     using namespace MRN;
     using namespace std;
     int main()
@@ -34,7 +34,7 @@ AC_DEFUN([X_AC_MRNET], [
       DataType type;
       DataElement pkt;
       pkt.get_array(&type, &bufLength);
-    }],
+    }])],
     [AC_DEFINE([MRNET40], [], [MRNet 4.0])
       AC_DEFINE([MRNET31], [], [MRNet 3.1])
       AC_DEFINE([MRNET3], [], [MRNet 3.X]) 
@@ -42,7 +42,7 @@ AC_DEFUN([X_AC_MRNET], [
     ]
   )
   if test $mrnet_vers = -1; then
-    AC_COMPILE_IFELSE([#include "mrnet/MRNet.h"
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "mrnet/MRNet.h"
       using namespace MRN;
       using namespace std;
       int main()
@@ -51,7 +51,7 @@ AC_DEFUN([X_AC_MRNET], [
         vector<const char *> f;
         vector<int> fid;
         net->load_FilterFuncs(NULL, f, fid);
-      }],
+      }])],
       [AC_DEFINE([MRNET31], [], [MRNet 3.1])
         AC_DEFINE([MRNET3], [], [MRNet 3.X]) 
         mrnet_vers=3.1
@@ -59,13 +59,13 @@ AC_DEFUN([X_AC_MRNET], [
     )
   fi
   if test $mrnet_vers = -1; then
-    AC_COMPILE_IFELSE([#include "mrnet/MRNet.h"
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "mrnet/MRNet.h"
       using namespace MRN;
       int main()
       {
         Network *net;
         net->register_EventCallback(Event::TOPOLOGY_EVENT, TopologyEvent::TOPOL_ADD_BE, NULL, NULL);
-      }],
+      }])],
       [AC_DEFINE([MRNET3], [], [MRNet 3.X])
         mrnet_vers=3.X
       ]
