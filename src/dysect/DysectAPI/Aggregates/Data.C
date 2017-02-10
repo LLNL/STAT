@@ -283,10 +283,10 @@ bool Value::getStr(string& str) {
       snprintf((char*)&outBuf, 32, "%ld",  *(long*)buf);
       break;
     case floatType:
-      snprintf((char*)&outBuf, 32, "%f",  *(float*)buf);
+      snprintf((char*)&outBuf, 32, "%e",  *(float*)buf);
       break;
     case doubleType:
-      snprintf((char*)&outBuf, 32, "%f",  *(double*)buf);
+      snprintf((char*)&outBuf, 32, "%e",  *(double*)buf);
       break;
     case pointerType:
       snprintf((char*)&outBuf, 32, "%lx", *(long*)buf);
