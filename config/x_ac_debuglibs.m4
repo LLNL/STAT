@@ -26,6 +26,24 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     [CXXFLAGS="$CXXFLAGS"
      STACKWALKERPREFIX="${withval}"]
   )
+  AC_ARG_WITH(libelf,
+    [AS_HELP_STRING([--with-libelf=prefix],
+      [Add the compile and link search paths for libelf]
+    )],
+    [CXXFLAGS="$CXXFLAGS -I${withval}/include"
+     LDFLAGS="$LDFLAGS -L${withval}/lib"
+     RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"],
+    [CXXFLAGS="$CXXFLAGS"]
+  )
+  AC_ARG_WITH(libiberty,
+    [AS_HELP_STRING([--with-libiberty=prefix],
+      [Add the compile and link search paths for libiberty]
+    )],
+    [CXXFLAGS="$CXXFLAGS -I${withval}/include"
+     LDFLAGS="$LDFLAGS -L${withval}/lib"
+     RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"],
+    [CXXFLAGS="$CXXFLAGS"]
+  )
   AC_ARG_WITH(libdwarf,
     [AS_HELP_STRING([--with-libdwarf=prefix],
       [Add the compile and link search paths for libdwarf]
@@ -57,9 +75,23 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   )
 
   AC_LANG_PUSH(C++)
+  AC_CHECK_LIB(iberty,main,libiberty_found=yes,libiberty_found=no)
+  if test "$libiberty_found" = yes; then
+    BELIBS="$BELIBS -liberty"
+  else
+    AC_MSG_ERROR([libiberty is required.  Specify libiberty prefix with --with-libiberty])
+  fi
+
+  AC_CHECK_LIB(elf,elf_begin,libelf_found=yes,libelf_found=no)
+  if test "$libelf_found" = yes; then
+    BELIBS="$BELIBS -lelf"
+  else
+    AC_MSG_ERROR([libelf is required.  Specify libelf prefix with --with-libelf])
+  fi
+
   AC_CHECK_LIB(dwarf,dwarf_init,libdwarf_found=yes,libdwarf_found=no,-lelf)
   if test "$libdwarf_found" = yes; then
-    BELIBS="$BELIBS -ldwarf -lelf -liberty"
+    BELIBS="$BELIBS -ldwarf"
   else
     AC_MSG_ERROR([libdwarf is required.  Specify libdwarf prefix with --with-libdwarf])
   fi
