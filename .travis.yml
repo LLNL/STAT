@@ -1,0 +1,64 @@
+language: c
+
+sudo: required
+
+dist: trusty
+
+compiler:
+  - gcc
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - libelf-dev
+      - libdwarf-dev
+      - libboost-dev
+      - libopenmpi-dev
+      - munge
+
+env:
+  global:
+    - export PATH=$HOME/local/bin:$PATH
+    - export LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH
+
+#before_install:
+#  - case "$CC" in *+install)  CC=${CC//+*}; export TEST_INSTALL=it;; esac
+
+install:
+  # Download and install LaunchMON
+  - cd $HOME/build
+  - wget https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz
+  - tar xf launchmon-v1.0.2.tar.gz
+  - cd launchmon-v1.0.2
+  - mkdir build && cd build
+  - ../configure --prefix=$HOME/local --with-test-rm=orte --with-test-ncore-per-CN=2
+  - make -j 8 && make install
+
+  # Download and install Graphlib
+  - cd $HOME/build
+  - wget https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz -O graphlib-v3.0.0.tar.gz
+  - tar xf graphlib-v3.0.0.tar.gz
+  - mkdir build && cd build
+  - cmake -D CMAKE_INSTALL_PREFIX=$HOME/local ..
+  - make && make install
+
+  # Download and Install MRNet
+  - cd $HOME/build
+  - wget https://github.com/dyninst/mrnet/archive/MRNet-4_1_0.tar.gz
+  - cd mrnet-MRNet-4_1_0
+  - ./configure --prefix=$HOME/local --enable-shared
+  - make - j 8 && make install
+
+  # Download and Install DynInst
+  - cd $HOME/build
+  - wget https://github.com/dyninst/dyninst/archive/v9.3.0.tar.gz -O dyninst-v9.3.0.tar.gz
+  - tar xf dyninst-v9.3.0.tar.gz
+  - cd dyninst-9.3.0
+  - mkdir build && cd build
+  - cmake -D CMAKE_INSTALL_PREFIX=$HOME/local ..
+  - make -j 8 && make install
+
+script:
+ - ../configure --prefix=$HOME/local --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-graphlib=$HOME/local --with-launchmon=$HOME/local --with-libdwarf-rpm
