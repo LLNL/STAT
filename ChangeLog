@@ -1,3 +1,6 @@
+2017-02-13 Gregory L. Lee <lee218@llnl.gov>
+	MRNetSymbolReader.* : Added new virtual functions
+
 2017-01-12 Gregory L. Lee <lee218@llnl.gov>
 	* : Added ability to launch multiple daemons per node
 

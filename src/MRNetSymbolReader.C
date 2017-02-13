@@ -248,6 +248,24 @@ inline unsigned MRNetSymbolReader::getAddressWidth()
     return symReaderHandle_->getAddressWidth();
 }
 
+#ifdef SW_VERSION_9_1_0        
+inline bool MRNetSymbolReader::getABIVersion(int &major, int &minor) const
+{
+    return symReaderHandle_->getABIVersion(major, minor);
+}
+
+inline bool MRNetSymbolReader::isBigEndianDataEncoding() const
+{
+    return symReaderHandle_->isBigEndianDataEncoding();
+}
+
+inline Architecture MRNetSymbolReader::getArchitecture() const
+{
+    return symReaderHandle_->getArchitecture();
+}
+#endif
+
+
 #ifdef SW_VERSION_8_1_0
 inline bool MRNetSymbolReader::getSegment(unsigned num, SymSegment &reg)
 {

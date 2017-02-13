@@ -65,6 +65,11 @@ class MRNetSymbolReader :public Dyninst::SymReader
         virtual Symbol_t getContainingSymbol(Dyninst::Offset offset);
         virtual std::string getInterpreterName();
         virtual unsigned getAddressWidth();
+#ifdef SW_VERSION_9_1_0        
+        virtual bool getABIVersion(int &major, int &minor) const;
+        virtual bool isBigEndianDataEncoding() const;
+        virtual Architecture getArchitecture() const;
+#endif
 #ifdef SW_VERSION_8_1_0
         virtual unsigned numSegments();
         virtual bool getSegment(unsigned num, SymSegment &reg);
