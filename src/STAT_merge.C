@@ -95,7 +95,7 @@ static PyObject *py_newGraph(PyObject *self, PyObject *args)
 //! Add a stack trace to a previously generated graph
 static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
 {
-    int depth, i, task, count, size, nodeId, prevId, handle, bit, byte;
+    int i, task, count, size, nodeId, prevId, handle, bit, byte;
     char *trace, *ptr, *next, *tmp;
     char path[BUFSIZE], prevPath[BUFSIZE];
 #ifdef COUNTREP
@@ -108,7 +108,6 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
 
-    snprintf(path, BUFSIZE, "");
     if (!PyArg_ParseTuple(args, "iiis", &handle, &task, &count, &trace))
     {
         fprintf(stderr, "Failed to parse args, expecting (int, int, string)\n");
@@ -159,7 +158,7 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
     tmp = (char *)malloc(2 * sizeof(char));
     snprintf(tmp, 2, "/");
     nodeAttr.label = (void *)tmp;
-    snprintf(path, BUFSIZE, "%s", nodeAttr.label);
+    snprintf(path, BUFSIZE, "%s", (char *)nodeAttr.label);
     nodeId = 0;
     prevId = 0;
     graphlibError = graphlib_addNode(cur_graph, nodeId, &nodeAttr);
@@ -185,7 +184,7 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
         nodeAttr.label = (void *)tmp;
         next += size;
         snprintf(prevPath, BUFSIZE, "%s", path);
-        snprintf(path, BUFSIZE, "%s%s", prevPath, nodeAttr.label);
+        snprintf(path, BUFSIZE, "%s%s", prevPath, (char *)nodeAttr.label);
         nodeId = statStringHash(path);
 
         graphlibError = graphlib_addNode(cur_graph, nodeId, &nodeAttr);
@@ -290,7 +289,7 @@ static PyObject *py_Serialize_Graph(PyObject *self, PyObject *args)
     }
 
     ret = fwrite(buf, sizeof(char), bufLen, f);
-    if (ret != bufLen)
+    if (ret != (int)bufLen)
     {
         fprintf(stderr, "%s: %d Error writing serialized graph %d to file %s\n", strerror(errno), ret, handle, fileName);
         return Py_BuildValue("i", -1);
@@ -339,7 +338,7 @@ static PyObject *py_Deserialize_Graph(PyObject *self, PyObject *args)
     bufLen = ftell(f);
     if (bufLen < 0)
     {
-        fprintf(stderr, "%s: %d Error ftell file %s\n", strerror(errno), bufLen, fileName);
+        fprintf(stderr, "%s: %ld Error ftell file %s\n", strerror(errno), bufLen, fileName);
         return Py_BuildValue("i", -1);
     }
 
@@ -353,14 +352,14 @@ static PyObject *py_Deserialize_Graph(PyObject *self, PyObject *args)
     buf = (char *)malloc(bufLen * sizeof(char));
     if (buf == NULL)
     {
-        fprintf(stderr, "%s: Error allocating %d bytes for file %s\n", strerror(errno), bufLen, fileName);
+        fprintf(stderr, "%s: Error allocating %ld bytes for file %s\n", strerror(errno), bufLen, fileName);
         return Py_BuildValue("i", -1);
     }
 
     ret = fread(buf, bufLen, 1, f);
     if (ret != 1)
     {
-        fprintf(stderr, "%s: %d Error reading serialized graph from file %s.  %d of %d bytes read\n", strerror(errno), handle, fileName, ret, bufLen);
+        fprintf(stderr, "%s: Error reading serialized graph from file %s.  %d of %ld bytes read\n", strerror(errno), fileName, ret, bufLen);
         return Py_BuildValue("i", -1);
     }
 

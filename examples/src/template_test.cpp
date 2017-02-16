@@ -44,7 +44,7 @@ public:
     srand(getSeed());
 
     const size_t max_list_size = 1024;
-    const T2 max_weight = 1<<32;
+    const T2 max_weight = 1<<31;
 
     int n = (rand() % max_list_size) + 1;
     int m = (rand() % max_list_size) + 1;

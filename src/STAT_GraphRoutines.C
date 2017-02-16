@@ -52,16 +52,15 @@ int *gStatGraphRoutinesRanksList;
 //! the length of the ranks list
 int gStatGraphRoutinesRanksListLength;
 
-unsigned int statStringHash(const char *str)
+int statStringHash(const char *str)
 {
-    unsigned int hash = 0;
-    int c;
+    int hash = 0, c;
 
     if (str == NULL)
         return 1;
 
     /* perform a sdbm hash */
-    while (c = *str++)
+    while ((c = *str++))
         hash = c + (hash << 6) + (hash << 16) - hash;
 
     return hash;
@@ -481,8 +480,8 @@ void statDeserializeEdge(void **edge, const char *buf, unsigned int bufLength)
 
 char *statEdgeToText(const void *edge)
 {
-    int i, j, inRange = 0, firstIteration = 1, currentValue, lastValue = 0;
-    unsigned int charRetSize = 0, count = 0;
+    int inRange = 0, firstIteration = 1, currentValue, lastValue = 0;
+    unsigned int i, j, charRetSize = 0, count = 0;
     char val[128], *charRet;
     StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
 
@@ -625,7 +624,7 @@ void statFreeEdge(void *edge)
 #ifdef GRAPHLIB_3_0
 long statEdgeCheckSum(const char *key, const void *edge)
 {
-    int i;
+    unsigned int i;
     long longRet = 0;
     StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
 
@@ -726,8 +725,7 @@ int bitVectorContains(StatBitVector_t *vec, int val)
 
 void *statMergeEdgeOrdered(void *edge1, const void *edge2)
 {
-    unsigned int i;
-    int bit, byte;
+    int i, bit, byte;
     StatBitVectorEdge_t *e1 = (StatBitVectorEdge_t *)edge1, *e2 = (StatBitVectorEdge_t *)edge2;
 
     if (edge1 == NULL || edge2 == NULL)
@@ -782,7 +780,7 @@ char *statCountRepEdgeToText(const void *edge)
     e = (StatCountRepEdge_t *)edge;
     charRet = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
     if (charRet != NULL)
-        snprintf(charRet, STAT_GRAPH_CHUNK, "%lld:[%lld](%lld)", e->count, e->representative, e->checksum);
+        snprintf(charRet, STAT_GRAPH_CHUNK, "%ld:[%ld](%ld)", e->count, e->representative, e->checksum);
     else
         fprintf(stderr, "Failled to malloc %zu bytes for edge text\n", STAT_GRAPH_CHUNK * sizeof(char));
     return charRet;
@@ -823,7 +821,7 @@ void statFreeCountRepEdge(void *edge)
 #ifdef GRAPHLIB_3_0
 long statCountRepEdgeCheckSum(const char *key, const void *edge)
 {
-    int i;
+    unsigned int i;
     long longRet = 0;
     StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
 
@@ -974,7 +972,8 @@ int popCount(uint64_t x) {
 
 int statGetBitVectorCount(StatBitVectorEdge_t *edge)
 {
-    int i, count = 0;
+    unsigned int i;
+    int count = 0;
     for (i = 0; i < edge->length; i++)
         count += popCount(edge->bitVector[i]);
     return count;
@@ -1018,7 +1017,7 @@ char *statEdgeAttrToText(const char *key, const void *edge)
         e = (int64_t *)edge;
         charRet = (char *)malloc(STAT_GRAPH_CHUNK * sizeof(char));
         if (charRet != NULL)
-            snprintf(charRet, STAT_GRAPH_CHUNK, "%lld", *e);
+            snprintf(charRet, STAT_GRAPH_CHUNK, "%ld", *e);
         else
             fprintf(stderr, "Failled to malloc %zu bytes for edge text\n", STAT_GRAPH_CHUNK * sizeof(char));
         return charRet;
@@ -1026,7 +1025,7 @@ char *statEdgeAttrToText(const char *key, const void *edge)
     else if (strcmp(key, "tid") == 0)
     {
         char *charRet, tidString[BUFSIZE];
-        int64_t *e, *count, i;
+        int64_t *e, i;
 
         e = (int64_t *)edge;
         charRet = (char *)calloc(1, STAT_GRAPH_CHUNK * sizeof(char));
@@ -1035,10 +1034,10 @@ char *statEdgeAttrToText(const char *key, const void *edge)
             fprintf(stderr, "Failled to malloc %zu bytes for edge text\n", STAT_GRAPH_CHUNK * sizeof(char));
             return NULL;
         }
-        snprintf(charRet, STAT_GRAPH_CHUNK, "%lld:", e[0]);
+        snprintf(charRet, STAT_GRAPH_CHUNK, "%ld:", e[0]);
         for (i = 1; i <= e[0]; i++)
         {
-            snprintf(tidString, BUFSIZE, "%lld,", e[i]);
+            snprintf(tidString, BUFSIZE, "%ld,", e[i]);
             strncat(charRet, tidString, STAT_GRAPH_CHUNK - 1);
         }
         return charRet;
@@ -1081,7 +1080,7 @@ void *statMergeEdgeAttr(const char *key, void *edge1, const void *edge2)
     }
     else if (strcmp(key, "tid") == 0)
     {
-        int64_t originalCount, *e1, *e2, *e3, addr, addr2, size, x;
+        int64_t originalCount, *e1, *e2, *e3, size;
         //TODO how do we associate an edge with a given rank?
         e1 = (int64_t *)edge1;
         originalCount = e1[0];
@@ -1229,7 +1228,7 @@ void *statMergeEdgeAttrOrdered(const char *key, void *edge1, const void *edge2)
         return edge1;
     else if (strcmp(key, "tid") == 0)
     {
-        int64_t originalCount, *e1, *e2, *e3, addr, addr2, size, x;
+        int64_t originalCount, *e1, *e2, *e3, size;
         //TODO how do we associate an edge with a given rank?
         e1 = (int64_t *)edge1;
         originalCount = e1[0];

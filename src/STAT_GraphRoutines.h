@@ -70,7 +70,7 @@ typedef struct
     \param str - the string to hash
     \return the hash value of the string
 */
-unsigned int statStringHash(const char *str);
+int statStringHash(const char *str);
 
 graphlib_graph_p statNewGraph(graphlib_functiontable_p functions);
 

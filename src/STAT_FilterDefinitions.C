@@ -262,8 +262,8 @@ void STAT_checkVersion(vector<PacketPtr> &inputPackets,
                        const TopologyLocalInfo &topology)
 {
     PacketPtr currentPacket;
-    int major, minor, revision, i;
-    int daemonCount = 0, filterCount = 0;
+    int major, minor, revision, daemonCount = 0, filterCount = 0;
+    unsigned int i;
 
     /* See if we're checking the filter version */
     if (inputPackets[0]->get_Tag() == PROT_CHECK_VERSION_RESP)

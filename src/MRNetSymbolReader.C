@@ -248,7 +248,7 @@ inline unsigned MRNetSymbolReader::getAddressWidth()
     return symReaderHandle_->getAddressWidth();
 }
 
-#ifdef SW_VERSION_9_1_0        
+#if SW_MAJOR == 9 && SW_MINOR == 3
 inline bool MRNetSymbolReader::getABIVersion(int &major, int &minor) const
 {
     return symReaderHandle_->getABIVersion(major, minor);

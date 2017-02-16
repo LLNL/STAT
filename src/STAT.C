@@ -460,7 +460,7 @@ void printUsage()
 */
 StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int argc, char **argv)
 {
-    int i, opt, optionIndex = 0, nProcs;
+    int i, opt, optionIndex = 0;
     unsigned int logType = 0;
     bool createJob = false, serialJob = false;
     char logOutDir[BUFSIZE];

@@ -116,7 +116,7 @@ typedef struct
 //! A struct to hold a list of StatLeafInfo_t objects
 typedef struct
 {
-    int size;
+    unsigned int size;
     StatLeafInfo_t *leaves;
 } StatLeafInfoArray_t;
 
@@ -548,7 +548,7 @@ class STAT_BackEnd
             \param nEqClasses - the number of equivalence classes to generate
             \return STAT_OK on success
         */
-        StatError_t statBenchCreateTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
+        StatError_t statBenchCreateTraces(unsigned int maxDepth, int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
 
         //! Create a single stack trace (STAT Bench)
         /*!
@@ -601,7 +601,7 @@ class STAT_BackEnd
         std::map<int, std::map<std::string, std::string> > nodeIdToAttrs_;
         std::map<int, std::map<std::string, void *> > edgeIdToAttrs_;
         std::map<int, std::map<std::string, void *> > edgeIdToAttrs3d_;
-        int threadBvLength_;
+        unsigned int threadBvLength_;
         std::vector<Dyninst::THR_ID> threadIds_;
 #endif
         std::map<int, std::string> nodes2d_; /*!< the 2D prefix tree nodes */
@@ -617,7 +617,7 @@ class STAT_BackEnd
         StatVariable_t *extractVariables_;  /*!< a list of variables to extract
                                                  for the current sample */
 
-        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;  /*!< the debug process objects */
+        std::map<unsigned int, Dyninst::Stackwalker::Walker *> processMap_;  /*!< the debug process objects */
         std::map<Dyninst::Stackwalker::Walker *, int> procsToRanks_;    /*!< translate a process into a rank */
 
 

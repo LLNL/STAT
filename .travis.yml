@@ -31,10 +31,14 @@ env:
     - export CXXFLAGS=-std=c++11
 
 install:
+  # Build STAT's dependences
+
+  # Check for cached builds:
   - mkdir -p $HOME/local
   - ls -l $HOME/local
 
-# This should all be cached, so only run commands when we want to update the cache
+  # This should all be cached, so only run commands below when we want to update the cache
+
 #  # Download and install LaunchMON
 #  - cd $HOME/build
 #  - wget https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz
@@ -64,12 +68,12 @@ install:
 #  # Download and Install Libdwarf
 #  - cd $HOME/build
 #  - wget https://www.prevanders.net/libdwarf-20161124.tar.gz
-#  - tar xf libdwarf-20161124.tar.gz 
-#  - cd dwarf-20161124/libdwarf 
+#  - tar xf libdwarf-20161124.tar.gz
+#  - cd dwarf-20161124/libdwarf
 #  - ./configure --prefix=$HOME/local --enable-shared --disable-nonshared
 #  - make -j 8
-#  - cp libdwarf.so $HOME/local/lib 
-#  - cp libdwarf.so.1 $HOME/local/lib 
+#  - cp libdwarf.so $HOME/local/lib
+#  - cp libdwarf.so.1 $HOME/local/lib
 #  - cp libdwarf.h  $HOME/local/include
 #  - cp dwarf.h $HOME/local/include
 #
@@ -88,9 +92,8 @@ script:
   - ./bootstrap
   - export LDFLAGS=-Wl,-no-as-needed
   - ./configure --prefix=$HOME/stat --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-graphlib=$HOME/local --with-launchmon=$HOME/local --with-libdwarf=$HOME/local --with-libiberty=$HOME/local || cat config.log
-  - ls -l $HOME/local/lib
   - make && make install
- 
+
 after_script:
   - ls -l $HOME/stat/bin
   - $HOME/stat/bin/stat-cl -h

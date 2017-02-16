@@ -69,7 +69,7 @@ STAT_timer gEndTime;
 FILE *gStatOutFp = NULL;
 
 //! The number of BEs that have connected
-int gNumCallbacks;
+unsigned int gNumCallbacks;
 
 //! A mutex to protect data/events during a callback
 pthread_mutex_t gMrnetCallbackMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -500,7 +500,7 @@ StatError_t STAT_FrontEnd::setupForSerialAttach()
 StatError_t STAT_FrontEnd::launchDaemons()
 {
     int i, daemonArgc = 1;
-    unsigned int proctabSize;
+    unsigned int proctabSize, j;
     char **daemonArgv = NULL, tempString[BUFSIZE];
     static bool iIsFirstRun = true;
     string applName;
@@ -668,14 +668,14 @@ StatError_t STAT_FrontEnd::launchDaemons()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering application information\n");
 
     /* Iterate over all unique exe names and concatenate to app name */
-    for (i = 0; i < proctabSize_; i++)
+    for (j = 0; j < proctabSize_; j++)
     {
-        if (exeNames.find(proctab_[i].pd.executable_name) != exeNames.end())
+        if (exeNames.find(proctab_[j].pd.executable_name) != exeNames.end())
             continue;
-        exeNames.insert(proctab_[i].pd.executable_name);
-        if (i > 0)
+        exeNames.insert(proctab_[j].pd.executable_name);
+        if (j > 0)
             applName += "_";
-        applName += basename(proctab_[i].pd.executable_name);
+        applName += basename(proctab_[j].pd.executable_name);
     }
     applExe_ = strdup(applName.c_str());
     if (applExe_ == NULL)
@@ -792,6 +792,7 @@ void topologyChangeCb(Event *event, void *statObject)
 StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, StatCpPolicy_t cpPolicy)
 {
     int daemonArgc, statArgc, i;
+    unsigned int j;
     char topologyFileName[BUFSIZE], **daemonArgv = NULL, temp[BUFSIZE];
     bool boolRet;
     StatError_t statError;
@@ -837,20 +838,20 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
             free(daemonArgv);
             return STAT_ALLOCATE_ERROR;
         }
-        for (i = 0; i < proctabSize_; i++)
+        for (j = 0; j < proctabSize_; j++)
         {
-            daemonArgv[2 * i + 1] = strdup("-p");
-            if (daemonArgv[2 * i + 1] == NULL)
+            daemonArgv[2 * j + 1] = strdup("-p");
+            if (daemonArgv[2 * j + 1] == NULL)
             {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), 2 * i + 1);
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), 2 * j + 1);
                 free(daemonArgv);
                 return STAT_ALLOCATE_ERROR;
             }
-            snprintf(temp, BUFSIZE, "%s@%s:%d", proctab_[i].pd.executable_name, proctab_[i].pd.host_name, proctab_[i].pd.pid);
-            daemonArgv[2 * i + 2] = strdup(temp);
-            if (daemonArgv[2 * i + 2] == NULL)
+            snprintf(temp, BUFSIZE, "%s@%s:%d", proctab_[j].pd.executable_name, proctab_[j].pd.host_name, proctab_[j].pd.pid);
+            daemonArgv[2 * j + 2] = strdup(temp);
+            if (daemonArgv[2 * j + 2] == NULL)
             {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) argv[%d]\n", strerror(errno), temp, 2 * i + 2);
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) argv[%d]\n", strerror(errno), temp, 2 * j + 2);
                 free(daemonArgv);
                 return STAT_ALLOCATE_ERROR;
             }
@@ -1013,7 +1014,6 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking)
 {
     static int sConnectTimeout = -1, sConnectAttempt = 0;
     char *connectTimeoutString;
-    StatError_t statError;
 
     if (network_ == NULL)
     {
@@ -1295,7 +1295,7 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
 #ifdef STAT_FGFS
 StatError_t STAT_FrontEnd::sendFileRequestStream()
 {
-    int upstreamFileRequestFilterId, downstreamFileRequestFilterId, tag;
+    int upstreamFileRequestFilterId, downstreamFileRequestFilterId;
     PacketPtr packet;
     StatError_t statError;
 
@@ -1578,7 +1578,7 @@ void STAT_FrontEnd::getVersion(int *version)
 
 StatError_t STAT_FrontEnd::dumpProctab()
 {
-    int i;
+    unsigned int i;
     FILE *file;
     char fileName[BUFSIZE];
 
@@ -1833,7 +1833,8 @@ StatError_t STAT_FrontEnd::setAppNodeList()
 
 StatError_t STAT_FrontEnd::createDaemonRankMap()
 {
-    unsigned int i, j, k, l, mrnetRank, rank;
+    unsigned int i, j, mrnetRank, rank;
+    int k, l;
     char *currentNode;
     IntList_t *daemonRanks, *newDaemonRanks;
     map<string, vector<int> > tempMap;
@@ -1952,8 +1953,8 @@ StatError_t STAT_FrontEnd::createDaemonRankMap()
             if (hostToMrnetRankMap.find(tempMapIter->first) != hostToMrnetRankMap.end())
                 mrnetRankToMpiRanksMap_[hostToMrnetRankMap[tempMapIter->first]] = daemonRanks;
             else
-                for (j = 0; j < daemonRanks->count; j++)
-                    missingRanks_.insert(daemonRanks->list[j]);
+                for (k = 0; k < daemonRanks->count; k++)
+                    missingRanks_.insert(daemonRanks->list[k]);
         }
         printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");
     }
@@ -2187,8 +2188,7 @@ StatError_t STAT_FrontEnd::createOutputDir()
 
 StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t topologyType, char *topologySpecification, char *nodeList, StatCpPolicy_t cpPolicy)
 {
-    int parentCount = 1, desiredDepth = 0, desiredMaxFanout = 0, procsNeeded = 0, size;
-    unsigned int i, j, counter, layer, parentIter = 0, childIter, depth = 0, fanout = 0;
+    unsigned int i, j, counter, layer, parentIter = 0, childIter, fanout = 0, parentCount = 1, procsNeeded = 0, desiredDepth = 0, desiredMaxFanout = 0, size;
     FILE *file;
     char tmp[BUFSIZE];
     char *envValue;
@@ -2322,8 +2322,8 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
                 printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Not enough processes for specified topology.  %d processes needed for depth of %d and fanout of %d.  Reverting to flat topology\n", procsNeeded, desiredDepth, fanout);
             else
             {
-                if (size > (int)sqrt(nApplNodes_))
-                    size = (int)sqrt(nApplNodes_);
+                if (size > (unsigned int)sqrt(nApplNodes_))
+                    size = (unsigned int)sqrt(nApplNodes_);
                 if (topologyType == STAT_TOPOLOGY_AUTO)
                     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "Not enough processes for automatic topology.  %d processes needed for depth of %d and fanout of %d.  Reverting to tree with one layer of %d communication processes\n", procsNeeded, desiredDepth, fanout, communicationNodeSet_.size() * procsPerNode_);
                 else
@@ -2354,8 +2354,8 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         size = communicationNodeSet_.size() * procsPerNode_;
         if (procsNeeded > size)
         {
-            if (size > (int)sqrt(nApplNodes_))
-                size = (int)sqrt(nApplNodes_);
+            if (size > (unsigned int)sqrt(nApplNodes_))
+                size = (unsigned int)sqrt(nApplNodes_);
             if (size > 0)
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "Not enough processes specified for the requested topology %s: %d processes needed, %d processes specified.  Reverting to tree with one layer of %d communication processes.  Next time, please specify more resources with --nodes and --procs.\n", topology.c_str(), procsNeeded, communicationNodeSet_.size() * procsPerNode_, size);
             else
@@ -2604,7 +2604,6 @@ void checkPendingActions(STAT_FrontEnd *statFE)
 
 StatError_t STAT_FrontEnd::attachApplication(bool blocking)
 {
-    int tag;
     StatError_t statError;
     PacketPtr packet;
 
@@ -2679,7 +2678,6 @@ StatError_t STAT_FrontEnd::postAttachApplication()
 
 StatError_t STAT_FrontEnd::pause(bool blocking)
 {
-    int tag;
     StatError_t statError;
     PacketPtr packet;
 
@@ -2756,7 +2754,6 @@ StatError_t STAT_FrontEnd::postPauseApplication()
 
 StatError_t STAT_FrontEnd::resume(bool blocking)
 {
-    int tag;
     StatError_t statError;
     PacketPtr packet;
 
@@ -3720,7 +3717,6 @@ StatError_t STAT_FrontEnd::detachApplication(bool blocking)
 
 StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bool blocking)
 {
-    int tag;
     StatError_t statError;
     PacketPtr packet;
 
@@ -3892,7 +3888,6 @@ void STAT_FrontEnd::printMsg(StatError_t statError, const char *sourceFile, int 
 
 StatError_t STAT_FrontEnd::terminateApplication(bool blocking)
 {
-    int tag;
     StatError_t statError;
     PacketPtr packet;
 
@@ -4346,12 +4341,13 @@ StatError_t increaseSysLimits()
 
 StatError_t STAT_FrontEnd::setRanksList()
 {
-    int i, j, rank, intRet;
+    unsigned int i;
+    int intRet;
     map<int, RemapNode_t*> childOrder;
     map<int, RemapNode_t*>::iterator childOrderIter;
     list<int>::iterator remapRanksListIter;
     multiset<string>::iterator applicationNodeMultiSetIter;
-    RemapNode_t *root, *currentNode;
+    RemapNode_t *root;
     set<string> daemonIpAddrs, daemonSet;
     set<string>::iterator daemonIter;
     XPlat::NetUtils::NetworkAddress networkAddress;
@@ -4556,7 +4552,8 @@ StatError_t STAT_FrontEnd::sendDaemonInfo()
 
 int statPack(void *data, void *buf, int bufMax, int *bufLen)
 {
-    int i, j, total = 0, nLeaves, len, port, rank, daemonCount, daemonRank;
+    int total = 0, len, port, rank, daemonCount, daemonRank;
+    unsigned int i, j, nLeaves;
     char *ptr = (char *)buf, *daemonCountPtr, *childCountPtr;
     unsigned int nNodes, depth, minFanout, maxFanout;
     double averageFanout, stdDevFanout;
@@ -4576,8 +4573,8 @@ int statPack(void *data, void *buf, int bufMax, int *bufLen)
 
     /* pack up the number of parent nodes */
     nLeaves = leafInfo->leafCps.size();
-    memcpy(ptr, (void *)&nLeaves, sizeof(int));
-    ptr += sizeof(int);
+    memcpy(ptr, (void *)&nLeaves, sizeof(unsigned int));
+    ptr += sizeof(unsigned int);
     total += sizeof(int);
 
     /* write the data one parent at a time */
@@ -4608,7 +4605,7 @@ int statPack(void *data, void *buf, int bufMax, int *bufLen)
         memcpy(ptr, (void *)&rank, sizeof(int));
         ptr += sizeof(int);
         childCountPtr = ptr;
-        ptr += sizeof(int);
+        ptr += sizeof(unsigned int);
 
         for (j = 0; j < (leafInfo->daemons.size() / nLeaves) + (leafInfo->daemons.size() % nLeaves > i ? 1 : 0); j++)
         {
@@ -4634,7 +4631,7 @@ int statPack(void *data, void *buf, int bufMax, int *bufLen)
             daemonIter++;
             daemonCount++;
         }
-        memcpy(childCountPtr, (void *)&j, sizeof(int));
+        memcpy(childCountPtr, (void *)&j, sizeof(unsigned int));
     }
 
     /* write the daemon count to the appropriate location */
@@ -4693,7 +4690,6 @@ bool STAT_FrontEnd::checkNodeAccess(char *node)
     free(rsh);
     if (output == NULL)
         return false;
-    snprintf(testOutput, BUFSIZE, "");
     fgets(testOutput, sizeof(testOutput), output);
     pclose(output);
     if (strcmp(testOutput, "") == 0)
@@ -4889,7 +4885,7 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
 {
     int tag, intRet;
     unsigned int i, j;
-    char *currentNode, name[BUFSIZE];
+    char name[BUFSIZE];
     StatError_t statError;
     PacketPtr packet;
 

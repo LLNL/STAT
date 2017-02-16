@@ -95,7 +95,7 @@ typedef enum {
     PROT_LOAD_SESSION_LIB,
     PROT_LOAD_SESSION_LIB_RESP,
     PROT_NOTIFY_FINISH_BINDING,
-#else 
+#else
     PROT_SEND_NODE_IN_EDGE_RESP
 #endif
 } StatProt_t;

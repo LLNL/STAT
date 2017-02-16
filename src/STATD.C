@@ -31,8 +31,8 @@ using namespace std;
 int main(int argc, char **argv)
 {
     int opt, optionIndex = 0, mrnetOutputLevel = 1, i;
-    unsigned int logType = 0;
-    char logOutDir[BUFSIZE], *pid;
+    unsigned int logType = 0, j;
+    char logOutDir[BUFSIZE];
     string invocationString;
     vector<string> serialProcesses;
     StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
@@ -173,9 +173,9 @@ int main(int argc, char **argv)
 
     if (serialProcesses.size() > 0)
     {
-        for (i = 0; i < serialProcesses.size(); i++)
+        for (j = 0; j < serialProcesses.size(); j++)
         {
-            statError = statBackEnd->addSerialProcess(serialProcesses[i].c_str());
+            statError = statBackEnd->addSerialProcess(serialProcesses[j].c_str());
             if (statError != STAT_OK)
             {
                 statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");

@@ -89,8 +89,8 @@ StatError_t statFinalize(StatDaemonLaunch_t launchType)
 }
 
 STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
-    launchType_(launchType),
-    swLogBuffer_(STAT_SW_DEBUG_BUFFER_LENGTH)
+    swLogBuffer_(STAT_SW_DEBUG_BUFFER_LENGTH),
+    launchType_(launchType)
 {
     gStatOutFp = NULL;
     proctabSize_ = 0;
@@ -407,13 +407,13 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
     int i;
     string::size_type delimPos;
     string tempString;
-    StatCountRepEdge_t *countRepEdge = NULL;
     graphlib_graph_p *currentGraph;
     graphlib_error_t graphlibError;
 #ifdef GRAPHLIB_3_0
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1,NULL};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0,NULL};
 #else
+    StatCountRepEdge_t *countRepEdge = NULL;
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
 #endif
@@ -746,8 +746,7 @@ static void onCrashWrap(int sig, siginfo_t *info, void *context)
 
 void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
 {
-    int addrListSize;
-    unsigned int j;
+    int addrListSize, j;
     static const unsigned int maxStackSize = 256;
     char **namedSw, **i;
     void *stackSize[maxStackSize];
@@ -930,7 +929,7 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
 StatError_t STAT_BackEnd::connect(int argc, char **argv)
 {
     int i, newProctabSize, oldProctabSize, index;
-    unsigned int nextNodeRank;
+    unsigned int j, k, nextNodeRank;
     bool found;
     char *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
     pid_t pid;
@@ -990,21 +989,21 @@ StatError_t STAT_BackEnd::connect(int argc, char **argv)
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for my connection information\n");
         found = false;
         XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
-        for (i = 0; i < leafInfoArray.size; i++)
+        for (k = 0; k < leafInfoArray.size; k++)
         {
-            XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
+            XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[k].hostName), leafPrettyHost);
             if (prettyHost == leafPrettyHost || strcmp(leafPrettyHost.c_str(), localIp_) == 0)
             {
                 found = true;
-                parentHostName_ = strdup(leafInfoArray.leaves[i].parentHostName);
+                parentHostName_ = strdup(leafInfoArray.leaves[k].parentHostName);
                 if (parentHostName_ == NULL)
                 {
-                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to parentHostName_)\n", strerror(errno), leafInfoArray.leaves[i].parentHostName);
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to parentHostName_)\n", strerror(errno), leafInfoArray.leaves[k].parentHostName);
                     return STAT_ALLOCATE_ERROR;
                 }
-                parentPort_ = leafInfoArray.leaves[i].parentPort;
-                parentRank_ = leafInfoArray.leaves[i].parentRank;
-                myRank_ = leafInfoArray.leaves[i].rank;
+                parentPort_ = leafInfoArray.leaves[k].parentPort;
+                parentRank_ = leafInfoArray.leaves[k].parentRank;
+                myRank_ = leafInfoArray.leaves[k].rank;
                 break;
             }
         }
@@ -1020,7 +1019,7 @@ StatError_t STAT_BackEnd::connect(int argc, char **argv)
         {
             nextNodeRank = myNodeRank_;
             pid = 1;
-            for (i = 1; i < nDaemonsPerNode_ && pid > 0; i++)
+            for (j = 1; j < nDaemonsPerNode_ && pid > 0; j++)
             {
                 nextNodeRank++;
                 pid = fork();
@@ -1163,7 +1162,7 @@ StatError_t STAT_BackEnd::mainLoop()
     graphlib_error_t graphlibError;
     graphlib_graph_p prefixTree2d = NULL, prefixTree3d = NULL;
     StatBitVectorEdge_t *edge;
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
     ProcDebug *pDebug = NULL;
 #ifdef STAT_FGFS
     MRNetSymbolReaderFactory *msrf = NULL;
@@ -1699,7 +1698,7 @@ StatError_t STAT_BackEnd::attach()
 {
     int i;
     Walker *proc = NULL;
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
 #if defined(GROUP_OPS)
     vector<ProcessSet::AttachInfo> aInfo;
     ProcessSet::AttachInfo pAttach;
@@ -1862,7 +1861,7 @@ StatError_t STAT_BackEnd::attach()
 
 StatError_t STAT_BackEnd::pause()
 {
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
 
@@ -1897,7 +1896,7 @@ StatError_t STAT_BackEnd::pause()
 
 StatError_t STAT_BackEnd::resume()
 {
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
 #if defined(GROUP_OPS)
@@ -2176,9 +2175,8 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     int j;
     unsigned int i;
     bool wasRunning, isLastTrace;
-    graphlib_error_t graphlibError;
     StatError_t statError;
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
     map<int, StatBitVectorEdge_t *>::iterator nodeInEdgeMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with variables %s and type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, variableSpecification, sampleType_);
@@ -2394,7 +2392,8 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
 
 StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency)
 {
-    int nodeId, prevId, i, j, partialTraceScore;
+    int nodeId, prevId, k;
+    unsigned int i, j, partialTraceScore;
     string::size_type delimPos;
     bool boolRet, isFirstPythonFrame;
     string name, path;
@@ -2579,10 +2578,10 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                 /* Get the name of each frame */
                 isFirstPythonFrame = true;
                 isPyTrace_ = false;
-                for (i = bestStackWalk.size() - 1; i >= 0; i = i - 1)
+                for (k = bestStackWalk.size() - 1; k >= 0; k = k - 1)
                 {
                     map<string, string> nodeAttrs;
-                    name = getFrameName(nodeAttrs, bestStackWalk[i], bestStackWalk.size() - i + 1);
+                    name = getFrameName(nodeAttrs, bestStackWalk[k], bestStackWalk.size() - i + 1);
                     if (sampleType_ & STAT_SAMPLE_PYTHON)
                     {
                         if (isPyTrace_ == true && isFirstPythonFrame == true)
@@ -2634,7 +2633,8 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
 #if defined(GROUP_OPS)
 StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, FrameNode *stackwalkerNode, string nodeIdNames, set<pair<Walker *, THR_ID> > *errorThreads, set<int> &outputRanks, std::map<int, std::set<THR_ID> > &outputRankThreadsMap, bool &abort, int branches)
 {
-    int rank, newChildId, maxAncestorBranches;
+    int rank, newChildId;
+    unsigned int maxAncestorBranches;
     bool myAbort = false, allMyChildrenAbort = true;
     set<int> myRanks, kidsRanks;
     set<int>::iterator myRanksIter;
@@ -2655,7 +2655,6 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
     THR_ID threadId;
     Walker *walker;
     map<Walker *, int>::iterator procsToRanksIter;
-    graphlib_error_t graphlibError;
     StatBitVectorEdge_t *edge;
     StatError_t statError;
 #ifdef GRAPHLIB_3_0
@@ -2747,7 +2746,7 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             graphlibNode = 0;
         }
 
-        if (isPyTrace_ == true && (name.find("call_function") != string::npos || name.find("fast_function") != string::npos) || name.find("PyCFunction_Call") != string::npos)
+        if (isPyTrace_ == true && ((name.find("call_function") != string::npos || name.find("fast_function") != string::npos) || name.find("PyCFunction_Call") != string::npos))
         {
             /* We're in a python interpreter frame, don't add this node and use the previous parent node for the next edge */
             newNodeIdNames = nodeIdNames;
@@ -3122,7 +3121,7 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
 {
     int i;
     bool leaveStopped;
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
     ProcDebug *pDebug = NULL;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
@@ -3199,13 +3198,14 @@ StatError_t STAT_BackEnd::sendAck(Stream *stream, int tag, int val)
 
 int unpackStatBeInfo(void *buf, int bufLen, void *data)
 {
-    int parent, daemon, nChildren, nParents, child, currentParentPort, currentParentRank;
+    int parent, nParents, currentParentPort, currentParentRank;
+    unsigned int nChildren, child, daemon;
     char currentParent[STATBE_MAX_HN_LEN], *ptr = (char *)buf;
     StatLeafInfoArray_t *leafInfoArray = (StatLeafInfoArray_t *)data;
 
     /* Get the number of daemons and set up the leaf info array */
-    memcpy((void *)&(leafInfoArray->size), ptr, sizeof(int));
-    ptr += sizeof(int);
+    memcpy((void *)&(leafInfoArray->size), ptr, sizeof(unsigned int));
+    ptr += sizeof(unsigned int);
     leafInfoArray->leaves = (StatLeafInfo_t *)malloc(leafInfoArray->size * sizeof(StatLeafInfo_t));
     if (leafInfoArray->leaves == NULL)
     {
@@ -3226,8 +3226,8 @@ int unpackStatBeInfo(void *buf, int bufLen, void *data)
         ptr += sizeof(int);
         memcpy(&currentParentRank, ptr, sizeof(int));
         ptr += sizeof(int);
-        memcpy(&nChildren, ptr, sizeof(int));
-        ptr += sizeof(int);
+        memcpy(&nChildren, ptr, sizeof(unsigned int));
+        ptr += sizeof(unsigned int);
 
         /* Iterate over this parent's children */
         for (child = 0; child < nChildren; child++)
@@ -3913,7 +3913,7 @@ void STAT_BackEnd::setMyNodeRank(int myNodeRank)
 StatError_t STAT_BackEnd::statBenchConnectInfoDump()
 {
     int i, count, intRet, fd;
-    unsigned int bytesWritten;
+    unsigned int bytesWritten, j;
     char fileName[BUFSIZE], data[BUFSIZE], *ptr = NULL;
     string prettyHost, leafPrettyHost;
     lmon_rc_e lmonRet;
@@ -3960,10 +3960,10 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
         kill(proctab_[i].pd.pid, SIGCONT);
 
     /* Find MRNet personalities for all STATBench Daemons on this node */
-    for (i = 0, count = -1; i < leafInfoArray.size; i++)
+    for (j = 0, count = -1; j < leafInfoArray.size; j++)
     {
         XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
-        XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
+        XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[j].hostName), leafPrettyHost);
         if (prettyHost == leafPrettyHost)
         {
             count++;
@@ -3991,7 +3991,7 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
                 return STAT_FILE_ERROR;
             }
 
-            snprintf(data, BUFSIZE, "%s %d %d %d %d", leafInfoArray.leaves[i].parentHostName, leafInfoArray.leaves[i].parentPort, leafInfoArray.leaves[i].parentRank, leafInfoArray.leaves[i].rank, proctab_[count].mpirank);
+            snprintf(data, BUFSIZE, "%s %d %d %d %d", leafInfoArray.leaves[j].parentHostName, leafInfoArray.leaves[j].parentPort, leafInfoArray.leaves[j].parentRank, leafInfoArray.leaves[j].rank, proctab_[count].mpirank);
             bytesWritten = 0;
             while (bytesWritten < strlen(data))
             {
@@ -4126,10 +4126,11 @@ StatError_t STAT_BackEnd::statBenchConnect()
 }
 
 
-StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses)
+StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses)
 {
     static int init = 0;
-    unsigned int i, j;
+    unsigned int i;
+    int j;
     StatError_t statError;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating traces with max depth = %d, num tasks = %d, num traces = %d, function fanout = %d, equivalence classes = %d, sample type = %u\n", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, sampleType_);
@@ -4144,11 +4145,11 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             return STAT_ALLOCATE_ERROR;
         }
         proctab_[0].mpirank = myRank_ * nTasks;
-        for (i = 0; i < proctabSize_; i++)
+        for (j = 0; j < proctabSize_; j++)
         {
-            proctab_[i].pd.executable_name = NULL;
-            proctab_[i].pd.host_name = NULL;
-            proctab_[i].mpirank = proctab_[0].mpirank + i;
+            proctab_[j].pd.executable_name = NULL;
+            proctab_[j].pd.host_name = NULL;
+            proctab_[j].mpirank = proctab_[0].mpirank + j;
         }
         init++;
     }
@@ -4185,7 +4186,8 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
 
 StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int nTasks, unsigned int functionFanout, int nEqClasses, unsigned int iteration)
 {
-    int depth, i, nodeId, prevId, currentTask;
+    unsigned int depth, i;
+    int nodeId, prevId, currentTask;
     char frame[BUFSIZE];
     string path;
     StatBitVectorEdge_t *edge = NULL;
