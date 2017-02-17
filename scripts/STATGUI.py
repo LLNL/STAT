@@ -565,12 +565,12 @@ host[1-10,12,15-20];otherhost[30]
             self.filter_entry.set_text(self.options['Job Launcher'])
             self.rh_entry.set_text(self.options['Remote Host'])
         if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
-            output = commands.getoutput('ps xw')
+            output = commands.getoutput('ps xww')
         else:
             if pid_list != '':
-                output = commands.getoutput('%s %s ps w -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
+                output = commands.getoutput('%s %s ps ww -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
             else:
-                output = commands.getoutput('%s %s ps xw' % (self.options['Remote Host Shell'], self.options['Remote Host']))
+                output = commands.getoutput('%s %s ps xww' % (self.options['Remote Host Shell'], self.options['Remote Host']))
             if output.find('Hostname not found') != -1 or output.find('PID') == -1:
                 show_error_dialog('Failed to get process listing for %s' % self.options['Remote Host'], attach_dialog)
                 return False

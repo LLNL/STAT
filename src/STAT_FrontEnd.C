@@ -922,6 +922,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     }
     if (network_->has_Error() == true)
     {
+        isConnected_ = false;
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "MRNet reported a Network error with message: %s\n", network_->get_ErrorStr(network_->get_Error()));
         return STAT_MRNET_ERROR;
     }
@@ -4652,8 +4653,11 @@ int lmonStatusCb(int *status)
 bool STAT_FrontEnd::checkNodeAccess(char *node)
 {
     /* MRNet CPs launched through alps */
-    if (lmonRmInfo_.rm_supported_types[lmonRmInfo_.index_to_cur_instance] == RC_alps)
-        return true;
+    if (lmonRmInfo_.rm_supported_types != NULL)
+    {
+        if (lmonRmInfo_.rm_supported_types[lmonRmInfo_.index_to_cur_instance] == RC_alps)
+            return true;
+    }
     char command[BUFSIZE], testOutput[BUFSIZE], runScript[BUFSIZE], checkHost[BUFSIZE], *rsh = NULL, *envValue;
     FILE *output, *temp;
 
