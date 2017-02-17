@@ -97,3 +97,14 @@ script:
 after_script:
   - ls -l $HOME/stat/bin
   - $HOME/stat/bin/stat-cl -h
+  - export XPLAT_RSH=rsh
+  - hostname
+  - $HOME/stat/share/stat/examples/bin/rank_test 10 & $HOME/stat/bin/stat-cl -s 2 -l FE -l BE -L $HOME -I $!
+  - ls -l $HOME
+  - cat stat_results/output.0000/00_output.0000.2D.dot
+  - cat stat_results/output.0000/01_output.0000.2D.dot
+  - cat stat_results/output.0000/02_output.0000.2D.dot
+  - cat stat_results/output.0000/03_output.0000.2D.dot
+  - cat stat_results/output.0000/04_output.0000.3D.dot
+  - which mpirun
+  - mpirun -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 20
