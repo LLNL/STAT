@@ -1291,8 +1291,8 @@ StatError_t STAT_BackEnd::mainLoop()
                 char *in1, *in2;
                 if (packet->unpack("%s %s", &in1, &in2) != -1)
                 {
-                    snprintf(outDir_, BUFSIZE, in1);
-                    snprintf(filePrefix_, BUFSIZE, in2);
+                    snprintf(outDir_, BUFSIZE, "%s", in1);
+                    snprintf(filePrefix_, BUFSIZE, "%s", in2);
                     free(in1);
                     free(in2);
                 }
