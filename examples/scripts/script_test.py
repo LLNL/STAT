@@ -136,7 +136,7 @@ if __name__ == "__main__":
     os.environ['STAT_USAGE_LOG'] = '/dev/null'
     os.environ['STAT_CHECK_NODE_ACCESS'] = '1'
     os.environ['STAT_CONNECT_TIMEOUT'] = '30'
-    launcher = 'srun'
+    launcher = 'mpirun'
     num_tasks = 16
     num_tasks_args = ['-n', str(num_tasks)]
     temp_fe = STAT_FrontEnd()
@@ -147,15 +147,15 @@ if __name__ == "__main__":
     sys.stdout.write("STAT version %d.%d.%d installed in %s\n" %(version[0], version[1], version[2], install_prefix))
 
     test_suites = []
-    exe = '%s/share/STAT/examples/bin/hw' %(install_prefix)
+    exe = '%s/share/stat/examples/bin/hw' %(install_prefix)
     tests = []
     test_suites.append((exe, tests))
 
-    exe = '%s/share/STAT/examples/bin/rank_test' %(install_prefix)
+    exe = '%s/share/stat/examples/bin/rank_test' %(install_prefix)
     tests = []
     test_suites.append((exe, tests))
 
-    exe = '%s/share/STAT/examples/bin/mpi_ringtopo' %(install_prefix)
+    exe = '%s/share/stat/examples/bin/mpi_ringtopo' %(install_prefix)
     tests = []
 
     test_name = 'serial attach %s' %(os.path.basename(exe))
