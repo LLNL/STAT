@@ -101,6 +101,25 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     [AC_MSG_ERROR([walker.h is required.  Specify stackwalker prefix with --with-stackwalker])],
     AC_INCLUDES_DEFAULT
   )
+  AC_MSG_CHECKING([Checking Dyninst Version 9.3 or greater])
+  dyninst_vers_93=yes
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "version.h"
+    #if ((DYNINST_MAJOR_VERSION == 9 && DYNINST_MINOR_VERSION >= 3) || DYNINST_MAJOR_VERSION > 9)
+      #error
+    #endif
+    int main()
+    {
+      return 0;
+    }])],
+    [dyninst_vers_93=no],
+    [CXXFLAGS="$CXXFLAGS -std=c++11"]
+  )
+  AC_MSG_RESULT([$dyninst_vers_93])
+  AC_CHECK_HEADER(Symtab.h,
+    [],
+    [AC_MSG_ERROR([Symtab.h is required.  Specify prefix with --with-stackwalker])],
+    AC_INCLUDES_DEFAULT
+  )
   AC_MSG_CHECKING(for libstackwalk)
   TMP_LDFLAGS=$LDFLAGS
   LDFLAGS="$LDFLAGS -ldyninstAPI -lstackwalk -lpcontrol -lparseAPI -linstructionAPI -lsymtabAPI -lcommon -ldynElf -ldynDwarf -lsymLite -ldwarf -lelf -liberty -lpthread"
