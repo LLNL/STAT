@@ -1,4 +1,5 @@
 language: c
+      
 cache:
   directories:
     - $HOME/local
@@ -8,7 +9,7 @@ sudo: required
 dist: trusty
 
 compiler:
-  - gcc
+  - gcc-4.8
 
 addons:
   apt:
@@ -16,13 +17,16 @@ addons:
     sources:
       - ubuntu-toolchain-r-test
     packages:
+      - cmake
+      - cmake-data
       - libelf-dev
       - libdwarf-dev
       - libboost-all-dev
-      - libopenmpi-dev
       - swig
       - graphviz
       - munge
+# note that we need to build openmpi and STAT's examples with gfortran installed
+# however, having this package causes dyninst to fail to build
       - gfortran
       - gdb
 
@@ -30,79 +34,18 @@ env:
   global:
     - export PATH=$HOME/local/bin:$PATH
     - export LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH
-    - export CXXFLAGS=-std=c++11
+    - export CC=gcc-4.8
+    - export CXX=g++-4.8
 
-install:
-  # Build STAT's dependences
+before_install:
+  - eval $(./scripts/travis-dep-builder.sh --printenv)
+  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache
 
-  # Check for cached builds:
-  - mkdir -p $HOME/local
+script:
   - ls -l $HOME/local
   - ls -l $HOME/local/lib
   - ls -l $HOME/local/bin
   - ls -l $HOME/local/include
-
-  # This should all be cached, so only run commands below when we want to update the cache
-#  - export VERBOSE=1
-#  - export V=1
-#  # Download and install OpenMPI v2.0.2
-#  - cd $HOME/build
-#  - wget https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.2.tar.gz
-#  - tar xf openmpi-2.0.2.tar.gz
-#  - cd openmpi-2.0.2
-#  - ./configure --prefix=$HOME/local
-#  - make && make install
-#
-#  # Download and install LaunchMON
-#  - cd $HOME/build
-#  - wget https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz
-#  - tar xf launchmon-v1.0.2.tar.gz
-#  - cd launchmon-v1.0.2
-#  - mkdir build && cd build
-#  - ../configure --prefix=$HOME/local --with-test-rm=orte --with-test-ncore-per-CN=2
-#  - make && make install
-#
-#  # Download and install Graphlib
-#  - cd $HOME/build
-#  - wget https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz -O graphlib-v3.0.0.tar.gz
-#  - tar xf graphlib-v3.0.0.tar.gz
-#  - cd graphlib-3.0.0
-#  - mkdir build && cd build
-#  - cmake -D CMAKE_INSTALL_PREFIX=$HOME/local ..
-#  - make && make install
-#
-#  # Download and Install MRNet
-#  - cd $HOME/build
-#  - wget https://github.com/dyninst/mrnet/archive/MRNet-4_1_0.tar.gz
-#  - tar xf MRNet-4_1_0.tar.gz
-#  - cd mrnet-MRNet-4_1_0
-#  - ./configure --prefix=$HOME/local --enable-shared
-#  - make && make install
-#
-#  # Download and Install Libdwarf
-#  - cd $HOME/build
-#  - wget https://www.prevanders.net/libdwarf-20161124.tar.gz
-#  - tar xf libdwarf-20161124.tar.gz
-#  - cd dwarf-20161124/libdwarf
-#  - ./configure --prefix=$HOME/local --enable-shared --disable-nonshared
-#  - make -j 8
-#  - cp libdwarf.so $HOME/local/lib
-#  - cp libdwarf.so.1 $HOME/local/lib
-#  - cp libdwarf.h  $HOME/local/include
-#  - cp dwarf.h $HOME/local/include
-#
-#  # Download and Install DynInst
-#  - cd $HOME/build
-#  - wget https://github.com/dyninst/dyninst/archive/v9.3.0.tar.gz -O dyninst-v9.3.0.tar.gz
-#  - tar xf dyninst-v9.3.0.tar.gz
-#  - cd dyninst-9.3.0
-#  - mkdir build && cd build
-#  - cmake -D CMAKE_INSTALL_PREFIX=$HOME/local -D LIBDWARF_INCLUDE_DIR=$HOME/local/include -D LIBDWARF_LIBRARIES=$HOME/local/lib/libdwarf.so ..
-#  - make || nm common/CMakeFiles/common.dir/src/dyn_regs.C.o
-#  - make install
-#  - cp libiberty/libiberty.a $HOME/local/lib
-
-script:
   - cd $HOME/build/LLNL/STAT
   - ./bootstrap
   - export LDFLAGS=-Wl,-no-as-needed
@@ -154,4 +97,5 @@ after_script:
 #  - $HOME/stat/bin/stat-cl -s 5 -l FE -l BE -L $HOME -C mpirun -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 40
 #  - cat $HOME/$HOSTNAME.STAT.log
 #  - sleep 40
+#  The script test currently fails as openmpi does not support reattach when launched under a debugger (https://github.com/open-mpi/ompi/issues/3178)
 #  - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py
