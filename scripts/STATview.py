@@ -1857,9 +1857,9 @@ class STATGraph(xdot.Graph):
                         for i, label in enumerate(node.attrs["label"].split('\\n')):
                             module_offset = "%s%s" %(node.attrs["module"].split('\\n')[i], node.attrs["offset"].split('\\n')[i])
                             node_text = re.sub(expr, translate, module_offset)
-                            function = node_text[0:node_text.find('@')]
-                            source = node_text[node_text.find('@') + 1:node_text.find(':')]
-                            line = node_text[node_text.find(':') + 1:]
+                            function = node_text[0:node_text.rfind('@')]
+                            source = node_text[node_text.rfind('@') + 1:node_text.rfind(':')]
+                            line = node_text[node_text.rfind(':') + 1:]
                             if i == 0:
                                 node.attrs["function"] = function
                                 node.attrs["source"] = source
