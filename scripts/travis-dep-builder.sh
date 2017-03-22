@@ -13,14 +13,22 @@ cachedir=$HOME/local/.cache
 #
 downloads="\
 https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.2.tar.gz \
-https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz \
 https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz \
 https://github.com/dyninst/mrnet/archive/MRNet-4_1_0.tar.gz \
 https://www.prevanders.net/libdwarf-20161124.tar.gz \
 https://github.com/dyninst/dyninst/archive/v9.3.0.tar.gz"
+#https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz \
+
+checkouts="\
+https://github.com/llnl/launchmon.git"
+
+declare -A checkout_sha1=(\
+["launchmon"]="a7799a90e8e0a7eaa335135569e0762cc0f0c99d" 
+)
 
 declare -A extra_configure_opts=(\
-["launchmon-v1.0.2"]="--with-test-rm=orte --with-test-ncore-per-CN=2" \
+["launchmon-v1.0.2"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=$HOME/local/bin/mpirun --with-test-installed" \
+["launchmon"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=$HOME/local/bin/mpirun --with-test-installed" \
 ["MRNet-4_1_0"]="--enable-shared" \
 ["libdwarf-20161124"]="--enable-shared --disable-nonshared" \
 )
@@ -73,7 +81,6 @@ print_env () {
     echo "export CPPFLAGS=-I${prefix}/include"
     echo "export LDFLAGS=-L${prefix}/lib"
     echo "export PATH=${PATH}:${HOME}/local/usr/bin:${HOME}/local/bin"
-    luarocks path --bin
 }
 
 if test -n "$print_env"; then
@@ -109,6 +116,65 @@ add_cache ()
     touch "${cachedir}/$(sanitize ${1})"
 }
 
+export VERBOSE=1
+export V=1
+for url in $checkouts; do
+    name=$(basename ${url} .git)
+    sha1="${checkout_sha1[$name]}"
+    make_opts="${extra_make_opts[$name]}"
+    cmake_opts="${extra_cmake_opts[$name]}"
+    configure_opts="${extra_configure_opts[$name]}"
+    cache_name="$name:$sha1:$make_opts:$configure_opts:$cmake_opts"
+    if test "$name" = "launchmon"; then
+      say "rebuilding $name"
+    else
+    if check_cache "$cache_name"; then
+       say "Using cached version of ${name}"
+       continue
+    fi
+    fi
+    git clone ${url} ${name} || die "Failed to clone ${url}"
+    (
+      cd ${name} || die "cd failed"
+      if test -n "$sha1"; then
+        git checkout $sha1
+      fi
+
+      # Do we need to create a Makefile?
+      if ! test -f Makefile; then
+        if ! test -f configure; then
+          ./bootstrap
+        fi
+        if test -x configure; then
+          CC=gcc CXX=g++ ./configure --prefix=${prefix} \
+                           --sysconfdir=${prefix}/etc \
+                           $configure_opts
+        elif test -f CMakeLists.txt; then
+            mkdir build && cd build
+            cmake -DCMAKE_INSTALL_PREFIX=${prefix} $cmake_opts ..
+        fi
+      fi
+      make PREFIX=${prefix} $make_opts &&
+      make PREFIX=${prefix} $make_opts install &&
+      make check PREFIX=${prefix} $make_opts
+      if test "$name" = "launchmon"; then
+        pushd test/src
+        echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+        export PATH=./:$PATH
+        cat test.launch_1
+        ./test.launch_1
+        sleep 60
+        cat test.attach_1
+        ./test.attach_1
+        sleep 60
+        echo 'done'
+        popd
+      fi
+    ) || die "Failed to build and install $name"
+    add_cache "$cache_name"
+done
+
+
 for pkg in $downloads; do
     name=$(basename ${pkg} .tar.gz)
     cmake_opts="${extra_cmake_opts[$name]}"
@@ -138,8 +204,25 @@ for pkg in $downloads; do
         mkdir build && cd build
         cmake -DCMAKE_INSTALL_PREFIX=${prefix} $cmake_opts ..
       fi
+      if test "$name" = "openmpi-2.0.2"; then
+        wget https://raw.githubusercontent.com/LLNL/STAT/develop/dyninst_patches/openmpi-2.0.2_reattach.patch
+        cat openmpi-2.0.2_reattach.patch
+        patch -p1 < openmpi-2.0.2_reattach.patch
+      fi
       make PREFIX=${prefix} &&
       make PREFIX=${prefix} install
+      if test "$name" = "launchmon-v1.0.2"; then
+        pushd test/src
+        export PATH=./:$PATH
+        cat test.launch_1
+        ./test.launch_1
+        sleep 60
+        cat test.attach_1
+        ./test.attach_1
+        sleep 60
+        echo 'done'
+        popd
+      fi
       if test "$name" = "libdwarf-20161124"; then
         pwd
         ls
