@@ -361,12 +361,12 @@ def decompose_node(label, item=None):
     module = ''
     offset = ''
     if has_source_and_not_collapsed(label):
-        function_name = label[:label.find('@')]
+        function_name = label[:label.rfind('@')]
         if label.find('$') != -1 and label.find('$$') == -1:  # and clause for name mangling of C++ on BG/Q example
-            source_line = label[label.find('@') + 1:label.find('$')]
+            source_line = label[label.rfind('@') + 1:label.find('$')]
             iter_string = label[label.find('$') + 1:]
         else:
-            source_line = label[label.find('@') + 1:]
+            source_line = label[label.rfind('@') + 1:]
             iter_string = ''
     elif has_module_offset_and_not_collapsed(label):
         module = label[:label.find('+0x')]
@@ -401,8 +401,8 @@ def node_attr_to_label(attrs, full_path = True):
     if not "function" in attrs.keys():
         if "label" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
             attrs["function"], source_line, iter_string, attrs["module"], attrs["offset"] = decompose_node(attrs["label"])
-            attrs["source"] = source_line[:source_line.find(":")]
-            attrs["line"] = source_line[source_line.find(":") + 1:]
+            attrs["source"] = source_line[:source_line.rfind(":")]
+            attrs["line"] = source_line[source_line.rfind(":") + 1:]
             return attrs["label"]
         return ""
     if "temporal_string" in attrs.keys():

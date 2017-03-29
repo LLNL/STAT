@@ -5,6 +5,7 @@ import sys, DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
 import os, time, subprocess
 import traceback
+import argparse
 
 from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_LOG_NONE, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_EXCLUSIVE, STAT_CP_SHAREAPPNODES
 from STAT import attach, launch, serial_attach, sample, detach, pause, resume, get_stat_fe, STATerror
@@ -89,12 +90,12 @@ def run_tests(test_suites, launcher, launcher_args):
     failed_list = []
     count = 0
     for exe, tests in test_suites:
+        count += 1
         if os.path.exists(exe) != True:
             msg = 'exe %s does not exist\n' %exe
             sys.stderr.write(msg)
             failed_list.append(msg)
             continue
-
         test_name = 'launch and sample %s' %(os.path.basename(exe))
         sys.stdout.write('\n%s test beginning...\n' %(test_name))
         app = STATapp(launcher, exe, launcher_args = num_tasks_args)
@@ -136,8 +137,13 @@ if __name__ == "__main__":
     os.environ['STAT_USAGE_LOG'] = '/dev/null'
     os.environ['STAT_CHECK_NODE_ACCESS'] = '1'
     os.environ['STAT_CONNECT_TIMEOUT'] = '30'
-    launcher = 'srun'
-    num_tasks = 16
+    os.environ['LMON_FE_ENGINE_TIMEOUT'] = '30'
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-l", "--launcher", help="the job launcher to use (i.e., mpirun, srun, etc.), default=mpirun", default="mpirun")
+    parser.add_argument("-n", "--numtasks", help="The number of MPI tasks, default=16", type=int, default=16)
+    args = parser.parse_args()
+    launcher = args.launcher
+    num_tasks = args.numtasks
     num_tasks_args = ['-n', str(num_tasks)]
     temp_fe = STAT_FrontEnd()
     version = intArray(3)
@@ -147,15 +153,15 @@ if __name__ == "__main__":
     sys.stdout.write("STAT version %d.%d.%d installed in %s\n" %(version[0], version[1], version[2], install_prefix))
 
     test_suites = []
-    exe = '%s/share/STAT/examples/bin/hw' %(install_prefix)
+    exe = '%s/share/stat/examples/bin/hw' %(install_prefix)
     tests = []
     test_suites.append((exe, tests))
 
-    exe = '%s/share/STAT/examples/bin/rank_test' %(install_prefix)
+    exe = '%s/share/stat/examples/bin/rank_test' %(install_prefix)
     tests = []
     test_suites.append((exe, tests))
 
-    exe = '%s/share/STAT/examples/bin/mpi_ringtopo' %(install_prefix)
+    exe = '%s/share/stat/examples/bin/mpi_ringtopo' %(install_prefix)
     tests = []
 
     test_name = 'serial attach %s' %(os.path.basename(exe))
