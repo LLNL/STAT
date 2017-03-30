@@ -1,4 +1,21 @@
 <section>
+  <title>stat version 3.0.1</title>
+  <para>
+    <itemizedlist>
+      <listitem><para>
+        Dyninst 9.3.0 support
+      </para></listitem>
+      <listitem><para>
+        added ability to launch multiple daemons per node
+      </para></listitem>
+      <listitem><para>
+        as always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
+      </para></listitem>
+    </itemizedlist>
+  </para>
+</section>
+
+<section>
   <title>stat version 3.0</title>
   <para>
     <itemizedlist>

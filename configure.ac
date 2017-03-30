@@ -2,9 +2,9 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-#AC_INIT(STAT, 3.0.0, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
+#AC_INIT(STAT, 3.0.1, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
 AC_COPYRIGHT([Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.])
-AC_INIT([STAT], [3.0.0])
+AC_INIT([STAT], [3.0.1])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADER([config.h])

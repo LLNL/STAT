@@ -8,7 +8,7 @@
 	* backend.cpp : Re-enable struct member gathering, fix offset calculation (bits vs bytes)
 
 2016-08-24 Gregory L. Lee <lee218@llnl.gov>
-	* : Updatd documentation
+	* : Updated documentation
 
 2016-08-24 Gregory L. Lee <lee218@llnl.gov>
 	* STAT_BackEnd.C : Encapsulate DySect BE code

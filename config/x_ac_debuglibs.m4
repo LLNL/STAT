@@ -104,15 +104,15 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   AC_MSG_CHECKING([Checking Dyninst Version 9.3 or greater])
   dyninst_vers_93=yes
   AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "version.h"
-    #if ((DYNINST_MAJOR_VERSION == 9 && DYNINST_MINOR_VERSION >= 3) || DYNINST_MAJOR_VERSION > 9)
+    #if ((DYNINST_MAJOR_VERSION == 9 && DYNINST_MINOR_VERSION < 3) || DYNINST_MAJOR_VERSION <= 8)
       #error
     #endif
     int main()
     {
       return 0;
     }])],
-    [dyninst_vers_93=no],
-    [CXXFLAGS="$CXXFLAGS -std=c++11"]
+    [CXXFLAGS="$CXXFLAGS -std=c++11"],
+    [dyninst_vers_93=no]
   )
   AC_MSG_RESULT([$dyninst_vers_93])
   AC_CHECK_HEADER(Symtab.h,
