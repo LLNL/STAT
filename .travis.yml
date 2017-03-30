@@ -55,7 +55,6 @@ script:
 after_script:
   - ls -l $HOME/stat/bin
   - $HOME/stat/bin/stat-cl -h
-
   - export STAT_XPLAT_RSH=rsh
   - export XPLAT_RSH=rsh
   - export XPLAT_RSH_ARGS="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
@@ -84,7 +83,6 @@ after_script:
   - which mpirun
   - export LMON_FE_ENGINE_TIMEOUT=20
   - mpirun -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 40 & $HOME/stat/bin/stat-cl -s 2 -l FE -l BE -L $HOME $!
-
   - wait $!
   - cat stat_results/mpi_ringtopo.0000/mpi_ringtopo.0000.top
   - cat stat_results/mpi_ringtopo.0000/mpi_ringtopo.0000.fulltop
