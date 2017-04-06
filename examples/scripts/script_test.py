@@ -190,7 +190,7 @@ if __name__ == "__main__":
     tests.append((test_name, attach_options, sample_options))
 
     test_name = "localhost topology %s" %(os.path.basename(exe))
-    attach_options = ((), {"topology_type":STAT_TOPOLOGY_USER, "topology":"1", "cp_policy":STAT_CP_NONE, "node_list":"localhost", "logging_tuple":(STAT_LOG_FE | STAT_LOG_BE | STAT_LOG_CP | STAT_LOG_MRN, '/g/g0/lee218/logs')}, attach)
+    attach_options = ((), {"topology_type":STAT_TOPOLOGY_USER, "topology":"1", "cp_policy":STAT_CP_NONE, "node_list":"localhost", "logging_tuple":(STAT_LOG_FE | STAT_LOG_BE | STAT_LOG_CP | STAT_LOG_MRN, os.environ['HOME'])}, attach)
     sample_options = [{}]
     tests.append((test_name, attach_options, sample_options))
 

@@ -118,10 +118,6 @@ add_cache ()
 }
 
 env
-ls -l $HOME
-ls -l $HOME/local
-ls -l $HOME/local/lib
-ls -l $HOME/local/bin
 
 for pkg in $downloads; do
     name=$(basename ${pkg} .tar.gz)
@@ -256,4 +252,8 @@ for url in $checkouts; do
     add_cache "$cache_name"
 done
 
+ls -l $HOME
+ls -l $HOME/local
+ls -l $HOME/local/lib
+ls -l $HOME/local/bin
 
