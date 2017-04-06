@@ -61,6 +61,7 @@ script:
   - ls -l $HOME/local/include
   - cd $HOME/build/LLNL/STAT
   - ./bootstrap
+  - export LDFLAGS=-Wl,-no-as-needed
   - ./configure --prefix=$HOME/stat --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-graphlib=$HOME/local --with-launchmon=$HOME/local --with-libdwarf=$HOME/local --with-libiberty=$HOME/local --enable-debug || cat config.log
   - make && make install
 
