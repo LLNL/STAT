@@ -96,20 +96,20 @@ STAT.py:$(GUI_SWIG_SOURCES) Makefile
 	$(MAKE) $(AM_MAKEFLAGS) STAT_wrap.C
 endif
 
-if ENABLE_TO
-TO_SWIG_SOURCES = to.i
-pyexec_LTLIBRARIES += _tomod.la
-python_PYTHON += tomod.py
-_tomod_la_SOURCES = to_wrap.C to.C to.h $(TO_SWIG_SOURCES)
-_tomod_la_CPPFLAGS = -I./ $(BOOST_INCLUDE) $(ROSE_INCLUDE) $(TOAPI_INCLUDE)
-_tomod_la_LDFLAGS = -module -avoid-version -L$(LIBBOOSTDIR) -L$(LIBJAVADIR) -L$(LIBROSEDIR) -L$(LIBTOAPIDIR) $(LIBTOAPI) -Wl,-rpath=$(LIBBOOSTDIR) -Wl,-rpath=$(LIBROSEDIR) -Wl,-rpath=$(LIBTOAPIDIR) -Wl,-rpath=$(LIBJAVADIR)
-
-to_wrap.C:$(TO_SWIG_SOURCES) Makefile
-	$(SWIG) -c++ -python -o $@ $<
-
-tomod.py:$(TO_SWIG_SOURCES) Makefile
-	$(MAKE) $(AM_MAKEFLAGS) to_wrap.C
-endif
+#if ENABLE_TO
+#TO_SWIG_SOURCES = to.i
+#pyexec_LTLIBRARIES += _tomod.la
+#python_PYTHON += tomod.py
+#_tomod_la_SOURCES = to_wrap.C to.C to.h $(TO_SWIG_SOURCES)
+#_tomod_la_CPPFLAGS = -I./ $(BOOST_INCLUDE) $(ROSE_INCLUDE) $(TOAPI_INCLUDE)
+#_tomod_la_LDFLAGS = -module -avoid-version -L$(LIBBOOSTDIR) -L$(LIBJAVADIR) -L$(LIBROSEDIR) -L$(LIBTOAPIDIR) $(LIBTOAPI) -Wl,-rpath=$(LIBBOOSTDIR) -Wl,-rpath=$(LIBROSEDIR) -Wl,-rpath=$(LIBTOAPIDIR) -Wl,-rpath=$(LIBJAVADIR)
+#
+#to_wrap.C:$(TO_SWIG_SOURCES) Makefile
+#	$(SWIG) -c++ -python -o $@ $<
+#
+#tomod.py:$(TO_SWIG_SOURCES) Makefile
+#	$(MAKE) $(AM_MAKEFLAGS) to_wrap.C
+#endif
 
 clean-local:
 	-rm -rf STAT_wrap.C STAT.py to_wrap.C tomod.py
