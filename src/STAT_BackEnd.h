@@ -1,11 +1,11 @@
 /*
-Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -116,7 +116,7 @@ typedef struct
 //! A struct to hold a list of StatLeafInfo_t objects
 typedef struct
 {
-    int size;
+    unsigned int size;
     StatLeafInfo_t *leaves;
 } StatLeafInfoArray_t;
 
@@ -311,6 +311,29 @@ class STAT_BackEnd
         */
         StatError_t statBenchConnect();
 
+        //! Get the number of daemons per node
+        /*!
+            \return the number of daemons per node
+        */
+        int getNDaemonsPerNode();
+
+        //! Set the number of daemons per node
+        /*!
+            \param nDaemonsPerNode - the number of daemons per node
+        */
+        void setNDaemonsPerNode(int nDaemonsPerNode);
+
+        //! Get the local node rank
+        /*!
+            \return the number of daemons per node
+        */
+        int getMyNodeRank();
+
+        //! Set the local node rank
+        /*!
+            \param localNodeRank - the local node rank
+        */
+        void setMyNodeRank(int localNodeRank);
 #ifdef DYSECTAPI
         DysectAPI::BE *getDysectBe();
 #endif
@@ -525,7 +548,7 @@ class STAT_BackEnd
             \param nEqClasses - the number of equivalence classes to generate
             \return STAT_OK on success
         */
-        StatError_t statBenchCreateTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
+        StatError_t statBenchCreateTraces(unsigned int maxDepth, int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses);
 
         //! Create a single stack trace (STAT Bench)
         /*!
@@ -546,6 +569,8 @@ class STAT_BackEnd
         int proctabSize_;               /*!< the size of the process table */
         int processMapNonNull_;         /*!< the number of active processes */
         unsigned int logType_;          /*!< the logging level */
+        unsigned int nDaemonsPerNode_;  /*!< the number of daemons per node */
+        unsigned int myNodeRank_;       /*!< the daemon rank on this node */
         char *parentHostName_;          /*!< the hostname of the MRNet parent */
         char logOutDir_[BUFSIZE];       /*!< the directory for log files */
         char outDir_[BUFSIZE];          /*!< the output directory */
@@ -576,7 +601,7 @@ class STAT_BackEnd
         std::map<int, std::map<std::string, std::string> > nodeIdToAttrs_;
         std::map<int, std::map<std::string, void *> > edgeIdToAttrs_;
         std::map<int, std::map<std::string, void *> > edgeIdToAttrs3d_;
-        int threadBvLength_;
+        unsigned int threadBvLength_;
         std::vector<Dyninst::THR_ID> threadIds_;
 #endif
         std::map<int, std::string> nodes2d_; /*!< the 2D prefix tree nodes */
@@ -592,7 +617,7 @@ class STAT_BackEnd
         StatVariable_t *extractVariables_;  /*!< a list of variables to extract
                                                  for the current sample */
 
-        std::map<int, Dyninst::Stackwalker::Walker *> processMap_;  /*!< the debug process objects */
+        std::map<unsigned int, Dyninst::Stackwalker::Walker *> processMap_;  /*!< the debug process objects */
         std::map<Dyninst::Stackwalker::Walker *, int> procsToRanks_;    /*!< translate a process into a rank */
 
 

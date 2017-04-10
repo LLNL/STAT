@@ -3,13 +3,13 @@
 """@package STATGUI
 A GUI for driving the Stack Trace Analysis Tool."""
 
-__copyright__ = """Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -19,10 +19,10 @@ Redistribution and use in source and binary forms, with or without modification,
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
-__author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
+__author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
 __version_major__ = 3
 __version_minor__ = 0
-__version_revision__ = 0
+__version_revision__ = 1
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import STAThelper
@@ -132,9 +132,10 @@ class STATGUI(STATDotWindow):
                    'Topology':                         '1',
                    'Check Node Access':                False,
                    'CP Policy':                        'share app nodes',
+                   'Daemons per Node':                 1,
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
-                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun',
+                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun|mpiexec',
                    'Job ID':                           '',
                    'Filter Ranks':                     '',
                    'Filter Hosts':                     '',
@@ -564,12 +565,12 @@ host[1-10,12,15-20];otherhost[30]
             self.filter_entry.set_text(self.options['Job Launcher'])
             self.rh_entry.set_text(self.options['Remote Host'])
         if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
-            output = commands.getoutput('ps xw')
+            output = commands.getoutput('ps xww')
         else:
             if pid_list != '':
-                output = commands.getoutput('%s %s ps w -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
+                output = commands.getoutput('%s %s ps ww -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
             else:
-                output = commands.getoutput('%s %s ps xw' % (self.options['Remote Host Shell'], self.options['Remote Host']))
+                output = commands.getoutput('%s %s ps xww' % (self.options['Remote Host Shell'], self.options['Remote Host']))
             if output.find('Hostname not found') != -1 or output.find('PID') == -1:
                 show_error_dialog('Failed to get process listing for %s' % self.options['Remote Host'], attach_dialog)
                 return False
@@ -997,6 +998,7 @@ host[1-10,12,15-20];otherhost[30]
         self.pack_check_button(vbox2, 'Check Node Access', False, False, 5)
         self.pack_combo_box(vbox2, 'CP Policy')
         self.pack_spinbutton(vbox2, 'Communication Processes per Node')
+        self.pack_spinbutton(vbox2, 'Daemons per Node')
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 0)
         hbox = gtk.HBox()
@@ -1146,6 +1148,7 @@ host[1-10,12,15-20];otherhost[30]
         self.options['CP Policy'] = self.types['CP Policy'][self.combo_boxes['CP Policy'].get_active()]
         self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
         self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
+        self.options['Daemons per Node'] = int(self.spinners['Daemons per Node'].get_value())
         if self.options['Check Node Access'] == True:
             os.environ['STAT_CHECK_NODE_ACCESS'] = '1'
         if self.STAT is None:
@@ -1190,6 +1193,7 @@ host[1-10,12,15-20];otherhost[30]
         if HAVE_DYSECT is True and self.options['Enable DySectAPI'] is True:
             os.environ['STAT_GROUP_OPS'] = "1"
         self.STAT.setProcsPerNode(self.options['Communication Processes per Node'])
+        self.STAT.setNDaemonsPerNode(self.options['Daemons per Node'])
         stat_wait_dialog.update_progress_bar(0.05)
 
         self.STAT.setApplicationOption(application_option)
@@ -2137,34 +2141,18 @@ host[1-10,12,15-20];otherhost[30]
                 show_error_dialog('Failed to locate executable ddt\ndefault: %s\n' % filepath, self)
                 return
 
-            # Look for LaunchMON installation for DDT 2.5+
-            ddt_lmon_prefix = self.options['DDT LaunchMON Prefix']
-            ddt_lmon_lib = '%s/lib' % (ddt_lmon_prefix)
-            ddt_lmon_launchmon = '%s/bin/launchmon' % (ddt_lmon_prefix)
-            if not ddt_lmon_launchmon or not os.access(ddt_lmon_launchmon, os.X_OK) or not ddt_lmon_lib or self.serial_attach is True:
-                # DDT 2.4 / DDT 2.5+ w/o LanchMON / serial processes
-                arg_list.append(filepath)
-                arg_list.append('-attach')
-                arg_list.append(self.executable_path)
-                for counter, pid in enumerate(pids):
-                    arg_list.append('%s:%d' % (hosts[counter], pid))
-            else:
-                # DDT 2.5+ with LaunchMON
-                arg_list.append("env")
-                arg_list.append("LD_LIBRARY_PATH=%s" % (ddt_lmon_lib))
-                arg_list.append("LMON_LAUNCHMON_ENGINE_PATH=%s" % (ddt_lmon_launchmon))
-                arg_list.append(filepath)
-                arg_list.append("-attach-mpi")
-                arg_list.append(str(self.proctab.launcher_pid))
-                arg_list.append("-subset")
-                rank_list_arg = ''
-                for rank in subset_list:
-                    if rank == subset_list[0]:
-                        rank_list_arg += '%d' % rank
-                    else:
-                        rank_list_arg += ',%d' % rank
-                arg_list.append(rank_list_arg)
-                arg_list.append(self.executable_path)
+            arg_list.append(filepath)
+            arg_list.append("--attach-mpi")
+            arg_list.append(str(self.proctab.launcher_pid))
+            arg_list.append("--subset")
+            rank_list_arg = ''
+            for rank in subset_list:
+                if rank == subset_list[0]:
+                    rank_list_arg += '%d' % rank
+                else:
+                    rank_list_arg += ',%d' % rank
+            arg_list.append(rank_list_arg)
+            arg_list.append(self.executable_path)
 
         for arg in self.options['Additional Debugger Args'].split():
             arg_list.insert(-1, arg)

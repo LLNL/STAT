@@ -24,6 +24,14 @@
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>-z, --daemonspernode <replaceable class="parameter">num</replaceable></term>
+    <listitem>
+        <para>
+        Sets the number of daemons per node to <replaceable class="parameter">num</replaceable>.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>-u, --usertopology <replaceable class="parameter">topology</replaceable></term>
     <listitem>
         <para>

@@ -1,8 +1,14 @@
+2017-02-13 Gregory L. Lee <lee218@llnl.gov>
+	* MRNetSymbolReader.* : Added new virtual functions
+
+2017-01-12 Gregory L. Lee <lee218@llnl.gov>
+	* : Added ability to launch multiple daemons per node
+
 2016-09-06 Gregory L. Lee <lee218@llnl.gov>
 	* backend.cpp : Re-enable struct member gathering, fix offset calculation (bits vs bytes)
 
 2016-08-24 Gregory L. Lee <lee218@llnl.gov>
-	* : Updatd documentation
+	* : Updated documentation
 
 2016-08-24 Gregory L. Lee <lee218@llnl.gov>
 	* STAT_BackEnd.C : Encapsulate DySect BE code

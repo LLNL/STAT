@@ -1,11 +1,11 @@
 /*
-Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -262,8 +262,8 @@ void STAT_checkVersion(vector<PacketPtr> &inputPackets,
                        const TopologyLocalInfo &topology)
 {
     PacketPtr currentPacket;
-    int major, minor, revision, i;
-    int daemonCount = 0, filterCount = 0;
+    int major, minor, revision, daemonCount = 0, filterCount = 0;
+    unsigned int i;
 
     /* See if we're checking the filter version */
     if (inputPackets[0]->get_Tag() == PROT_CHECK_VERSION_RESP)

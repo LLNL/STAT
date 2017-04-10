@@ -830,6 +830,7 @@ DysectAPI::DysectErrorCode GlobalVariableLocation::getValue(Value& val) {
   }
 
   if(!process->readMemory(val.buf, offset + sym->getOffset(), val.len)) {
+    DYSECTWARN(false, "Failed to read memory length %d at offset %x + %x", val.len, offset, sym->getOffset());
     code = Error;
   }
 

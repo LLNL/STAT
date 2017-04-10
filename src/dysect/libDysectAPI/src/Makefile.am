@@ -2,7 +2,7 @@
 AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
 AM_LDFLAGS =
 ACLOCAL_AMFLAGS = -I m4
-AM_LFLAGS = --header-file=expr-scanner.h
+AM_LFLAGS = --header-file
 AM_YFLAGS = -d
 BUILT_SOURCES = expr-parser.h expr-scanner.h
 
@@ -38,9 +38,11 @@ expr-scanner.cc:expr-scanner.ll Makefile
 
 expr-scanner.h:expr-scanner.cc
 
-expr-parser.h:expr-scanner.cc
-	if [ -f expr-parser.hh ]; then \
-		cp $< expr-parser.hh; \
+expr-parser.hh:expr-parser.cc
+
+expr-parser.h:expr-parser.hh
+	if [ -f $< ]; then \
+		cp $< $@; \
 	fi
 clean-local:
-	-rm -rf expr-scanner.h expr-scanner.cc expr-parser.cc expr-parser.h
+	-rm -rf expr-scanner.h expr-scanner.cc expr-parser.cc expr-parser.h expr-parser.hh

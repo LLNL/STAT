@@ -2,18 +2,20 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(STAT, 3.0.0, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
+#AC_INIT(STAT, 3.0.1, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
 AC_COPYRIGHT([Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.])
+AC_INIT([STAT], [3.0.1])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([config])
-AM_INIT_AUTOMAKE(STAT, 3.0.0)
+AM_INIT_AUTOMAKE
 AC_CANONICAL_HOST
 
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
+AC_PROG_FC
 AC_PROG_INSTALL
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
@@ -98,8 +100,8 @@ then
 fi
 
 # Checks for library functions.
-AC_FUNC_MALLOC
-AC_FUNC_REALLOC
+#AC_FUNC_MALLOC
+#AC_FUNC_REALLOC
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
 AC_FUNC_VPRINTF

@@ -1,11 +1,11 @@
 /*
-Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -31,8 +31,9 @@ using namespace std;
 int main(int argc, char **argv)
 {
     int opt, optionIndex = 0, mrnetOutputLevel = 1, i;
-    unsigned int logType = 0;
-    char logOutDir[BUFSIZE], *pid;
+    unsigned int logType = 0, j;
+    char logOutDir[BUFSIZE];
+    string invocationString;
     vector<string> serialProcesses;
     StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
     StatError_t statError;
@@ -47,6 +48,7 @@ int main(int argc, char **argv)
         {"pid",                 required_argument,  0, 'p'},
         {"logdir",              required_argument,  0, 'L'},
         {"log",                 required_argument,  0, 'l'},
+        {"daemonspernode",      required_argument,  0, 'd'},
         {0,                     0,                  0, 0}
     };
 
@@ -62,6 +64,12 @@ int main(int argc, char **argv)
         }
     }
 
+    invocationString = "STAT invoked with: ";
+    for (i = 0; i < argc; i++)
+    {
+        invocationString.append(argv[i]);
+        invocationString.append(" ");
+    }
     if (argc > 2)
         if (strcmp(argv[1], "-s") == 0 || strcmp(argv[1], "--serial") == 0)
             launchType = STATD_MRNET_LAUNCH;
@@ -84,7 +92,7 @@ int main(int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVmsMo:p:L:l:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVmsMo:p:L:l:d:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'M')
@@ -132,13 +140,18 @@ int main(int argc, char **argv)
         case 'm':
             logType |= STAT_LOG_MRN;
             break;
+        case 'd':
+            statBackEnd->setNDaemonsPerNode(atoi(optarg));
+            break;
         case '?':
             statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "STATD invoked with %s\n", invocationString.c_str());
             delete statBackEnd;
             statFinalize(launchType);
             return STAT_ARG_ERROR;
         default:
             statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);
+            statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "STATD invoked with %s\n", invocationString.c_str());
             delete statBackEnd;
             statFinalize(launchType);
             return STAT_ARG_ERROR;
@@ -155,13 +168,14 @@ int main(int argc, char **argv)
             statFinalize(launchType);
             return statError;
         }
+        statBackEnd->printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "STATD invoked with %s\n", invocationString.c_str());
     }
 
     if (serialProcesses.size() > 0)
     {
-        for (i = 0; i < serialProcesses.size(); i++)
+        for (j = 0; j < serialProcesses.size(); j++)
         {
-            statError = statBackEnd->addSerialProcess(serialProcesses[i].c_str());
+            statError = statBackEnd->addSerialProcess(serialProcesses[j].c_str());
             if (statError != STAT_OK)
             {
                 statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");

@@ -1,20 +1,20 @@
 <para>
-Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
 </para>
 <para>
 Produced at the Lawrence Livermore National Laboratory
 </para>
 <para>
-Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller,  Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nileson, and Sven Karlsson.
 </para>
 <para>
-LLNL-CODE-624152.
+LLNL-CODE-727016.
 </para>
 <para>
 All rights reserved.
 </para>
 <para>
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 </para>
 <para>
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:

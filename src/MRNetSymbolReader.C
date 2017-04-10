@@ -1,11 +1,11 @@
 /*
 Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+2017 by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -247,6 +247,24 @@ inline unsigned MRNetSymbolReader::getAddressWidth()
 {
     return symReaderHandle_->getAddressWidth();
 }
+
+#if SW_MAJOR == 9 && SW_MINOR == 3
+inline bool MRNetSymbolReader::getABIVersion(int &major, int &minor) const
+{
+    return symReaderHandle_->getABIVersion(major, minor);
+}
+
+inline bool MRNetSymbolReader::isBigEndianDataEncoding() const
+{
+    return symReaderHandle_->isBigEndianDataEncoding();
+}
+
+inline Architecture MRNetSymbolReader::getArchitecture() const
+{
+    return symReaderHandle_->getArchitecture();
+}
+#endif
+
 
 #ifdef SW_VERSION_8_1_0
 inline bool MRNetSymbolReader::getSegment(unsigned num, SymSegment &reg)

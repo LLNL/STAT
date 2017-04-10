@@ -1,11 +1,11 @@
 /*
-Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -45,6 +45,7 @@ int main(int argc, char **argv)
         {"logdir",              required_argument,  0, 'L'},
         {"log",                 required_argument,  0, 'l'},
         {"STATBench",           no_argument,        0, 'S'},
+        {"daemonspernode",      required_argument,  0, 'd'},
         {0,                     0,                  0, 0}
     };
 
@@ -90,7 +91,7 @@ int main(int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVmSo:L:l:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVmSo:L:l:d:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         switch(opt)
@@ -132,6 +133,8 @@ int main(int argc, char **argv)
             break;
         case 'm':
             logType |= STAT_LOG_MRN;
+            break;
+        case 'd':
             break;
         case '?':
             statBackEnd->printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Unknown option %c\n", opt);

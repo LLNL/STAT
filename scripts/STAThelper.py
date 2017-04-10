@@ -1,13 +1,13 @@
 """@package STAThelper
 Helper routines for STAT and STATview."""
 
-__copyright__ = """Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -17,8 +17,8 @@ Redistribution and use in source and binary forms, with or without modification,
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
-__author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
-__version__ = "3.0.0"
+__author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+__version__ = "3.0.1"
 
 import sys
 import os
@@ -361,12 +361,12 @@ def decompose_node(label, item=None):
     module = ''
     offset = ''
     if has_source_and_not_collapsed(label):
-        function_name = label[:label.find('@')]
+        function_name = label[:label.rfind('@')]
         if label.find('$') != -1 and label.find('$$') == -1:  # and clause for name mangling of C++ on BG/Q example
-            source_line = label[label.find('@') + 1:label.find('$')]
+            source_line = label[label.rfind('@') + 1:label.find('$')]
             iter_string = label[label.find('$') + 1:]
         else:
-            source_line = label[label.find('@') + 1:]
+            source_line = label[label.rfind('@') + 1:]
             iter_string = ''
     elif has_module_offset_and_not_collapsed(label):
         module = label[:label.find('+0x')]
@@ -401,8 +401,8 @@ def node_attr_to_label(attrs, full_path = True):
     if not "function" in attrs.keys():
         if "label" in attrs.keys(): # hack to work with pre 3.0-outputted graphs
             attrs["function"], source_line, iter_string, attrs["module"], attrs["offset"] = decompose_node(attrs["label"])
-            attrs["source"] = source_line[:source_line.find(":")]
-            attrs["line"] = source_line[source_line.find(":") + 1:]
+            attrs["source"] = source_line[:source_line.rfind(":")]
+            attrs["line"] = source_line[source_line.rfind(":") + 1:]
             return attrs["label"]
         return ""
     if "temporal_string" in attrs.keys():

@@ -1,11 +1,11 @@
 /*
-Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -484,6 +484,18 @@ class STAT_FrontEnd
         */
         unsigned int getJobId();
 
+        //! Set the number of daemons per node
+        /*!
+            \return the number of daemons per node
+        */
+        void setNDaemonsPerNode(int nDaemonsPerNode);
+
+        //! Get the number of daemons per node
+        /*!
+            \return the number of daemons per node
+        */
+        int getNDaemonsPerNode();
+
         //! Gets the name of the application executable
         /*!
             \return the application executable name
@@ -917,6 +929,7 @@ class STAT_FrontEnd
         unsigned int launcherArgc_;                         /*!< the number of job launch arguments*/
         unsigned int topologySize_;                         /*!< the size of the MRNet topology */
         unsigned int logging_;                              /*!< the logging level */
+        unsigned int nDaemonsPerNode_;                      /*!< the number of daemons per node */
         int jobId_;                                         /*!< the batch job ID */
         int lmonSession_;                                   /*!< the LaunchMON session ID */
         int mrnetOutputLevel_;                              /*!< the MRNet output level */

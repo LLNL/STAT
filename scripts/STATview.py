@@ -3,13 +3,13 @@
 """@package STATview
 Visualizes dot graphs outputted by STAT."""
 
-__copyright__ = """Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -19,10 +19,10 @@ Redistribution and use in source and binary forms, with or without modification,
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
-__author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz"]
+__author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
 __version_major__ = 3
 __version_minor__ = 0
-__version_revision__ = 0
+__version_revision__ = 1
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import os.path
@@ -1857,9 +1857,9 @@ class STATGraph(xdot.Graph):
                         for i, label in enumerate(node.attrs["label"].split('\\n')):
                             module_offset = "%s%s" %(node.attrs["module"].split('\\n')[i], node.attrs["offset"].split('\\n')[i])
                             node_text = re.sub(expr, translate, module_offset)
-                            function = node_text[0:node_text.find('@')]
-                            source = node_text[node_text.find('@') + 1:node_text.find(':')]
-                            line = node_text[node_text.find(':') + 1:]
+                            function = node_text[0:node_text.rfind('@')]
+                            source = node_text[node_text.rfind('@') + 1:node_text.rfind(':')]
+                            line = node_text[node_text.rfind(':') + 1:]
                             if i == 0:
                                 node.attrs["function"] = function
                                 node.attrs["source"] = source

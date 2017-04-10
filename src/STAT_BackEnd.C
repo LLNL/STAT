@@ -1,11 +1,11 @@
 /*
-Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -89,8 +89,8 @@ StatError_t statFinalize(StatDaemonLaunch_t launchType)
 }
 
 STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
-    launchType_(launchType),
-    swLogBuffer_(STAT_SW_DEBUG_BUFFER_LENGTH)
+    swLogBuffer_(STAT_SW_DEBUG_BUFFER_LENGTH),
+    launchType_(launchType)
 {
     gStatOutFp = NULL;
     proctabSize_ = 0;
@@ -113,6 +113,8 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
     myRank_ = 0;
     parentRank_ = 0;
     parentPort_ = 0;
+    nDaemonsPerNode_ = 1;
+    myNodeRank_ = 0;
     broadcastStream_ = NULL;
     proctab_ = NULL;
     sampleType_ = 0;
@@ -129,7 +131,7 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
     gBePtr = this;
     registerSignalHandlers(true);
 #ifdef GRAPHLIB_3_0
-    threadBvLength_ = STAT_BITVECTOR_BITS; // for now we restict to 64 threads per process
+    threadBvLength_ = STAT_BITVECTOR_BITS * 8; // for now we restict to 512 threads per STAT daemon (i.e., node)
 #endif
 }
 
@@ -353,7 +355,7 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
     edgeIdToAttrs_[dst]["bv"] = statCopyEdgeAttr("bv", (void *)edges2d_[dst].second);
     if (sampleType_ & STAT_SAMPLE_THREADS)
     {
-        newEdge = initializeBitVectorEdge(STAT_BITVECTOR_BITS);
+        newEdge = initializeBitVectorEdge(threadBvLength_);
         if (newEdge == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize newEdge\n");
@@ -377,7 +379,6 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
         // we need a unique checksum for threads across damons:
         int64_t tbvsum = countRepEdge->checksum * (myRank_ + 1);
         edgeIdToAttrs_[dst]["tbvsum"] = statMergeEdgeAttr("tbvsum", edgeIdToAttrs_[dst]["tbvsum"], (void *)&tbvsum);
-
         statFreeCountRepEdge(countRepEdge);
     } //if (sampleType_ & STAT_SAMPLE_THREADS)
 
@@ -406,13 +407,13 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
     int i;
     string::size_type delimPos;
     string tempString;
-    StatCountRepEdge_t *countRepEdge = NULL;
     graphlib_graph_p *currentGraph;
     graphlib_error_t graphlibError;
 #ifdef GRAPHLIB_3_0
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1,NULL};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0,NULL};
 #else
+    StatCountRepEdge_t *countRepEdge = NULL;
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
 #endif
@@ -745,8 +746,7 @@ static void onCrashWrap(int sig, siginfo_t *info, void *context)
 
 void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
 {
-    int addrListSize;
-    unsigned int j;
+    int addrListSize, j;
     static const unsigned int maxStackSize = 256;
     char **namedSw, **i;
     void *stackSize[maxStackSize];
@@ -928,10 +928,13 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
 
 StatError_t STAT_BackEnd::connect(int argc, char **argv)
 {
-    int i;
+    int i, newProctabSize, oldProctabSize, index;
+    unsigned int j, k, nextNodeRank;
     bool found;
     char *param[6], parentPort[BUFSIZE], parentRank[BUFSIZE], myRank[BUFSIZE];
+    pid_t pid;
     string prettyHost, leafPrettyHost;
+    MPIR_PROCDESC_EXT *oldProctab, *newProctab;
     lmon_rc_e lmonRet;
     StatLeafInfoArray_t leafInfoArray;
 
@@ -986,21 +989,21 @@ StatError_t STAT_BackEnd::connect(int argc, char **argv)
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for my connection information\n");
         found = false;
         XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
-        for (i = 0; i < leafInfoArray.size; i++)
+        for (k = 0; k < leafInfoArray.size; k++)
         {
-            XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
+            XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[k].hostName), leafPrettyHost);
             if (prettyHost == leafPrettyHost || strcmp(leafPrettyHost.c_str(), localIp_) == 0)
             {
                 found = true;
-                parentHostName_ = strdup(leafInfoArray.leaves[i].parentHostName);
+                parentHostName_ = strdup(leafInfoArray.leaves[k].parentHostName);
                 if (parentHostName_ == NULL)
                 {
-                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to parentHostName_)\n", strerror(errno), leafInfoArray.leaves[i].parentHostName);
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed on call to strdup(%s) to parentHostName_)\n", strerror(errno), leafInfoArray.leaves[k].parentHostName);
                     return STAT_ALLOCATE_ERROR;
                 }
-                parentPort_ = leafInfoArray.leaves[i].parentPort;
-                parentRank_ = leafInfoArray.leaves[i].parentRank;
-                myRank_ = leafInfoArray.leaves[i].rank;
+                parentPort_ = leafInfoArray.leaves[k].parentPort;
+                parentRank_ = leafInfoArray.leaves[k].parentRank;
+                myRank_ = leafInfoArray.leaves[k].rank;
                 break;
             }
         }
@@ -1011,6 +1014,75 @@ StatError_t STAT_BackEnd::connect(int argc, char **argv)
         }
 
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found MRNet connection info, parent hostname = %s, parent port = %d, my MRNet rank = %d\n", parentHostName_, parentPort_, myRank_);
+
+        if (nDaemonsPerNode_ > 1)
+        {
+            nextNodeRank = myNodeRank_;
+            pid = 1;
+            for (j = 1; j < nDaemonsPerNode_ && pid > 0; j++)
+            {
+                nextNodeRank++;
+                pid = fork();
+                if (pid == 0)
+                {
+                    myNodeRank_ = nextNodeRank;
+                    myRank_ = leafInfoArray.size * myNodeRank_ + myRank_;
+                }
+                else if (pid < 0)
+                {
+                    printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Failed to fork with pid %d\n", pid);
+                    return STAT_SYSTEM_ERROR;
+                }
+            }
+            newProctabSize = proctabSize_ / nDaemonsPerNode_;
+            if (proctabSize_ % nDaemonsPerNode_ > myNodeRank_)
+                newProctabSize++;
+            newProctab = (MPIR_PROCDESC_EXT *)malloc(newProctabSize * sizeof(MPIR_PROCDESC_EXT));
+            if (newProctab == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error allocating %d new process table\n", strerror(errno), newProctabSize);
+                return STAT_ALLOCATE_ERROR;
+            }
+            index = myNodeRank_ * (proctabSize_ / nDaemonsPerNode_);
+            if (proctabSize_ % nDaemonsPerNode_ > 0)
+            {
+                if (myNodeRank_ <= proctabSize_ % nDaemonsPerNode_)
+                    index += myNodeRank_;
+                else
+                    index += proctabSize_ % nDaemonsPerNode_;
+            }
+            for (i = 0; i < newProctabSize; i++)
+            {
+                newProctab[i].mpirank = proctab_[index].mpirank;
+                newProctab[i].pd.pid = proctab_[index].pd.pid;
+                newProctab[i].pd.executable_name = strdup(proctab_[index].pd.executable_name);
+                if (newProctab[i].pd.executable_name == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error allocating exe name for %d %d %s\n", strerror(errno), i, index, proctab_[i].pd.executable_name);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                newProctab[i].pd.host_name = strdup(proctab_[index].pd.host_name);
+                if (newProctab[i].pd.host_name == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error allocating exe name for %d %d %s\n", strerror(errno), i, index, proctab_[i].pd.host_name);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                index++;
+            }
+
+            oldProctabSize = proctabSize_;
+            oldProctab = proctab_;
+            proctabSize_ = newProctabSize;
+            proctab_ = newProctab;
+            for (i = 0; i < oldProctabSize; i++)
+            {
+                if (oldProctab[i].pd.executable_name != NULL)
+                    free(oldProctab[i].pd.executable_name);
+                if (oldProctab[i].pd.host_name != NULL)
+                    free(oldProctab[i].pd.host_name);
+            }
+            free(oldProctab);
+        }
 
         /* Connect to the MRNet Network */
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Connecting to MRNet network\n");
@@ -1090,7 +1162,7 @@ StatError_t STAT_BackEnd::mainLoop()
     graphlib_error_t graphlibError;
     graphlib_graph_p prefixTree2d = NULL, prefixTree3d = NULL;
     StatBitVectorEdge_t *edge;
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
     ProcDebug *pDebug = NULL;
 #ifdef STAT_FGFS
     MRNetSymbolReaderFactory *msrf = NULL;
@@ -1219,8 +1291,8 @@ StatError_t STAT_BackEnd::mainLoop()
                 char *in1, *in2;
                 if (packet->unpack("%s %s", &in1, &in2) != -1)
                 {
-                    snprintf(outDir_, BUFSIZE, in1);
-                    snprintf(filePrefix_, BUFSIZE, in2);
+                    snprintf(outDir_, BUFSIZE, "%s", in1);
+                    snprintf(filePrefix_, BUFSIZE, "%s", in2);
                     free(in1);
                     free(in2);
                 }
@@ -1626,7 +1698,7 @@ StatError_t STAT_BackEnd::attach()
 {
     int i;
     Walker *proc = NULL;
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
 #if defined(GROUP_OPS)
     vector<ProcessSet::AttachInfo> aInfo;
     ProcessSet::AttachInfo pAttach;
@@ -1789,7 +1861,7 @@ StatError_t STAT_BackEnd::attach()
 
 StatError_t STAT_BackEnd::pause()
 {
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
 
@@ -1824,7 +1896,7 @@ StatError_t STAT_BackEnd::pause()
 
 StatError_t STAT_BackEnd::resume()
 {
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
 #if defined(GROUP_OPS)
@@ -2103,9 +2175,8 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     int j;
     unsigned int i;
     bool wasRunning, isLastTrace;
-    graphlib_error_t graphlibError;
     StatError_t statError;
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
     map<int, StatBitVectorEdge_t *>::iterator nodeInEdgeMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with variables %s and type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, variableSpecification, sampleType_);
@@ -2321,7 +2392,8 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
 
 StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRetries, unsigned int retryFrequency)
 {
-    int nodeId, prevId, i, j, partialTraceScore;
+    int nodeId, prevId, k;
+    unsigned int i, j, partialTraceScore;
     string::size_type delimPos;
     bool boolRet, isFirstPythonFrame;
     string name, path;
@@ -2506,10 +2578,10 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                 /* Get the name of each frame */
                 isFirstPythonFrame = true;
                 isPyTrace_ = false;
-                for (i = bestStackWalk.size() - 1; i >= 0; i = i - 1)
+                for (k = bestStackWalk.size() - 1; k >= 0; k = k - 1)
                 {
                     map<string, string> nodeAttrs;
-                    name = getFrameName(nodeAttrs, bestStackWalk[i], bestStackWalk.size() - i + 1);
+                    name = getFrameName(nodeAttrs, bestStackWalk[k], bestStackWalk.size() - i + 1);
                     if (sampleType_ & STAT_SAMPLE_PYTHON)
                     {
                         if (isPyTrace_ == true && isFirstPythonFrame == true)
@@ -2561,7 +2633,8 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
 #if defined(GROUP_OPS)
 StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_node_t graphlibNode, FrameNode *stackwalkerNode, string nodeIdNames, set<pair<Walker *, THR_ID> > *errorThreads, set<int> &outputRanks, std::map<int, std::set<THR_ID> > &outputRankThreadsMap, bool &abort, int branches)
 {
-    int rank, newChildId, maxAncestorBranches;
+    int rank, newChildId;
+    unsigned int maxAncestorBranches;
     bool myAbort = false, allMyChildrenAbort = true;
     set<int> myRanks, kidsRanks;
     set<int>::iterator myRanksIter;
@@ -2582,7 +2655,6 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
     THR_ID threadId;
     Walker *walker;
     map<Walker *, int>::iterator procsToRanksIter;
-    graphlib_error_t graphlibError;
     StatBitVectorEdge_t *edge;
     StatError_t statError;
 #ifdef GRAPHLIB_3_0
@@ -2674,7 +2746,7 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             graphlibNode = 0;
         }
 
-        if (isPyTrace_ == true && (name.find("call_function") != string::npos || name.find("fast_function") != string::npos) || name.find("PyCFunction_Call") != string::npos)
+        if (isPyTrace_ == true && ((name.find("call_function") != string::npos || name.find("fast_function") != string::npos) || name.find("PyCFunction_Call") != string::npos))
         {
             /* We're in a python interpreter frame, don't add this node and use the previous parent node for the next edge */
             newNodeIdNames = nodeIdNames;
@@ -3049,7 +3121,7 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
 {
     int i;
     bool leaveStopped;
-    map<int, Walker *>::iterator processMapIter;
+    map<unsigned int, Walker *>::iterator processMapIter;
     ProcDebug *pDebug = NULL;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
@@ -3126,13 +3198,14 @@ StatError_t STAT_BackEnd::sendAck(Stream *stream, int tag, int val)
 
 int unpackStatBeInfo(void *buf, int bufLen, void *data)
 {
-    int parent, daemon, nChildren, nParents, child, currentParentPort, currentParentRank;
+    int parent, nParents, currentParentPort, currentParentRank;
+    unsigned int nChildren, child, daemon;
     char currentParent[STATBE_MAX_HN_LEN], *ptr = (char *)buf;
     StatLeafInfoArray_t *leafInfoArray = (StatLeafInfoArray_t *)data;
 
     /* Get the number of daemons and set up the leaf info array */
-    memcpy((void *)&(leafInfoArray->size), ptr, sizeof(int));
-    ptr += sizeof(int);
+    memcpy((void *)&(leafInfoArray->size), ptr, sizeof(unsigned int));
+    ptr += sizeof(unsigned int);
     leafInfoArray->leaves = (StatLeafInfo_t *)malloc(leafInfoArray->size * sizeof(StatLeafInfo_t));
     if (leafInfoArray->leaves == NULL)
     {
@@ -3153,8 +3226,8 @@ int unpackStatBeInfo(void *buf, int bufLen, void *data)
         ptr += sizeof(int);
         memcpy(&currentParentRank, ptr, sizeof(int));
         ptr += sizeof(int);
-        memcpy(&nChildren, ptr, sizeof(int));
-        ptr += sizeof(int);
+        memcpy(&nChildren, ptr, sizeof(unsigned int));
+        ptr += sizeof(unsigned int);
 
         /* Iterate over this parent's children */
         for (child = 0; child < nChildren; child++)
@@ -3263,10 +3336,18 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     {
         fprintf(errOutFp_, "<%s> <%s:%d> ", timeString, sourceFile, sourceLine);
         if (statError == STAT_WARNING)
-            fprintf(errOutFp_, "%s: STAT_WARNING: ", localHostName_);
+        {
+            if (nDaemonsPerNode_ > 1)
+                fprintf(errOutFp_, "%s.%d: STAT_WARNING: ", localHostName_, myNodeRank_);
+            else
+                fprintf(errOutFp_, "%s: STAT_WARNING: ", localHostName_);
+        }
         else
         {
-            fprintf(errOutFp_, "%s: STAT returned error type ", localHostName_);
+            if (nDaemonsPerNode_ > 1)
+                fprintf(errOutFp_, "%s.%d: STAT returned error type ", localHostName_, myNodeRank_);
+            else
+                fprintf(errOutFp_, "%s: STAT returned error type ", localHostName_);
             statPrintErrorType(statError, errOutFp_);
             fprintf(errOutFp_, ": ");
         }
@@ -3278,6 +3359,8 @@ void STAT_BackEnd::printMsg(StatError_t statError, const char *sourceFile, int s
     /* Print the message to the log */
     if (gStatOutFp != NULL && logType_ & STAT_LOG_BE)
     {
+        if (nDaemonsPerNode_ > 1)
+            fprintf(gStatOutFp, "%d: ", myNodeRank_);
         if (logType_ & STAT_LOG_MRN)
         {
             va_start(args, fmt);
@@ -3803,6 +3886,25 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
     return STAT_OK;
 }
 
+int STAT_BackEnd::getNDaemonsPerNode()
+{
+    return nDaemonsPerNode_;
+}
+
+void STAT_BackEnd::setNDaemonsPerNode(int nDaemonsPerNode)
+{
+    nDaemonsPerNode_ = nDaemonsPerNode;
+}
+
+int STAT_BackEnd::getMyNodeRank()
+{
+    return myNodeRank_;
+}
+
+void STAT_BackEnd::setMyNodeRank(int myNodeRank)
+{
+    myNodeRank_ = myNodeRank;
+}
 
 /******************
  * STATBench Code *
@@ -3811,7 +3913,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
 StatError_t STAT_BackEnd::statBenchConnectInfoDump()
 {
     int i, count, intRet, fd;
-    unsigned int bytesWritten;
+    unsigned int bytesWritten, j;
     char fileName[BUFSIZE], data[BUFSIZE], *ptr = NULL;
     string prettyHost, leafPrettyHost;
     lmon_rc_e lmonRet;
@@ -3858,10 +3960,10 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
         kill(proctab_[i].pd.pid, SIGCONT);
 
     /* Find MRNet personalities for all STATBench Daemons on this node */
-    for (i = 0, count = -1; i < leafInfoArray.size; i++)
+    for (j = 0, count = -1; j < leafInfoArray.size; j++)
     {
         XPlat::NetUtils::GetHostName(localHostName_, prettyHost);
-        XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[i].hostName), leafPrettyHost);
+        XPlat::NetUtils::GetHostName(string(leafInfoArray.leaves[j].hostName), leafPrettyHost);
         if (prettyHost == leafPrettyHost)
         {
             count++;
@@ -3889,7 +3991,7 @@ StatError_t STAT_BackEnd::statBenchConnectInfoDump()
                 return STAT_FILE_ERROR;
             }
 
-            snprintf(data, BUFSIZE, "%s %d %d %d %d", leafInfoArray.leaves[i].parentHostName, leafInfoArray.leaves[i].parentPort, leafInfoArray.leaves[i].parentRank, leafInfoArray.leaves[i].rank, proctab_[count].mpirank);
+            snprintf(data, BUFSIZE, "%s %d %d %d %d", leafInfoArray.leaves[j].parentHostName, leafInfoArray.leaves[j].parentPort, leafInfoArray.leaves[j].parentRank, leafInfoArray.leaves[j].rank, proctab_[count].mpirank);
             bytesWritten = 0;
             while (bytesWritten < strlen(data))
             {
@@ -4024,10 +4126,11 @@ StatError_t STAT_BackEnd::statBenchConnect()
 }
 
 
-StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses)
+StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, int nTasks, unsigned int nTraces, unsigned int functionFanout, int nEqClasses)
 {
     static int init = 0;
-    unsigned int i, j;
+    unsigned int i;
+    int j;
     StatError_t statError;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating traces with max depth = %d, num tasks = %d, num traces = %d, function fanout = %d, equivalence classes = %d, sample type = %u\n", maxDepth, nTasks, nTraces, functionFanout, nEqClasses, sampleType_);
@@ -4042,11 +4145,11 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
             return STAT_ALLOCATE_ERROR;
         }
         proctab_[0].mpirank = myRank_ * nTasks;
-        for (i = 0; i < proctabSize_; i++)
+        for (j = 0; j < proctabSize_; j++)
         {
-            proctab_[i].pd.executable_name = NULL;
-            proctab_[i].pd.host_name = NULL;
-            proctab_[i].mpirank = proctab_[0].mpirank + i;
+            proctab_[j].pd.executable_name = NULL;
+            proctab_[j].pd.host_name = NULL;
+            proctab_[j].mpirank = proctab_[0].mpirank + j;
         }
         init++;
     }
@@ -4083,7 +4186,8 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, unsigned 
 
 StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned int task, unsigned int nTasks, unsigned int functionFanout, int nEqClasses, unsigned int iteration)
 {
-    int depth, i, nodeId, prevId, currentTask;
+    unsigned int depth, i;
+    int nodeId, prevId, currentTask;
     char frame[BUFSIZE];
     string path;
     StatBitVectorEdge_t *edge = NULL;

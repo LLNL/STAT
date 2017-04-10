@@ -26,6 +26,24 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     [CXXFLAGS="$CXXFLAGS"
      STACKWALKERPREFIX="${withval}"]
   )
+  AC_ARG_WITH(libelf,
+    [AS_HELP_STRING([--with-libelf=prefix],
+      [Add the compile and link search paths for libelf]
+    )],
+    [CXXFLAGS="$CXXFLAGS -I${withval}/include"
+     LDFLAGS="$LDFLAGS -L${withval}/lib"
+     RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"],
+    [CXXFLAGS="$CXXFLAGS"]
+  )
+  AC_ARG_WITH(libiberty,
+    [AS_HELP_STRING([--with-libiberty=prefix],
+      [Add the compile and link search paths for libiberty]
+    )],
+    [CXXFLAGS="$CXXFLAGS -I${withval}/include"
+     LDFLAGS="$LDFLAGS -L${withval}/lib"
+     RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"],
+    [CXXFLAGS="$CXXFLAGS"]
+  )
   AC_ARG_WITH(libdwarf,
     [AS_HELP_STRING([--with-libdwarf=prefix],
       [Add the compile and link search paths for libdwarf]
@@ -57,9 +75,23 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   )
 
   AC_LANG_PUSH(C++)
+  AC_CHECK_LIB(iberty,main,libiberty_found=yes,libiberty_found=no)
+  if test "$libiberty_found" = yes; then
+    BELIBS="$BELIBS -liberty"
+  else
+    AC_MSG_ERROR([libiberty is required.  Specify libiberty prefix with --with-libiberty])
+  fi
+
+  AC_CHECK_LIB(elf,elf_begin,libelf_found=yes,libelf_found=no)
+  if test "$libelf_found" = yes; then
+    BELIBS="$BELIBS -lelf"
+  else
+    AC_MSG_ERROR([libelf is required.  Specify libelf prefix with --with-libelf])
+  fi
+
   AC_CHECK_LIB(dwarf,dwarf_init,libdwarf_found=yes,libdwarf_found=no,-lelf)
   if test "$libdwarf_found" = yes; then
-    BELIBS="$BELIBS -ldwarf -lelf -liberty"
+    BELIBS="$BELIBS -ldwarf"
   else
     AC_MSG_ERROR([libdwarf is required.  Specify libdwarf prefix with --with-libdwarf])
   fi
@@ -67,6 +99,38 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   AC_CHECK_HEADER(walker.h,
     [],
     [AC_MSG_ERROR([walker.h is required.  Specify stackwalker prefix with --with-stackwalker])],
+    AC_INCLUDES_DEFAULT
+  )
+
+  AC_MSG_CHECKING([Checking Dyninst Version 9.3 or greater])
+  dyninst_vers_93=no
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "version.h"
+    int main()
+    {
+      return 0;
+    }])],
+    [dyninst_vers_93=yes],
+    []
+  )
+
+  if test "$dyninst_vers_93" = yes; then
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "version.h"
+      #if ((DYNINST_MAJOR_VERSION == 9 && DYNINST_MINOR_VERSION < 3) || DYNINST_MAJOR_VERSION <= 8)
+        #error
+      #endif
+      int main()
+      {
+        return 0;
+      }])],
+      [CXXFLAGS="$CXXFLAGS -std=c++11"],
+      [dyninst_vers_93=no]
+    )
+  fi
+  AC_MSG_RESULT([$dyninst_vers_93])
+
+  AC_CHECK_HEADER(Symtab.h,
+    [],
+    [AC_MSG_ERROR([Symtab.h is required.  Specify prefix with --with-stackwalker])],
     AC_INCLUDES_DEFAULT
   )
   AC_MSG_CHECKING(for libstackwalk)

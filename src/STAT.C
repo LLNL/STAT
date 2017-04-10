@@ -1,11 +1,11 @@
 /*
-Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
-Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, and Martin Schulz.
-LLNL-CODE-624152.
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-727016.
 All rights reserved.
 
-This file is part of STAT. For details, see http://www.paradyn.org/STAT/STAT.html. Please also read STAT/LICENSE.
+This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
@@ -42,6 +42,7 @@ typedef struct
     unsigned int traceFrequency;            /*!< the time between samples */
     unsigned int nRetries;                  /*!< the number of retries per sample */
     unsigned int retryFrequency;            /*!< the time between retries */
+    unsigned int nDaemonsPerNode;           /*!< the number of retries per sample */
     char topologySpecification[BUFSIZE];    /*!< the topology specification */
     char *remoteNode;                       /*!< the remote node running the job launcher */
     char *nodeList;                         /*!< the CP node list */
@@ -152,6 +153,7 @@ int main(int argc, char **argv)
         mySleep(statArgs->sleepTime);
 
     /* Launch the Daemons */
+    statFrontEnd->setNDaemonsPerNode(statArgs->nDaemonsPerNode);
     statFrontEnd->setApplicationOption(statArgs->applicationOption);
     if (statArgs->applicationOption == STAT_ATTACH)
         statError = statFrontEnd->attachAndSpawnDaemons(statArgs->pid, statArgs->remoteNode);
@@ -423,6 +425,7 @@ void printUsage()
     fprintf(stderr, "  -a, --autotopo\t\tlet STAT automatically create topology\n");
     fprintf(stderr, "  -d, --depth <depth>\t\ttree topology depth\n");
     fprintf(stderr, "  -f, --fanout <width>\t\tmaximum tree topology fanout\n");
+    fprintf(stderr, "  -z, --daemonspernode <num>\tnumber of daemons per node\n");
     fprintf(stderr, "  -u, --usertopology <topology>\tspecify the number of communication nodes per\n\t\t\t\tlayer in the tree topology, separated by dashes\n");
     fprintf(stderr, "  -n, --nodes <nodelist>\tlist of nodes for communication processes\n");
     fprintf(stderr, "\t\t\t\tExample node lists:\thost1\n\t\t\t\t\t\t\thost1,host2\n\t\t\t\t\t\t\thost[1,5-7,9]\n");
@@ -457,7 +460,7 @@ void printUsage()
 */
 StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int argc, char **argv)
 {
-    int i, opt, optionIndex = 0, nProcs;
+    int i, opt, optionIndex = 0;
     unsigned int logType = 0;
     bool createJob = false, serialJob = false;
     char logOutDir[BUFSIZE];
@@ -471,7 +474,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"verbose",             no_argument,        0, 'v'},
         {"quiet",               no_argument,        0, 'q'},
         {"withpc",              no_argument,        0, 'P'},
-        {"withmoduleoffset",    no_argument,        0, 'P'},
+        {"withmoduleoffset",    no_argument,        0, 'm'},
         {"withline",            no_argument,        0, 'i'},
         {"withopenmp",          no_argument,        0, 'o'},
         {"comprehensive",       no_argument,        0, 'c'},
@@ -501,6 +504,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"logdir",              required_argument,  0, 'L'},
         {"usertopology",        required_argument,  0, 'u'},
         {"depth",               required_argument,  0, 'd'},
+        {"daemonspernode",      required_argument,  0, 'z'},
 #ifdef DYSECTAPI
         {"dysectapi",           required_argument, 0, 'X'},
         {"dysectapi_batch",     required_argument, 0, 'b'},
@@ -514,6 +518,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     statArgs->nTraces = 10;
     statArgs->traceFrequency = 100;
     statArgs->nRetries = 0;
+    statArgs->nDaemonsPerNode = 1;
     statArgs->retryFrequency = 100;
     statArgs->sampleType = 0;
     statArgs->topologyType = STAT_TOPOLOGY_AUTO;
@@ -522,9 +527,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     while (1)
     {
 #ifdef DYSECTAPI
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:X:b:Y:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:X:b:Y:", longOptions, &optionIndex);
 #else
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:", longOptions, &optionIndex);
 #endif
         if (opt == -1)
             break;
@@ -687,6 +692,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         case 'U':
             statArgs->countRep = true;
             statArgs->sampleType |= STAT_SAMPLE_COUNT_REP;
+            break;
+        case 'z':
+            statArgs->nDaemonsPerNode = atoi(optarg);
             break;
 #ifdef DYSECTAPI
         case 'X':
