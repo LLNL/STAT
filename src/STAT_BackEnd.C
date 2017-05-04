@@ -2291,7 +2291,10 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
                 nodeAttrs["line"] = buf;
             }
             else
+            {
+                nodeAttrs["function"] = pyFun;
                 name = pyFun;
+            }
             free(pyFun);
             free(pySource);
             isPyTrace_ = true;
