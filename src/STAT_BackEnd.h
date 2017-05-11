@@ -52,16 +52,14 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "frame.h"
 #include "swk_errors.h"
 #include "Type.h"
+#include "local_var.h"
+#include "Variable.h"
+#include "Function.h"
 #ifdef SW_VERSION_8_0_0
   #include "PlatFeatures.h"
   #include "ProcessSet.h"
   #include "PCErrors.h"
   #define GROUP_OPS
-#endif
-#if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
-  #include "local_var.h"
-  #include "Variable.h"
-  #include "Function.h"
 #endif
 #ifdef OMP_STACKWALKER
   #include "OpenMPStackWalker.h"

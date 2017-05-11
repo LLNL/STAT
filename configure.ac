@@ -65,11 +65,6 @@ AC_ARG_ENABLE(statbench,
 )
 
 AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
-AC_ARG_ENABLE(python-debug,
-  [AS_HELP_STRING([--enable-python-debug],[Enable the ability to gather python script debugging])],
-  [CXXFLAGS="-DPROTOTYPE_PY $CXXFLAGS"],
-  [CXXFLAGS="$CXXFLAGS"]
-)
 
 AC_ARG_WITH(procspernode,
   [AS_HELP_STRING([--with-procspernode=num],[Set the maximum number of communication processes per node equal to num, defaults to 1 if not specified])],

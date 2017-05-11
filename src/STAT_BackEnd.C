@@ -2100,7 +2100,6 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
 StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, char *outBuf, unsigned int outBufSize)
 {
     int intRet;
-#if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
     int i;
     bool boolRet, found = false;
     char buf[BUFSIZE];
@@ -2161,11 +2160,6 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
     }
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s in frame %s\n", outBuf, frameName.c_str());
-#else
-    printMsg(STAT_WARNING, __FILE__, __LINE__, "Prototype variable extraction feature not enabled!\n");
-    intRet = -1;
-    memcpy(outBuf, &intRet, sizeof(int));
-#endif
     return STAT_OK;
 }
 
@@ -3009,11 +3003,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         procSet_ = procSet_->set_difference(terminatedSubset);
     }
 
-#if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
     CallTree tree(statFrameCmp);
-#else
-    CallTree tree(frame_lib_offset_cmp);
-#endif
 
 #ifdef SW_VERSION_8_1_0
     swSuccess = walkerSet_->walkStacks(tree, !(sampleType_ & STAT_SAMPLE_THREADS));
@@ -3465,7 +3455,6 @@ vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 
 StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, char **pyFun, char **pySource, int *pyLineNo)
 {
-#ifdef PROTOTYPE_PY
     int i, found = 0, fLastIVal = -1, address, lineNo, firstLineNo;
     long length, pAddr;
     unsigned long long baseAddr, pyCodeObjectBaseAddr, pyUnicodeObjectAddr;
@@ -3884,7 +3873,6 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
         *pyLineNo = -1;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found Python frame information %s@%s:%d\n", *pyFun, *pySource, *pyLineNo);
-#endif
 
     return STAT_OK;
 }
