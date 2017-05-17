@@ -605,6 +605,12 @@ def translate(match):
     trans = translators[module]
     return trans.translate(offset)
 
+def exec_and_exit(arg_list):
+    """Run a command and exits."""
+    subprocess.call(arg_list)
+    sys.exit(0)
+
+
 #global DEBUG
 #DEBUG = False
 # #   debug_msg('entering function %s' %(inspect.stack()[0][3]))

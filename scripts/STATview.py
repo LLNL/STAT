@@ -36,7 +36,6 @@ import traceback
 import shelve
 from collections import defaultdict
 import copy
-#import inspect
 
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
@@ -4512,13 +4511,13 @@ enterered as a regular expression.
             pass
 
 
-def STATview_main(argv):
+def STATview_main(args):
     """The STATview main."""
     global window
     window = STATDotWindow()
-    if len(argv) >= 2:
+    if args.files:
         i = -1
-        for filename in argv[1:]:
+        for filename in args.files:
             i += 1
             try:
                 with open(filename, 'r') as f:
@@ -4539,4 +4538,5 @@ def STATview_main(argv):
 
 
 if __name__ == '__main__':
-    STATview_main(sys.argv)
+    sys.stderr.write('WARNING: STATview.py should not be directly invoked. This has been replaced by STATmain.py and the "view" subcommand.\n')
+    sys.exit(1)

@@ -6,6 +6,8 @@ export exec_prefix=@exec_prefix@
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
 fi
+export STAT_BIN=$prefix/bin/STATbin
+export STATBENCH_BIN=$prefix/bin/STATBenchbin
 
 if test -z $LD_LIBRARY_PATH
 then
@@ -71,4 +73,7 @@ if test -z "$LMON_FE_ENGINE_TIMEOUT" ; then
     export LMON_FE_ENGINE_TIMEOUT=600
 fi
 
-exec $prefix/bin/STATbin -r 5 -A -c $@
+export PATH=$PATH:@DOTBINDIR@
+export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
+
+exec @STATPYTHON@ @pythondir@/STATmain.py $@

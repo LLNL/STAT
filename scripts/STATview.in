@@ -10,4 +10,4 @@ fi
 export PATH=$PATH:@DOTBINDIR@
 export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 
-exec @STATPYTHON@ @pythondir@/STATview.py $@
+exec @STATPYTHON@ @pythondir@/STATmain.py view $@

@@ -26,7 +26,7 @@ __version_revision__ = 1
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import STAThelper
-from STAThelper import var_spec_to_string, get_task_list, get_proctab, HAVE_PYGMENTS
+from STAThelper import var_spec_to_string, get_task_list, get_proctab, HAVE_PYGMENTS, exec_and_exit
 if HAVE_PYGMENTS:
     import pygments
     import pango
@@ -66,6 +66,7 @@ import os
 import gtk
 import gobject
 import re
+import argparse
 
 
 ## The STATGUI window adds STAT operations to the STATview window.
@@ -86,7 +87,7 @@ class STATGUI(STATDotWindow):
     ui2 += '    </toolbar>\n'
     ui2 += '</ui>\n'
 
-    def __init__(self):
+    def __init__(self, args):
         """The constructor.
 
         Initializes all instance varaibles and creates the GUI window.
@@ -103,7 +104,6 @@ class STATGUI(STATDotWindow):
         self.marked_line_number = None
         self.attached = False
         self.reattach = False
-        self.serial_process_list = None
         self.serial_attach = False
         self.visualizer_window = None
         self.sample_task_list = ['Sample Stack Traces', 'Gather Stack Traces', 'Render Stack Traces']
@@ -229,6 +229,33 @@ class STATGUI(STATDotWindow):
                     sys.stderr.write('%s\nfailed to process preferences file %s\n' % (repr(e), path))
                     continue
 
+        if args is not None:
+            if args.withmoduleoffset is True:
+                self.options['Sample Type'] = 'module offset'
+            elif args.withpc is True:
+                self.options['Sample Type'] = 'function and pc'
+            elif args.withline is True:
+                self.options['Sample Type'] = 'function and line'
+            if args.countrep is True:
+                self.options['Edge Type'] = 'count and representative'
+            if args.pythontrace is True:
+                self.options['Gather Python Traces'] = True
+            if args.withthreads is True:
+                self.options['With Threads'] = True
+            if args.withopenmp is True:
+                self.options['With Threads'] = True
+                self.options['With OpenMP'] = True
+            if args.debugdaemons is True:
+                self.options['Debug Backends'] = True
+            if args.logdir is not None:
+                self.options['Log Dir'] = args.logdir
+            if args.log is not None:
+                if 'CP' in args.log:
+                    self.options['Log CP'] = True
+                if 'FE' in args.log:
+                    self.options['Log Frontend'] = True
+                if 'BE' in args.log:
+                    self.options['Log Backend'] = True
         self.var_spec = []
         self.filter_entry = None
         self.serial_filter_entry = None
@@ -278,6 +305,21 @@ host[1-10,12,15-20]
 host[1-10,12,15-20];otherhost[30]
 """
         self.search_types.append(('hosts', self.search_hosts, help_text))
+
+        if args is not None:
+            if args.attach is not None:
+                self.options['PID'] = int(args.attach.split(':')[-1])
+                if args.attach.find(':') != -1:
+                    self.options['Remote Host'] = args.attach.split(':')[0]
+                stat_wait_dialog.show_wait_dialog_and_run(self.attach_cb, (None, False, False, STAT_ATTACH), self.attach_task_list)
+                return
+            elif args.serial is not None:
+                self.serial_attach = True
+                stat_wait_dialog.show_wait_dialog_and_run(self.attach_serial_processes_cb, (None, None, args.serial), self.attach_task_list)
+                return
+            elif args.create is not None:
+                stat_wait_dialog.show_wait_dialog_and_run(self.launch_application_cb, (None, None, args.create), self.attach_task_list)
+                return
         self.on_attach(None)
 
     def search_hosts(self, text, match_case_check_box):
@@ -1049,13 +1091,16 @@ host[1-10,12,15-20];otherhost[30]
         attach_dialog.run()
         self.sw = None
         self.serial_sw = None
+        return True
 
-    def attach_serial_processes_cb(self, entry, attach_dialog):
+    def attach_serial_processes_cb(self, entry=None, attach_dialog=None, in_processes=None):
         """Callback to attach to serial processes."""
-        processes = entry.get_text()
+        processes = in_processes
+        if processes == None:
+            processes = entry.get_text()
+            processes = processes.split()
+        self.process_list = ' '.join(processes)
         self.serial_attach = True
-        self.process_list = processes
-        processes = processes.split()
         if len(processes) <= 0:
             show_error_dialog('No processes selected.  Please select processes\nto attach to by selecting the desired radio\nbuttons and clicking "Add Serial Process" or by\nmanually entering host:pid pairs in the text entry.', self)
             return False
@@ -1064,11 +1109,14 @@ host[1-10,12,15-20];otherhost[30]
         for process in processes:
             self.STAT.addSerialProcess(process)
         self.attach_cb(attach_dialog, False, True, STAT_SERIAL_ATTACH)
+        return True
 
-    def launch_application_cb(self, entry, attach_dialog):
+    def launch_application_cb(self, entry=None, attach_dialog=None, in_args=None):
         """Callback to launch an application under STAT's control."""
-        args = entry.get_text()
-        args = args.split()
+        args = in_args
+        if args == None:
+            args = entry.get_text()
+            args = args.split()
         if len(args) <= 0:
             show_error_dialog('No launch string specified.  Please enter\nthe application launch string.\n', self)
             return False
@@ -1076,6 +1124,7 @@ host[1-10,12,15-20];otherhost[30]
         for arg in args:
             self.STAT.addLauncherArgv(arg)
         self.attach_cb(attach_dialog, True, False, STAT_LAUNCH)
+        return True
 
     def destroy_dysect_dialog(self, dialog):
         self.dysect_dialog = None
@@ -1144,11 +1193,14 @@ host[1-10,12,15-20];otherhost[30]
             run_gtk_main_loop()
             attach_dialog.destroy()
         stat_wait_dialog.update_progress_bar(0.01)
-        self.options['Topology Type'] = self.types['Topology Type'][self.combo_boxes['Topology Type'].get_active()]
-        self.options['CP Policy'] = self.types['CP Policy'][self.combo_boxes['CP Policy'].get_active()]
-        self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
-        self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
-        self.options['Daemons per Node'] = int(self.spinners['Daemons per Node'].get_value())
+        try:
+            self.options['Topology Type'] = self.types['Topology Type'][self.combo_boxes['Topology Type'].get_active()]
+            self.options['CP Policy'] = self.types['CP Policy'][self.combo_boxes['CP Policy'].get_active()]
+            self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
+            self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
+            self.options['Daemons per Node'] = int(self.spinners['Daemons per Node'].get_value())
+        except:
+            pass
         if self.options['Check Node Access'] == True:
             os.environ['STAT_CHECK_NODE_ACCESS'] = '1'
         if self.STAT is None:
@@ -1383,11 +1435,8 @@ host[1-10,12,15-20];otherhost[30]
         try:
             self.options['Num Traces'] = int(self.spinners['Num Traces'].get_value())
             self.options['Trace Frequency (ms)'] = int(self.spinners['Trace Frequency (ms)'].get_value())
-        except:
-            pass
-        self.options['Num Retries'] = int(self.spinners['Num Retries'].get_value())
-        self.options['Retry Frequency (us)'] = int(self.spinners['Retry Frequency (us)'].get_value())
-        try:
+            self.options['Num Retries'] = int(self.spinners['Num Retries'].get_value())
+            self.options['Retry Frequency (us)'] = int(self.spinners['Retry Frequency (us)'].get_value())
             self.options['Run Time Before Sample (sec)'] = int(self.spinners['Run Time Before Sample (sec)'].get_value())
         except:
             pass
@@ -2168,7 +2217,7 @@ host[1-10,12,15-20];otherhost[30]
 
         sys.stdout.write('fork exec %s %s\n' % (debugger, arg_list))
         if os.fork() == 0:
-            self.exec_and_exit(arg_list)
+            exec_and_exit(arg_list)
 
     def get_full_edge_label(self, widget, button_clicked, node):
         edge_label = self.STAT.getNodeInEdge(int(node.node_name))
@@ -2200,11 +2249,6 @@ host[1-10,12,15-20];otherhost[30]
         self.reattach = False
         self.attached = False
         self.show_all()
-
-    def exec_and_exit(self, arg_list):
-        """Run a command and exits."""
-        subprocess.call(arg_list)
-        sys.exit(0)
 
     def pack_sample_options(self, vbox, multiple, attach=False):
         """Pack the sample options into the specified vbox."""
@@ -2248,13 +2292,14 @@ host[1-10,12,15-20];otherhost[30]
             vbox.pack_start(frame, False, False, 5)
 
 
-def STATGUI_main():
+def STATGUI_main(args):
     """The STATGUI main."""
-    window = STATGUI()
+    window = STATGUI(args)
     STATview.window = window
     window.connect('destroy', window.on_destroy)
     #gtk.gdk.threads_init()
     gtk.main()
 
 if __name__ == '__main__':
-    STATGUI_main()
+    sys.stderr.write('WARNING: STATGUI.py should not be directly invoked. This has been replaced by STATmain.py and the "view" subcommand.\n')
+    sys.exit(1)

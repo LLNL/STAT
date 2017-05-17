@@ -552,17 +552,20 @@ def init_logging(input_loglevel, input_logfile):
 
 
 ###############################################################################
-if __name__ == '__main__':
+def STATmerge_main(arg_list):
     core_file_type = 'full'
+    print arg_list
+    sys.argv = sys.argv[1:]
     try:
-        file = sys.argv[sys.argv.index("-c") + 1]
-        if os.path.isdir(file):
-            for file_path in os.listdir(file):
-                full_path = file + '/' +  file_path
+        file_path = arg_list[arg_list.index("-c") + 1]
+        #file_path = sys.argv[argv.index("-c") + 1]
+        if os.path.isdir(file_path):
+            for file_path in os.listdir(file_path):
+                full_path = file_path + '/' +  file_path
                 if full_path.find('core') != -1 and not os.path.isdir(full_path):
-                    file = full_path
+                    file_path = full_path
                     break
-        f = open(file, "r")
+        f = open(file_path, "r")
         line = f.readline()
         if line.find("LIGHTWEIGHT COREFILE") != -1 or line.find("Summary") != -1:
             core_file_type = 'lightweight'
@@ -578,3 +581,7 @@ if __name__ == '__main__':
     if ret != 0:
         sys.stderr.write('Merger failed\n')
         sys.exit(ret)
+
+if __name__ == '__main__':
+    sys.stderr.write('WARNING: core_file_merger.py should not be directly invoked. This has been replaced by STATmain.py and the "merge" subcommand.\n')
+    sys.exit(1)

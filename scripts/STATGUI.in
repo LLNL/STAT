@@ -74,4 +74,4 @@ fi
 export PATH=$PATH:@DOTBINDIR@
 export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 
-exec @STATPYTHON@ @pythondir@/STATGUI.py $@
+exec @STATPYTHON@ @pythondir@/STATmain.py gui $@

@@ -1,3 +1,37 @@
+2017-05-17 Gregory L. Lee <lee218@llnl.gov>
+	* : Added arg parsing to GUI
+	* : Run through STATmain.py with subcommands
+
+2017-05-11 Gregory L. Lee <lee218@llnl.gov>
+	* : Enable Python-script-level debugging by default
+
+2017-05-04 Gregory L. Lee <lee218@llnl.gov>
+	* : Doc update for Intel MPI
+	* STAT_BackEnd.C : Fix frame function name for Python traces
+
+2017-04-11 Gregory L. Lee <lee218@llnl.gov>
+	* : Require Python even when GUI disabled
+
+2017-04-10 Gregory L. Lee <lee218@llnl.gov>
+	* : build system fixes
+	* .travis.yml : travis build fixes
+
+2017-03-30 Gregory L. Lee <lee218@llnl.gov>
+	* : tag version 3.0.1
+	* x_ac_debuglibs.m4 : Dyninst 9.3 support
+
+2017-03-20 Gregory L. Lee <lee218@llnl.gov>
+	* : GUI fixes to handle special characters
+
+2017-03-20 Gregory L. Lee <lee218@llnl.gov>
+	* : GUI fixes to handle special characters
+
+2017-03-13 Gregory L. Lee <lee218@llnl.gov>
+	* : Build system fixes and script test arg parsing
+
+2017-02-17 Gregory L. Lee <lee218@llnl.gov>
+	* .travis.yml : Added travis build tests
+
 2017-02-13 Gregory L. Lee <lee218@llnl.gov>
 	* MRNetSymbolReader.* : Added new virtual functions
 
