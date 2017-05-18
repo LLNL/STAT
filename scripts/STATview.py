@@ -25,9 +25,9 @@ __version_minor__ = 0
 __version_revision__ = 1
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
-import os.path
 import string
 import sys
+import shutil
 import os
 import math
 import re
@@ -131,6 +131,8 @@ task_label_to_id = {}
 ## A counter to keep track of unique label IDs
 next_label_id = -1
 
+## A default name for the source cache directory
+cache_directory = 'stat_source_cache'
 
 ## \param label - the edge label
 #  \return the list of ranks
@@ -285,6 +287,32 @@ def create_temp(dot_filename, truncate, max_node_name):
 
     return temp_dot_filename
 
+
+## \param file_dir - the .dot file directory
+## \param source - the source file name
+#  \return the cache file path
+#
+#  \n
+def get_cache_file_path(file_dir, source):
+    cache_directory_path = os.path.abspath(os.path.join(file_dir, cache_directory))
+    cache_file_path = cache_directory_path + '/' + source
+    return cache_file_path
+
+
+## \param current_graph - the currently opened graph object
+#  \return directory and filename of the current graph's .dot file
+#
+#  \n
+def dot_file_path_split(current_graph):
+    file_path = current_graph.cur_filename
+    if file_path is None or file_path == '':
+        show_error_dialog('.dot file not currently loaded, no application files to cache')
+        return False
+    elif file_path == 'redraw.dot':
+        show_error_dialog('caching disabled for redrawn file, please click on tab with original .dot file')
+        return False
+    file_dir, file_name = os.path.split(file_path)
+    return (file_dir, file_name)
 
 def run_gtk_main_loop(iters = 100):
     iter = 0
@@ -1297,25 +1325,30 @@ class STATGraph(xdot.Graph):
                     line_nums.append((int(node_iter.attrs["line"].split('\\n')[i].strip(":")), fill_color_string, font_color_string))
         found = False
         error_msg = ''
-        if os.path.isabs(source):
-            if os.path.exists(source):
-                source_full_path = source
-                found = True
-            else:
-                error_msg = 'Full path %s does not exist\n' % source
-        if found is False:
-            # find the full path to the file
-            source = os.path.basename(source)
-            for sp in search_paths['source']:
-                if not os.path.exists(sp):
-                    continue
-                if os.path.exists(sp + '/' + source):
+        file_dir, file_name = dot_file_path_split(self)
+        cache_file_path = get_cache_file_path(file_dir, source)
+        if os.path.exists(cache_file_path):
+            source_full_path = cache_file_path
+        else:
+            if os.path.isabs(source):
+                if os.path.exists(source):
+                    source_full_path = source
                     found = True
-                    break
+                else:
+                    error_msg = 'Full path %s does not exist\n' % source
             if found is False:
-                show_error_dialog('%sFailed to find file "%s" in search paths.  Please add the source file search path for this file\n' % (error_msg, source))
-                return True
-            source_full_path = sp + '/' + source
+                # find the full path to the file
+                source = os.path.basename(source)
+                for sp in search_paths['source']:
+                    if not os.path.exists(sp):
+                        continue
+                    if os.path.exists(sp + '/' + source):
+                        found = True
+                        break
+                if found is False:
+                    show_error_dialog('%sFailed to find file "%s" in search paths.  Please add the source file search path for this file\n' % (error_msg, source))
+                    return True
+                source_full_path = sp + '/' + source
 
         # create the source view window
         if self.source_view_window is None:
@@ -2667,7 +2700,7 @@ class STATDotWidget(xdot.DotWidget):
             f = file(temp_dot_filename, 'r')
             dotcode2 = f.read()
             f.close()
-        except:
+        except Exception as e:
             show_error_dialog('Failed to read temp dot file %s' % temp_dot_filename, self, exception=e)
             return False
         os.remove(temp_dot_filename)
@@ -2910,6 +2943,7 @@ class STATDotWindow(xdot.DotWindow):
     ui += '            <menuitem action="LoadPrefs"/>\n'
     ui += '            <separator/>\n'
     ui += '            <menuitem action="SearchPath"/>\n'
+    ui += '            <menuitem action="CacheSources"/>\n'
     ui += '            <separator/>\n'
     ui += '            <menuitem action="NewTab"/>\n'
     ui += '            <menuitem action="ResetLayout"/>\n'
@@ -2977,6 +3011,7 @@ class STATDotWindow(xdot.DotWindow):
         actions.append(('SavePrefs', gtk.STOCK_SAVE_AS, 'Save Pr_eferences', '<control>E', 'Load saved preference settings', self.on_save_prefs))
         actions.append(('LoadPrefs', gtk.STOCK_OPEN, '_Load Preferences', '<control>L', 'Save current preference settings', self.on_load_prefs))
         actions.append(('SearchPath', gtk.STOCK_ADD, '_Add Search Paths', '<control>A', 'Add search paths for application source and header files', self.on_modify_search_paths))
+        actions.append(('CacheSources', gtk.STOCK_ADD, '_Cache Source Files', '<control>U', 'Cache all source files', self.on_cache_sources))
         actions.append(('NewTab', gtk.STOCK_NEW, '_New Tab', '<control>T', 'Create new tab', lambda x: self.menu_item_response(gtk.STOCK_NEW, 'New Tab')))
         actions.append(('CloseTab', gtk.STOCK_CLOSE, 'Close Tab', '<control>W', 'Close current tab', lambda x: self.menu_item_response(None, 'Close Tab')))
         actions.append(('Quit', gtk.STOCK_QUIT, '_Quit', '<control>Q', 'Quit', self.on_destroy))
@@ -3553,7 +3588,7 @@ entered as a regular expression"""
             temp_dot_filename = '%s/redraw.dot' % home_dir
             try:
                 temp_dot_file = open(temp_dot_filename, 'w')
-            except:
+            except Exception as e:
                 show_error_dialog('Failed to open temp dot file %s for writing' % temp_dot_filename, exception=e)
                 return False
         temp_dot_file.close()
@@ -3576,7 +3611,7 @@ entered as a regular expression"""
             temp_dot_filename = '%s/tranlsated.dot' % home_dir
             try:
                 temp_dot_file = open(temp_dot_filename, 'w')
-            except:
+            except Exception as e:
                 show_error_dialog('Failed to open temp dot file %s for writing' % temp_dot_filename, exception=e)
                 return False
         temp_dot_file.close()
@@ -3587,6 +3622,38 @@ entered as a regular expression"""
         self.open_file(temp_dot_filename)
         os.remove(temp_dot_filename)
         return True
+
+    def on_cache_sources(self, action):
+        """Callback to cache all source files found in this .dot file."""
+        current_graph = self.get_current_graph()
+        file_dir, file_name = dot_file_path_split(current_graph)
+        if file_dir is None or file_dir == '':
+            show_error_dialog('unable to determine directory of .dot file, STAT will not cache sources')
+            return False
+        source_files = set()
+        for node in current_graph.nodes:
+            source_file_path = node.attrs['source']
+            if source_file_path != '' and os.path.exists(source_file_path):
+                source_files.add(source_file_path)
+        cache_directory_path = os.path.abspath(os.path.join(file_dir, cache_directory))
+        if not os.path.exists(cache_directory_path):
+            try:
+                os.makedirs(cache_directory_path)
+            except Exception as e:
+                show_error_dialog('Failed to create cache directory %s' % cache_directory_path, exception=e)
+                return False
+        for source_file in source_files:
+            cache_file_path = cache_directory_path + '/' + source_file
+            cache_file_dir, cache_file_name = os.path.split(cache_file_path)
+            if not os.path.exists(cache_file_path):
+                try:
+                    if not os.path.exists(cache_file_dir):
+                        os.makedirs(cache_file_dir)
+                    shutil.copyfile(source_file, cache_file_path)
+                except Exception as e:
+                    show_error_dialog('Failed to copy %s to %s' % (source_file, cache_file_path), exception=e)
+                    return False
+
 
     def on_modify_search_paths(self, action):
         """Callback to generate dialog to modify search paths."""

@@ -1,3 +1,6 @@
+2017-05-18 Gregory L. Lee <lee218@llnl.gov>
+	* STATview.py : GUI option to cache app source files
+
 2017-05-17 Gregory L. Lee <lee218@llnl.gov>
 	* : Added arg parsing to GUI
 	* : Run through STATmain.py with subcommands
