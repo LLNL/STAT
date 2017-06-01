@@ -58,6 +58,11 @@ try:
     import attach_helper
 except:
     HAVE_ATTACH_HELPER = False
+HAVE_PSUTIL = True
+try:
+    import psutil
+except:
+    HAVE_PSUTIL = False
 import commands
 import subprocess
 import time
@@ -135,10 +140,12 @@ class STATGUI(STATDotWindow):
                    'Daemons per Node':                 1,
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
-                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun|mpiexec',
+                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun|mpiexec|jsrun',
                    'Job ID':                           '',
                    'Filter Ranks':                     '',
                    'Filter Hosts':                     '',
+                   'Filter Full Command Line':         False,
+                   'Filter Full Command Line ':        False, # this option is for serial attach and adds a space at the end to avoid conflict
                    'Log Dir':                          os.environ['HOME'],
                    'Log Frontend':                     False,
                    'Log Backend':                      False,
@@ -592,6 +599,8 @@ host[1-10,12,15-20];otherhost[30]
         """Search for user processes."""
         self.options['Remote Host Shell'] = self.types['Remote Host Shell'][self.combo_boxes['Remote Host Shell'].get_active()]
         pid_list = ''
+        if listing_filter is not None:
+            filter_compiled_re = re.compile(listing_filter.get_text())
         if HAVE_ATTACH_HELPER and self.options['Job ID'] != '':
             self.options['Remote Host'], rm_exe, pids = attach_helper.jobid_to_hostname_pid(self.options['Resource Manager'], self.options['Job ID'], self.options['Remote Host Shell'])
             self.options['Job Launcher'] = rm_exe
@@ -606,61 +615,105 @@ host[1-10,12,15-20];otherhost[30]
                 pid_list += str(pid)
             self.filter_entry.set_text(self.options['Job Launcher'])
             self.rh_entry.set_text(self.options['Remote Host'])
-        if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
-            output = commands.getoutput('ps xww')
-        else:
-            if pid_list != '':
-                output = commands.getoutput('%s %s ps ww -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
+        psutil_success = False
+        process_list = [] # format of item = (pid, cmd_line)
+        if HAVE_PSUTIL is True and (self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == ''):
+            my_procs = []
+            pid_depth = {}
+            for pid in psutil.pids():
+                proc = psutil.Process(pid)
+                if proc.username() == os.getlogin():
+                    my_procs.append(proc)
+            handled_procs = []
+            for proc in my_procs:
+                if proc in handled_procs:
+                    continue
+                cmd_line =  ' '.join(proc.cmdline())
+                pid = proc.pid
+                try:
+                    exe = os.path.realpath(proc.exe())
+                except:
+                    continue
+                if listing_filter is not None:
+                    if listing_filter.get_text() != '':
+                        if (not self.options["Filter Full Command Line"] and is_parallel) or (not self.options["Filter Full Command Line "] and not is_parallel):
+                            my_filter = filter_compiled_re.search(exe)
+                        else:
+                            my_filter = filter_compiled_re.search(cmd_line)
+                        if my_filter is None:
+                            continue
+                try:
+                    pid_depth[pid] = pid_depth[proc.parent().pid] + 1
+                except Exception as e:
+                    pid_depth[pid] = 0
+                handled_procs.append(proc)
+                if pid_depth[pid] > 0:
+                    cmd_line = ' \\_ '.rjust(pid_depth[pid] * 3 + 3) + cmd_line
+                output = commands.getoutput('file %s' % (exe))
+                process_list.append((pid, cmd_line))
+            psutil_success = True
+        if psutil_success == False:
+            if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
+                output = commands.getoutput('ps xww')
             else:
-                output = commands.getoutput('%s %s ps xww' % (self.options['Remote Host Shell'], self.options['Remote Host']))
-            if output.find('Hostname not found') != -1 or output.find('PID') == -1:
-                show_error_dialog('Failed to get process listing for %s' % self.options['Remote Host'], attach_dialog)
-                return False
-        output = output.split('\n')
-        pid_index = 0
-        for line in output:
-            if line.find('PID') != -1:
-                break
-            pid_index += 1
-        output = output[pid_index:]
-        line = output[0].split()
-        pid_index = 0
-        command_index = 0
-        for counter, token in enumerate(line):
-            if token == 'PID':
-                pid_index = counter
-            elif token == 'COMMAND':
-                command_index = counter
-        if listing_filter is not None:
-            filter_compiled_re = re.compile(listing_filter.get_text())
+                if pid_list != '':
+                    output = commands.getoutput('%s %s ps ww -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
+                else:
+                    output = commands.getoutput('%s %s ps xww' % (self.options['Remote Host Shell'], self.options['Remote Host']))
+                if output.find('Hostname not found') != -1 or output.find('PID') == -1:
+                    show_error_dialog('Failed to get process listing for %s' % self.options['Remote Host'], attach_dialog)
+                    return False
+            output = output.split('\n')
+            pid_index = 0
+            for line in output:
+                if line.find('PID') != -1:
+                    break
+                pid_index += 1
+            output = output[pid_index:]
+            line = output[0].split()
+            pid_index = 0
+            command_index = 0
+            for counter, token in enumerate(line):
+                if token == 'PID':
+                    pid_index = counter
+                elif token == 'COMMAND':
+                    command_index = counter
+            for line in output[1:]:
+                try:
+                    cmd_line = ''
+                    for token in line.split()[command_index:]:
+                        cmd_line += ' %s' % token
+                except:
+                    continue
+                if listing_filter is not None:
+                    if listing_filter.get_text() != '':
+                        if (not self.options["Filter Full Command Line"] and is_parallel) or (not self.options["Filter Full Command Line "] and not is_parallel):
+                            my_filter = filter_compiled_re.search(cmd_line.split()[0])
+                        else:
+                            my_filter = filter_compiled_re.search(cmd_line)
+                        if my_filter is None:
+                            continue
+                process_list.append((int(line.split()[pid_index]), cmd_line))
+
         started = False
-        for line in output[1:]:
-            try:
-                text = '% 5d ' % int(line.split()[pid_index])
-                for token in line.split()[command_index:]:
-                    text += ' %s' % token
-            except:
-                continue
-            if listing_filter is not None:
-                if listing_filter.get_text() != '':
-                    if filter_compiled_re.search(text) is None:
-                        continue
+        for (pid, cmd_line) in process_list:
+            text = '% 5d %s' %(pid, cmd_line)
             if started is False:
                 started = True
-                radio_button = gtk.RadioButton(None, text)
+                radio_button = gtk.RadioButton(None, text, False)
                 radio_button.set_active(True)
                 if is_parallel:
-                    self.options['PID'] = int(line.split()[pid_index])
-                    self.options['Launcher Exe'] = line.split()[command_index]
+                    self.options['PID'] = pid
+                    self.options['Launcher Exe'] = cmd_line
                 else:
-                    self.options['Serial PID'] = int(line.split()[pid_index])
-                    self.options['Serial Exe'] = line.split()[command_index]
+                    self.options['Serial PID'] = pid
+                    self.options['Serial Exe'] = cmd_line
             else:
-                radio_button = gtk.RadioButton(radio_button, text)
+                radio_button = gtk.RadioButton(radio_button, text, False)
             if is_parallel:
-                radio_button.connect("toggled", self.pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
+                radio_button.connect("toggled", self.pid_toggle_cb, pid, cmd_line)
             else:
-                radio_button.connect("toggled", self.serial_pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
+                radio_button.connect("toggled", self.serial_pid_toggle_cb, pid, cmd_line)
             vbox.pack_start(radio_button, False, False, 0)
 
     def _on_update_process_listing(self, widget, frame, attach_dialog, listing_filter=None):
@@ -909,9 +962,8 @@ host[1-10,12,15-20];otherhost[30]
         hbox = gtk.HBox()
         self.pack_combo_box(hbox, 'Remote Host Shell')
         vbox.pack_start(hbox, False, False, 0)
-
         vbox.pack_start(process_frame, True, True, 0)
-
+        self.pack_check_button(vbox, 'Filter Full Command Line', False, False, 5)
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label('Filter Process List'), False, False, 5)
         self.filter_entry = self.pack_entry_and_button(self.options['Job Launcher'], self.on_update_process_listing, process_frame, attach_dialog, "Filter", hbox, True, True, 0)
@@ -962,11 +1014,12 @@ host[1-10,12,15-20];otherhost[30]
         hbox.pack_start(gtk.VSeparator(), False, False, 5)
         self.pack_combo_box(hbox, 'Remote Host Shell')
         vbox.pack_start(hbox, False, False, 0)
+        vbox.pack_start(serial_process_frame, True, True, 0)
+        self.pack_check_button(vbox, 'Filter Full Command Line ', False, False, 5)
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label('Filter Process List'), False, False, 5)
         self.serial_filter_entry = self.pack_entry_and_button("", self.on_update_serial_process_listing, serial_process_frame, attach_dialog, "Filter", hbox, True, True, 0)
         vbox.pack_start(hbox, False, False, 0)
-        vbox.pack_start(serial_process_frame, True, True, 0)
         hbox = gtk.HBox()
         button = gtk.Button("Refresh Process List")
         button.connect("clicked", lambda w: self.on_update_serial_process_listing(w, serial_process_frame, attach_dialog, self.serial_filter_entry))
