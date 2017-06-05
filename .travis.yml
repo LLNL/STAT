@@ -5,9 +5,9 @@ cache:
     - $HOME/local
 
 sudo: required
-group: deprecated-2017Q1 
+#group: deprecated-2017Q1
 
-#dist: trusty
+dist: trusty
 
 compiler:
   - gcc-4.8

@@ -1,3 +1,9 @@
+2017-06-05 Gregory L. Lee <lee218@llnl.gov>
+	* x_ac_debuglibs.m4 : do not explicitly link in libelf, libdwarf, libiberty
+
+2017-06-01 Gregory L. Lee <lee218@llnl.gov>
+	* STATGUI.py : imporoved process listing and filtering
+
 2017-05-18 Gregory L. Lee <lee218@llnl.gov>
 	* STATview.py : GUI option to cache app source files
 
