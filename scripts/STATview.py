@@ -45,8 +45,7 @@ sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
 # Make sure $DISPLAY is set (not good for Windows!)
 if os.name != 'nt':
     if not "DISPLAY" in os.environ:
-        sys.stderr.write('$DISPLAY is not set.  Ensure that X11 forwarding is enabled.\n')
-        sys.exit(1)
+        raise Exception('$DISPLAY is not set.  Ensure that X11 forwarding is enabled.\n')
 
 # Check for required modules
 try:
@@ -54,29 +53,19 @@ try:
     import gobject
     import pango
 except ImportError as e:
-    sys.stderr.write('%s\n' % repr(e))
-    sys.stderr.write('STATview requires gtk and gobject\n')
-    sys.exit(1)
+    raise Exception('%s\nSTATview requires gtk and gobject\n' % repr(e))
 except RuntimeError as e:
-    sys.stderr.write('%s\n' % repr(e))
-    sys.stderr.write('There was a problem loading the gtk and gobject module.\n')
-    sys.stderr.write('Is X11 forwarding enabled?\n')
-    sys.exit(1)
+    raise Exception('%s\nThere was a problem loading the gtk and gobject module.\nIs X11 forwarding enabled?\n' % repr(e))
 except Exception as e:
-    sys.stderr.write('%s\n' % repr(e))
-    sys.stderr.write('There was a problem loading the gtk module.\n')
-    sys.exit(1)
+    raise Exception('%s\nThere was a problem loading the gtk module.\n' % repr(e))
 
 try:
     import STAThelper
     from STAThelper import which, color_to_string, DecomposedNode, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, has_module_offset_and_not_collapsed, label_has_source, label_has_module_offset, label_collapsed, translate, expr, node_attr_to_label, edge_attr_to_label, get_truncated_edge_label, get_num_tasks
 except Exception as e:
-    sys.stderr.write('%s\n' % repr(e))
-    sys.stderr.write('There was a problem loading the STAThelper module.\n')
-    sys.exit(1)
+    raise Exception('%s\nThere was a problem loading the STAThelper module.\n' % repr(e))
 if HAVE_PYGMENTS:
     import pygments
-    #from pygments import highlight
     from pygments.lexers import CLexer
     from pygments.lexers import CppLexer
     from pygments.lexers import FortranLexer
@@ -85,9 +74,7 @@ if HAVE_PYGMENTS:
 try:
     import xdot
 except:
-    sys.stderr.write('STATview requires xdot\n')
-    sys.stderr.write('xdot can be downloaded from http://code.google.com/p/jrfonseca/wiki/XDot\n')
-    sys.exit(1)
+    raise Exception('STATview requires xdot\nxdot can be downloaded from http://code.google.com/p/jrfonseca/wiki/XDot\n')
 
 # Check for optional modules
 ## A variable to determine whther we have the temporal ordering module

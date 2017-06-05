@@ -28,11 +28,21 @@ __version__ = "%d.%d.%d" % (__version_major__, __version_minor__, __version_revi
 import sys
 import os
 import argparse
-from STATview import STATview_main
-from STATGUI import STATGUI_main
+HAVE_STATVIEW = True
+import_exception = None
+try:
+    from STATview import STATview_main
+except Exception as e:
+    HAVE_STATVIEW = False
+    import_exception = e
+HAVE_STATGUI = True
+try:
+    from STATGUI import STATGUI_main
+except:
+    HAVE_STATGUI = False
+    import_exception = e
 from STAThelper import exec_and_exit
 from core_file_merger import STATmerge_main
-
 
 def STATmain_main(in_arg_list, command=None):
     env_var = 'STAT_BIN'
@@ -52,31 +62,37 @@ if __name__ == '__main__':
     args = None
     arg_parser = argparse.ArgumentParser(prog='STAT')
     subparsers = arg_parser.add_subparsers()
+    
+
+    if sys.argv[1] in ['gui', 'view'] and import_exception is not None:
+        raise import_exception
 
     # argument parsing for the stat-view command or STAT view subcommand
-    view_parser = subparsers.add_parser('view')
-    view_parser.add_argument("files", nargs='*', help="optional list of .dot files")
-    view_parser.set_defaults(func=STATview_main)
+    if HAVE_STATVIEW:
+        view_parser = subparsers.add_parser('view')
+        view_parser.add_argument("files", nargs='*', help="optional list of .dot files")
+        view_parser.set_defaults(func=STATview_main)
 
     # argument parsing for the stat-gui command or STAT gui subcommand
-    gui_parser = subparsers.add_parser('gui')
-    trace_group = gui_parser.add_mutually_exclusive_group()
-    trace_group.add_argument("-P", "--withpc", help="sample program counter in addition to function name", action="store_true")
-    trace_group.add_argument("-m", "--withmoduleoffset", help="sample module offset only", action="store_true")
-    trace_group.add_argument("-i", "--withline", help="sample source line number in addition to function name", action="store_true")
-    gui_parser.add_argument("-o", "--withopenmp", help="translate OpenMP stacks to logical application view", action="store_true")
-    gui_parser.add_argument("-w", "--withthreads", help="sample helper threads in addition to the main thread", action="store_true")
-    gui_parser.add_argument("-y", "--pythontrace", help="gather Python script level stack traces", action="store_true")
-    gui_parser.add_argument("-U", "--countrep", help="only gather count and a single representative", action="store_true")
-    gui_parser.add_argument("-d", "--debugdaemons", help="launch the daemons under the debugger", action="store_true")
-    gui_parser.add_argument("-L", "--logdir", help="logging output directory")
-    gui_parser.add_argument("-l", "--log", help="enable debug logging", choices=['FE', 'BE', 'CP'], action="append")
-    gui_parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
-    attach_group = gui_parser.add_mutually_exclusive_group()
-    attach_group.add_argument("-a", "--attach", help="attach to the specified [hostname:]PID", metavar='LAUNCHERPID')
-    attach_group.add_argument("-C", "--create", help="launch the application under STAT's control. All args after -C are used to launch the app", nargs=argparse.REMAINDER)
-    attach_group.add_argument("-I", "--serial", help="attach to the specified [<exe>@<host>:<pid>]+. All args after -I are interpreted as serial processes to attach to", nargs=argparse.REMAINDER)
-    gui_parser.set_defaults(func=STATGUI_main)
+    if HAVE_STATGUI:
+        gui_parser = subparsers.add_parser('gui')
+        trace_group = gui_parser.add_mutually_exclusive_group()
+        trace_group.add_argument("-P", "--withpc", help="sample program counter in addition to function name", action="store_true")
+        trace_group.add_argument("-m", "--withmoduleoffset", help="sample module offset only", action="store_true")
+        trace_group.add_argument("-i", "--withline", help="sample source line number in addition to function name", action="store_true")
+        gui_parser.add_argument("-o", "--withopenmp", help="translate OpenMP stacks to logical application view", action="store_true")
+        gui_parser.add_argument("-w", "--withthreads", help="sample helper threads in addition to the main thread", action="store_true")
+        gui_parser.add_argument("-y", "--pythontrace", help="gather Python script level stack traces", action="store_true")
+        gui_parser.add_argument("-U", "--countrep", help="only gather count and a single representative", action="store_true")
+        gui_parser.add_argument("-d", "--debugdaemons", help="launch the daemons under the debugger", action="store_true")
+        gui_parser.add_argument("-L", "--logdir", help="logging output directory")
+        gui_parser.add_argument("-l", "--log", help="enable debug logging", choices=['FE', 'BE', 'CP'], action="append")
+        gui_parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
+        attach_group = gui_parser.add_mutually_exclusive_group()
+        attach_group.add_argument("-a", "--attach", help="attach to the specified [hostname:]PID", metavar='LAUNCHERPID')
+        attach_group.add_argument("-C", "--create", help="launch the application under STAT's control. All args after -C are used to launch the app", nargs=argparse.REMAINDER)
+        attach_group.add_argument("-I", "--serial", help="attach to the specified [<exe>@<host>:<pid>]+. All args after -I are interpreted as serial processes to attach to", nargs=argparse.REMAINDER)
+        gui_parser.set_defaults(func=STATGUI_main)
 
     # argument parsing for the stat-cl command or STAT cl subcommand
     cl_parser = subparsers.add_parser('cl')

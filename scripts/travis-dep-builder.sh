@@ -12,13 +12,14 @@ cachedir=$HOME/local/.cache
 #  NOTE: Code currently assumes .tar.gz suffix...
 #
 #https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz \
-downloads="\
-https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.2.tar.gz \
-https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz \
-ftp://ftp.cs.wisc.edu/paradyn/mrnet/mrnet_5.0.1.tar.gz \
-https://www.prevanders.net/libdwarf-20161124.tar.gz \
-https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz \
-https://github.com/dyninst/dyninst/archive/v9.3.0.tar.gz"
+#downloads="\
+#https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.3.tar.gz \
+#https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz \
+#ftp://ftp.cs.wisc.edu/paradyn/mrnet/mrnet_5.0.1.tar.gz \
+#https://www.prevanders.net/libdwarf-20161124.tar.gz \
+#https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz \
+#https://github.com/dyninst/dyninst/archive/v9.3.2.tar.gz"
+downloads="https://github.com/dyninst/dyninst/archive/v9.3.2.tar.gz"
 
 checkouts="\
 https://github.com/llnl/launchmon.git"
@@ -35,7 +36,7 @@ declare -A extra_configure_opts=(\
 )
 
 declare -A extra_cmake_opts=(\
-["v9.3.0"]="-D CMAKE_INSTALL_PREFIX=$HOME/local -D LIBDWARF_INCLUDE_DIR=$HOME/local/include -D LIBDWARF_LIBRARIES=$HOME/local/lib/libdwarf.so"
+["v9.3.2"]="-D CMAKE_INSTALL_PREFIX=$HOME/local -D LIBDWARF_INCLUDE_DIR=$HOME/local/include -D LIBDWARF_LIBRARIES=$HOME/local/lib/libdwarf.so"
 )
 
 declare -r prog=${0##*/}
@@ -126,21 +127,23 @@ for pkg in $downloads; do
     cache_name="$name:$sha1:$make_opts:$configure_opts:$cmake_opts"
     # note that we need to build openmpi and STAT's examples with gfortran installed
     # however, having this package causes dyninst to fail to build
-#    if test "$name" = "openmpi-2.0.2"; then
-#       say "rebuiding ${name}"
-#    else
+    #if test "$name" = "openmpi-2.0.2"; then
+    say "I am ${name}."
+    if test "$name" = "v9.3.2"; then
+       say "rebuiding ${name}"
+    else
     if check_cache "$name"; then
        say "Using cached version of ${name}"
-       continue
+       #continue
     fi
-#    fi
+    fi
     export CC=gcc
     export CXX=g++
-    if test "$name" = "v9.3.0"; then
+    if test "$name" = "v9.3.2"; then
       export CC=gcc-4.8
       export CXX=g++-4.8
     fi
-    if test "$name" = "openmpi-2.0.2"; then
+    if test "$name" = "openmpi-2.0.3"; then
       export CC=gcc-4.8
       export CXX=g++-4.8
     fi
@@ -167,7 +170,6 @@ for pkg in $downloads; do
         pushd test/src
         export PATH=./:$PATH
         cat test.launch_1
-        ./test.launch_1
         sleep 60
         cat test.attach_1
         ./test.attach_1
@@ -185,7 +187,7 @@ for pkg in $downloads; do
         cp dwarf.h $HOME/local/include/dwarf.h
         popd
       fi
-      if test "$name" = "v9.3.0"; then
+      if test "$name" = "v9.3.2"; then
         if test -x libiberty/libiberty.a; then
           mkdir -p $HOME/local/lib
           cp libiberty/libiberty.a $HOME/local/lib/libiberty.a
@@ -237,9 +239,16 @@ for url in $checkouts; do
       make check PREFIX=${prefix} $make_opts
       if test "$name" = "launchmon"; then
         pushd test/src
+        cat /proc/sys/kernel/yama/ptrace_scope
         echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+        cat /proc/sys/kernel/yama/ptrace_scope
+        which mpirun
+        export PATH=${prefix}/bin:$PATH
+        which mpirun
         export PATH=./:$PATH
         cat test.launch_1
+        ./test.launch_1
+        export LMON_FE_ENGINE_TIMEOUT=60
         ./test.launch_1
         sleep 60
         cat test.attach_1

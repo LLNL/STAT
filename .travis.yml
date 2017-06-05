@@ -40,14 +40,6 @@ before_install:
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq
   - sudo apt-get install -qq g++-4.8
-  - sudo add-apt-repository ppa:apokluda/boost1.53 --yes
-  - sudo apt-get update
-  - sudo apt-get install libboost-system1.53-dev
-  - sudo apt-get install libboost-regex1.53-dev
-  - sudo apt-get install libboost-filesystem1.53-dev  
-  - sudo apt-get install libboost-thread1.53-dev  
-  - sudo apt-get install libboost-timer1.53-dev  
-  - sudo apt-get install libboost-date-time1.53-dev  
   - export CC="gcc-4.8"
   - export CXX="g++-4.8"
   - eval $(./scripts/travis-dep-builder.sh --printenv)
@@ -81,6 +73,7 @@ after_script:
   - echo -e "Host $HOSTNAME\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 #  - export MRNET_OUTPUT_LEVEL=5
   - echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+  - cat $HOME/stat/bin/stat-cl
   - $HOME/stat/share/stat/examples/bin/rank_test 10 & $HOME/stat/bin/stat-cl -s 2 -l FE -l BE -L $HOME -I $!
   - cat stat_results/output.0000/output.0000.top
   - cat stat_results/output.0000/output.0000.fulltop
