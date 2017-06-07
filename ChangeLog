@@ -1,3 +1,6 @@
+2017-06-15 Gregory L. Lee <lee218@llnl.gov>
+	* : Major travis build fixes
+
 2017-06-07 Gregory L. Lee <lee218@llnl.gov>
 	* STATview.py, STATmain.py : main launcher should allow cl to be run when import of STATview or STATGUI fails
 
