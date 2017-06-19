@@ -294,10 +294,10 @@ def dot_file_path_split(current_graph):
     file_path = current_graph.cur_filename
     if file_path is None or file_path == '':
         show_error_dialog('.dot file not currently loaded, no application files to cache')
-        return False
+        return (None, None)
     elif file_path == 'redraw.dot':
         show_error_dialog('caching disabled for redrawn file, please click on tab with original .dot file')
-        return False
+        return (None, None)
     file_dir, file_name = os.path.split(file_path)
     return (file_dir, file_name)
 

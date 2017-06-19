@@ -38,7 +38,7 @@ except Exception as e:
 HAVE_STATGUI = True
 try:
     from STATGUI import STATGUI_main
-except:
+except Exception as e:
     HAVE_STATGUI = False
     import_exception = e
 from STAThelper import exec_and_exit
@@ -80,6 +80,7 @@ if __name__ == '__main__':
         trace_group.add_argument("-P", "--withpc", help="sample program counter in addition to function name", action="store_true")
         trace_group.add_argument("-m", "--withmoduleoffset", help="sample module offset only", action="store_true")
         trace_group.add_argument("-i", "--withline", help="sample source line number in addition to function name", action="store_true")
+        gui_parser.add_argument("-s", "--sleep", help="sleep for the specified number of seconds before attaching", metavar="SLEEPTIME", type=int)
         gui_parser.add_argument("-o", "--withopenmp", help="translate OpenMP stacks to logical application view", action="store_true")
         gui_parser.add_argument("-w", "--withthreads", help="sample helper threads in addition to the main thread", action="store_true")
         gui_parser.add_argument("-y", "--pythontrace", help="gather Python script level stack traces", action="store_true")
@@ -87,6 +88,7 @@ if __name__ == '__main__':
         gui_parser.add_argument("-d", "--debugdaemons", help="launch the daemons under the debugger", action="store_true")
         gui_parser.add_argument("-L", "--logdir", help="logging output directory")
         gui_parser.add_argument("-l", "--log", help="enable debug logging", choices=['FE', 'BE', 'CP'], action="append")
+        trace_group.add_argument("-M", "--mrnetprintf", help="use MRNet's print for logging", action="store_true")
         gui_parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
         attach_group = gui_parser.add_mutually_exclusive_group()
         attach_group.add_argument("-a", "--attach", help="attach to the specified [hostname:]PID", metavar='LAUNCHERPID')

@@ -159,14 +159,16 @@ class CoreFile:
          group(3) = source file and line number in format "file:line"  --this value may be None"""
     __reFrame = re.compile(r"#(\d+)\s+(?:0x\S+\s+in\s+)?(\S+)\s+\(.*\)(?:\s+at\s+(\S+:\d+))?")
     __options = None
+    _next_rank = 0
 
     def __init__ (self, coreFile, options):
         if CoreFile.__options is None and not options is None:
             CoreFile.__options = options
         self.coreData = {'coreFile': coreFile,
-                         'rank': high_rank,
+                         'rank': CoreFile._next_rank,
                          'rankSize': None,
                          'traces': []}
+        CoreFile._next_rank += 1
 
     def add_functions(self, functions):
         """If the functions array isn't empty, reverse it to get a proper trace, and
@@ -366,7 +368,7 @@ class CoreFile:
                 if not force:
                     sys.exit(2)
             elif 'warning: core file may not match specified executable file.' in line:
-                logging.critical("GDB: The executable (%s/%s) doesn't match the core file (%s/%s).\n" %(exedir,executable, coredir,self.coreData['coreFile']))
+                logging.critical("GDB: The executable (%s/%s) may not match the core file (%s/%s). Use -r to run anyway\n" %(exedir,executable, coredir,self.coreData['coreFile']))
                 if not force:
                     sys.exit(2)
             elif "%s: No such file or directory."%(executable) in line:
@@ -553,15 +555,16 @@ def init_logging(input_loglevel, input_logfile):
 
 ###############################################################################
 def STATmerge_main(arg_list):
+    import time
+    time.sleep(5)
     core_file_type = 'full'
-    print arg_list
     sys.argv = sys.argv[1:]
     try:
         file_path = arg_list[arg_list.index("-c") + 1]
-        #file_path = sys.argv[argv.index("-c") + 1]
         if os.path.isdir(file_path):
+            file_dir = file_path
             for file_path in os.listdir(file_path):
-                full_path = file_path + '/' +  file_path
+                full_path = os.path.join(file_dir, file_path)
                 if full_path.find('core') != -1 and not os.path.isdir(full_path):
                     file_path = full_path
                     break
