@@ -25,7 +25,7 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     <term><GUIbutton>With OpenMP</GUIbutton></term>
     <listitem>
         <para>
-        Translate OpenMP stacks into logical application view
+        Translate OpenMP stacks into logical application view (requires application built with OMPD-enabled OpenMP)
         </para>
     </listitem>
 </varlistentry>

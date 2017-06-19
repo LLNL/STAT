@@ -1,3 +1,7 @@
+2017-06-16 Gregory L. Lee <lee218@llnl.gov>
+	* : Updated documentation
+	* : Fixes to core file merger
+
 2017-06-15 Gregory L. Lee <lee218@llnl.gov>
 	* : Major travis build fixes
 

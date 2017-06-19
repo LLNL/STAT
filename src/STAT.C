@@ -401,9 +401,9 @@ void printUsage()
 {
     fprintf(stderr, "\nSTAT, the Stack Trace Analysis Tool, is a highly scalable, lightweight tool that gathers and merges stack traces from a parallel application's processes.  STAT can gather and merge multiple stack traces per process, showing the application's time varying behavior.  The output shows the global application behavior and can be used to identify process equivalence classes, subsets of tasks that exhibit similar behavior.  A representative of each equivalence class can be fed into a heavyweight debugger for root cause analysis.  Running STAT will create a stat_results directory that contains \".dot\" files that are best viewed with the STATview GUI.  They can also be viewed with the \"dotty\" utility from graphviz.\n");
     fprintf(stderr, "\nUsage:\n");
-    fprintf(stderr, "\tSTAT [OPTIONS] <launcherPid_>\n");
-    fprintf(stderr, "\tSTAT [OPTIONS] -C <application_launch_command>\n");
-    fprintf(stderr, "\tSTAT [OPTIONS] -I [<exe>@<host:pid>]+\n");
+    fprintf(stderr, "\tstat-cl [OPTIONS] <launcherPid_>\n");
+    fprintf(stderr, "\tstat-cl [OPTIONS] -C <application_launch_command>\n");
+    fprintf(stderr, "\tstat-cl [OPTIONS] -I [<exe>@<host:pid>]+\n");
     fprintf(stderr, "\nStack trace sampling options:\n");
     fprintf(stderr, "  -t, --traces <count>\t\tnumber of traces per process\n");
     fprintf(stderr, "  -T, --tracefreq <frequency>\ttime between samples in milli-seconds\n");

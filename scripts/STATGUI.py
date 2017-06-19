@@ -263,6 +263,11 @@ class STATGUI(STATDotWindow):
                     self.options['Log Frontend'] = True
                 if 'BE' in args.log:
                     self.options['Log Backend'] = True
+            if args.mrnetprintf is True:
+                self.options['Use MRNet Printf'] = True
+            if args.sleep is not None:
+                sys.stdout.write('sleeping for %d seconds\n' % (args.sleep))
+                time.sleep(args.sleep)
         self.var_spec = []
         self.filter_entry = None
         self.serial_filter_entry = None

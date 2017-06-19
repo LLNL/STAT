@@ -179,6 +179,10 @@ for pkg in $downloads; do
         wget https://raw.githubusercontent.com/LLNL/STAT/develop/dyninst_patches/openmpi-2.0.2_reattach.patch
         patch -p1 < openmpi-2.0.2_reattach.patch
       fi
+      if test "$name" = "openmpi-2.1.1"; then
+        wget https://github.com/open-mpi/ompi/pull/3709.patch
+        patch -p1 < 3709.patch
+      fi
       make -j 8 PREFIX=${prefix} || make
       make PREFIX=${prefix} install
       if test "$name" = "launchmon-v1.0.2"; then
