@@ -3248,19 +3248,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         if (edge != NULL)
             statFreeEdge(edge);
 #ifdef GRAPHLIB_3_0
-        int i;
-        char *edgeAttrKey;
-        for (i = 0; i < gNumEdgeAttrs; i++)
-        {
-            graphlibError = graphlib_getEdgeAttrKey(withMissingStackTraces, i, &edgeAttrKey);
-            if (GRL_IS_FATALERROR(graphlibError))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get edge attr key for index %d\n", i);
-                return STAT_GRAPHLIB_ERROR;
-            }
-            statFreeEdgeAttr(edgeAttrKey, edgeAttr.attr_values[i]);
-        }
-        free(edgeAttr.attr_values);
+        statFreeEdgeAttrs(edgeAttr.attr_values, withMissingStackTraces);
 #endif
         if (GRL_IS_FATALERROR(graphlibError))
         {

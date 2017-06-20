@@ -929,6 +929,24 @@ void statFreeNodeAttr(const char *key, void *node)
         free(node);
 }
 
+void statFreeNodeAttrs(void **nodeAttr, graphlib_graph_p currentGraph)
+{
+    int i;
+    char *nodeAttrKey;
+    graphlib_error_t graphlibError;
+
+    if (nodeAttr == NULL)
+        return;
+    for (i = 0; i < gNumNodeAttrs; i++)
+    {
+        graphlibError = graphlib_getNodeAttrKey(currentGraph, i, &nodeAttrKey);
+        if (GRL_IS_FATALERROR(graphlibError))
+            fprintf(stderr, "Error getting key for node attribute %d\n", i);
+        statFreeNodeAttr(nodeAttrKey, nodeAttr[i]);
+    }
+    free(nodeAttr);
+}
+
 void statSerializeEdgeAttr(const char *key, char *buf, const void *edge)
 {
     if (edge == NULL)
@@ -1145,6 +1163,25 @@ void statFreeEdgeAttr(const char *key, void *edge)
     else if (strcmp(key, "count") == 0 || strcmp(key, "tcount") == 0 || strcmp(key, "rep") == 0 || strcmp(key, "sum") == 0 || strcmp(key, "tbvsum") == 0)
         free((int64_t *) edge);
 }
+
+void statFreeEdgeAttrs(void **edgeAttr, graphlib_graph_p currentGraph)
+{
+    int i;
+    char *edgeAttrKey;
+    graphlib_error_t graphlibError;
+
+    if (edgeAttr == NULL)
+        return;
+    for (i = 0; i < gNumEdgeAttrs; i++)
+    {
+        graphlibError = graphlib_getEdgeAttrKey(currentGraph, i, &edgeAttrKey);
+        if (GRL_IS_FATALERROR(graphlibError))
+            fprintf(stderr, "Error getting key for edge attribute %d\n", i);
+        statFreeEdgeAttr(edgeAttrKey, edgeAttr[i]);
+    }
+    free(edgeAttr);
+}
+
 
 void statFilterDeserializeEdgeAttr(const char *key, void **edge, const char *buf, unsigned int bufLength)
 {

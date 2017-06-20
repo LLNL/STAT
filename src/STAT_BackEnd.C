@@ -501,18 +501,7 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 return STAT_GRAPHLIB_ERROR;
             }
 #ifdef GRAPHLIB_3_0
-            for (int j = 0; j < gNumNodeAttrs; j++)
-            {
-                char *nodeAttrKey;
-                graphlibError = graphlib_getNodeAttrKey(*currentGraph, j, &nodeAttrKey);
-                if (GRL_IS_FATALERROR(graphlibError))
-                {
-                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error getting key for attribute %d\n", j);
-                    return STAT_GRAPHLIB_ERROR;
-                }
-                statFreeNodeAttr(nodeAttrKey, nodeAttr.attr_values[j]);
-            }
-            free(nodeAttr.attr_values);
+            statFreeNodeAttrs(nodeAttr.attr_values, *currentGraph);
 #endif
         }
         for (edgesIter = (*edges).begin(); edgesIter != (*edges).end(); edgesIter++)
@@ -574,18 +563,7 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 return STAT_GRAPHLIB_ERROR;
             }
 #ifdef GRAPHLIB_3_0
-            for (int j = 0; j < gNumEdgeAttrs; j++)
-            {
-                char *edgeAttrKey;
-                graphlibError = graphlib_getEdgeAttrKey(*currentGraph, j, &edgeAttrKey);
-                if (GRL_IS_FATALERROR(graphlibError))
-                {
-                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get edge attr key for index %d\n", j);
-                    return STAT_GRAPHLIB_ERROR;
-                }
-                statFreeEdgeAttr(edgeAttrKey, edgeAttr.attr_values[j]);
-            }
-            free(edgeAttr.attr_values);
+            statFreeEdgeAttrs(edgeAttr.attr_values, *currentGraph);
 #else
             if (sampleType_ & STAT_SAMPLE_COUNT_REP)
             {
@@ -3100,7 +3078,7 @@ int STAT_BackEnd::getProctabSize()
 int statRelativeRankToAbsoluteRank(int rank)
 {
     int absoluteRank = 0;
-    if (gBePtr->getProctab() != NULL &&  rank >= 0 && rank <= gBePtr->getProctabSize())
+    if (gBePtr->getProctab() != NULL && rank >= 0 && rank <= gBePtr->getProctabSize())
         absoluteRank = gBePtr->getProctab()[rank].mpirank;
     return absoluteRank;
 }

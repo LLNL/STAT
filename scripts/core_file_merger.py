@@ -368,8 +368,8 @@ class CoreFile:
                 if not force:
                     sys.exit(2)
             elif 'warning: core file may not match specified executable file.' in line:
-                logging.critical("GDB: The executable (%s/%s) may not match the core file (%s/%s). Use -r to run anyway\n" %(exedir,executable, coredir,self.coreData['coreFile']))
                 if not force:
+                    logging.critical("GDB: The executable (%s/%s) may not match the core file (%s/%s). Use -r to run anyway\n" %(exedir,executable, coredir,self.coreData['coreFile']))
                     sys.exit(2)
             elif "%s: No such file or directory."%(executable) in line:
                 logging.critical("GDB: The executable (%s/%s) doesn't exist." %(exedir,executable))
@@ -555,8 +555,6 @@ def init_logging(input_loglevel, input_logfile):
 
 ###############################################################################
 def STATmerge_main(arg_list):
-    import time
-    time.sleep(5)
     core_file_type = 'full'
     sys.argv = sys.argv[1:]
     try:

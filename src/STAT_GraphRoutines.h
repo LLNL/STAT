@@ -227,6 +227,13 @@ void *statCopyNodeAttr(const char *key, const void *node);
     \param node - a pointer to the node object to be freed
 */
 void statFreeNodeAttr(const char *key, void *node);
+
+//! Free a STAT node attribute object
+/*!
+    \param node - a pointer to the node object to be freed
+    \param currentGraph - the current graph object
+*/
+void statFreeNodeAttrs(void **nodeAttr, graphlib_graph_p currentGraph);
 #endif
 
 
@@ -335,6 +342,13 @@ void *statCopyEdgeAttr(const char *key, const void *edge);
     \param edge - a pointer to the edge object to be freed
 */
 void statFreeEdgeAttr(const char *key, void *edge);
+
+//! Free a STAT edge attribute object
+/*!
+    \param edge - a pointer to the edge object to be freed
+    \param currentGraph - the current graph object
+*/
+void statFreeEdgeAttrs(void **edgeAttr, graphlib_graph_p currentGraph);
 #endif
 
 #ifdef GRAPHLIB_3_0
