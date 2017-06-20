@@ -236,7 +236,6 @@ void statFreeNodeAttr(const char *key, void *node);
 void statFreeNodeAttrs(void **nodeAttr, graphlib_graph_p currentGraph);
 #endif
 
-
 //! Serialize a STAT edge object into a buffer
 /*!
     \param buf - the buffer to write to
@@ -349,9 +348,7 @@ void statFreeEdgeAttr(const char *key, void *edge);
     \param currentGraph - the current graph object
 */
 void statFreeEdgeAttrs(void **edgeAttr, graphlib_graph_p currentGraph);
-#endif
 
-#ifdef GRAPHLIB_3_0
 //! Calculate a checksum of a STAT edge object
 /*!
     \param key - the attribute key, or NULL if not applicable
@@ -542,9 +539,7 @@ void *statCopyCountRepEdgeAttr(const char * key, const void *edge);
     \param edge - a pointer to the edge object to be freed
 */
 void statFreeCountRepEdgeAttr(const char * key, void *edge);
-#endif
 
-#ifdef GRAPHLIB_3_0
 //! Calculate a checksum of a STAT count + rep edge object
 /*!
     \param key - the attribute key, or NULL if not applicable

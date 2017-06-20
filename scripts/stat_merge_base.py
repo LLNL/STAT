@@ -42,6 +42,7 @@ class StatTrace(object):
         self.file_path = file_path
         self.options = options
         self.rank = 0
+        self.tid = 0
         self.traces = self.get_traces()
 
     def get_traces(self):
@@ -67,6 +68,7 @@ class StatTrace(object):
         """
 
         self.rank = 0
+        self.tid = 0
         traces = []
         sub_traces = []
         current = []
@@ -322,7 +324,7 @@ class StatMerger(object):
                             handles.append(handle)
 
                         # add the current trace
-                        ret = STATmerge.Add_Trace(handles[j], trace_object.rank, sub_trace)
+                        ret = STATmerge.Add_Trace(handles[j], trace_object.rank, trace_object.tid, sub_trace)
                         if ret != 0:
                             sys.stderr.write('Failed to add trace\n')
                             sys.exit(1)

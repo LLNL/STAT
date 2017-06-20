@@ -35,8 +35,8 @@ import signal, os, sys
 
 try:
     from stat_merge_base import StatTrace, StatMerger, StatMergerArgs
-except:
-    sys.stderr.write("The following required library is missing: stat_merge_base\n")
+except Exception as e:
+    sys.stderr.write("The following required library is missing: stat_merge_base\n%s\n" % (repr(e)))
     sys.exit(1)
 
 have_bg_core_backtrace = True
@@ -46,6 +46,7 @@ try:
 except:
     sys.stderr.write("The following library is missing: bg_core_backtrace\n")
     sys.stderr.write("Lightweight corefile analysis will not be enabled\n")
+    sys.stderr.write("%s\n" % (repr(e)))
     have_bg_core_backtrace = False
 
 import subprocess, re, threading, glob, logging
@@ -493,6 +494,7 @@ class CoreMergerArgs(StatMergerArgs):
 class CoreTrace(StatTrace):
     def get_traces(self):
         self.rank = 0
+        self.tid = 0
         line_number_traces = []
         function_only_traces = []
         core_file = CoreFile(self.file_path, self.options)

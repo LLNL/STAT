@@ -100,18 +100,18 @@ int statMergeRelativeRankToAbsoluteRank(int rank)
 //! Add a stack trace to a previously generated graph
 static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
 {
-    int i, task, count, size, nodeId, prevId, handle, bit, byte;
-    int bvIndex, countIndex, repIndex, sumIndex, functionIndex, sourceIndex, lineIndex;
+    int i, task, tid, count, size, nodeId, prevId, handle, bit, byte;
+    int bvIndex, countIndex, repIndex, sumIndex, tcountIndex, tbvsumIndex, tbvIndex, functionIndex, sourceIndex, lineIndex;
     char *trace, *ptr, *next, *curFrame, *tmp;
     char path[BUFSIZE], prevPath[BUFSIZE];
-    StatBitVectorEdge_t *newEdge = NULL;
+    StatBitVectorEdge_t *newEdge = NULL, *newTEdge = NULL;
     StatCountRepEdge_t *countRepEdge = NULL;
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1,NULL};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0,NULL};
     graphlib_graph_p currentGraph, graphPtr = NULL;
     graphlib_error_t graphlibError;
 
-    if (!PyArg_ParseTuple(args, "iiis", &handle, &task, &count, &trace))
+    if (!PyArg_ParseTuple(args, "iiiis", &handle, &task, &tid, &count, &trace))
     {
         fprintf(stderr, "Failed to parse args, expecting (int, int, string)\n");
         return Py_BuildValue("i", -1);
@@ -166,19 +166,50 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
         fprintf(stderr, "Failed to get node attr index for key sum\n");
         return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
+    graphlibError = graphlib_getEdgeAttrIndex(currentGraph, "tbv", &tbvIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key tbv\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    graphlibError = graphlib_getEdgeAttrIndex(currentGraph, "tcount", &tcountIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key tcount\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    graphlibError = graphlib_getEdgeAttrIndex(currentGraph, "tbvsum", &tbvsumIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key tbvsum\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+
     edgeAttr.attr_values[bvIndex] = newEdge;
-#ifdef COUNTREP
     countRepEdge = getBitVectorCountRep(newEdge, statMergeRelativeRankToAbsoluteRank);
     if (countRepEdge == NULL)
     {
         fprintf(stderr, "Failed to translate bit vector into count + representative\n");
         return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
     }
+#ifdef COUNTREP
     edgeAttr.attr_values[countIndex] = statCopyEdgeAttr("count", (void *)&countRepEdge->count);
     edgeAttr.attr_values[repIndex] = statCopyEdgeAttr("rep" , (void *)&countRepEdge->representative);
     edgeAttr.attr_values[sumIndex] = statCopyEdgeAttr("sum" , (void *)&countRepEdge->checksum);
-    statFreeCountRepEdge(countRepEdge);
 #endif
+//    newTEdge = initializeBitVectorEdge(64);
+//    if (newTEdge == NULL)
+//    {
+//        fprintf(stderr, "Failed to initialize newTEdge\n");
+//        return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
+//    }
+//    tid = tid % 64;
+//    newTEdge->bitVector[tid / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(tid % STAT_BITVECTOR_BITS);
+//    edgeAttr.attr_values[tbvIndex] = newTEdge;
+    edgeAttr.attr_values[tcountIndex] = statCopyEdgeAttr("tcount", (void *)&countRepEdge->count);
+    int64_t tbvsum = countRepEdge->checksum * (task + 1);
+    edgeAttr.attr_values[tbvsumIndex] = statCopyEdgeAttr("tbvsum", (void *)&tbvsum);
+    statFreeCountRepEdge(countRepEdge);
 
     graphlibError = graphlib_getNodeAttrIndex(currentGraph, "function", &functionIndex);
     if (GRL_IS_FATALERROR(graphlibError))
@@ -475,7 +506,7 @@ static PyObject *py_Output_Graph(PyObject *self, PyObject *args)
 
     graphPtr = (*gGraphs)[handle];
 
-    graphlibError = graphlib_colorGraphByLeadingEdgeAttr(graphPtr, "bv");
+    graphlibError = graphlib_colorGraphByLeadingEdgeAttr(graphPtr, "tbvsum");
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "graphlib error coloring graph by leading edge attr\n");

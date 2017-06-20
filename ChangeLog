@@ -1,5 +1,6 @@
 2017-06-20 Gregory L. Lee <lee218@llnl.gov>
 	* : Core file merger updated to use graphlib 3.0 interface
+	* : Core file merger add thread count
 
 2017-06-16 Gregory L. Lee <lee218@llnl.gov>
 	* : Updated documentation

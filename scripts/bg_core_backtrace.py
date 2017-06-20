@@ -37,6 +37,7 @@ class BgCoreTrace(StatTrace):
         if self.options['addr2line'] != 'NULL':
             addr2line_exe = self.options['addr2line']
         self.rank = int(self.file_path[self.file_path.find('core.')+5:])
+        self.tid = 0
         f = open(self.file_path, 'r')
         line_number_traces = []
         function_only_traces = []
