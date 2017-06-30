@@ -4579,11 +4579,11 @@ def STATview_main(args):
                         window.create_new_tab()
                     stat_wait_dialog.show_wait_dialog_and_run(window.set_dotcode, (f.read(), filename, i), ['Opening DOT file'], window)
             except IOError as e:
-                sys.stderr.write('\n%s\nfailed to open file %s\n\n' % (repr(e), filename), exception=e)
+                sys.stderr.write('\n%s\nfailed to open file %s\n\n' % (repr(e), filename))
                 sys.stderr.write('usage:\n\tSTATview [<your_STAT_generated_graph.dot>]*\n\n')
                 sys.exit(-1)
             except Exception as e:
-                sys.stderr.write('\n%s\nfailed to proess file %s\n\n' % (repr(e), filename), exception=e)
+                sys.stderr.write('\n%s\nfailed to proess file %s\n\n' % (repr(e), filename))
                 sys.stderr.write('usage:\n\tSTATview [<your_STAT_generated_graph.dot>]*\n\n')
                 sys.exit(-1)
     window.connect('destroy', window.on_destroy)
