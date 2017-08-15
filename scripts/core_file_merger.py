@@ -43,7 +43,7 @@ have_bg_core_backtrace = True
 
 try:
     from bg_core_backtrace import BgCoreTrace, BgCoreMerger, BgCoreMergerArgs
-except:
+except Exception as e:
     sys.stderr.write("The following library is missing: bg_core_backtrace\n")
     sys.stderr.write("Lightweight corefile analysis will not be enabled\n")
     sys.stderr.write("%s\n" % (repr(e)))

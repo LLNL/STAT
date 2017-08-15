@@ -1,3 +1,10 @@
+2017-08-15 Gregory L. Lee <lee218@llnl.gov>
+	* : added callpath wrapper
+	* : dysect dump lightweight core via callpath
+
+2017-06-30 Gregory L. Lee <lee218@llnl.gov>
+	* core_file_merger.py : CUDA core file merging added
+
 2017-06-20 Gregory L. Lee <lee218@llnl.gov>
 	* : Core file merger updated to use graphlib 3.0 interface
 	* : Core file merger add thread count

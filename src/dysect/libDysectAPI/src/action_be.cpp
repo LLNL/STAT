@@ -170,6 +170,7 @@ bool DepositCore::prepare() {
   ProcessSet::ptr procs;
   WalkerSet *allWalkers;
   Process::ptr *proc;
+  ProcDebug *pDebug;
 
   if(domain == NULL)
     return DYSECTWARN(false, "Domain not found when preparing DepositCore action");
@@ -184,7 +185,7 @@ bool DepositCore::prepare() {
     libraryPath = STAT_PREFIX;
   libraryPath += "/lib/libdepositcorewrap.so";
   for (WalkerSet::iterator i = allWalkers->begin(); i != allWalkers->end(); i++) {
-    ProcDebug *pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
+    pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
     proc = &(pDebug->getProc());
     DYSECTVERBOSE(true, "loading library %s", libraryPath.c_str());
     // This will fail in launch mode since process hasn't been started yet. We will also try loading the library on finishBE
@@ -314,6 +315,161 @@ bool DepositCore::finishBE(struct packet*& p, int& len) {
   triggeredProcs.clear();
 
 #endif //ifdef DYSECTAPI_DEPCORE
+
+  return true;
+}
+
+
+
+
+
+bool DepositLightCore::prepare() {
+  DYSECTVERBOSE(true, "Preparing deposit light core action");
+#ifdef CALLPATH_ENABLED
+  prepared = true;
+  findAggregates();
+
+  string libraryPath;
+  char *envValue;
+  Domain *domain = owner->getDomain();
+  bool boolRet;
+  vector<Process::ptr>::iterator procIter;
+  ProcessSet::ptr procs;
+  WalkerSet *allWalkers;
+  Process::ptr *proc;
+  ProcDebug *pDebug;
+
+  if(domain == NULL)
+    return DYSECTWARN(false, "Domain not found when preparing DepositLightCore action");
+
+  allWalkers = domain->getAllWalkers();
+  DYSECTVERBOSE(true, "Preparing deposit light core action %d", allWalkers->size());
+
+  envValue = getenv("STAT_PREFIX");
+  if (envValue != NULL)
+    libraryPath = envValue;
+  else
+    libraryPath = STAT_PREFIX;
+  libraryPath += "/lib/libcallpathwrap.so";
+  for (WalkerSet::iterator i = allWalkers->begin(); i != allWalkers->end(); i++) {
+    pDebug = dynamic_cast<ProcDebug *>((*i)->getProcessState());
+    proc = &(pDebug->getProc());
+    DYSECTVERBOSE(true, "loading library %s", libraryPath.c_str());
+    // This will fail in launch mode since process hasn't been started yet. We will also try loading the library on finishBE
+    // This will also be called multiple times if multiple probes use this action, but this won't result in any errors
+    if (Backend::loadLibrary(*proc, libraryPath) != OK) {
+      return DYSECTWARN(false, "Failed to load library %s: %s", libraryPath.c_str(), Stackwalker::getLastErrorMsg());
+    }
+  }
+
+  DYSECTVERBOSE(true, "Prepared deposit light core action");
+#endif //ifdef CALLPATH_ENABLED
+  return true;
+}
+
+bool DepositLightCore::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+                   Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+#ifdef CALLPATH_ENABLED
+  vector<AggregateFunction*>::iterator aggIter;
+
+  DYSECTVERBOSE(true, "DepositLightCore::collect %d", owner->getProcessCount());
+
+  if(aggregates.empty())
+    return true;
+
+  for(aggIter = aggregates.begin(); aggIter != aggregates.end(); aggIter++) {
+    AggregateFunction* aggregate = *aggIter;
+    if(aggregate) {
+      DYSECTVERBOSE(true, "Collect data for deposit light core action");
+      aggregate->collect((void*)&process, (void*)&thread);
+      if (aggregate->getType() == rankListAgg) {
+        RankListAgg *agg = dynamic_cast<RankListAgg*>(aggregate);
+        vector<int> &intList = agg->getRankList();
+        int rank = intList[intList.size() - 1];
+        Process::ptr *proc = (Process::ptr *)&process;
+        triggeredProcs[rank] = *proc;
+      }
+    }
+  }
+  return true;
+#endif //ifdef CALLPATH_ENABLED
+}
+
+bool DepositLightCore::finishFE(int count) {
+  assert(!"Finish Front-end should not be run on backend-end!");
+  return false;
+}
+
+bool DepositLightCore::finishBE(struct packet*& p, int& len) {
+#ifdef CALLPATH_ENABLED
+  int rank, iRet;
+  string libraryPath, variableName;
+  vector<AggregateFunction*>::iterator aggIter;
+  vector<AggregateFunction*> realAggregates;
+  map<int, Process::ptr>::iterator procIter;
+  Process::ptr *proc;
+  PID pid;
+  string funcName;
+
+  DYSECTVERBOSE(true, "DepositLightCore::finishBE %d", owner->getProcessCount());
+
+  if(aggregates.empty())
+    return true;
+
+  // If we have synthetic aggregate, we need to get actual aggregates
+  for(aggIter = aggregates.begin(); aggIter != aggregates.end(); aggIter++) {
+    AggregateFunction* aggregate = *aggIter;
+
+    if(aggregate) {
+      if(aggregate->isSynthetic()) {
+        aggregate->getRealAggregates(realAggregates);
+      } else {
+        realAggregates.push_back(aggregate);
+      }
+    }
+  }
+
+  if(!AggregateFunction::getPacket(realAggregates, len, p)) {
+    return DYSECTWARN(false, "Packet could not be constructed from aggregates!");
+  }
+
+  aggIter = realAggregates.begin();
+  for(;aggIter != realAggregates.end(); aggIter++) {
+    AggregateFunction* aggregate = *aggIter;
+    if(aggregate) {
+      aggregate->clear();
+    }
+  }
+
+  char *envValue;
+  envValue = getenv("STAT_PREFIX");
+  if (envValue != NULL)
+    libraryPath = envValue;
+  else
+    libraryPath = STAT_PREFIX;
+  libraryPath += "/lib/libcallpathwrap.so";
+  for (procIter = triggeredProcs.begin(); procIter != triggeredProcs.end(); procIter++) {
+    rank = procIter->first;
+    proc = &(procIter->second);
+
+    // TODO: check to see if library already loaded
+    DYSECTVERBOSE(true, "loading library %s into rank %d", libraryPath.c_str(), rank);
+    if (Backend::loadLibrary(*proc, libraryPath) != OK) // this will fail if we are in a CB
+      return DYSECTWARN(false, "Failed to load library %s: %s", libraryPath.c_str(), Stackwalker::getLastErrorMsg());
+    variableName = "gMpiRank";
+    if (Backend::writeModuleVariable(*proc, variableName, libraryPath, &rank, sizeof(int)) != OK) {
+      return DYSECTWARN(false, "Failed to write variable %s in %s", variableName.c_str(), libraryPath.c_str());
+    }
+
+    pid = (*proc)->getPid();
+    DYSECTLOG(true, "sending SIGUSR2 to rank %d pid %d", rank, pid);
+    iRet = kill(pid, SIGUSR2);
+    if (iRet == -1)
+      return DYSECTWARN(false, "Failed to send SIGUSR2 to rank %d: %s", rank, strerror(errno));
+  }
+  triggeredProcs.clear();
+
+#endif //ifdef CALLPATH_ENABLED
 
   return true;
 }

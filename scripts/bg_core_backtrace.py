@@ -36,12 +36,14 @@ class BgCoreTrace(StatTrace):
         global addr2line_map, addr2line_exe
         if self.options['addr2line'] != 'NULL':
             addr2line_exe = self.options['addr2line']
-        self.rank = int(self.file_path[self.file_path.find('core.')+5:])
+        self.rank = int(self.file_path[self.file_path.rfind('.')+1:])
+
         self.tid = 0
         f = open(self.file_path, 'r')
         line_number_traces = []
         function_only_traces = []
         in_stack = False
+        module_offset = False
         job_id = -1
         for line in f:
             if line.find('Job ID') != -1:
@@ -57,7 +59,16 @@ class BgCoreTrace(StatTrace):
                 continue
             if line.find("Frame Address") == 0:
                 in_stack = True
+            elif line.find("Module+Offset") == 0:
+                in_stack = True
+                module_offset = True
+                continue
             if line.find('---STACK') != -1 or line.find('End of stack') != -1:
+                if module_offset is True:
+                    # module offset frames are coming from callpath and need to be
+                    # flipped such that the TOS is at the end of the trace
+                    line_number_trace.reverse()
+                    function_only_trace.reverse()
                 if self.options['jobid'] is not None:
                     line_number_trace.insert(0, str(job_id))
                     function_only_trace.insert(0, str(job_id))
@@ -69,16 +80,31 @@ class BgCoreTrace(StatTrace):
                 continue
             line = line.strip(' ')
             if line.find('0x') == 0 or in_stack is True:
-                addr = line.split(' ')[-1]
-                if addr in addr2line_map:
-                    line_info = addr2line_map[addr]
+                if line == '\n':
+                    function = 'trace error'
+                    line_info = 'trace error'
                 else:
-                    output = Popen([addr2line_exe, '-e', self.options["exe"], '--demangle', '-s', '-f', addr], stdout=PIPE).communicate()[0]
-                    out_lines = output.split('\n')
-                    line_info = '%s@%s' % (out_lines[0], out_lines[1])
-                    line_info = line_info.replace('<', '\<').replace('>', '\>')
-                    addr2line_map[addr] = line_info
-                function = line_info[:line_info.find('@')]
+                    if module_offset == True:
+                        split_line = line.split('+')
+                        if line in addr2line_map:
+                            line_info = addr2line_map[line]
+                        else:
+                            exe = split_line[0]
+                            #addr = format(int(split_line[1].strip(), 0) - 1, '#x')
+                            addr = format(int(split_line[1].strip(), 0), '#x')
+                    else:
+                        addr = line.split(' ')[-1]
+                        exe = self.options["exe"]
+                    if addr in addr2line_map:
+                        line_info = addr2line_map[addr]
+                    else:
+                        print addr2line_exe, exe, addr
+                        output = Popen([addr2line_exe, '-e', exe, '--demangle', '-s', '-f', addr], stdout=PIPE).communicate()[0]
+                        out_lines = output.split('\n')
+                        line_info = '%s@%s' % (out_lines[0], out_lines[1])
+                        line_info = line_info.replace('<', '\<').replace('>', '\>')
+                        addr2line_map[addr] = line_info
+                    function = line_info[:line_info.find('@')]
                 line_number_trace.insert(0, line_info)
                 function_only_trace.insert(0, function)
         return [function_only_traces, line_number_traces]
@@ -87,10 +113,10 @@ class BgCoreTrace(StatTrace):
 class BgCoreMerger(StatMerger):
     def get_high_rank(self, trace_files):
         # determine the highest ranked task for graphlib initialization
-        high_rank = 0
+        high_rank = 1
         for filename in trace_files:
-            if filename.find('core.') != -1:
-                rank = filename[filename.find('core.')+5:]
+            if filename.rfind('.') != -1:
+                rank = filename[filename.rfind('.')+1:]
                 rank = int(rank)
                 if rank > high_rank:
                     high_rank = rank
@@ -116,7 +142,7 @@ class BgCoreMergerArgs(StatMergerArgs):
         self.usage_msg_examples = '\nEXAMPLES:\n\tpython %s -x a.out -c core.0 core.1\n\tpython %s -x a.out -c core.*\n\tpython %s -x a.out -c ./\n\tpython %s -x a.out -c core_dir\n' % (sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0])
 
     def is_valid_file(self, file_path):
-        if file_path.find('core.') == 0:
+        if file_path.find('core') == 0:
             return True
         return False
 

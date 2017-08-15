@@ -48,6 +48,13 @@ endif
 bin_PROGRAMS = STATbin STATD $(stat_bin_programs_statbench)
 lib_LTLIBRARIES = libstatfe.la libstatbe.la
 
+if ENABLE_CALLPATH
+lib_LTLIBRARIES += libcallpathwrap.la
+libcallpathwrap_la_SOURCES = callpathWrap.h callpathWrap.C
+libcallpathwrap_la_CPPFLAGS = -I@ADEPTUTILSPREFIX@/include -I@CALLPATHPREFIX@/include -I@MPIH_HEADERPATH@ -g -O0
+libcallpathwrap_la_LDFLAGS = -L@CALLPATHPREFIX@/lib -Wl,-rpath=@CALLPATHPREFIX@/lib -lcallpath -Wl,-init=depositlightcorewrap_init -ldl
+endif
+
 STATbin_SOURCES = STAT.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 STATD_SOURCES = STATD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
 STATbin_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)

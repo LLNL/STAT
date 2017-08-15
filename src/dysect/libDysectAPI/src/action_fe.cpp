@@ -166,6 +166,78 @@ bool DepositCore::finishFE(int count) {
   return true;
 }
 
+bool DepositLightCore::finishBE(struct packet*& p, int& len) {
+  assert(!"Finish Backend-end should not be run on front-end!");
+  return false;
+}
+
+bool DepositLightCore::prepare() {
+  DYSECTVERBOSE(true, "Preparing deposit light core action");
+#ifdef CALLPATH_ENABLED
+  prepared = true;
+  findAggregates();
+#endif //ifdef CALLPATH_ENABLED
+  return true;
+}
+
+bool DepositLightCore::collect(Dyninst::ProcControlAPI::Process::const_ptr process,
+    Dyninst::ProcControlAPI::Thread::const_ptr thread) {
+#ifdef CALLPATH_ENABLED
+  DYSECTVERBOSE(true, "DepositLightCore::collect");
+#else //ifdef CALLPATH_ENABLED
+  return DYSECTWARN(true, "DepositLightCore not configured, please rebuild DySectAPI with --with-callpath option");
+#endif //ifdef CALLPATH_ENABLED
+
+  return true;
+}
+
+bool DepositLightCore::finishFE(int count) {
+#ifdef CALLPATH_ENABLED
+  vector<int> ranks;
+
+  DYSECTVERBOSE(true, "DepositLightCore::finishFE %d", count);
+
+  if(!aggregates.empty()) {
+    // Resolve needed aggregates
+    vector<AggregateFunction*>::iterator aggIter = aggregates.begin();
+    for(;aggIter != aggregates.end(); aggIter++) {
+      AggregateFunction* skeletonAggFunc = *aggIter;
+
+      if(skeletonAggFunc) {
+        int id = skeletonAggFunc->getId();
+        AggregateFunction* aggFunc;
+        Probe* probe = owner;
+        if(!probe) {
+          return DYSECTVERBOSE(false, "No owner probe for action!");
+        }
+
+        if(!skeletonAggFunc->isSynthetic()) {
+          aggFunc = probe->getAggregate(id);
+          if(!aggFunc) {
+            return DYSECTVERBOSE(false, "Aggregate not resolved (%d)", id);
+          }
+          if (aggFunc->getType() == rankListAgg) {
+            RankListAgg *agg = dynamic_cast<RankListAgg*>(aggFunc);
+            vector<int> &intList = agg->getRankList();
+            ranks.insert(ranks.end(), intList.begin(), intList.end());
+          }
+        } else {
+          aggFunc = skeletonAggFunc;
+          aggFunc->fetchAggregates(probe);
+        }
+      }
+    }
+  } else {
+    DYSECTINFO(true, "no aggregates found");
+  }
+
+  DYSECTVERBOSE(false, "DepositCore::finishFE done");
+
+#endif //ifdef CALLPATH_ENABLED
+
+  return true;
+}
+
 bool DepositCore::finishBE(struct packet*& p, int& len) {
   assert(!"Finish Backend-end should not be run on front-end!");
   return false;

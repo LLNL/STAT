@@ -2137,7 +2137,7 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
         }
     }
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s in frame %s\n", outBuf, frameName.c_str());
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s in frame %s\n", variableName, frameName.c_str());
     return STAT_OK;
 }
 

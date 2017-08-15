@@ -43,12 +43,12 @@ before_install:
 #  - sudo apt-get install libboost-date-time1.53-dev
   - export CC="gcc-4.8"
   - export CXX="g++-4.8"
-  - ls -l $HOME/local/lib
+#  - ls -l $HOME/local/lib
   - eval $(./scripts/travis-dep-builder.sh --printenv)
 #  - rm -rf $HOME/local
   # travis has a 50 minute timeout for any single command, so we break up the build so it will partially cache as needed:
-  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=ompi
-  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=other
+#  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=ompi
+#  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=other
   - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
 
 script:

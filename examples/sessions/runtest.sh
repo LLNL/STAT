@@ -1,6 +1,6 @@
 #!/bin/sh
 #set -ex
-prefix="/usr/local"
+prefix="/collab/usr/global/tools/stat/toss_3_x86_64_ib/stat-test"
 testnums="01 02 03"
 testmodes="attach launch"
 

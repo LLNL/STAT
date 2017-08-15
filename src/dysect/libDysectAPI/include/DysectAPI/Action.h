@@ -68,7 +68,8 @@ namespace DysectAPI {
       signalType = 10,
       irpcType = 11,
       nullType = 12,
-      fullStackTraceType = 13
+      fullStackTraceType = 13,
+      depositLightCoreType = 14
     } aggType;
 
     aggType type;
@@ -92,6 +93,7 @@ namespace DysectAPI {
     static Act* null();
     static Act* totalview();
     static Act* depositCore();
+    static Act* depositLightCore();
     static Act* signal(int sigNum);
     static Act* loadLibrary(std::string library);
     static Act* irpc(std::string libraryPath, std::string functionName, void *value, int size);
@@ -187,6 +189,24 @@ namespace DysectAPI {
 
     public:
     DepositCore();
+
+    bool prepare();
+
+    bool collect( Dyninst::ProcControlAPI::Process::const_ptr process,
+                  Dyninst::ProcControlAPI::Thread::const_ptr thread);
+
+    bool finishBE(struct packet*& p, int& len);
+    bool finishFE(int count);
+  };
+
+
+  class DepositLightCore : public Act {
+    std::vector<AggregateFunction*> aggregates;
+    bool findAggregates();
+    std::map<int, Dyninst::ProcControlAPI::Process::ptr> triggeredProcs;
+
+    public:
+    DepositLightCore();
 
     bool prepare();
 

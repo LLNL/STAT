@@ -17,10 +17,11 @@ autom4te.cache
 *.perf
 *.ptab
 *.top
+*core*
 Makefile
 Makefile.in
 config.h
-config.log
+config.log*
 config.status
 config.h.in
 config/libtool.m4
@@ -60,6 +61,7 @@ scripts/stat-bench
 scripts/stat-cl
 scripts/stat-gui
 scripts/stat-view
+scripts/dysect-view
 scripts/stat-script
 scripts/dysectc
 scripts/mpi_segfault*

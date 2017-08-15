@@ -7,7 +7,7 @@ using namespace std;
 DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
   int value = 10;
 
-  string libraryPath = "/collab/usr/global/tools/stat/chaos_5_x86_64_ib/stat-test/lib/libdepositcorewrap.so", variableName = "globalMpiRank", functionName = "depositcore_wrap_signal_handler";
+  string libraryPath = "/collab/usr/global/tools/stat/toss_3_x86)64_ib/stat-test/lib/libdepositcorewrap.so", variableName = "globalMpiRank", functionName = "depositcore_wrap_signal_handler";
 
   Probe* p1    = new Probe(Code::location("mpi_ringtopo2.cpp#98"),
                            Domain::group("3-5,7"),

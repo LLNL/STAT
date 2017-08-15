@@ -62,6 +62,8 @@ string Act::str() {
       break;
     case depositCoreType:
       returnString += "Deposit Core";
+    case depositLightCoreType:
+      returnString += "Deposit Light Core";
       break;
     case loadLibraryType:
       returnString += "Load Library";
@@ -119,6 +121,10 @@ DysectAPI::Act* Act::signal(int sigNum) {
 
 DysectAPI::Act* Act::depositCore() {
   return new DepositCore();
+}
+
+DysectAPI::Act* Act::depositLightCore() {
+  return new DepositLightCore();
 }
 
 DysectAPI::Act* Act::null() {
@@ -223,6 +229,20 @@ DepositCore::DepositCore() {
 }
 
 bool DepositCore::findAggregates() {
+  AggregateFunction* aggFunc = 0;
+  aggFunc = new RankListAgg(owner);
+  aggregates.push_back(aggFunc);
+  DYSECTVERBOSE(true, "Aggregate id: %d", aggFunc->getId());
+
+  return true;
+}
+
+DepositLightCore::DepositLightCore() {
+  actionPendingImmediate = true;
+  type = depositLightCoreType;
+}
+
+bool DepositLightCore::findAggregates() {
   AggregateFunction* aggFunc = 0;
   aggFunc = new RankListAgg(owner);
   aggregates.push_back(aggFunc);
