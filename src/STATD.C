@@ -16,9 +16,9 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <getopt.h>
 #include "config.h"
 #include "STAT_BackEnd.h"
+#include <getopt.h>
 
 using namespace std;
 
@@ -44,6 +44,7 @@ int main(int argc, char **argv)
         {"mrnetprintf",         no_argument,        0, 'm'},
         {"serial",              no_argument,        0, 's'},
         {"mrnet",               no_argument,        0, 'M'},
+        {"cudagdb",             no_argument,        0, 'G'},
         {"mrnetoutputlevel",    required_argument,  0, 'o'},
         {"pid",                 required_argument,  0, 'p'},
         {"logdir",              required_argument,  0, 'L'},
@@ -92,7 +93,7 @@ int main(int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVmsMo:p:L:l:d:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVmsMGo:p:L:l:d:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'M')
@@ -134,6 +135,18 @@ int main(int argc, char **argv)
                 statFinalize(launchType);
                 return STAT_ARG_ERROR;
             }
+            break;
+        case 'G':
+#ifdef STAT_CUDA_GDB_BE
+            statError = statBackEnd->initCudaGdb();
+            if (statError != STAT_OK)
+            {
+                statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to initialize CUDA GDB BE\n", optarg);
+                delete statBackEnd;
+                statFinalize(launchType);
+                return statError;
+            }
+#endif
             break;
         case 's':
             break;

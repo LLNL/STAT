@@ -571,6 +571,21 @@ StatError_t STAT_FrontEnd::launchDaemons()
             return STAT_ARG_ERROR;
         }
 
+#ifdef STAT_CUDA_GDB_BE
+        if (applicationOption_ == STAT_CUDA_ATTACH)
+        {
+            daemonArgc += 1;
+            daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+            if (daemonArgv == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[daemonArgc - 2] = strdup("-G");
+            daemonArgv[daemonArgc - 1] = NULL;
+        }
+#endif
+
         daemonArgc += 2;
         daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
         if (daemonArgv == NULL)
@@ -592,7 +607,7 @@ StatError_t STAT_FrontEnd::launchDaemons()
         for (i = 0; i < daemonArgc; i++)
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "daemonArgv[%d] = %s\n", i, daemonArgv[i]);
 
-        if (applicationOption_ == STAT_ATTACH)
+        if (applicationOption_ == STAT_ATTACH || STAT_CUDA_ATTACH)
         {
             if (launcherPid_ == 0)
             {
@@ -1754,7 +1769,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
     }
     if (intRet != 0)
     {
-        printMsg(STAT_RESUME_ERROR, __FILE__, __LINE__, "%d daemons reported an error\n", intRet);
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "%d daemons reported an error\n", intRet);
         isPendingAck_ = false;
         return STAT_DAEMON_ERROR;
     }

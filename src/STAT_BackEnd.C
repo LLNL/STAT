@@ -202,6 +202,7 @@ STAT_BackEnd::~STAT_BackEnd()
 
     registerSignalHandlers(false);
     gBePtr = NULL;
+    usingGdb_ = false;
 }
 
 void STAT_BackEnd::clear2dNodesAndEdges()
@@ -653,9 +654,36 @@ StatError_t STAT_BackEnd::init()
     envValue = getenv("STAT_GROUP_OPS");
     doGroupOps_ = (envValue != NULL);
 #endif
+    return STAT_OK;
+}
+
+#ifdef STAT_CUDA_GDB_BE
+StatError_t STAT_BackEnd::initCudaGdb()
+{
+    threadBvLength_ = STAT_BITVECTOR_BITS * 64; // for CUDA we restict to 4096 threads per STAT daemon (i.e., node)
+    PyObject *pName;
+    const char *moduleName = "stat_cuda_gdb";
+    Py_Initialize();
+    pName = PyString_FromString(moduleName);
+    if (pName == NULL)
+    {
+        fprintf(errOutFp_, "Cannot convert argument\n");
+        return STAT_SYSTEM_ERROR;
+    }
+
+    gdbModule_ = PyImport_Import(pName);
+    Py_DECREF(pName);
+    if (gdbModule_ == NULL)
+    {
+        fprintf(errOutFp_, "Failed to import Python module %s\n", moduleName);
+        PyErr_Print();
+        return STAT_SYSTEM_ERROR;
+    }
+    usingGdb_ = true;
 
     return STAT_OK;
 }
+#endif
 
 
 StatError_t STAT_BackEnd::initLmon()
@@ -1157,7 +1185,7 @@ StatError_t STAT_BackEnd::mainLoop()
     do
     {
 #if defined(GROUP_OPS)
-        if (doGroupOps_)
+        if (doGroupOps_ && usingGdb_ == false)
         {
   #ifdef DYSECTAPI
             /* Let BPatch handle its events */
@@ -1167,7 +1195,7 @@ StatError_t STAT_BackEnd::mainLoop()
 #endif
 
         /* Set the stackwalker notification file descriptor */
-        if (processMap_.size() > 0 and processMapNonNull_ > 0)
+        if (processMap_.size() > 0 && processMapNonNull_ > 0 && usingGdb_ == false)
             swNotificationFd = ProcDebug::getNotificationFD();
         else
             swNotificationFd = -1;
@@ -1691,6 +1719,83 @@ StatError_t STAT_BackEnd::attach()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
+#ifdef STAT_CUDA_GDB_BE
+    if (usingGdb_ == true)
+    {
+        string attachFunctionName, newFunctionName;
+        PyObject *attachFunc, *newFunc, *pArgs, *pArgsValue, *pValue;
+
+        newFunctionName = "new_gdb_instance";
+        newFunc = PyObject_GetAttrString(gdbModule_, newFunctionName.c_str());
+        if (!newFunc || !PyCallable_Check(newFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", newFunctionName.c_str());
+            return STAT_ATTACH_ERROR;
+        }
+
+        attachFunctionName = "attach";
+        attachFunc = PyObject_GetAttrString(gdbModule_, attachFunctionName.c_str());
+        if (!attachFunc || !PyCallable_Check(attachFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", attachFunctionName.c_str());
+            return STAT_ATTACH_ERROR;
+        }
+
+        for (i = 0; i < proctabSize_; i++)
+        {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+            pArgs = PyTuple_New(1);
+            if (!pArgs)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
+                continue;
+            }
+            pArgsValue = PyInt_FromLong(proctab_[i].pd.pid);
+            if (!pArgsValue)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pArgsValue for pid %d\n", proctab_[i].pd.pid);
+                Py_DECREF(pArgs);
+                continue;
+            }
+            PyTuple_SetItem(pArgs, 0, pArgsValue);
+
+            pValue = PyObject_CallObject(newFunc, pArgs);
+            if (pValue == NULL)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", newFunctionName.c_str(), proctab_[i].pd.pid);
+                PyErr_Print();
+                Py_DECREF(pArgs);
+                Py_DECREF(pArgsValue);
+                Py_DECREF(pValue);
+                continue;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", newFunctionName.c_str(), PyInt_AsLong(pValue));
+
+            pValue = PyObject_CallObject(attachFunc, pArgs);
+            if (pValue == NULL)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", attachFunctionName.c_str(), proctab_[i].pd.pid);
+                PyErr_Print();
+                Py_DECREF(pArgs);
+                Py_DECREF(pArgsValue);
+                Py_DECREF(pValue);
+                continue;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", attachFunctionName.c_str(), PyInt_AsLong(pValue));
+            Py_DECREF(pArgs);
+            Py_DECREF(pArgsValue);
+            Py_DECREF(pValue);
+        }
+        Py_DECREF(attachFunc);
+        Py_DECREF(newFunc);
+
+        return STAT_OK;
+    }
+#endif
 
 #if defined(GROUP_OPS)
   #ifndef OMP_STACKWALKER
@@ -1830,7 +1935,6 @@ StatError_t STAT_BackEnd::attach()
 #endif
     }
 
-
     isRunning_ = false;
 
     return STAT_OK;
@@ -1842,6 +1946,62 @@ StatError_t STAT_BackEnd::pause()
     map<unsigned int, Walker *>::iterator processMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
+
+#ifdef STAT_CUDA_GDB_BE
+    if (usingGdb_ == true)
+    {
+        unsigned int i;
+        string pauseFunctionName;
+        PyObject *pauseFunc, *pArgs, *pArgsValue, *pValue;
+
+        pauseFunctionName = "pause";
+        pauseFunc = PyObject_GetAttrString(gdbModule_, pauseFunctionName.c_str());
+        if (!pauseFunc || !PyCallable_Check(pauseFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", pauseFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+
+        for (i = 0; i < proctabSize_; i++)
+        {
+            pArgs = PyTuple_New(1);
+            if (!pArgs)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
+                continue;
+            }
+            pArgsValue = PyInt_FromLong(proctab_[i].pd.pid);
+            if (!pArgsValue)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pArgsValue for pid %d\n", proctab_[i].pd.pid);
+                Py_DECREF(pArgs);
+                continue;
+            }
+            PyTuple_SetItem(pArgs, 0, pArgsValue);
+
+            pValue = PyObject_CallObject(pauseFunc, pArgs);
+            if (pValue == NULL)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", pauseFunctionName.c_str(), proctab_[i].pd.pid);
+                PyErr_Print();
+                Py_DECREF(pArgs);
+                Py_DECREF(pArgsValue);
+                Py_DECREF(pValue);
+                continue;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", pauseFunctionName.c_str(), PyInt_AsLong(pValue));
+            Py_DECREF(pArgs);
+            Py_DECREF(pArgsValue);
+            Py_DECREF(pValue);
+        }
+        Py_DECREF(pauseFunc);
+
+        isRunning_ = false;
+        return STAT_OK;
+    }
+#endif
 
 #if defined(GROUP_OPS)
     if (doGroupOps_)
@@ -1877,6 +2037,63 @@ StatError_t STAT_BackEnd::resume()
     map<unsigned int, Walker *>::iterator processMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
+
+#ifdef STAT_CUDA_GDB_BE
+    if (usingGdb_ == true)
+    {
+        unsigned int i;
+        string resumeFunctionName;
+        PyObject *resumeFunc, *pArgs, *pArgsValue, *pValue;
+
+        resumeFunctionName = "resume";
+        resumeFunc = PyObject_GetAttrString(gdbModule_, resumeFunctionName.c_str());
+        if (!resumeFunc || !PyCallable_Check(resumeFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", resumeFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+
+        for (i = 0; i < proctabSize_; i++)
+        {
+            pArgs = PyTuple_New(1);
+            if (!pArgs)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
+                continue;
+            }
+            pArgsValue = PyInt_FromLong(proctab_[i].pd.pid);
+            if (!pArgsValue)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pArgsValue for pid %d\n", proctab_[i].pd.pid);
+                Py_DECREF(pArgs);
+                continue;
+            }
+            PyTuple_SetItem(pArgs, 0, pArgsValue);
+
+            pValue = PyObject_CallObject(resumeFunc, pArgs);
+            if (pValue == NULL)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", resumeFunctionName.c_str(), proctab_[i].pd.pid);
+                PyErr_Print();
+                Py_DECREF(pArgs);
+                Py_DECREF(pArgsValue);
+                Py_DECREF(pValue);
+                continue;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", resumeFunctionName.c_str(), PyInt_AsLong(pValue));
+            Py_DECREF(pArgs);
+            Py_DECREF(pArgsValue);
+            Py_DECREF(pValue);
+        }
+        Py_DECREF(resumeFunc);
+
+        isRunning_ = true;
+        return STAT_OK;
+    }
+#endif
+
 #if defined(GROUP_OPS)
     if (doGroupOps_)
   #ifdef DYSECTAPI
@@ -2168,6 +2385,296 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     }
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering and merging %d traces from each task\n", nTraces);
+
+#ifdef STAT_CUDA_GDB_BE
+    if (usingGdb_ == true)
+    {
+        static int threadCountWarning = 0;
+        int nodeId, prevId, k, l, count;
+        char *allTraces, *currentFrame;
+        const char *countDelim = "#count#";
+        string sampleFunctionName, cudaSampleFunctionName, path, name, currentFrameString;
+        string::size_type startPos, endPos;
+        PyObject *sampleFunc, *cudaSampleFunc, *pArgs, *pArgsValue, *pValue, *pSampleArgs, *pRetries, *pRetryFrequency;
+        StatBitVectorEdge_t *edge = NULL;
+        map<string, string>::iterator nodeAttrsIter;
+
+        sampleFunctionName = "get_all_host_traces";
+        sampleFunc = PyObject_GetAttrString(gdbModule_, sampleFunctionName.c_str());
+        if (!sampleFunc || !PyCallable_Check(sampleFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", sampleFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+
+        cudaSampleFunctionName = "get_all_device_traces";
+        cudaSampleFunc = PyObject_GetAttrString(gdbModule_, cudaSampleFunctionName.c_str());
+        if (!cudaSampleFunc || !PyCallable_Check(cudaSampleFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", cudaSampleFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+
+        for (i = 0; i < nTraces; i++)
+        {
+            k = 1;
+            clear2dNodesAndEdges();
+            isLastTrace = (i == nTraces - 1);
+
+            /* Pause process as necessary */
+            if (isRunning_)
+            {
+                statError = pause();
+                if (statError != STAT_OK)
+                    printMsg(statError, __FILE__, __LINE__, "Failed to pause processes\n");
+            }
+
+            for (j = 0; j < proctabSize_; j++)
+            {
+                /* Set edge label */
+                edge = initializeBitVectorEdge(proctabSize_);
+                if (edge == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+                    return STAT_ALLOCATE_ERROR;
+                }
+                edge->bitVector[j / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(j % STAT_BITVECTOR_BITS);
+
+                pArgs = PyTuple_New(1);
+                if (!pArgs)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[j].pd.pid);
+                    continue;
+                }
+                pArgsValue = PyInt_FromLong(proctab_[j].pd.pid);
+                if (!pArgsValue)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pArgsValue for pid %d\n", proctab_[j].pd.pid);
+                    Py_DECREF(pArgs);
+                    continue;
+                }
+                PyTuple_SetItem(pArgs, 0, pArgsValue);
+
+                pSampleArgs = PyTuple_New(3);
+                if (!pSampleArgs)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pSampleArgs for pid %d\n", proctab_[j].pd.pid);
+                    continue;
+                }
+                PyTuple_SetItem(pSampleArgs, 0, pArgsValue);
+                pRetries = PyInt_FromLong(nRetries);
+                if (!pRetries)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pRetries for pid %d\n", proctab_[j].pd.pid);
+                    Py_DECREF(pSampleArgs);
+                    continue;
+                }
+                PyTuple_SetItem(pSampleArgs, 1, pRetries);
+                pRetryFrequency = PyInt_FromLong(retryFrequency);
+                if (!pRetryFrequency)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pRetryFrequency for pid %d\n", proctab_[j].pd.pid);
+                    Py_DECREF(pSampleArgs);
+                    continue;
+                }
+                PyTuple_SetItem(pSampleArgs, 2, pRetryFrequency);
+
+                pValue = PyObject_CallObject(sampleFunc, pArgs);
+                if (pValue == NULL)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", sampleFunctionName.c_str(), proctab_[j].pd.pid);
+                    PyErr_Print();
+                    Py_DECREF(pArgs);
+                    Py_DECREF(pSampleArgs);
+                    Py_DECREF(pArgsValue);
+                    Py_DECREF(pValue);
+                    continue;
+                }
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", sampleFunctionName.c_str(), PyString_AsString(pValue));
+
+                allTraces = PyString_AsString(pValue);
+                prevId = 0;
+                path = "";
+                if (find(threadIds_.begin(), threadIds_.end(), k) == threadIds_.end())
+                {
+                    threadIds_.push_back(k);
+                    if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
+                    {
+                        printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
+                        threadCountWarning++;
+                    }
+                }
+                currentFrame = strtok(allTraces, "\n");
+                while (currentFrame != NULL)
+                {
+                    if (strcmp(currentFrame, "#endtrace") == 0)
+                    {
+                        path = "";
+                        k++;
+                        prevId = 0;
+                        if (find(threadIds_.begin(), threadIds_.end(), k) == threadIds_.end())
+                        {
+                            threadIds_.push_back(k);
+                            if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
+                            {
+                                printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
+                                threadCountWarning++;
+                            }
+                        }
+                        if (!(sampleType_ & STAT_SAMPLE_THREADS))
+                            break;
+                    }
+                    else
+                    {
+                        name = "";
+                        currentFrameString = currentFrame;
+                        map<string, string> nodeAttrs;
+                        startPos = 0;
+                        endPos = currentFrameString.find("@");
+                        name += currentFrameString.substr(startPos, endPos - startPos);
+                        nodeAttrs["function"] = currentFrameString.substr(startPos, endPos - startPos);
+                        if (sampleType_ & STAT_SAMPLE_LINE)
+                        {
+                            startPos = endPos + 1;
+                            endPos = currentFrameString.find_last_of(":");
+                            name += "@" + currentFrameString.substr(startPos, endPos - startPos) + ":";
+                            nodeAttrs["source"] = currentFrameString.substr(startPos, endPos - startPos);
+                            startPos = endPos + 1;
+                            endPos = currentFrameString.size();
+                            name += currentFrameString.substr(startPos, endPos - startPos);
+                            nodeAttrs["line"] = currentFrameString.substr(startPos, endPos - startPos);
+                        }
+                        path += name;
+                        nodeId = statStringHash(path.c_str());
+                        nodes2d_[nodeId] = name;
+                        for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
+                            nodeIdToAttrs_[nodeId][nodeAttrsIter->first] = nodeAttrsIter->second;
+                        update2dEdge(prevId, nodeId, edge, k);
+                        prevId = nodeId;
+                    }
+                    currentFrame = strtok(NULL, "\n");
+                }
+                Py_DECREF(pValue);
+                if (!(sampleType_ & STAT_SAMPLE_THREADS))
+                {
+                    Py_DECREF(pArgs);
+                    Py_DECREF(pSampleArgs);
+                    Py_DECREF(pArgsValue);
+                    Py_DECREF(pValue);
+                    continue;
+                }
+
+                pValue = PyObject_CallObject(cudaSampleFunc, pSampleArgs);
+                if (pValue == NULL)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", cudaSampleFunctionName.c_str(), proctab_[j].pd.pid);
+                    PyErr_Print();
+                    Py_DECREF(pArgs);
+                    Py_DECREF(pSampleArgs);
+                    Py_DECREF(pArgsValue);
+                    Py_DECREF(pValue);
+                    continue;
+                }
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", cudaSampleFunctionName.c_str(), PyString_AsString(pValue));
+
+                allTraces = PyString_AsString(pValue);
+                prevId = 0;
+                count = 1;
+                path = "";
+                currentFrame = strtok(allTraces, "\n");
+                while (currentFrame != NULL)
+                {
+                    currentFrameString = currentFrame;
+                    if (currentFrameString.find(countDelim) != string::npos)
+                    {
+                        string countString = currentFrameString.substr(strlen(countDelim), currentFrameString.size() - strlen(countDelim));
+                        count = atoi(countString.c_str());
+                        for (l = 0; l < count; l++)
+                        {
+                            if (find(threadIds_.begin(), threadIds_.end(), k + l) == threadIds_.end())
+                            {
+                                threadIds_.push_back(k + l);
+                                if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
+                                {
+                                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
+                                    threadCountWarning++;
+                                }
+                            }
+                        }
+                    }
+                    else if (strcmp(currentFrame, "#endtrace") == 0)
+                    {
+                        path = "";
+                        k = k + count;
+                        prevId = 0;
+                    }
+                    else
+                    {
+                        name = "";
+                        currentFrameString = currentFrame;
+                        map<string, string> nodeAttrs;
+                        startPos = 0;
+                        endPos = currentFrameString.find("@");
+                        name += currentFrameString.substr(startPos, endPos - startPos);
+                        nodeAttrs["function"] = currentFrameString.substr(startPos, endPos - startPos);
+                        if (sampleType_ & STAT_SAMPLE_LINE)
+                        {
+                            startPos = endPos + 1;
+                            endPos = currentFrameString.find_last_of(":");
+                            name += "@" + currentFrameString.substr(startPos, endPos - startPos) + ":";
+                            nodeAttrs["source"] = currentFrameString.substr(startPos, endPos - startPos);
+                            startPos = endPos + 1;
+                            endPos = currentFrameString.size();
+                            name += currentFrameString.substr(startPos, endPos - startPos);
+                            nodeAttrs["line"] = currentFrameString.substr(startPos, endPos - startPos);
+                        }
+                        path += name;
+                        nodeId = statStringHash(path.c_str());
+                        nodes2d_[nodeId] = name;
+                        for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
+                            nodeIdToAttrs_[nodeId][nodeAttrsIter->first] = nodeAttrsIter->second;
+                        for (l = 0; l < count; l++)
+                            update2dEdge(prevId, nodeId, edge, k + l);
+                        prevId = nodeId;
+                    }
+                    currentFrame = strtok(NULL, "\n");
+                } // while (currentFrame != NULL)
+                Py_DECREF(pArgs);
+                Py_DECREF(pSampleArgs);
+                Py_DECREF(pArgsValue);
+                Py_DECREF(pRetries);
+                Py_DECREF(pRetryFrequency);
+                Py_DECREF(pValue);
+            } // for (j = 0; j < proctabSize_; j++)
+
+            /* Continue the process if necessary */
+            if (isLastTrace == false || wasRunning == true)
+            {
+                statError = resume();
+                if (statError != STAT_OK)
+                    printMsg(statError, __FILE__, __LINE__, "Failed to resume processes\n");
+            }
+
+            if (isLastTrace == false)
+                usleep(traceFrequency * 1000);
+
+            statError = update3dNodesAndEdges();
+            if (statError != STAT_OK)
+            {
+                printMsg(statError, __FILE__, __LINE__, "Error updating 3d nodes and edges for trace %d of %d\n", i + 1, nTraces);
+                return statError;
+            }
+        } // for (i = 0; i < nTraces; i++)
+        Py_DECREF(sampleFunc);
+
+        return STAT_OK;
+    } // if (usingGdb_ == true)
+#endif
+
     for (i = 0; i < nTraces; i++)
     {
         clear2dNodesAndEdges();
@@ -2315,7 +2822,7 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
     {
 #ifdef SW_VERSION_8_0_0
   #ifdef OMP_STACKWALKER
-        if (frame.isTopFrame() == true and !(sampleType_ & STAT_SAMPLE_OPENMP))
+        if (frame.isTopFrame() == true && !(sampleType_ & STAT_SAMPLE_OPENMP))
   #else
         if (frame.isTopFrame() == true)
   #endif
@@ -2439,7 +2946,7 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
         if (find(threadIds_.begin(), threadIds_.end(), threads[j]) == threadIds_.end())
         {
             threadIds_.push_back(threads[j]);
-            if (threadCountWarning == 0 and threadIds_.size() >= threadBvLength_)
+            if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
             {
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
                 threadCountWarning++;
@@ -2655,7 +3162,7 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             if (find(threadIds_.begin(), threadIds_.end(), threadId) == threadIds_.end())
             {
                 threadIds_.push_back(threadId);
-                if (threadCountWarning == 0 and threadIds_.size() >= threadBvLength_)
+                if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
                 {
                     printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
                     threadCountWarning++;
@@ -3096,6 +3603,61 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
     ProcDebug *pDebug = NULL;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
+
+#ifdef STAT_CUDA_GDB_BE
+    if (usingGdb_ == true)
+    {
+        string detachFunctionName;
+        PyObject *detachFunc, *pArgs, *pArgsValue, *pValue;
+
+        detachFunctionName = "detach";
+        detachFunc = PyObject_GetAttrString(gdbModule_, detachFunctionName.c_str());
+        if (!detachFunc || !PyCallable_Check(detachFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", detachFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+
+        for (i = 0; i < proctabSize_; i++)
+        {
+            pArgs = PyTuple_New(1);
+            if (!pArgs)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
+                continue;
+            }
+            pArgsValue = PyInt_FromLong(proctab_[i].pd.pid);
+            if (!pArgsValue)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pArgsValue for pid %d\n", proctab_[i].pd.pid);
+                Py_DECREF(pArgs);
+                continue;
+            }
+            PyTuple_SetItem(pArgs, 0, pArgsValue);
+
+            pValue = PyObject_CallObject(detachFunc, pArgs);
+            if (pValue == NULL)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", detachFunctionName.c_str(), proctab_[i].pd.pid);
+                PyErr_Print();
+                Py_DECREF(pArgs);
+                Py_DECREF(pArgsValue);
+                Py_DECREF(pValue);
+                continue;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", detachFunctionName.c_str(), PyInt_AsLong(pValue));
+            Py_DECREF(pArgs);
+            Py_DECREF(pArgsValue);
+            Py_DECREF(pValue);
+        }
+        Py_DECREF(detachFunc);
+
+        isRunning_ = true;
+        return STAT_OK;
+    }
+#endif
 
 #if defined(GROUP_OPS)
     if (doGroupOps_ && stopArrayLen == 0)
@@ -3644,7 +4206,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
         } /* for i */
     } /* if any static offset field == -1, i.e., has not been set yet */
 
-    if (pythonOffsets->obSvalOffset == -1 and pythonOffsets->obSizeOffset == -1 and pythonOffsets->isUnicode == true)
+    if (pythonOffsets->obSvalOffset == -1 && pythonOffsets->obSizeOffset == -1 && pythonOffsets->isUnicode == true)
     {
         /* Python 3.3 uses PyASCIIObject string for name container */
         boolRet = symtab->findType(type, "PyASCIIObject");

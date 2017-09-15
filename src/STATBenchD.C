@@ -17,9 +17,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 
-#include <getopt.h>
 #include "config.h"
 #include "STAT_BackEnd.h"
+#include <getopt.h>
 
 
 //! The STATBench daemon main

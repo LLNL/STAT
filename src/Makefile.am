@@ -12,6 +12,9 @@ endif
 if ENABLE_OPENMP
 AM_CXXFLAGS += -DOMP_STACKWALKER
 endif
+if ENABLE_CUDAGDB
+AM_CXXFLAGS += -DSTAT_CUDA_GDB_BE
+endif
 AM_LDFLAGS =
 
 include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h

@@ -416,6 +416,7 @@ void printUsage()
 #ifdef OMP_STACKWALKER
     fprintf(stderr, "  -o, --withopenmp\t\ttranslate OpenMP stacks to logical application\n\t\t\t\tview\n");
 #endif
+    fprintf(stderr, "  -G, --cudagdb\t\tuse cuda-gdb to drive the daemons\n");
     fprintf(stderr, "  -c, --comprehensive\t\tgather 5 traces: function only; module offset;\n\t\t\t\tfunction + pc; function + line; and 3D function\n\t\t\t\tonly\n");
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
@@ -488,6 +489,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"sampleindividual",    no_argument,        0, 'S'},
         {"mrnetprintf",         no_argument,        0, 'M'},
         {"countrep",            no_argument,        0, 'U'},
+        {"cudagdb",             no_argument,        0, 'G'},
         {"fanout",              required_argument,  0, 'f'},
         {"nodes",               required_argument,  0, 'n'},
         {"nodesfile",           required_argument,  0, 'N'},
@@ -527,9 +529,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     while (1)
     {
 #ifdef DYSECTAPI
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:X:b:Y:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:X:b:Y:N:", longOptions, &optionIndex);
 #else
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:N:", longOptions, &optionIndex);
 #endif
         if (opt == -1)
             break;
@@ -692,6 +694,8 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         case 'U':
             statArgs->countRep = true;
             statArgs->sampleType |= STAT_SAMPLE_COUNT_REP;
+        case 'G':
+            statArgs->applicationOption = STAT_CUDA_ATTACH;
             break;
         case 'z':
             statArgs->nDaemonsPerNode = atoi(optarg);
@@ -744,7 +748,12 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
 
     if (optind == argc - 1 && (createJob == false && serialJob == false))
     {
+#ifdef STAT_CUDA_GDB_BE
+        if (statArgs->applicationOption != STAT_CUDA_ATTACH)
+            statArgs->applicationOption = STAT_ATTACH;
+#else
         statArgs->applicationOption = STAT_ATTACH;
+#endif
         remotePid = argv[optind++];
         colonPos = remotePid.find_first_of(":");
         if (colonPos != string::npos)

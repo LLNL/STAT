@@ -88,6 +88,7 @@ if __name__ == '__main__':
         gui_parser.add_argument("-d", "--debugdaemons", help="launch the daemons under the debugger", action="store_true")
         gui_parser.add_argument("-L", "--logdir", help="logging output directory")
         gui_parser.add_argument("-l", "--log", help="enable debug logging", choices=['FE', 'BE', 'CP'], action="append")
+        gui_parser.add_argument("-G", "--cudagdb", help="use cuda-gdb to drive the daemons", action="store_true")
         trace_group.add_argument("-M", "--mrnetprintf", help="use MRNet's print for logging", action="store_true")
         gui_parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
         attach_group = gui_parser.add_mutually_exclusive_group()

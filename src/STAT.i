@@ -99,7 +99,8 @@ enum StatSampleOptions_t {
 typedef enum {
     STAT_LAUNCH = 0,
     STAT_ATTACH,
-    STAT_SERIAL_ATTACH
+    STAT_SERIAL_ATTACH,
+    STAT_CUDA_ATTACH
 } StatLaunch_t;
 
 typedef enum {
