@@ -1723,7 +1723,7 @@ StatError_t STAT_BackEnd::attach()
     if (usingGdb_ == true)
     {
         string attachFunctionName, newFunctionName;
-        PyObject *attachFunc, *newFunc, *pArgs, *pArgsValue, *pValue;
+        PyObject *attachFunc, *newFunc, *pArgs, *pValue;
 
         newFunctionName = "new_gdb_instance";
         newFunc = PyObject_GetAttrString(gdbModule_, newFunctionName.c_str());
@@ -1748,20 +1748,12 @@ StatError_t STAT_BackEnd::attach()
         for (i = 0; i < proctabSize_; i++)
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
-            pArgs = PyTuple_New(1);
+            pArgs = Py_BuildValue("(i)", proctab_[i].pd.pid);
             if (!pArgs)
             {
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
                 continue;
             }
-            pArgsValue = PyInt_FromLong(proctab_[i].pd.pid);
-            if (!pArgsValue)
-            {
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pArgsValue for pid %d\n", proctab_[i].pd.pid);
-                Py_DECREF(pArgs);
-                continue;
-            }
-            PyTuple_SetItem(pArgs, 0, pArgsValue);
 
             pValue = PyObject_CallObject(newFunc, pArgs);
             if (pValue == NULL)
@@ -1769,11 +1761,11 @@ StatError_t STAT_BackEnd::attach()
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", newFunctionName.c_str(), proctab_[i].pd.pid);
                 PyErr_Print();
                 Py_DECREF(pArgs);
-                Py_DECREF(pArgsValue);
                 Py_DECREF(pValue);
                 continue;
             }
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", newFunctionName.c_str(), PyInt_AsLong(pValue));
+            Py_DECREF(pValue);
 
             pValue = PyObject_CallObject(attachFunc, pArgs);
             if (pValue == NULL)
@@ -1781,13 +1773,11 @@ StatError_t STAT_BackEnd::attach()
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", attachFunctionName.c_str(), proctab_[i].pd.pid);
                 PyErr_Print();
                 Py_DECREF(pArgs);
-                Py_DECREF(pArgsValue);
                 Py_DECREF(pValue);
                 continue;
             }
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", attachFunctionName.c_str(), PyInt_AsLong(pValue));
             Py_DECREF(pArgs);
-            Py_DECREF(pArgsValue);
             Py_DECREF(pValue);
         }
         Py_DECREF(attachFunc);
@@ -1952,7 +1942,7 @@ StatError_t STAT_BackEnd::pause()
     {
         unsigned int i;
         string pauseFunctionName;
-        PyObject *pauseFunc, *pArgs, *pArgsValue, *pValue;
+        PyObject *pauseFunc, *pArgs, *pValue;
 
         pauseFunctionName = "pause";
         pauseFunc = PyObject_GetAttrString(gdbModule_, pauseFunctionName.c_str());
@@ -1966,20 +1956,12 @@ StatError_t STAT_BackEnd::pause()
 
         for (i = 0; i < proctabSize_; i++)
         {
-            pArgs = PyTuple_New(1);
+            pArgs = Py_BuildValue("(i)", proctab_[i].pd.pid);
             if (!pArgs)
             {
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
                 continue;
             }
-            pArgsValue = PyInt_FromLong(proctab_[i].pd.pid);
-            if (!pArgsValue)
-            {
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pArgsValue for pid %d\n", proctab_[i].pd.pid);
-                Py_DECREF(pArgs);
-                continue;
-            }
-            PyTuple_SetItem(pArgs, 0, pArgsValue);
 
             pValue = PyObject_CallObject(pauseFunc, pArgs);
             if (pValue == NULL)
@@ -1987,13 +1969,10 @@ StatError_t STAT_BackEnd::pause()
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", pauseFunctionName.c_str(), proctab_[i].pd.pid);
                 PyErr_Print();
                 Py_DECREF(pArgs);
-                Py_DECREF(pArgsValue);
-                Py_DECREF(pValue);
                 continue;
             }
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", pauseFunctionName.c_str(), PyInt_AsLong(pValue));
             Py_DECREF(pArgs);
-            Py_DECREF(pArgsValue);
             Py_DECREF(pValue);
         }
         Py_DECREF(pauseFunc);
@@ -2043,7 +2022,7 @@ StatError_t STAT_BackEnd::resume()
     {
         unsigned int i;
         string resumeFunctionName;
-        PyObject *resumeFunc, *pArgs, *pArgsValue, *pValue;
+        PyObject *resumeFunc, *pArgs, *pValue;
 
         resumeFunctionName = "resume";
         resumeFunc = PyObject_GetAttrString(gdbModule_, resumeFunctionName.c_str());
@@ -2057,20 +2036,12 @@ StatError_t STAT_BackEnd::resume()
 
         for (i = 0; i < proctabSize_; i++)
         {
-            pArgs = PyTuple_New(1);
+            pArgs = Py_BuildValue("(i)", proctab_[i].pd.pid);
             if (!pArgs)
             {
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
                 continue;
             }
-            pArgsValue = PyInt_FromLong(proctab_[i].pd.pid);
-            if (!pArgsValue)
-            {
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pArgsValue for pid %d\n", proctab_[i].pd.pid);
-                Py_DECREF(pArgs);
-                continue;
-            }
-            PyTuple_SetItem(pArgs, 0, pArgsValue);
 
             pValue = PyObject_CallObject(resumeFunc, pArgs);
             if (pValue == NULL)
@@ -2078,13 +2049,10 @@ StatError_t STAT_BackEnd::resume()
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", resumeFunctionName.c_str(), proctab_[i].pd.pid);
                 PyErr_Print();
                 Py_DECREF(pArgs);
-                Py_DECREF(pArgsValue);
-                Py_DECREF(pValue);
                 continue;
             }
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", resumeFunctionName.c_str(), PyInt_AsLong(pValue));
             Py_DECREF(pArgs);
-            Py_DECREF(pArgsValue);
             Py_DECREF(pValue);
         }
         Py_DECREF(resumeFunc);
@@ -2395,7 +2363,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
         const char *countDelim = "#count#";
         string sampleFunctionName, cudaSampleFunctionName, path, name, currentFrameString;
         string::size_type startPos, endPos;
-        PyObject *sampleFunc, *cudaSampleFunc, *pArgs, *pArgsValue, *pValue, *pSampleArgs, *pRetries, *pRetryFrequency;
+        PyObject *sampleFunc, *cudaSampleFunc, *pArgs, *pValue, *pSampleArgs;
         StatBitVectorEdge_t *edge = NULL;
         map<string, string>::iterator nodeAttrsIter;
 
@@ -2415,6 +2383,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
         {
             if (PyErr_Occurred())
                 PyErr_Print();
+            Py_DECREF(sampleFunc);
             printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", cudaSampleFunctionName.c_str());
             return STAT_DAEMON_ERROR;
         }
@@ -2440,58 +2409,36 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                 if (edge == NULL)
                 {
                     printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+                    Py_DECREF(sampleFunc);
+                    Py_DECREF(cudaSampleFunc);
                     return STAT_ALLOCATE_ERROR;
                 }
                 edge->bitVector[j / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(j % STAT_BITVECTOR_BITS);
 
-                pArgs = PyTuple_New(1);
+                pArgs = Py_BuildValue("(i)", proctab_[j].pd.pid);
                 if (!pArgs)
                 {
                     printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[j].pd.pid);
+                    statFreeEdge(edge);
                     continue;
                 }
-                pArgsValue = PyInt_FromLong(proctab_[j].pd.pid);
-                if (!pArgsValue)
-                {
-                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pArgsValue for pid %d\n", proctab_[j].pd.pid);
-                    Py_DECREF(pArgs);
-                    continue;
-                }
-                PyTuple_SetItem(pArgs, 0, pArgsValue);
-
-                pSampleArgs = PyTuple_New(3);
+                pSampleArgs = Py_BuildValue("(iii)", proctab_[j].pd.pid, nRetries, retryFrequency);
                 if (!pSampleArgs)
                 {
                     printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pSampleArgs for pid %d\n", proctab_[j].pd.pid);
+                    statFreeEdge(edge);
+                    Py_DECREF(pArgs);
                     continue;
                 }
-                PyTuple_SetItem(pSampleArgs, 0, pArgsValue);
-                pRetries = PyInt_FromLong(nRetries);
-                if (!pRetries)
-                {
-                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pRetries for pid %d\n", proctab_[j].pd.pid);
-                    Py_DECREF(pSampleArgs);
-                    continue;
-                }
-                PyTuple_SetItem(pSampleArgs, 1, pRetries);
-                pRetryFrequency = PyInt_FromLong(retryFrequency);
-                if (!pRetryFrequency)
-                {
-                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pRetryFrequency for pid %d\n", proctab_[j].pd.pid);
-                    Py_DECREF(pSampleArgs);
-                    continue;
-                }
-                PyTuple_SetItem(pSampleArgs, 2, pRetryFrequency);
 
                 pValue = PyObject_CallObject(sampleFunc, pArgs);
                 if (pValue == NULL)
                 {
                     printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", sampleFunctionName.c_str(), proctab_[j].pd.pid);
+                    statFreeEdge(edge);
                     PyErr_Print();
                     Py_DECREF(pArgs);
                     Py_DECREF(pSampleArgs);
-                    Py_DECREF(pArgsValue);
-                    Py_DECREF(pValue);
                     continue;
                 }
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", sampleFunctionName.c_str(), PyString_AsString(pValue));
@@ -2561,10 +2508,9 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                 Py_DECREF(pValue);
                 if (!(sampleType_ & STAT_SAMPLE_THREADS))
                 {
+                    statFreeEdge(edge);
                     Py_DECREF(pArgs);
                     Py_DECREF(pSampleArgs);
-                    Py_DECREF(pArgsValue);
-                    Py_DECREF(pValue);
                     continue;
                 }
 
@@ -2572,11 +2518,10 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                 if (pValue == NULL)
                 {
                     printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", cudaSampleFunctionName.c_str(), proctab_[j].pd.pid);
+                    statFreeEdge(edge);
                     PyErr_Print();
                     Py_DECREF(pArgs);
                     Py_DECREF(pSampleArgs);
-                    Py_DECREF(pArgsValue);
-                    Py_DECREF(pValue);
                     continue;
                 }
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", cudaSampleFunctionName.c_str(), PyString_AsString(pValue));
@@ -2643,11 +2588,9 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                     }
                     currentFrame = strtok(NULL, "\n");
                 } // while (currentFrame != NULL)
+                statFreeEdge(edge);
                 Py_DECREF(pArgs);
                 Py_DECREF(pSampleArgs);
-                Py_DECREF(pArgsValue);
-                Py_DECREF(pRetries);
-                Py_DECREF(pRetryFrequency);
                 Py_DECREF(pValue);
             } // for (j = 0; j < proctabSize_; j++)
 
@@ -2670,10 +2613,11 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
             }
         } // for (i = 0; i < nTraces; i++)
         Py_DECREF(sampleFunc);
+        Py_DECREF(cudaSampleFunc);
 
         return STAT_OK;
     } // if (usingGdb_ == true)
-#endif
+#endif // #ifdef STAT_CUDA_GDB_BE
 
     for (i = 0; i < nTraces; i++)
     {
@@ -3608,7 +3552,7 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
     if (usingGdb_ == true)
     {
         string detachFunctionName;
-        PyObject *detachFunc, *pArgs, *pArgsValue, *pValue;
+        PyObject *detachFunc, *pArgs, *pValue;
 
         detachFunctionName = "detach";
         detachFunc = PyObject_GetAttrString(gdbModule_, detachFunctionName.c_str());
@@ -3622,20 +3566,12 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
 
         for (i = 0; i < proctabSize_; i++)
         {
-            pArgs = PyTuple_New(1);
+            pArgs = Py_BuildValue("(i)", proctab_[i].pd.pid);
             if (!pArgs)
             {
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
                 continue;
             }
-            pArgsValue = PyInt_FromLong(proctab_[i].pd.pid);
-            if (!pArgsValue)
-            {
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to set pArgsValue for pid %d\n", proctab_[i].pd.pid);
-                Py_DECREF(pArgs);
-                continue;
-            }
-            PyTuple_SetItem(pArgs, 0, pArgsValue);
 
             pValue = PyObject_CallObject(detachFunc, pArgs);
             if (pValue == NULL)
@@ -3643,13 +3579,10 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", detachFunctionName.c_str(), proctab_[i].pd.pid);
                 PyErr_Print();
                 Py_DECREF(pArgs);
-                Py_DECREF(pArgsValue);
-                Py_DECREF(pValue);
                 continue;
             }
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", detachFunctionName.c_str(), PyInt_AsLong(pValue));
             Py_DECREF(pArgs);
-            Py_DECREF(pArgsValue);
             Py_DECREF(pValue);
         }
         Py_DECREF(detachFunc);

@@ -155,7 +155,7 @@ int main(int argc, char **argv)
     /* Launch the Daemons */
     statFrontEnd->setNDaemonsPerNode(statArgs->nDaemonsPerNode);
     statFrontEnd->setApplicationOption(statArgs->applicationOption);
-    if (statArgs->applicationOption == STAT_ATTACH)
+    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_CUDA_ATTACH)
         statError = statFrontEnd->attachAndSpawnDaemons(statArgs->pid, statArgs->remoteNode);
     else if (statArgs->applicationOption == STAT_LAUNCH)
         statError = statFrontEnd->launchAndSpawnDaemons(statArgs->remoteNode);

@@ -337,12 +337,14 @@ def attach_impl(application_option, processes, topology_type = STAT_TOPOLOGY_AUT
     except Exception as e:
         if application_option == STAT_LAUNCH:
             pid = stat_fe.getLauncherPid()
-            subprocess.call(['kill', '-TERM', str(pid)])
+            if pid != 0:
+                subprocess.call(['kill', '-TERM', str(pid)])
         if type(e) == STATerror:
             if e.etype == 'attach failed':
                 stat_fe.shutDown()
         stat_fe = None
-        raise
+        raise e
+        return False
     return True
 
 
