@@ -94,13 +94,16 @@ enum StatSampleOptions_t {
 #ifdef OMP_STACKWALKER
     STAT_SAMPLE_OPENMP = 0x80
 #endif
+#ifdef STAT_GDB_BE
+    STAT_SAMPLE_CUDA_QUICK = 0x100
+#endif
 } ;
 
 typedef enum {
     STAT_LAUNCH = 0,
     STAT_ATTACH,
     STAT_SERIAL_ATTACH,
-    STAT_CUDA_ATTACH
+    STAT_GDB_ATTACH
 } StatLaunch_t;
 
 typedef enum {

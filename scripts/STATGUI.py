@@ -40,12 +40,17 @@ from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_
 import sys
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_CUDA_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_GDB_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
 HAVE_OPENMP_SUPPORT = True
 try:
     from STAT import STAT_SAMPLE_OPENMP
 except:
     HAVE_OPENMP_SUPPORT = False
+HAVE_GDB_SUPPORT = True
+try:
+    from STAT import STAT_SAMPLE_CUDA_QUICK
+except:
+    HAVE_GDB_SUPPORT = False
 HAVE_DYSECT = True
 try:
     from STAT import DysectAPI_OK, DysectAPI_Error, DysectAPI_InvalidSystemState, DysectAPI_LibraryNotLoaded, DysectAPI_SymbolNotFound, DysectAPI_SessionCont, DysectAPI_SessionQuit, DysectAPI_DomainNotFound, DysectAPI_NetworkError, DysectAPI_DomainExpressionError, DysectAPI_StreamError, DysectAPI_OptimizedOut
@@ -126,9 +131,9 @@ class STATGUI(STATDotWindow):
         for opt in types:
             self.types[opt] = types[opt]
         try:
-            cuda_gdb_path = os.environ['STAT_CUDAGDB']
+            gdb_path = os.environ['STAT_GDB']
         except:
-            cuda_gdb_path = 'cuda-gdb'
+            gdb_path = 'gdb'
         options = {'Remote Host':                      "localhost",
                    'Remote Host Shell':                "rsh",
                    'Resource Manager':                 "Auto",
@@ -157,8 +162,9 @@ class STATGUI(STATDotWindow):
                    'Log SW':                           False,
                    'Log SWERR':                        False,
                    'Use MRNet Printf':                 False,
-                   'CUDA GDB BE':                      False,
-                   'CUDA GDB Path':                    cuda_gdb_path,
+                   'GDB BE':                           False,
+                   'GDB Path':                         gdb_path,
+                   'With CUDA Quick':                  False,
                    'Verbosity Type':                   'error',
                    'Communication Nodes':              '',
                    'Communication Processes per Node': 8,
@@ -262,8 +268,11 @@ class STATGUI(STATDotWindow):
                 self.options['Debug Backends'] = True
             if args.logdir is not None:
                 self.options['Log Dir'] = args.logdir
-            if args.cudagdb is True:
-                self.options['CUDA GDB BE'] = True
+            if HAVE_GDB_SUPPORT:
+                if args.gdb is True:
+                    self.options['GDB BE'] = True
+                if args.cudaquick is True:
+                    self.options['With CUDA Quick'] = True
             if args.log is not None:
                 if 'CP' in args.log:
                     self.options['Log CP'] = True
@@ -331,8 +340,8 @@ host[1-10,12,15-20];otherhost[30]
                 self.options['PID'] = int(args.attach.split(':')[-1])
                 if args.attach.find(':') != -1:
                     self.options['Remote Host'] = args.attach.split(':')[0]
-                if args.cudagdb is not None:
-                    self.options['CUDA GDB BE'] = True
+                if args.gdb is not None:
+                    self.options['GDB BE'] = True
                 stat_wait_dialog.show_wait_dialog_and_run(self.attach_cb, (None, False, False, STAT_ATTACH), self.attach_task_list)
                 return
             elif args.serial is not None:
@@ -1125,8 +1134,9 @@ host[1-10,12,15-20];otherhost[30]
         vbox2 = gtk.VBox()
         self.pack_string_option(vbox2, 'Tool Daemon Path', attach_dialog)
         self.pack_string_option(vbox2, 'Filter Path', attach_dialog)
-        self.pack_check_button(vbox2, 'CUDA GDB BE')
-        self.pack_string_option(vbox2, 'CUDA GDB Path', attach_dialog)
+        if HAVE_GDB_SUPPORT:
+            self.pack_check_button(vbox2, 'GDB BE')
+            self.pack_string_option(vbox2, 'GDB Path', attach_dialog)
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 5)
         frame = gtk.Frame('Debug Logs')
@@ -1282,10 +1292,10 @@ host[1-10,12,15-20];otherhost[30]
 
         self.STAT.setToolDaemonExe(self.options['Tool Daemon Path'])
         self.STAT.setFilterPath(self.options['Filter Path'])
-        os.environ['STAT_CUDAGDB'] = self.options['CUDA GDB Path']
+        os.environ['STAT_GDB'] = self.options['GDB Path']
         log_type = STAT_LOG_NONE
-        if self.options['CUDA GDB BE']:
-            application_option = STAT_CUDA_ATTACH
+        if self.options['GDB BE']:
+            application_option = STAT_GDB_ATTACH
         if self.options['Log Frontend']:
             log_type |= STAT_LOG_FE
         if self.options['Log Backend']:
@@ -1585,6 +1595,8 @@ host[1-10,12,15-20];otherhost[30]
             sample_type += STAT_SAMPLE_THREADS
         if self.options['With OpenMP'] and HAVE_OPENMP_SUPPORT:
             sample_type += STAT_SAMPLE_OPENMP
+        if self.options['With CUDA Quick'] and HAVE_GDB_SUPPORT:
+            sample_type += STAT_SAMPLE_CUDA_QUICK
         if self.options['Gather Python Traces']:
             sample_type += STAT_SAMPLE_PYTHON
         if self.options['Clear On Sample']:
@@ -1674,6 +1686,8 @@ host[1-10,12,15-20];otherhost[30]
                 sample_type += STAT_SAMPLE_THREADS
             if self.options['With OpenMP'] and HAVE_OPENMP_SUPPORT:
                 sample_type += STAT_SAMPLE_OPENMP
+            if self.options['With CUDA Quick'] and HAVE_GDB_SUPPORT:
+                sample_type += STAT_SAMPLE_CUDA_QUICK
             if self.options['Gather Python Traces']:
                 sample_type += STAT_SAMPLE_PYTHON
             if self.options['Clear On Sample']:
@@ -2330,6 +2344,8 @@ host[1-10,12,15-20];otherhost[30]
         self.pack_check_button(vbox2, 'With Threads', False, False, 5)
         if HAVE_OPENMP_SUPPORT:
             self.pack_check_button(vbox2, 'With OpenMP', False, False, 5)
+        if HAVE_GDB_SUPPORT:
+            self.pack_check_button(vbox2, 'With CUDA Quick', False, False, 5)
         self.pack_check_button(vbox2, 'Gather Python Traces', False, False, 5)
         frame2 = gtk.Frame('Stack Frame (node) Sample Options')
         vbox3 = gtk.VBox()

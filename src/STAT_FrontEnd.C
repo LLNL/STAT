@@ -571,9 +571,10 @@ StatError_t STAT_FrontEnd::launchDaemons()
             return STAT_ARG_ERROR;
         }
 
-#ifdef STAT_CUDA_GDB_BE
-        if (applicationOption_ == STAT_CUDA_ATTACH)
+#ifdef STAT_GDB_BE
+        if (applicationOption_ == STAT_GDB_ATTACH)
         {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using STAT GDB attach\n");
             daemonArgc += 1;
             daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
             if (daemonArgv == NULL)
@@ -607,7 +608,7 @@ StatError_t STAT_FrontEnd::launchDaemons()
         for (i = 0; i < daemonArgc; i++)
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "daemonArgv[%d] = %s\n", i, daemonArgv[i]);
 
-        if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_CUDA_ATTACH)
+        if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_GDB_ATTACH)
         {
             if (launcherPid_ == 0)
             {

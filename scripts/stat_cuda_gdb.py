@@ -4,12 +4,13 @@ import logging
 import pwd
 
 try:
+    from gdb import GdbDriver
     from cuda_gdb import CudaGdbDriver
 except Exception as e:
     print e
 gdb_instances = {}
 
-def new_gdb_instance(pid):
+def new_gdb_instance(pid, gdb_type='gdb'):
 
     # if TMPDIR is not set, you may get this error and fail to see GPU devices:
     #    The CUDA driver could not allocate operating system resources for attaching to the application.
@@ -21,7 +22,13 @@ def new_gdb_instance(pid):
     if "TMPDIR" not in os.environ:
         os.environ["TMPDIR"]="/var/tmp/%s" %(pwd.getpwuid( os.getuid() ).pw_name)
 
-    gdb = CudaGdbDriver(pid, 'debug', 'log.txt')
+    try:
+        if 'cuda-gdb' in os.environ['STAT_GDB']:
+            gdb = CudaGdbDriver(pid, 'debug', 'log.txt')
+        else:
+            gdb = GdbDriver(pid, 'debug', 'log.txt')
+    except:
+        gdb = GdbDriver(pid, 'debug', 'log.txt')
     if gdb.launch() is False:
         return -1
     gdb_instances[pid] = gdb
@@ -43,7 +50,7 @@ def resume(pid):
     gdb_instances[pid].resume()
     return 0
 
-def get_all_host_traces(pid):
+def get_all_host_traces(pid, retries=5, retry_frequency=1000, cuda_quick=0):
     ret = ''
     tids = gdb_instances[pid].get_thread_list()
     tids.sort()
@@ -55,16 +62,21 @@ def get_all_host_traces(pid):
         ret += '#endtrace\n'
     return ret
 
-def get_all_device_traces(pid, retries=5, retry_frequency=1000):
+def get_all_device_traces(pid, retries=5, retry_frequency=1000, cuda_quick=0):
+    if type(gdb_instances[pid]) != CudaGdbDriver:
+        return ''
     ret = ''
     threads = gdb_instances[pid].get_cuda_threads(retries, retry_frequency)
     for thread in threads:
-        gdb_instances[pid].cuda_block_thread_focus(thread['start_block'], thread['start_thread'])
-        bt = gdb_instances[pid].cuda_bt()
-        bt.reverse()
         ret += '#count#%d\n' %(thread['count'])
-        for frame in bt:
-            ret += '%s@%s:%d\n' %(frame['function'], frame['source'], frame['linenum'])
+        if cuda_quick == 1:
+            ret += '?@%s:%d\n' %(thread['filename'], thread['linenum'])
+        else:
+            gdb_instances[pid].cuda_block_thread_focus(thread['start_block'], thread['start_thread'])
+            bt = gdb_instances[pid].cuda_bt()
+            bt.reverse()
+            for frame in bt:
+                ret += '%s@%s:%d\n' %(frame['function'], frame['source'], frame['linenum'])
         ret += '#endtrace\n'
     return ret
 

@@ -215,7 +215,6 @@ void STAT_BackEnd::clear2dNodesAndEdges()
             statFreeEdge(edgesIter->second.second);
     edges2d_.clear();
 #ifdef GRAPHLIB_3_0
-    nodeIdToAttrs_.clear();
     map<int, map<string, void *> >::iterator edgeIdToAttrsIter;
     map<string, void *>::iterator edgeAttrsIter;
     for (edgeIdToAttrsIter = edgeIdToAttrs_.begin(); edgeIdToAttrsIter != edgeIdToAttrs_.end(); edgeIdToAttrsIter++)
@@ -657,10 +656,10 @@ StatError_t STAT_BackEnd::init()
     return STAT_OK;
 }
 
-#ifdef STAT_CUDA_GDB_BE
-StatError_t STAT_BackEnd::initCudaGdb()
+#ifdef STAT_GDB_BE
+StatError_t STAT_BackEnd::initGdb()
 {
-    threadBvLength_ = STAT_BITVECTOR_BITS * 64; // for CUDA we restict to 4096 threads per STAT daemon (i.e., node)
+    threadBvLength_ = STAT_BITVECTOR_BITS * 2048; // for CUDA we restict to 131072 threads per STAT daemon (i.e., node)
     PyObject *pName;
     const char *moduleName = "stat_cuda_gdb";
     Py_Initialize();
@@ -1654,7 +1653,7 @@ StatError_t STAT_BackEnd::mainLoop()
 
         if (ackTag == PROT_SEND_NODE_IN_EDGE_RESP || ackTag == PROT_SEND_LAST_TRACE_RESP || ackTag == PROT_SEND_TRACES_RESP)
         {
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE with tag %d\n", ackTag);
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE with tag %d, length %d\n", ackTag, byteArrayLen);
             bitVectorLength = statBitVectorLength(proctabSize_);
 #ifdef MRNET40
             if (stream->send(ackTag, "%Ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
@@ -1719,7 +1718,7 @@ StatError_t STAT_BackEnd::attach()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
-#ifdef STAT_CUDA_GDB_BE
+#ifdef STAT_GDB_BE
     if (usingGdb_ == true)
     {
         string attachFunctionName, newFunctionName;
@@ -1765,6 +1764,13 @@ StatError_t STAT_BackEnd::attach()
                 continue;
             }
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", newFunctionName.c_str(), PyInt_AsLong(pValue));
+            if (PyInt_AsLong(pValue) == -1)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "attach failed for pid %d\n", proctab_[i].pd.pid);
+                Py_DECREF(pArgs);
+                Py_DECREF(pValue);
+                continue;
+            }
             Py_DECREF(pValue);
 
             pValue = PyObject_CallObject(attachFunc, pArgs);
@@ -1777,6 +1783,7 @@ StatError_t STAT_BackEnd::attach()
                 continue;
             }
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", attachFunctionName.c_str(), PyInt_AsLong(pValue));
+
             Py_DECREF(pArgs);
             Py_DECREF(pValue);
         }
@@ -1937,7 +1944,7 @@ StatError_t STAT_BackEnd::pause()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
 
-#ifdef STAT_CUDA_GDB_BE
+#ifdef STAT_GDB_BE
     if (usingGdb_ == true)
     {
         unsigned int i;
@@ -2017,7 +2024,7 @@ StatError_t STAT_BackEnd::resume()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
 
-#ifdef STAT_CUDA_GDB_BE
+#ifdef STAT_GDB_BE
     if (usingGdb_ == true)
     {
         unsigned int i;
@@ -2354,11 +2361,11 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering and merging %d traces from each task\n", nTraces);
 
-#ifdef STAT_CUDA_GDB_BE
+#ifdef STAT_GDB_BE
     if (usingGdb_ == true)
     {
         static int threadCountWarning = 0;
-        int nodeId, prevId, k, l, count;
+        int nodeId, prevId, k, l, count, cudaQuick = 0;
         char *allTraces, *currentFrame;
         const char *countDelim = "#count#";
         string sampleFunctionName, cudaSampleFunctionName, path, name, currentFrameString;
@@ -2386,6 +2393,11 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
             Py_DECREF(sampleFunc);
             printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", cudaSampleFunctionName.c_str());
             return STAT_DAEMON_ERROR;
+        }
+        if (sampleType_ & STAT_SAMPLE_CUDA_QUICK)
+        {
+            sampleType_ |= STAT_SAMPLE_LINE;
+            cudaQuick = 1;
         }
 
         for (i = 0; i < nTraces; i++)
@@ -2422,7 +2434,8 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                     statFreeEdge(edge);
                     continue;
                 }
-                pSampleArgs = Py_BuildValue("(iii)", proctab_[j].pd.pid, nRetries, retryFrequency);
+
+                pSampleArgs = Py_BuildValue("(iiii)", proctab_[j].pd.pid, nRetries, retryFrequency, cudaQuick);
                 if (!pSampleArgs)
                 {
                     printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pSampleArgs for pid %d\n", proctab_[j].pd.pid);
@@ -2617,7 +2630,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
 
         return STAT_OK;
     } // if (usingGdb_ == true)
-#endif // #ifdef STAT_CUDA_GDB_BE
+#endif // #ifdef STAT_GDB_BE
 
     for (i = 0; i < nTraces; i++)
     {
@@ -3548,9 +3561,17 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
 
-#ifdef STAT_CUDA_GDB_BE
+#ifdef STAT_GDB_BE
     if (usingGdb_ == true)
     {
+        /* Pause process, otherwise we won't have a gdb prompt */
+        if (isRunning_)
+        {
+            StatError_t statError = pause();
+            if (statError != STAT_OK)
+                printMsg(statError, __FILE__, __LINE__, "Failed to pause processes\n");
+        }
+
         string detachFunctionName;
         PyObject *detachFunc, *pArgs, *pValue;
 

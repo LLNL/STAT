@@ -9,7 +9,7 @@ class CudaGdbDriver(GdbDriver):
 
     input_prompt = '(cuda-gdb)'
     try:
-        gdb_command = os.environ['STAT_CUDAGDB']
+        gdb_command = os.environ['STAT_GDB']
     except:
         gdb_command = 'cuda-gdb'
     gdb_args = ['--cuda-use-lockfile=0']
@@ -28,6 +28,8 @@ class CudaGdbDriver(GdbDriver):
         lines = self.communicate("info cuda threads")
         # Expected format: BlockIdx ThreadIdx To BlockIdx ThreadIdx Count Virtual PC Filename Line
         logging.debug('%s' %(repr(lines)))
+        if check_lines(lines) == False:
+            return ret
         while "Focus not set on any active CUDA kernel." in lines and retries > 0:
             logging.debug('retry %d %d' %(retries, retry_frequency))
             self.resume()
@@ -65,7 +67,7 @@ class CudaGdbDriver(GdbDriver):
         logging.info('cuda thread focus')
         lines = self.communicate("cuda thread %s" %thread_spec)
         logging.debug('%s' %(repr(lines)))
-        return True
+        return check_lines(lines)
 
 
     def cuda_block_thread_focus(self, block_spec, thread_spec):
@@ -73,7 +75,7 @@ class CudaGdbDriver(GdbDriver):
         logging.info('cuda thread focus')
         lines = self.communicate("cuda block %s thread %s" %(block_spec, thread_spec))
         logging.debug('%s' %(repr(lines)))
-        return True
+        return check_lines(lines)
 
     def get_cuda_devices(self):
         """Gets a list of cuda device indexes"""
@@ -81,6 +83,8 @@ class CudaGdbDriver(GdbDriver):
         devices = []
         lines = self.communicate("info cuda devices")
         logging.debug('%s' %(repr(lines)))
+        if check_lines(lines) == False:
+            return devices
         for line in lines:
             line = line.split()
             try:
@@ -100,7 +104,7 @@ class CudaGdbDriver(GdbDriver):
         for line in lines:
             if 'Request cannot be satisfied' in line:
                 return False
-        return True
+        return check_lines(lines)
 
     def get_cuda_kernels(self):
         """Gets a list of cuda kernel indexes"""
@@ -108,6 +112,8 @@ class CudaGdbDriver(GdbDriver):
         kernels = []
         lines = self.communicate("info cuda kernels")
         logging.debug('%s' %(repr(lines)))
+        if check_lines(lines) == False:
+            return kernels
         for line in lines:
             line = line.split()
             try:
@@ -124,7 +130,7 @@ class CudaGdbDriver(GdbDriver):
         logging.info('cuda kernel focus')
         lines = self.communicate("cuda kernel %d" %kernel_index)
         logging.debug('%s' %repr((lines)))
-        return True
+        return check_lines(lines)
 
     def cuda_bt(self):
         """Gets a backtrace from the current cuda thread.
@@ -133,6 +139,8 @@ class CudaGdbDriver(GdbDriver):
         ret = []
         lines = self.communicate("bt")
         logging.debug('%s' %(repr(lines)))
+        if check_lines(lines) == False:
+            return ret
 
         patched_lines = []
         # some frames may span multiple lines

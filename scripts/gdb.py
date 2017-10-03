@@ -34,6 +34,13 @@ def init_logging(input_loglevel, input_logfile):
     return input_loglevel
 
 
+def check_lines(lines):
+    for line in lines:
+        if line.find('Subprocess terminated') != -1:
+            return False
+    return True
+
+
 class GdbDriver(object):
     """A class to drive GDB"""
     input_prompt = '(gdb)'
@@ -56,7 +63,7 @@ class GdbDriver(object):
             return False
         lines = self.readlines()
         logging.debug('%s' %repr(lines))
-        return True
+        return check_lines(lines)
 
     def close(self):
         """Closes the gdb subprocess"""
@@ -76,6 +83,12 @@ class GdbDriver(object):
         line = ''
         lines = []
         while True:
+            ret = self.subprocess.poll()
+            if ret != None:
+                error_msg = 'Subprocess terminated with ret code %d\n' %(ret)
+                logging.error(error_msg)
+                lines.append(error_msg)
+                return lines
             ch = self.subprocess.stdout.read(1)
             if breakstring:
                 if breakstring in line:
@@ -107,21 +120,21 @@ class GdbDriver(object):
         logging.info('GDB attach to PID %d' %(self.pid))
         lines = self.communicate("attach %d" %self.pid)
         logging.debug('%s' %(repr(lines)))
-        return True
+        return check_lines(lines)
 
     def detach(self):
         """Detaches from the target process"""
         logging.info('GDB detach from PID %d' %(self.pid))
         lines = self.communicate("detach")
         logging.debug('%s' %(repr(lines)))
-        return True
+        return check_lines(lines)
 
     def kill(self):
         """Kills the debug target process"""
         logging.info('killing PID %d' %(self.pid))
         lines = self.communicate("kill")
         logging.debug('%s' %(repr(lines)))
-        return True
+        return check_lines(lines)
 
     def get_thread_list(self):
         """Gets the list of threads in the target process"""
@@ -129,6 +142,8 @@ class GdbDriver(object):
         tids = []
         lines = self.communicate("info threads")
         logging.debug('%s' %(repr(lines)))
+        if check_lines(lines) == False:
+            return tids
         for line in lines:
             if line[0] == '*':
                 line = line[1:]
@@ -146,7 +161,7 @@ class GdbDriver(object):
         logging.info('GDB thread focus ID %d' %(thread_id))
         lines = self.communicate("thread %d" %thread_id)
         logging.debug('%s' %(repr(lines)))
-        return True
+        return check_lines(lines)
 
     def bt(self, thread_id):
         """Gets a backtrace from the requested thread id.
@@ -155,6 +170,8 @@ class GdbDriver(object):
         ret = []
         lines = self.communicate("thread apply %d bt" %thread_id)
         logging.debug('%s' %(repr(lines)))
+        if check_lines(lines) == False:
+            return ret
         lines = lines[2:]
         patched_lines = []
         # some frames may span multiple lines
@@ -202,7 +219,7 @@ class GdbDriver(object):
         ret = self.subprocess.stdin.write("continue\n")
         lines = self.readlines('Continuing')
         logging.debug('%s' %(repr(lines)))
-        return True
+        return check_lines(lines)
 
     def pause(self):
         """Pauses the debug target process"""
@@ -210,7 +227,7 @@ class GdbDriver(object):
         ret = os.kill(self.pid, signal.SIGINT)
         lines = self.readlines()
         logging.debug('%s' %(repr(lines)))
-        return True
+        return check_lines(lines)
 
 
 if __name__ == "__main__":

@@ -1,21 +1,21 @@
-AC_DEFUN([X_AC_CUDAGDB], [
-  AM_CONDITIONAL([ENABLE_CUDAGDB], false)
-  AC_ARG_ENABLE(cudagdb,
-    [AS_HELP_STRING([--enable-cudagdb],[Enable to include CUDA GDB BE prototype])],
-    [ENABLE_CUDAGDB="yes"
-      AM_CONDITIONAL([ENABLE_CUDAGDB], true)
+AC_DEFUN([X_AC_GDB], [
+  AM_CONDITIONAL([ENABLE_GDB], false)
+  AC_ARG_ENABLE(gdb,
+    [AS_HELP_STRING([--enable-gdb],[Enable to include GDB BE prototype])],
+    [ENABLE_GDB="yes"
+      AM_CONDITIONAL([ENABLE_GDB], true)
     ]
   )
 
-  AC_ARG_WITH(cudagdb,
-    [AS_HELP_STRING([--with-cudagdb=path],
+  AC_ARG_WITH(gdb,
+    [AS_HELP_STRING([--with-gdb=path],
       [Use cmd as the default remote shell]
     )],
-    [withcudagdb="$withval"
-      AM_CONDITIONAL([ENABLE_CUDAGDB], true)
+    [withgdb="$withval"
+      AM_CONDITIONAL([ENABLE_GDB], true)
     ],
-    [withcudagdb=cuda-gdb]
+    [withgdb=gdb]
   )
-  AC_PATH_PROG(cudagdbcmd,$withcudagdb,[cuda-gdb],/,/usr/local/bin:/usr/bin:/bin/usr/local/cuda/bin)
+  AC_PATH_PROG(gdbcmd,$withgdb,[gdb],/,/usr/local/bin:/usr/bin:/bin/usr/local/bin)
 
 ])

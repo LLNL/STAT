@@ -1,4 +1,11 @@
-2017-09-15 Gregory L. Lee <lee218@llnl.gov>
+2017-10-03 Gregory L. Lee <lee218@llnl.gov>
+	* : allow use of vanilla gdb in addition to cuda-gdb
+	* : better error checking of gdb module functions
+	* : enable retry for cuda traces when not in cuda kernel
+	* STAT_BackEnd.C : don't clear nodIdToAttrs_ in clear2dNodes and Edges (broke 3D traces)
+	* : enable quick cuda traces (from "info cuda threads")
+
+2017-09-19 Gregory L. Lee <lee218@llnl.gov>
 	* STAT_BackEnd.C : improved python function arg creation
 
 2017-09-15 Gregory L. Lee <lee218@llnl.gov>

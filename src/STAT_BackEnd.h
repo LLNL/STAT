@@ -22,7 +22,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #define STATBE_MAX_HN_LEN 256
 #define STAT_SW_DEBUG_BUFFER_LENGTH 33554432
 
-#ifdef STAT_CUDA_GDB_BE
+#ifdef STAT_GDB_BE
 #include <Python.h>
 #endif
 
@@ -201,12 +201,12 @@ class STAT_BackEnd
         */
         StatError_t init();
 
-#ifdef STAT_CUDA_GDB_BE
-        //! Initialize and set up the CUDA GDB module
+#ifdef STAT_GDB_BE
+        //! Initialize and set up the GDB module
         /*
             \return STAT_OK on success
         */
-        StatError_t initCudaGdb();
+        StatError_t initGdb();
 #endif
 
         //! Initialize and set up LaunchMON
@@ -650,7 +650,7 @@ class STAT_BackEnd
         DysectAPI::BE* dysectBE_;
 #endif
 
-#ifdef STAT_CUDA_GDB_BE
+#ifdef STAT_GDB_BE
         PyObject *gdbModule_;   /*!< the Python stat_cuda_gdb module */
 #endif
         bool usingGdb_;     /*!< whether we are using GDB instead of Dyninst */

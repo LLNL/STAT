@@ -44,7 +44,7 @@ int main(int argc, char **argv)
         {"mrnetprintf",         no_argument,        0, 'm'},
         {"serial",              no_argument,        0, 's'},
         {"mrnet",               no_argument,        0, 'M'},
-        {"cudagdb",             no_argument,        0, 'G'},
+        {"gdb",                 no_argument,        0, 'G'},
         {"mrnetoutputlevel",    required_argument,  0, 'o'},
         {"pid",                 required_argument,  0, 'p'},
         {"logdir",              required_argument,  0, 'L'},
@@ -137,11 +137,11 @@ int main(int argc, char **argv)
             }
             break;
         case 'G':
-#ifdef STAT_CUDA_GDB_BE
-            statError = statBackEnd->initCudaGdb();
+#ifdef STAT_GDB_BE
+            statError = statBackEnd->initGdb();
             if (statError != STAT_OK)
             {
-                statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to initialize CUDA GDB BE\n", optarg);
+                statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to initialize GDB BE\n", optarg);
                 delete statBackEnd;
                 statFinalize(launchType);
                 return statError;

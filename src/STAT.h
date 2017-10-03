@@ -51,6 +51,9 @@ enum StatSampleOptions_t {
 #ifdef OMP_STACKWALKER
     STAT_SAMPLE_OPENMP = 0x80
 #endif
+#ifdef STAT_GDB_BE
+    STAT_SAMPLE_CUDA_QUICK = 0x100
+#endif
 } ;
 
 //! An enum for MRNet message tags

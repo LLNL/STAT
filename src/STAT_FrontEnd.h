@@ -63,7 +63,7 @@ typedef enum {
     STAT_LAUNCH = 0,
     STAT_ATTACH,
     STAT_SERIAL_ATTACH,
-    STAT_CUDA_ATTACH
+    STAT_GDB_ATTACH
 } StatLaunch_t;
 
 //! An enum for MRNet topology specification type
