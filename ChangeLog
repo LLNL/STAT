@@ -1,3 +1,6 @@
+2017-10-16 Gregory L. Lee <lee218@llnl.gov>
+	* doc/src/* : documentation updates for GDB and CUDA debugging
+
 2017-10-03 Gregory L. Lee <lee218@llnl.gov>
 	* : allow use of vanilla gdb in addition to cuda-gdb
 	* : better error checking of gdb module functions

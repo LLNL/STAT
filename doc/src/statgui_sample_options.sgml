@@ -22,6 +22,14 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term><GUIbutton>With CUDA Quick</GUIbutton></term>
+    <listitem>
+        <para>
+        When using cuda-gdb as the BE, gather less comprehensive, but faster cuda traces. Cuda frames will only show the top of the stack, not the full call path. This also defaults to display filename and line number and will not resolve the function name.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>With OpenMP</GUIbutton></term>
     <listitem>
         <para>
