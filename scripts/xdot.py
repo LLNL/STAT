@@ -1161,13 +1161,13 @@ class XDotParser(DotParser):
     def handle_graph(self, attrs):
         if self.top_graph:
             # Check xdot version
-            try:
-                xdotversion = attrs['xdotversion']
-            except KeyError:
-                pass
-            else:
-                if float(xdotversion) > float(self.XDOTVERSION):
-                    sys.stderr.write('warning: xdot version %s, but supported is %s\n' % (xdotversion, self.XDOTVERSION))
+            #try:
+            #    xdotversion = attrs['xdotversion']
+            #except KeyError:
+            #    pass
+            #else:
+            #    if float(xdotversion) > float(self.XDOTVERSION):
+            #        sys.stderr.write('warning: xdot version %s, but supported is %s\n' % (xdotversion, self.XDOTVERSION))
 
             # Parse bounding box
             try:
