@@ -44,7 +44,8 @@ int main(int argc, char **argv)
         {"mrnetprintf",         no_argument,        0, 'm'},
         {"serial",              no_argument,        0, 's'},
         {"mrnet",               no_argument,        0, 'M'},
-        {"gdb",                 no_argument,        0, 'G'},
+        {"gdb",                 required_argument,  0, 'G'},
+        {"pythonpath",          required_argument,  0, 'P'},
         {"mrnetoutputlevel",    required_argument,  0, 'o'},
         {"pid",                 required_argument,  0, 'p'},
         {"logdir",              required_argument,  0, 'L'},
@@ -93,7 +94,7 @@ int main(int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVmsMGo:p:L:l:d:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVmsMG:P:o:p:L:l:d:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'M')
@@ -136,8 +137,18 @@ int main(int argc, char **argv)
                 return STAT_ARG_ERROR;
             }
             break;
+        case 'P':
+            // On PPC64LE systems the FE environment is not passed to the daemons.
+            // We need to set PYTHONPATH for the GDB BE component.
+            i = setenv("PYTHONPATH", optarg, 1);
+            if (i != 0)
+                statBackEnd->printMsg(STAT_WARNING, __FILE__, __LINE__, "%s: setenv(%s) returned %d\n", strerror(errno), optarg, i);
+            break;
         case 'G':
 #ifdef STAT_GDB_BE
+            i = setenv("STAT_GDB", optarg, 1);
+            if (i != 0)
+                statBackEnd->printMsg(STAT_WARNING, __FILE__, __LINE__, "%s: setenv(%s) returned %d\n", strerror(errno), optarg, i);
             statError = statBackEnd->initGdb();
             if (statError != STAT_OK)
             {

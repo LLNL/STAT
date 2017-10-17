@@ -574,15 +574,28 @@ StatError_t STAT_FrontEnd::launchDaemons()
 #ifdef STAT_GDB_BE
         if (applicationOption_ == STAT_GDB_ATTACH)
         {
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using STAT GDB attach\n");
-            daemonArgc += 1;
+            // On PPC64LE systems the FE environment is not passed to the daemons.
+            // We need to send PYTHONPATH for the GDB BE component.
+            // We also need to send the GDB path since this variable isn't propagated either.
+            char *gdbCommand, *pythonPath;
+            pythonPath = getenv("PYTHONPATH");
+            if (pythonPath == NULL)
+                pythonPath = ":";
+            gdbCommand = getenv("STAT_GDB");
+            if (gdbCommand == NULL)
+                gdbCommand = "gdb";
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using STAT GDB attach %s and PYTHONPATH %s\n", gdbCommand, pythonPath);
+            daemonArgc += 4;
             daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
             if (daemonArgv == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
                 return STAT_ALLOCATE_ERROR;
             }
-            daemonArgv[daemonArgc - 2] = strdup("-G");
+            daemonArgv[daemonArgc - 5] = strdup("-P");
+            daemonArgv[daemonArgc - 4] = strdup(pythonPath);
+            daemonArgv[daemonArgc - 3] = strdup("-G");
+            daemonArgv[daemonArgc - 2] = strdup(gdbCommand);
             daemonArgv[daemonArgc - 1] = NULL;
         }
 #endif
