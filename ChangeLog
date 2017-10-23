@@ -1,3 +1,6 @@
+2017-10-17 Gregory L. Lee <lee218@llnl.gov>
+	* * : pass PYTHONPATH and STAT_GDB to BE as args
+
 2017-10-16 Gregory L. Lee <lee218@llnl.gov>
 	* doc/src/* : documentation updates for GDB and CUDA debugging
 

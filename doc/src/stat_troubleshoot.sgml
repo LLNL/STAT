@@ -64,3 +64,9 @@ STAT may need additional time to launch all of its daemons.  You may need to set
 This error results from trying to open a STAT >3.0 output with a STAT 2.X GUI.
 </para></formalpara>
 
+
+<formalpara><title>Hang on second attach when using CUDA GDB</title>
+<para>
+In some CUDA environments, you may need to run your application with the CUDA_VISIBLE_DEVICES environment variable set appropriately, otherwise cuda-gdb will hang on attach when there is already an existing cuda-gdb session on the same node. Refer to the "Simultaneous Sessions Support" section of  <ulink url="http://docs.nvidia.com/cuda/cuda-gdb/index.html"></ulink>.
+</para></formalpara>
+
