@@ -38,7 +38,7 @@ before_install:
   # travis has a 50 minute timeout for any single command, so we break up the build so it will partially cache as needed:
 #  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=ompi
 #  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=other
-  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
+#  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
 
 script:
   - export CC=gcc-4.8
