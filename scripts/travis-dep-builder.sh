@@ -141,10 +141,10 @@ for pkg in $downloads; do
     cmake_opts="${extra_cmake_opts[$name]}"
     configure_opts="${extra_configure_opts[$name]}"
     cache_name="$name:$sha1:$make_opts:$configure_opts:$cmake_opts"
-    if check_cache "$name"; then
-       say "Using cached version of ${name}"
-       continue
-    fi
+#    if check_cache "$name"; then
+#       say "Using cached version of ${name}"
+#       continue
+#    fi
     export CC=gcc
     export CXX=g++
     if test "$name" = "v9.3.2"; then
