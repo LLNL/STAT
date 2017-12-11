@@ -124,6 +124,7 @@ class STATGUI(STATDotWindow):
                  'Sample Type':       ['function only', 'function and pc', 'module offset', 'function and line'],
                  'Edge Type':         ['full list', 'count and representative'],
                  'Remote Host Shell': ['rsh', 'ssh'],
+                 'Serial Remote Host Shell': ['rsh', 'ssh'],
                  'Resource Manager':  ['Auto', 'Alps', 'Slurm'],
                  'CP Policy':         ['none', 'share app nodes', 'exclusive']}
         if not hasattr(self, "types"):
@@ -136,6 +137,7 @@ class STATGUI(STATDotWindow):
             gdb_path = 'gdb'
         options = {'Remote Host':                      "localhost",
                    'Remote Host Shell':                "rsh",
+                   'Serial Remote Host Shell':                "rsh",
                    'Resource Manager':                 "Auto",
                    'PID':                              None,
                    'Launcher Exe':                     '',
@@ -622,11 +624,16 @@ host[1-10,12,15-20];otherhost[30]
     def _on_update_process_listing2(self, attach_dialog, listing_filter, vbox, is_parallel):
         """Search for user processes."""
         self.options['Remote Host Shell'] = self.types['Remote Host Shell'][self.combo_boxes['Remote Host Shell'].get_active()]
+        self.options['Serial Remote Host Shell'] = self.types['Serial Remote Host Shell'][self.combo_boxes['Serial Remote Host Shell'].get_active()]
+        if is_parallel is True:
+            my_rsh = self.options['Remote Host Shell']
+        else:
+            my_rsh = self.options['Serial Remote Host Shell']
         pid_list = ''
         if listing_filter is not None:
             filter_compiled_re = re.compile(listing_filter.get_text())
         if HAVE_ATTACH_HELPER and self.options['Job ID'] != '':
-            self.options['Remote Host'], rm_exe, pids = attach_helper.jobid_to_hostname_pid(self.options['Resource Manager'], self.options['Job ID'], self.options['Remote Host Shell'])
+            self.options['Remote Host'], rm_exe, pids = attach_helper.jobid_to_hostname_pid(self.options['Resource Manager'], self.options['Job ID'], my_rsh)
             self.options['Job Launcher'] = rm_exe
             if self.options['Remote Host'] == None:
                 show_error_dialog('Failed to find host for job ID %s' % self.options['Job ID'], attach_dialog)
@@ -685,7 +692,7 @@ host[1-10,12,15-20];otherhost[30]
                 else:
                     output = commands.getoutput('%s %s ps xww' % (self.options['Remote Host Shell'], self.options['Remote Host']))
                 if output.find('Hostname not found') != -1 or output.find('PID') == -1:
-                    show_error_dialog('Failed to get process listing for %s' % self.options['Remote Host'], attach_dialog)
+                    show_error_dialog('Failed to get process listing for %s:\n\t %s' % (self.options['Remote Host'], output), attach_dialog)
                     return False
             output = output.split('\n')
             pid_index = 0
@@ -1036,7 +1043,7 @@ host[1-10,12,15-20];otherhost[30]
         hbox.pack_start(gtk.Label('Search Host'), False, False, 5)
         self.pack_entry_and_button(self.options['Remote Host'], self.on_update_serial_remote_host, serial_process_frame, attach_dialog, "Search", hbox)
         hbox.pack_start(gtk.VSeparator(), False, False, 5)
-        self.pack_combo_box(hbox, 'Remote Host Shell')
+        self.pack_combo_box(hbox, 'Serial Remote Host Shell')
         vbox.pack_start(hbox, False, False, 0)
         vbox.pack_start(serial_process_frame, True, True, 0)
         self.pack_check_button(vbox, 'Filter Full Command Line ', False, False, 5)
