@@ -31,6 +31,7 @@ def init_logging(input_loglevel, input_logfile):
     logging.basicConfig(level=input_loglevel, format=log_format, datefmt=log_date, filename=log_file, stream=log_stream, filemode='w')
     logging.getLogger().name = "MainThread"
     logging.log(logging.INFO, "Processing started at %s" %(datetime.now()))
+    logging.log(logging.INFO, "Using log level %s to file %s:\n\t\tlogLevels=%s" %(input_loglevel, input_logfile, repr(logLevels)))
     return input_loglevel
 
 
@@ -197,6 +198,8 @@ class GdbDriver(object):
                 if ('in' in split_line):
                     #function = split_line[split_line.index('in') + 1] # do we want to strip off args
                     function = split_line[split_line.index('in') + 1].split('(')[0]
+                else:
+                    function = split_line[1]
             except Exception as e:
                 logging.warning('Failed to get function from "%s": %s' %(line, repr(e)))
                 error = True
