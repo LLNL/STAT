@@ -415,9 +415,9 @@ def node_attr_to_label(attrs, full_path = True):
         label += "@" + attrs["lex_string"]
     elif "source" in attrs and attrs["source"] != "(null)":
         if full_path is True:
-            label += "@" + attrs["source"] + attrs["line"]
+            label += "@" + attrs["source"] + ":" + attrs["line"]
         else:
-            label += "@" + os.path.basename(attrs["source"]) + attrs["line"]
+            label += "@" + os.path.basename(attrs["source"]) + ":" + attrs["line"]
     elif "module" in attrs and attrs["module"] != "(null)":
         if full_path is True:
             label = attrs["module"] + attrs["offset"]

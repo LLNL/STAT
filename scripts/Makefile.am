@@ -5,6 +5,9 @@ else
 bin_SCRIPTS = STAT stat-cl stat-script stat-core-merger attach-helper
 endif
 python_PYTHON = STATmain.py stat_merge_base.py STATmerge.py core_file_merger.py bg_core_backtrace.py attach_helper.py
+if ENABLE_GDB
+python_PYTHON += stat_cuda_gdb.py cuda_gdb.py gdb.py
+endif
 if ENABLE_GUI
 python_PYTHON += STATGUI.py STATview.py xdot.py STAThelper.py
 if ENABLE_DYSECTAPI

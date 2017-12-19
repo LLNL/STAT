@@ -44,3 +44,7 @@ Note that STAT hardcodes the paths to its daemon and filter shared object, assum
 
 STAT will also, by default, add rpaths to dependent libraries.  This behavior can be disabled by specifying <option>--with-rpath=no</option>.  However, when doing so, you must be sure to set LD_LIBRARY_PATH to point to the directories containing the dependent libraries.
 </para>
+
+<para>
+STAT can also be configured to use GDB as a backend instead of DynInst. To specify the path to gdb, use the <option>--with-gdb</option> flag. Note that STAT currently still requires DynInst as a dependence even when using the GDB backend.
+</para>

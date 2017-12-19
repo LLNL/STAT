@@ -3,6 +3,11 @@
 When using the Intel MPI, you may need to alter your LaunchMON installation's etc/rm_intel_hydra.conf file and set RM_launch_helper=mpirun. If it is set to mpiexec.hydra, the daemons may fail to launch on remote nodes.
 </para></formalpara>
 
+<formalpara><title>stack traces are empty</title>
+<para>
+Some optimzations may make it impossible to debug, such as the GNU -fomit-frame-pointer option, which is enabled at various -O optimization levels. You can turn this off with the -fno-omit-frame-pointer flag.
+</para></formalpara>
+
 <formalpara><title>stack walks not making it to _start</title>
 <para>
 Processes can be in portions of code from which a debugger cannot walk the stack (i.e., function prologue or epilogue).  Try the -r option to enable STAT to let the process run a bit and then retry the stack sample.
@@ -57,5 +62,11 @@ STAT may need additional time to launch all of its daemons.  You may need to set
 <formalpara><title>UnboundLocalError: local variable 'count' referenced before assignment</title>
 <para>
 This error results from trying to open a STAT >3.0 output with a STAT 2.X GUI.
+</para></formalpara>
+
+
+<formalpara><title>Hang on second attach when using CUDA GDB</title>
+<para>
+In some CUDA environments, you may need to run your application with the CUDA_VISIBLE_DEVICES environment variable set appropriately, otherwise cuda-gdb will hang on attach when there is already an existing cuda-gdb session on the same node. Refer to the "Simultaneous Sessions Support" section of  <ulink url="http://docs.nvidia.com/cuda/cuda-gdb/index.html"></ulink>.
 </para></formalpara>
 

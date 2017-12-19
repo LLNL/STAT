@@ -60,6 +60,9 @@ typedef struct
     int dysectArgc;
     char **dysectArgv;
 #endif
+#ifdef STAT_GDB_BE
+    bool withCudaQuick;
+#endif
 } StatArgs_t;
 
 //! Prints the usage directions
@@ -149,13 +152,13 @@ int main(int argc, char **argv)
     statFrontEnd->addPerfData(invocationString.c_str(), -1.0);
 
     /* If we're just attaching, sleep here */
-    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH)
+    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH)
         mySleep(statArgs->sleepTime);
 
     /* Launch the Daemons */
     statFrontEnd->setNDaemonsPerNode(statArgs->nDaemonsPerNode);
     statFrontEnd->setApplicationOption(statArgs->applicationOption);
-    if (statArgs->applicationOption == STAT_ATTACH)
+    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH)
         statError = statFrontEnd->attachAndSpawnDaemons(statArgs->pid, statArgs->remoteNode);
     else if (statArgs->applicationOption == STAT_LAUNCH)
         statError = statFrontEnd->launchAndSpawnDaemons(statArgs->remoteNode);
@@ -416,6 +419,10 @@ void printUsage()
 #ifdef OMP_STACKWALKER
     fprintf(stderr, "  -o, --withopenmp\t\ttranslate OpenMP stacks to logical application\n\t\t\t\tview\n");
 #endif
+#ifdef STAT_GDB_BE
+    fprintf(stderr, "  -G, --gdb\t\t\tuse (cuda) gdb to drive the daemons\n");
+    fprintf(stderr, "  -Q, --cudaquick\t\tgather less comprehensive, but faster cuda traces\n");
+#endif
     fprintf(stderr, "  -c, --comprehensive\t\tgather 5 traces: function only; module offset;\n\t\t\t\tfunction + pc; function + line; and 3D function\n\t\t\t\tonly\n");
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
@@ -488,6 +495,8 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"sampleindividual",    no_argument,        0, 'S'},
         {"mrnetprintf",         no_argument,        0, 'M'},
         {"countrep",            no_argument,        0, 'U'},
+        {"gdb",                 no_argument,        0, 'G'},
+        {"cudaquick",           no_argument,        0, 'Q'},
         {"fanout",              required_argument,  0, 'f'},
         {"nodes",               required_argument,  0, 'n'},
         {"nodesfile",           required_argument,  0, 'N'},
@@ -527,9 +536,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     while (1)
     {
 #ifdef DYSECTAPI
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:X:b:Y:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:X:b:Y:N:", longOptions, &optionIndex);
 #else
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:N:", longOptions, &optionIndex);
 #endif
         if (opt == -1)
             break;
@@ -692,7 +701,16 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         case 'U':
             statArgs->countRep = true;
             statArgs->sampleType |= STAT_SAMPLE_COUNT_REP;
+#ifdef STAT_GDB_BE
+        case 'G':
+            statArgs->applicationOption = STAT_GDB_ATTACH;
             break;
+        case 'Q':
+            statArgs->withCudaQuick = true;
+            statArgs->sampleType |= STAT_SAMPLE_CUDA_QUICK;
+            statArgs->comprehensive = false;
+            break;
+#endif
         case 'z':
             statArgs->nDaemonsPerNode = atoi(optarg);
             break;
@@ -744,7 +762,12 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
 
     if (optind == argc - 1 && (createJob == false && serialJob == false))
     {
+#ifdef STAT_GDB_BE
+        if (statArgs->applicationOption != STAT_GDB_ATTACH)
+            statArgs->applicationOption = STAT_ATTACH;
+#else
         statArgs->applicationOption = STAT_ATTACH;
+#endif
         remotePid = argv[optind++];
         colonPos = remotePid.find_first_of(":");
         if (colonPos != string::npos)

@@ -62,7 +62,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 typedef enum {
     STAT_LAUNCH = 0,
     STAT_ATTACH,
-    STAT_SERIAL_ATTACH
+    STAT_SERIAL_ATTACH,
+    STAT_GDB_ATTACH
 } StatLaunch_t;
 
 //! An enum for MRNet topology specification type

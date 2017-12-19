@@ -571,6 +571,35 @@ StatError_t STAT_FrontEnd::launchDaemons()
             return STAT_ARG_ERROR;
         }
 
+#ifdef STAT_GDB_BE
+        if (applicationOption_ == STAT_GDB_ATTACH)
+        {
+            // On PPC64LE systems the FE environment is not passed to the daemons.
+            // We need to send PYTHONPATH for the GDB BE component.
+            // We also need to send the GDB path since this variable isn't propagated either.
+            char *gdbCommand, *pythonPath;
+            pythonPath = getenv("PYTHONPATH");
+            if (pythonPath == NULL)
+                pythonPath = ":";
+            gdbCommand = getenv("STAT_GDB");
+            if (gdbCommand == NULL)
+                gdbCommand = "gdb";
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using STAT GDB attach %s and PYTHONPATH %s\n", gdbCommand, pythonPath);
+            daemonArgc += 4;
+            daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+            if (daemonArgv == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[daemonArgc - 5] = strdup("-P");
+            daemonArgv[daemonArgc - 4] = strdup(pythonPath);
+            daemonArgv[daemonArgc - 3] = strdup("-G");
+            daemonArgv[daemonArgc - 2] = strdup(gdbCommand);
+            daemonArgv[daemonArgc - 1] = NULL;
+        }
+#endif
+
         daemonArgc += 2;
         daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
         if (daemonArgv == NULL)
@@ -592,7 +621,7 @@ StatError_t STAT_FrontEnd::launchDaemons()
         for (i = 0; i < daemonArgc; i++)
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "daemonArgv[%d] = %s\n", i, daemonArgv[i]);
 
-        if (applicationOption_ == STAT_ATTACH)
+        if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_GDB_ATTACH)
         {
             if (launcherPid_ == 0)
             {
@@ -1754,7 +1783,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
     }
     if (intRet != 0)
     {
-        printMsg(STAT_RESUME_ERROR, __FILE__, __LINE__, "%d daemons reported an error\n", intRet);
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "%d daemons reported an error\n", intRet);
         isPendingAck_ = false;
         return STAT_DAEMON_ERROR;
     }
