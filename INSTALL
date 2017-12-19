@@ -128,3 +128,8 @@ make install
    behavior can be disabled by specifying --with-rpath=no.
    However, when doing so, you must be sure to set LD_LIBRARY_PATH
    to point to the directories containing the dependent libraries.
+
+   STAT can also be configured to use GDB as a backend instead of
+   DynInst. To specify the path to gdb, use the --with-gdb flag.
+   Note that STAT currently still requires DynInst as a dependence
+   even when using the GDB backend.
