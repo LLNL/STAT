@@ -1,5 +1,15 @@
+2018-01-09 Gregory L. Lee <lee218@llnl.gov>
+	* : added license info to new .py files
+
+2017-12-11 Gregory L. Lee <lee218@llnl.gov>
+	* STATGUI.py: fixed remote host shell toggle in GUI
+	* : fixed parsing of function name for gdb BE
+
+2017-12-07 Gregory L. Lee <lee218@llnl.gov>
+	* STATGUI.py: fixed arg passing to TotalView
+
 2017-10-17 Gregory L. Lee <lee218@llnl.gov>
-	* * : pass PYTHONPATH and STAT_GDB to BE as args
+	* : pass PYTHONPATH and STAT_GDB to BE as args
 
 2017-10-16 Gregory L. Lee <lee218@llnl.gov>
 	* doc/src/* : documentation updates for GDB and CUDA debugging
