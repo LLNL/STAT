@@ -33,12 +33,10 @@ using namespace DysectAPI;
 using namespace Dyninst;
 using namespace ProcControlAPI;
 
-#ifdef GRAPHLIB_3_0
 extern const char *gNodeAttrs[];
 extern const char *gEdgeAttrs[];
 extern int gNumNodeAttrs;
 extern int gNumEdgeAttrs;
-#endif
 
 vector<ProbeRequest*> Probe::requestQueue;
 
@@ -240,7 +238,6 @@ string Probe::edgeStrs(int parent) {
   returnString += " -> ";
   snprintf(buf, 1024, "%d", getId());
   returnString += buf;
-#ifdef GRAPHLIB_3_0
   returnString += " [";
   for(int j = 0; j < gNumEdgeAttrs; j++)
   {
@@ -250,7 +247,6 @@ string Probe::edgeStrs(int parent) {
     returnString += "=\"(null)\"";
   }
   returnString += " ]";
-#endif
   returnString += "\n";
 
   return returnString;
