@@ -86,6 +86,8 @@ class Gdb(object):
         args.append("path %s" %(self.objectpath))
         args.append('-ex')
         args.append("directory %s" %(self.sourcepath))
+        args.append('-ex')
+        args.append("set filename-display absolute")
         if corefile:
             self.corefile = corefile
             if os.path.isabs(self.corefile):
@@ -379,6 +381,8 @@ class CoreFile:
             #Reconnect to gdb using executable
             logging.info("Reconnecting gdb to the core file (%s) AND the executable (%s)"%(self.coreData['coreFile'],executable))
         lines = gdb.open(self.coreData['coreFile'], executable)
+        lines2 = gdb.readlines()
+        lines += lines2
 
         #Check for gdb errors
         logging.debug("Checking for gdb errors")
