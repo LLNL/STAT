@@ -98,11 +98,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                         gStatOutFp, "Unexpected tag %d when trying to receive contents of %s\n", tag, pathStr));
                 localLib = true;
             }
-#ifdef MRNET40
             else if (packet->unpack("%Ac %s", &fileContents, &fileContentsLength, &fileName) == -1)
-#else
-            else if (packet->unpack("%ac %s", &fileContents, &fileContentsLength, &fileName) == -1)
-#endif
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
                         gStatOutFp, "Failed to unpack contents of %s, length %d\n", pathStr, fileContentsLength));

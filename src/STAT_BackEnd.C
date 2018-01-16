@@ -1591,11 +1591,7 @@ StatError_t STAT_BackEnd::mainLoop()
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE with tag %d, length %d\n", ackTag, byteArrayLen);
             bitVectorLength = statBitVectorLength(proctabSize_);
-#ifdef MRNET40
             if (stream->send(ackTag, "%Ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
-#else
-            if (stream->send(ackTag, "%ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
-#endif
             {
                 printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send(%d) failure\n", ackTag);
                 return STAT_MRNET_ERROR;
@@ -3685,10 +3681,8 @@ StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mr
             printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
             return STAT_FILE_ERROR;
         }
-#ifdef MRNET40
         if (logType_ & STAT_LOG_MRN)
             mrn_printf_init(gStatOutFp);
-#endif
         set_OutputLevel(mrnetOutputLevel);
     }
 
@@ -3813,10 +3807,8 @@ void STAT_BackEnd::swDebugBufferToFile()
                     printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
                     return;
                 }
-#ifdef MRNET40
                 if (logType_ & STAT_LOG_MRN)
                     mrn_printf_init(gStatOutFp);
-#endif
             }
             fflush(gStatOutFp);
             statOutFD = fileno(gStatOutFp);

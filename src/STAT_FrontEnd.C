@@ -1513,11 +1513,7 @@ StatError_t STAT_FrontEnd::serveFileRequest(const char *receiveFileName)
         tag = PROT_LIB_REQ_RESP;
     }
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "sending contents of file %s, length %lu bytes\n", receiveFileName, fileSize);
-#ifdef MRNET40
     if (fileRequestStream_->send(tag, "%Ac %s", fileContents, fileSize, receiveFileName) == -1)
-#else
-    if (fileRequestStream_->send(tag, "%ac %s", fileContents, fileSize, receiveFileName) == -1)
-#endif
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send file contents\n");
         return STAT_MRNET_ERROR;
@@ -1671,10 +1667,8 @@ StatError_t STAT_FrontEnd::startLog(unsigned int logType, char *logOutDir, bool 
             printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open FE log file %s\n", strerror(errno), fileName);
             return STAT_FILE_ERROR;
         }
-#ifdef MRNET40
         if (logging_ & STAT_LOG_MRN)
             mrn_printf_init(gStatOutFp);
-#endif
     }
 
     return STAT_OK;
@@ -3078,11 +3072,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     isPendingAck_ = false;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
-#ifdef MRNET40
     if (packet->unpack("%Ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
-#else
-    if (packet->unpack("%ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
-#endif
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::unpack(PROT_COLLECT_TRACES_RESP, \"%%auc\") failed\n");
         return STAT_MRNET_ERROR;
@@ -3387,11 +3377,7 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
 {
     int tag, intRet, totalWidth, dummyRank, offset;
     unsigned int sampleType;
-#ifdef MRNET40
     uint64_t byteArrayLen;
-#else
-    unsigned int byteArrayLen;
-#endif
     char *byteArray = NULL, *edgeLabel;
     list<int>::iterator ranksIter;
     set<int>::iterator missingRanksIter;
@@ -3474,11 +3460,7 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
         }
 
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
-#ifdef MRNET40
         if (packet->unpack("%Ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
-#else
-        if (packet->unpack("%ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
-#endif
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::unpack(PROT_SEND_NODE_IN_EDGE_RESP) failed\n");
             return NULL;
