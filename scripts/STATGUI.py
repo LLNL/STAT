@@ -546,7 +546,12 @@ host[1-10,12,15-20];otherhost[30]
 
     def on_add_serial_process(self, widget, attach_dialog, serial_process_list_entry):
         text = serial_process_list_entry.get_text()
-        text += ' %s@%s:%s ' % (self.options['Serial Exe'], self.options['Remote Host'], self.options['Serial PID'])
+        exe = self.options['Serial Exe']
+        if (exe.find(' \\_') != -1):
+            exe = exe.split()[1]
+        else:
+            exe = exe.split()[0]
+        text += ' %s@%s:%s ' % (exe, self.options['Remote Host'], self.options['Serial PID'])
         text = serial_process_list_entry.set_text(text)
         attach_dialog.show_all()
 
