@@ -205,7 +205,7 @@ class STAT_FrontEnd
         StatError_t pause(bool blocking = true);
         StatError_t resume(bool blocking = true);
         bool isRunning();
-        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int maxDaemonNumThreads, unsigned int retryFrequency, bool blocking = true, const char *variableSpecification = "NULL");
         StatError_t gatherLastTrace(bool blocking = true, const char *altDotFilename = NULL);
         StatError_t gatherTraces(bool blocking = true, const char *altDotFilename = NULL);
         char *getLastDotFilename();
@@ -403,14 +403,15 @@ def launch(processes, topology_type = STAT_TOPOLOGY_AUTO, topology = '1', node_l
 ## \param trace_frequency - the time (ms) between samples
 ## \param num_retries - the number of retry attemps
 ## \param retry_frequency - the time (ms) between retries
+## \param max_num_threads - the max number of threads per daemon
 ## \param var_spec - the list of variables to gather
 #  \return true on successful stack sampling
 #
 #  \n
-def sample(sample_type = STAT_SAMPLE_FUNCTION_ONLY, num_traces = 1, trace_frequency = 100, num_retries = 5, retry_frequency = 100, var_spec = 'NULL', alt_dot_filename = ''):
+def sample(sample_type = STAT_SAMPLE_FUNCTION_ONLY, num_traces = 1, trace_frequency = 100, num_retries = 5, max_num_threads = 512, retry_frequency = 100, var_spec = 'NULL', alt_dot_filename = ''):
     global stat_fe
     try:
-        stat_error = stat_fe.sampleStackTraces(sample_type, num_traces, trace_frequency, num_retries, retry_frequency, True, var_spec)
+        stat_error = stat_fe.sampleStackTraces(sample_type, num_traces, trace_frequency, num_retries, retry_frequency, max_num_threads, True, var_spec)
         if stat_error != STAT_OK:
             raise STATerror('sample failed', stat_fe.getLastErrorMessage())
         if (num_traces == 1):

@@ -3158,7 +3158,7 @@ entered as a regular expression"""
         spinner = gtk.SpinButton(adj, 0, 0)
         spinner.set_value(self.options[option])
         hbox.pack_start(spinner, False, False, 0)
-        box.pack_start(hbox, False, False, 10)
+        box.pack_start(hbox, False, False, 0)
         self.spinners[option] = spinner
 
     def pack_combo_box(self, box, option):

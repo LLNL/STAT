@@ -130,7 +130,6 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
 #endif
     gBePtr = this;
     registerSignalHandlers(true);
-    threadBvLength_ = STAT_BITVECTOR_BITS * 8; // for now we restict to 512 threads per STAT daemon (i.e., node)
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -594,7 +593,6 @@ StatError_t STAT_BackEnd::init()
 #ifdef STAT_GDB_BE
 StatError_t STAT_BackEnd::initGdb()
 {
-    threadBvLength_ = STAT_BITVECTOR_BITS * 2048; // for CUDA we restict to 131072 threads per STAT daemon (i.e., node)
     PyObject *pName;
     const char *moduleName = "stat_cuda_gdb";
     Py_Initialize();
@@ -1259,7 +1257,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 break;
 
             case PROT_SAMPLE_TRACES:
-                if (packet->unpack("%ud %ud %ud %ud %ud %s", &nTraces, &traceFrequency, &nRetries, &retryFrequency, &sampleType_, &variableSpecification) == -1)
+                if (packet->unpack("%ud %ud %ud %ud %ud %ud %s", &nTraces, &traceFrequency, &nRetries, &retryFrequency, &sampleType_, &threadBvLength_, &variableSpecification) == -1)
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_SAMPLE_TRACES) failed\n");
                     if (sendAck(stream, PROT_SAMPLE_TRACES_RESP, intRet) != STAT_OK)
@@ -2275,7 +2273,12 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     map<unsigned int, Walker *>::iterator processMapIter;
     map<int, StatBitVectorEdge_t *>::iterator nodeInEdgeMapIter;
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with variables %s and type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, variableSpecification, sampleType_);
+#ifdef STAT_GDB_BE
+    if (threadBvLength_ < STAT_BITVECTOR_BITS *2048 && usingGdb_ == true)
+        threadBvLength_ = STAT_BITVECTOR_BITS * 2048; // for CUDA we increase to at least 131072 threads per STAT daemon (i.e., node)
+#endif
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with max threads %d with variables %s and type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, threadBvLength_, variableSpecification, sampleType_);
 
     wasRunning = isRunning_;
     if (sampleType_ & STAT_SAMPLE_CLEAR_ON_SAMPLE)

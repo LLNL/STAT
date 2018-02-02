@@ -2857,7 +2857,7 @@ bool STAT_FrontEnd::isRunning()
     return isRunning_;
 }
 
-StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, const char *variableSpecification)
+StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int maxDaemonNumThreads, bool blocking, const char *variableSpecification)
 {
     StatError_t statError;
 
@@ -2893,7 +2893,7 @@ StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned i
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Sampling traces...\n");
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d traces with %d frequency, %d retries with %d frequency, type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, sampleType);
 
-    if (broadcastStream_->send(PROT_SAMPLE_TRACES, "%ud %ud %ud %ud %ud %s", nTraces, traceFrequency, nRetries, retryFrequency, sampleType, variableSpecification) == -1)
+    if (broadcastStream_->send(PROT_SAMPLE_TRACES, "%ud %ud %ud %ud %ud %ud %s", nTraces, traceFrequency, nRetries, retryFrequency, sampleType, maxDaemonNumThreads, variableSpecification) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send request to sample\n");
         return STAT_MRNET_ERROR;

@@ -174,6 +174,7 @@ class STATGUI(STATDotWindow):
                    'Trace Frequency (ms)':             1000,
                    'Num Retries':                      5,
                    'Retry Frequency (us)':             10,
+                   'Max Threads Per Daemon':           512,
                    'With Threads':                     False,
                    'With OpenMP':                      False,
                    'Gather Python Traces':             False,
@@ -1530,14 +1531,11 @@ host[1-10,12,15-20];otherhost[30]
 
     def update_sample_options(self):
         """Update sample options."""
-        try:
-            self.options['Num Traces'] = int(self.spinners['Num Traces'].get_value())
-            self.options['Trace Frequency (ms)'] = int(self.spinners['Trace Frequency (ms)'].get_value())
-            self.options['Num Retries'] = int(self.spinners['Num Retries'].get_value())
-            self.options['Retry Frequency (us)'] = int(self.spinners['Retry Frequency (us)'].get_value())
-            self.options['Run Time Before Sample (sec)'] = int(self.spinners['Run Time Before Sample (sec)'].get_value())
-        except:
-            pass
+        for option in ['Num Retries', 'Retry Frequency (us)', 'Max Threads Per Daemon', 'Run Time Before Sample (sec)', 'Num Traces', 'Trace Frequency (ms)']:
+            try:
+                self.options[option] = int(self.spinners[option].get_value())
+            except:
+                pass
 
     def sleep(self, seconds):
         """Sleep for specified time with a progress bar."""
@@ -1616,7 +1614,7 @@ host[1-10,12,15-20];otherhost[30]
             sample_type += STAT_SAMPLE_PYTHON
         if self.options['Clear On Sample']:
             sample_type += STAT_SAMPLE_CLEAR_ON_SAMPLE
-        ret = self.STAT.sampleStackTraces(sample_type, 1, 1, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
+        ret = self.STAT.sampleStackTraces(sample_type, 1, 1, self.options['Num Retries'], self.options['Retry Frequency (us)'], self.options['Max Threads Per Daemon'], False, var_spec_to_string(self.var_spec))
 
         if ret != STAT_OK:
             show_error_dialog('Failed to sample stack trace:\n%s' % self.STAT.getLastErrorMessage(), self)
@@ -1707,7 +1705,7 @@ host[1-10,12,15-20];otherhost[30]
                 sample_type += STAT_SAMPLE_PYTHON
             if self.options['Clear On Sample']:
                 sample_type += STAT_SAMPLE_CLEAR_ON_SAMPLE
-            ret = self.STAT.sampleStackTraces(sample_type, 1, 0, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
+            ret = self.STAT.sampleStackTraces(sample_type, 1, 0, self.options['Num Retries'], self.options['Retry Frequency (us)'], self.options['Max Threads Per Daemon'], False, var_spec_to_string(self.var_spec))
             if ret != STAT_OK:
                 if ret == STAT_APPLICATION_EXITED:
                     ret_val = STAT_APPLICATION_EXITED
@@ -2356,11 +2354,12 @@ host[1-10,12,15-20];otherhost[30]
         """Pack the sample options into the specified vbox."""
         frame = gtk.Frame('Per Sample Options')
         vbox2 = gtk.VBox()
-        self.pack_check_button(vbox2, 'With Threads', False, False, 5)
+        self.pack_check_button(vbox2, 'With Threads', False, False, 0)
+        self.pack_spinbutton(vbox2, 'Max Threads Per Daemon')
         if HAVE_OPENMP_SUPPORT:
-            self.pack_check_button(vbox2, 'With OpenMP', False, False, 5)
+            self.pack_check_button(vbox2, 'With OpenMP', False, False, 0)
         if HAVE_GDB_SUPPORT:
-            self.pack_check_button(vbox2, 'With CUDA Quick', False, False, 5)
+            self.pack_check_button(vbox2, 'With CUDA Quick', False, False, 0)
         self.pack_check_button(vbox2, 'Gather Python Traces', False, False, 5)
         frame2 = gtk.Frame('Stack Frame (node) Sample Options')
         vbox3 = gtk.VBox()

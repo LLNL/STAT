@@ -1,4 +1,27 @@
 <section>
+  <title>stat version 4.0.0</title>
+  <para>
+    <itemizedlist>
+      <listitem><para>
+        Added GDB and Cuda GDB backend support
+      </para></listitem>
+      <listitem><para>
+        Core file merging enhancements
+      </para></listitem>
+      <listitem><para>
+        GUI enhancements
+      </para></listitem>
+      <listitem><para>
+        ability for Dysect API to dump lightweight core via callpath
+      </para></listitem>
+      <listitem><para>
+        as always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
+      </para></listitem>
+    </itemizedlist>
+  </para>
+</section>
+
+<section>
   <title>stat version 3.0.1</title>
   <para>
     <itemizedlist>

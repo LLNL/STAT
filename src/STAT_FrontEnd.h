@@ -294,13 +294,14 @@ class STAT_FrontEnd
             \param nRetries - the number of times to attempt to gather a
                    complete trace
             \param retryFrequency - the amount of time to wait between retries
+            \param maxDaemonNumThreads - the max number of threads per daemon
             \param blocking - [optional] set to true if blocks until all BE
                    acks received
             \param variableSpecification - [optional] a list of variables to
                    gather along with the traces
             \return STAT_OK on success
         */
-        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, const char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int maxDaemonNumThreads, unsigned int retryFrequency, bool blocking = true, const char *variableSpecification = "NULL");
 
         //! Collect the most recent stack trace from all daemons
         /*!

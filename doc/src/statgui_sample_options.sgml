@@ -22,6 +22,14 @@ STAT has several options for stack trace sampling <![%userguide[(<xref linkend="
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>Max Threads Per Daemon<replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Allow sampling of up to <replaceable class="parameter">count</replaceable> threads per daemon.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term><GUIbutton>With CUDA Quick</GUIbutton></term>
     <listitem>
         <para>
