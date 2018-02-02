@@ -657,9 +657,12 @@ host[1-10,12,15-20];otherhost[30]
             my_procs = []
             pid_depth = {}
             for pid in psutil.pids():
-                proc = psutil.Process(pid)
-                if proc.username() == os.getlogin():
-                    my_procs.append(proc)
+                try:
+                    proc = psutil.Process(pid)
+                    if proc.username() == os.getlogin():
+                        my_procs.append(proc)
+                except:
+                    pass
             handled_procs = []
             for proc in my_procs:
                 if proc in handled_procs:
@@ -1063,7 +1066,7 @@ host[1-10,12,15-20];otherhost[30]
         button = gtk.Button("Add Process to Attach List")
         hbox.pack_start(button, True, True, 10)
         self.serial_process_list_entry = gtk.Entry()
-        self.serial_process_list_entry.set_max_length(1024)
+        self.serial_process_list_entry.set_max_length(8192)
         self.serial_process_list_entry.set_text(self.options['Serial Process List'])
         button.connect("clicked", lambda w: self.on_add_serial_process(w, attach_dialog, self.serial_process_list_entry))
         vbox.pack_start(hbox, False, False, 10)
