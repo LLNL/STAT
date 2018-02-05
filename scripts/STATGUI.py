@@ -2283,7 +2283,12 @@ host[1-10,12,15-20];otherhost[30]
                 for rank in subset_list:
                     str_list += '%s ' % (rank)
                 arg_list.append('-default_parallel_attach_subset=%s' % (str_list))
-                arg_list.append(self.options['Launcher Exe'].split()[0])
+                exe = self.options['Launcher Exe']
+                if (exe.find(' \\_') != -1):
+                    exe = exe.split()[1]
+                else:
+                    exe = exe.split()[0]
+                arg_list.append(exe)
         elif debugger == 'DDT':
             filepath = self.options['DDT Path']
             if not filepath or not os.access(filepath, os.X_OK):
