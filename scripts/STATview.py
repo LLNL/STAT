@@ -293,10 +293,8 @@ def get_cache_file_path(file_dir, source):
 def dot_file_path_split(current_graph):
     file_path = current_graph.cur_filename
     if file_path is None or file_path == '':
-        show_error_dialog('.dot file not currently loaded, no application files to cache')
         return (None, None)
     elif file_path == 'redraw.dot':
-        show_error_dialog('caching disabled for redrawn file, please click on tab with original .dot file')
         return (None, None)
     file_dir, file_name = os.path.split(file_path)
     return (file_dir, file_name)
@@ -1310,32 +1308,32 @@ class STATGraph(xdot.Graph):
                     font_color_string = color_to_string(font_color)
                     fill_color_string = color_to_string(fill_color)
                     line_nums.append((int(node_iter.attrs["line"].split('\\n')[i].strip(":")), fill_color_string, font_color_string))
-        found = False
         error_msg = ''
         file_dir, file_name = dot_file_path_split(self)
-        cache_file_path = get_cache_file_path(file_dir, source)
-        if os.path.exists(cache_file_path):
-            source_full_path = cache_file_path
-        else:
+        source_full_path = None
+        if file_dir is not None and file_name is not None:
+            cache_file_path = get_cache_file_path(file_dir, source)
+            if os.path.exists(cache_file_path):
+                source_full_path = cache_file_path
+        if source_full_path == None:
             if os.path.isabs(source):
                 if os.path.exists(source):
                     source_full_path = source
-                    found = True
                 else:
                     error_msg = 'Full path %s does not exist\n' % source
-            if found is False:
+            if source_full_path is None:
                 # find the full path to the file
                 source = os.path.basename(source)
                 for sp in search_paths['source']:
                     if not os.path.exists(sp):
                         continue
-                    if os.path.exists(sp + '/' + source):
-                        found = True
+                    tmp_source_full_path = sp + '/' + source
+                    if os.path.exists(tmp_source_full_path):
+                        source_full_path = tmp_source_full_path
                         break
-                if found is False:
+                if source_full_path is None:
                     show_error_dialog('%sFailed to find file "%s" in search paths.  Please add the source file search path for this file\n' % (error_msg, source))
                     return True
-                source_full_path = sp + '/' + source
 
         # create the source view window
         if self.source_view_window is None:
