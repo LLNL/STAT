@@ -153,7 +153,7 @@ int main(int argc, char **argv)
     statFrontEnd->addPerfData(invocationString.c_str(), -1.0);
 
     /* If we're just attaching, sleep here */
-    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH)
+    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH || statArgs->applicationOption == STAT_SERIAL_GDB_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH)
         mySleep(statArgs->sleepTime);
 
     /* Launch the Daemons */
@@ -770,7 +770,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     if (optind == argc - 1 && (createJob == false && serialJob == false))
     {
 #ifdef STAT_GDB_BE
-        if (statArgs->applicationOption != STAT_GDB_ATTACH)
+        if (statArgs->applicationOption != STAT_GDB_ATTACH && statArgs->applicationOption != STAT_SERIAL_GDB_ATTACH)
             statArgs->applicationOption = STAT_ATTACH;
 #else
         statArgs->applicationOption = STAT_ATTACH;
@@ -801,7 +801,10 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     }
     else if (optind < argc && serialJob == true)
     {
-        statArgs->applicationOption = STAT_SERIAL_ATTACH;
+        if (statArgs->applicationOption == STAT_GDB_ATTACH)
+            statArgs->applicationOption = STAT_SERIAL_GDB_ATTACH;
+        else
+            statArgs->applicationOption = STAT_SERIAL_ATTACH;
         for (i = optind; i < argc; i++)
             statFrontEnd->addSerialProcess(argv[i]);
     }
