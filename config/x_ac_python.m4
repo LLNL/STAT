@@ -22,5 +22,5 @@ AC_DEFUN([X_AC_PYTHON], [
   python_version=`$PYTHON -c "import distutils.sysconfig; \
     print(distutils.sysconfig.get_python_version());"`
   AC_MSG_RESULT($python_version)
-  BELIBS="-lpython$python_version $BELIBS"
+  AM_COND_IF([ENABLE_GDB], [BELIBS="-lpython$python_version $BELIBS"], [])
 ])
