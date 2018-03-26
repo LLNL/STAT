@@ -26,13 +26,44 @@ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revis
 
 import sys
 import os
+import re
 from stat_merge_base import StatTrace, StatMerger, StatMergerArgs
 from subprocess import Popen, PIPE
+from enum import Enum
+
+class CoreType(Enum):
+    UNKNOWN = 0
+    BGQ = 1
+    DYSECT = 2
+    LCF = 3
+    FUNCTION_SOURCE_LINE = 4
+    HEXADDR = 5
 
 addr2line_exe = '/usr/bin/addr2line'
 addr2line_map = {}
 job_ids = []
 
+
+# exapmle trace formats:
+# From BG/Q:
+# +++STACK
+# Frame Address     Saved Link Reg
+# 00000019c8afd7e0  0000000001014068
+# 00000019c8afd9a0  0000000001024dec
+# ---STACK
+
+# From CUDA text lightweight:
+# +++STACK
+# gadd<<<(10,1,1),(32,1,1)>>>:cuda_example.cu:39
+# ---STACK
+
+# From DysectAPI
+# +++STACK
+# Module+Offset
+# /g/g0/lee218/src/STAT/examples/sessions/mpi_ringtopo2+0x401729
+# /lib64/libc.so.6+0x21b35
+# /collab/usr/global/tools/stat/toss_3_x86_64_ib/stat-test/lib/libcallpathwrap.so+0x1dbb
+# ---STACK
 
 class BgCoreTrace(StatTrace):
     def get_traces(self):
@@ -48,6 +79,15 @@ class BgCoreTrace(StatTrace):
         in_stack = False
         module_offset = False
         job_id = -1
+        in_trace = False
+        core_type = CoreType.UNKNOWN
+        patterns = {}
+        patterns[CoreType.HEXADDR] = r"0x([0-9a-fA-F]+)"
+        patterns[CoreType.BGQ] = r"([0-9a-fA-F]+)[ \t]+([0-9a-fA-F]+)"
+        patterns[CoreType.DYSECT] = r"([^\+]+)\+([^\+]+)"
+        patterns[CoreType.LCF] = r"([^:]+):(.*)"
+        patterns[CoreType.FUNCTION_SOURCE_LINE] = r"([^@]+)@([^:]+):([0-9\?]+)"
+        patterns[CoreType.UNKNOWN] = r"[.]*"
         for line in f:
             if line.find('Job ID') != -1:
                 job_id = int(line.split(':')[1][1:])
@@ -57,17 +97,13 @@ class BgCoreTrace(StatTrace):
                         sys.stderr.write('\n\nWarning, multiple Job IDs detected in core files. Stack traces will still be merged into a single tree. To have traces differentiated by job ID, please use the -j or --jobid option\n\n')
                 continue
             if line.find('+++STACK') != -1 or line.find('Function Call Chain') != -1:
+                in_trace = True
+                core_type = CoreType.UNKNOWN
                 line_number_trace = []
                 function_only_trace = []
                 continue
-            if line.find("Frame Address") == 0:
-                in_stack = True
-            elif line.find("Module+Offset") == 0:
-                in_stack = True
-                module_offset = True
-                continue
-            if line.find('---STACK') != -1 or line.find('End of stack') != -1:
-                if module_offset is True:
+            elif line.find('---STACK') != -1 or line.find('End of stack') != -1:
+                if core_type == CoreType.DYSECT or core_type == CoreType.FUNCTION_SOURCE_LINE:
                     # module offset frames are coming from callpath and need to be
                     # flipped such that the TOS is at the end of the trace
                     line_number_trace.reverse()
@@ -77,39 +113,86 @@ class BgCoreTrace(StatTrace):
                     function_only_trace.insert(0, str(job_id))
                 line_number_traces.append(line_number_trace)
                 function_only_traces.append(function_only_trace)
-                line_number_trace = []
-                function_only_trace = []
-                in_stack = False
+                in_trace = False
+                core_type = CoreType.UNKNOWN
                 continue
-            line = line.strip(' ')
-            if line.find('0x') == 0 or in_stack is True:
-                if line == '\n':
-                    function = 'trace error'
-                    line_info = 'trace error'
-                else:
-                    if module_offset == True:
-                        split_line = line.split('+')
-                        if line in addr2line_map:
-                            line_info = addr2line_map[line]
-                        else:
-                            exe = split_line[0]
-                            #addr = format(int(split_line[1].strip(), 0) - 1, '#x')
-                            addr = format(int(split_line[1].strip(), 0), '#x')
-                    else:
-                        addr = line.split(' ')[-1]
-                        exe = self.options["exe"]
-                    if addr in addr2line_map:
-                        line_info = addr2line_map[addr]
-                    else:
-                        print addr2line_exe, exe, addr
-                        output = Popen([addr2line_exe, '-e', exe, '--demangle', '-s', '-f', addr], stdout=PIPE).communicate()[0]
-                        out_lines = output.split('\n')
-                        line_info = '%s@%s' % (out_lines[0], out_lines[1])
-                        line_info = line_info.replace('<', '\<').replace('>', '\>')
-                        addr2line_map[addr] = line_info
+            if not in_trace:
+                continue
+            if line.find("Frame Address") != -1:
+                core_type = CoreType.BGQ
+                continue
+            elif line.find("Module+Offset") != -1:
+                core_type = CoreType.DYSECT
+                continue
+            line = line.strip('\n')
+            module = None
+            addr = None
+            function = "??"
+            source = "??"
+            line_num = 0
+            line_info = None
+            if line in addr2line_map:
+                function, line_info = addr2line_map[line]
+            match = re.match(patterns[core_type], line)
+            if line_info is None and core_type == CoreType.BGQ and match:
+                module = self.options["exe"]
+                addr = match.group(2)
+                line_info = ''
+            elif line_info is None and core_type == CoreType.DYSECT and match:
+                module = match.group(1)
+                offset = match.group(2)
+                addr = format(int(offset, 0), '#x')
+                line_info = ''
+            match = re.match(patterns[CoreType.FUNCTION_SOURCE_LINE], line)
+            if line_info is None and match:
+                core_type = CoreType.FUNCTION_SOURCE_LINE
+                function = match.group(1)
+                source = match.group(2)
+                try:
+                    line_num = int(match.group(3))
+                except:
+                    pass
+                line_info = '%s@%s:%d' %(function, source, line_num)
+            match = re.match(patterns[CoreType.LCF], line.replace("::", "STATDOUBLECOLON"))
+            if line_info is None and match:
+                core_type = CoreType.LCF
+                function = match.group(1).replace("STATDOUBLECOLON", "::")
+                source_line = match.group(2).replace("STATDOUBLECOLON", "::")
+                match = re.match(r"([^:]+):(.*)", source_line)
+                if match:
+                    source = match.group(1)
+                    line_num = match.group(2)
+                    try:
+                        line_num = int(match.group(2))
+                    except:
+                        pass
+                line_info = '%s@%s:%d' %(function, source, line_num)
+            match = re.match(patterns[CoreType.HEXADDR], line)
+            if line_info is None and match:
+                core_type = CoreType.HEXADDR
+                module = self.options["exe"]
+                addr = match.group(1)
+                line_info = ''
+            if line_info is None:
+                sys.stderr.write('\nWarning: format of stack frame "%s" not recognized\n\n' %(line))
+                function = line
+                line_info = line
+            elif core_type == CoreType.BGQ or core_type == CoreType.DYSECT or core_type == CoreType.HEXADDR:
+                output = Popen([addr2line_exe, '-e', module, '--demangle', '-s', '-f', addr], stdout=PIPE).communicate()[0]
+                out_lines = output.split('\n')
+                line_info = '%s@%s' % (out_lines[0], out_lines[1])
+                if line_info.find('@') != -1:
                     function = line_info[:line_info.find('@')]
-                line_number_trace.insert(0, line_info)
-                function_only_trace.insert(0, function)
+                elif line_info.find(':') != -1:
+                    function = line_info[:line_info.find(':')]
+                    line_info = line_info[line_info.find(':')+1:] + '@??'
+                else:
+                    function = line_info
+                    line_info = '??@??'
+            line_info = line_info.replace('<', '\<').replace('>', '\>')
+            addr2line_map[addr] = (function, line_info)
+            line_number_trace.insert(0, line_info)
+            function_only_trace.insert(0, function)
         return [function_only_traces, line_number_traces]
 
 

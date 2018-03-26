@@ -17,7 +17,7 @@ components=all
 downloads="\
 https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.3.tar.gz \
 https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz \
-ftp://ftp.cs.wisc.edu/paradyn/mrnet/mrnet_5.0.1.tar.gz \
+https://github.com/dyninst/mrnet/archive/v5.0.1.tar.gz \
 https://www.prevanders.net/libdwarf-20161124.tar.gz \
 https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz \
 https://github.com/dyninst/dyninst/archive/v9.3.2.tar.gz"
@@ -32,7 +32,7 @@ declare -A checkout_sha1=(\
 declare -A extra_configure_opts=(\
 ["launchmon-v1.0.2"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
 ["launchmon"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
-["mrnet_5.0.1"]="--enable-shared" \
+["v5.0.1"]="--enable-shared" \
 ["libdwarf-20161124"]="--enable-shared --disable-nonshared" \
 )
 
