@@ -2268,7 +2268,7 @@ host[1-10,12,15-20];otherhost[30]
             arg_list.append(filepath)
             cli_attach = False
             if self.STAT is not None:
-                if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH or application_option != STAT_SERIAL_GDB_ATTACH:
+                if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH or self.STAT.getApplicationOption() != STAT_SERIAL_GDB_ATTACH:
                     cli_attach = True
             if cli_attach is True:
                 arg_list.append('-e')
