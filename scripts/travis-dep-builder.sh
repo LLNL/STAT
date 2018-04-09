@@ -14,10 +14,11 @@ components=all
 #
 #https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz \
 # NOTE: openmpi and dyninst both take a long time to build and will likely cause travis to timeout after 50 minutes, so they should be built in two passes
+#https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.3.tar.gz \
 downloads="\
-https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.3.tar.gz \
+https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-3.0.1.tar.gz \
 https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz \
-ftp://ftp.cs.wisc.edu/paradyn/mrnet/mrnet_5.0.1.tar.gz \
+https://github.com/dyninst/mrnet/archive/v5.0.1.tar.gz \
 https://www.prevanders.net/libdwarf-20161124.tar.gz \
 https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz \
 https://github.com/dyninst/dyninst/archive/v9.3.2.tar.gz"
@@ -31,14 +32,14 @@ declare -A checkout_sha1=(\
 
 declare -A extra_configure_opts=(\
 ["launchmon-v1.0.2"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
-["launchmon"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
-["mrnet_5.0.1"]="--enable-shared" \
+["launchmon"]="--with-test-rm=orte --with-test-ncore-per-CN=3 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
+["v5.0.1"]="--enable-shared" \
 ["libdwarf-20161124"]="--enable-shared --disable-nonshared" \
 )
 
 # we install dyninst in a separate prefix b/c otherwise it will break on previously installed headers
 declare -A extra_cmake_opts=(\
-["v9.3.2"]="-D CMAKE_INSTALL_PREFIX=${prefix}/dyninst -D LIBDWARF_INCLUDE_DIR=${prefix}/include -D LIBDWARF_LIBRARIES=${prefix}/lib/libdwarf.so"
+["v9.3.2"]="-D CMAKE_INSTALL_PREFIX=${prefix}/dyninst -D LIBDWARF_INCLUDE_DIR=${prefix}/include -D LIBDWARF_LIBRARIES=${prefix}/lib/libdwarf.so -DCMAKE_BUILD_TYPE=Debug"
 )
 
 declare -r prog=${0##*/}
@@ -129,10 +130,10 @@ for pkg in $downloads; do
     if test "$components" = "dyninst" -a "$name" != "v9.3.2"; then
       continue
     fi
-    if test "$components" = "ompi" -a "$name" != "openmpi-2.0.3"; then
+    if test "$components" = "ompi" -a "$name" != "openmpi-3.0.1"; then
       continue
     fi
-    if test "$components" = "other" -a "$name" = "openmpi-2.0.3"; then
+    if test "$components" = "other" -a "$name" = "openmpi-3.0.1"; then
       continue
     fi
     if test "$components" = "other" -a "$name" = "v9.3.2"; then
@@ -153,7 +154,7 @@ for pkg in $downloads; do
       export CC=gcc-4.8
       export CXX=g++-4.8
     fi
-    if test "$name" = "openmpi-2.0.3"; then
+    if test "$name" = "openmpi-3.0.1"; then
       export CC=gcc-4.8
       export CXX=g++-4.8
     fi
@@ -263,9 +264,9 @@ for url in $checkouts; do
       fi
 # The hack below is only needed in the dist:trusty travis env
 # This will work around a ptrace Input/Output error when removing breakpoints
-#      if test "$name" = "launchmon"; then
-#        sed -i launchmon/src/linux/sdbg_linux_launchmon.cxx -e '2975 s|disable|//disable|'
-#      fi
+      if test "$name" = "launchmon"; then
+        sed -i launchmon/src/linux/sdbg_linux_launchmon.cxx -e '2975 s|disable|//disable|'
+      fi
       make PREFIX=${prefix} $make_opts &&
       make PREFIX=${prefix} $make_opts install &&
       make check PREFIX=${prefix} $make_opts

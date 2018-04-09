@@ -6,8 +6,10 @@ cache:
 
 sudo: required
 
-compiler:
-  - gcc-4.8
+env:
+  matrix:
+    - gcc-4.8
+      COVERAGE=On
 
 addons:
   apt:
@@ -18,6 +20,7 @@ addons:
       - libdwarf-dev
       - libboost-all-dev
       - swig
+      - lcov
       - graphviz
       - munge
       - gfortran
@@ -34,11 +37,12 @@ before_install:
   - sudo apt-get install -qq g++-4.8
   - export CC="gcc-4.8"
   - export CXX="g++-4.8"
+  - gem install coveralls-lcov
   - eval $(./scripts/travis-dep-builder.sh --printenv)
-  # travis has a 50 minute timeout for any single command, so we break up the build so it will partially cache as needed:
-#  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=ompi
-#  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=other
-#  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
+  # travis has a 50 minute timeout for any single command, so we break up the build so it will partially cache as needed. ompi+other can be done in one session, dyninst requires its own.
+  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=ompi
+  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=other
+  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
 
 script:
   - export CC=gcc-4.8
@@ -47,11 +51,13 @@ script:
   - ls -l $HOME/local/lib
   - ls -l $HOME/local/bin
   - ls -l $HOME/local/etc
+  - cat $HOME/local/etc/rm_openrte.conf
   - ls -l $HOME/local/include
   - cd $HOME/build/LLNL/STAT
   - ./bootstrap
   - export LDFLAGS=-Wl,-no-as-needed
-  - ./configure --prefix=$HOME/stat --with-stackwalker=$HOME/local/dyninst --with-mrnet=$HOME/local --with-graphlib=$HOME/local --with-launchmon=$HOME/local --enable-debug || cat config.log
+#  - if test "$COVERAGE" = "On" ; then export CFLAGS="-coverage" ; export CXXFLAGS="-coverage" ; fi
+  - ./configure --prefix=$HOME/stat --with-stackwalker=$HOME/local/dyninst --with-mrnet=$HOME/local --with-graphlib=$HOME/local --with-launchmon=$HOME/local --enable-debug --enable-code-coverage || cat config.log
   - make && make install
 
 after_script:
@@ -81,6 +87,7 @@ after_script:
   - cat stat_results/output.0000/04_output.0000.3D.dot
   - which mpirun
   - export LMON_FE_ENGINE_TIMEOUT=20
+  - sleep 40
   - mpirun -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 40 & $HOME/stat/bin/stat-cl -s 2 -l FE -l BE -L $HOME $!
   - wait $!
   - cat stat_results/mpi_ringtopo.0000/mpi_ringtopo.0000.top
@@ -90,9 +97,10 @@ after_script:
   - cat stat_results/mpi_ringtopo.0000/02_mpi_ringtopo.0000.2D.dot
   - cat stat_results/mpi_ringtopo.0000/03_mpi_ringtopo.0000.2D.dot
   - cat stat_results/mpi_ringtopo.0000/04_mpi_ringtopo.0000.3D.dot
-  - $HOME/stat/bin/stat-cl -s 5 -l FE -l BE -L $HOME -C mpirun -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 40
-  - ps x | grep mpirun | grep -v grep | cut -f 1 -d " " | xargs kill -18
+  - $HOME/stat/bin/stat-cl -s 5 -l FE -l BE -L $HOME -C $HOME/local/bin/mpirun -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 40 &
   - sleep 40
+  - kill -18 $!
+  - ps x | grep mpirun | grep -v grep | cut -f 1 -d " " | xargs kill -18
   - cat stat_results/mpi_ringtopo.0001/mpi_ringtopo.0001.top
   - cat stat_results/mpi_ringtopo.0001/mpi_ringtopo.0001.fulltop
   - cat stat_results/mpi_ringtopo.0001/00_mpi_ringtopo.0001.2D.dot
@@ -102,4 +110,6 @@ after_script:
   - cat stat_results/mpi_ringtopo.0001/04_mpi_ringtopo.0001.3D.dot
 #  The script test currently fails as openmpi does not support reattach when launched under a debugger (https://github.com/open-mpi/ompi/issues/3178)
 #  The script test may also hang with openmpi-2.0.3. This appears to be a race condition when deleting the stat_fe object
-  - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py || echo "failed with $?"
+  - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py -l $HOME/local/bin/mpirun || echo "failed with $?"
+  - bash <(curl -s https://codecov.io/bash)
+  #- if test "$COVERAGE" = "On" ; then bash <(curl -s https://codecov.io/bash) ; fi
