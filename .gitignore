@@ -99,3 +99,7 @@ test.pdf
 to_test
 dysect-experiment*
 /*.sh
+*.gcov
+*.gcda
+*.gcno
+hostnamefn.*
