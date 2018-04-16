@@ -38,11 +38,13 @@ before_install:
   - export CC="gcc-4.8"
   - export CXX="g++-4.8"
   - gem install coveralls-lcov
+  - pip install --user cpp-coveralls
   - eval $(./scripts/travis-dep-builder.sh --printenv)
   # travis has a 50 minute timeout for any single command, so we break up the build so it will partially cache as needed. ompi+other can be done in one session, dyninst requires its own.
+  - rm -rf $HOME/local/.cache
   - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=ompi
   - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=other
-  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
+#  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
 
 script:
   - export CC=gcc-4.8
@@ -86,6 +88,7 @@ after_script:
   - cat stat_results/output.0000/03_output.0000.2D.dot
   - cat stat_results/output.0000/04_output.0000.3D.dot
   - which mpirun
+  - mpirun --version
   - export LMON_FE_ENGINE_TIMEOUT=20
   - sleep 40
   - mpirun -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 40 & $HOME/stat/bin/stat-cl -s 2 -l FE -l BE -L $HOME $!
@@ -112,4 +115,5 @@ after_script:
 #  The script test may also hang with openmpi-2.0.3. This appears to be a race condition when deleting the stat_fe object
   - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py -l $HOME/local/bin/mpirun || echo "failed with $?"
   - bash <(curl -s https://codecov.io/bash)
+  - coveralls --exclude lib --exclude tests -i ./src --gcov-options '\-lp'
   #- if test "$COVERAGE" = "On" ; then bash <(curl -s https://codecov.io/bash) ; fi
