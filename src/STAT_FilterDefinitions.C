@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -53,11 +53,7 @@ extern int *gStatGraphRoutinesEdgeLabelWidths;
 extern int gStatGraphRoutinesCurrentIndex;
 
 //! The MRNet format string for the STAT filter
-#ifdef MRNET40
 const char *statMerge_format_string = "%Ac %d %d %ud";
-#else
-const char *statMerge_format_string = "%ac %d %d %ud";
-#endif
 
 //! The MRNet format string for the STAT version check
 const char *STAT_checkVersion_format_string = "%d %d %d %d %d";
@@ -231,10 +227,8 @@ void filterInit(vector<PacketPtr> &inputPackets,
                     gStatOutFp = fopen(fileName, "w");
                     if (gStatOutFp == NULL)
                         cpPrintMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open FE log file %s\n", strerror(errno), fileName);
-#ifdef MRNET40
                     if (gLogging & STAT_LOG_MRN)
                         mrn_printf_init(gStatOutFp);
-#endif
                     set_OutputLevel(mrnetOutputLevel);
                 }
             }
@@ -392,13 +386,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
             currentPacket = inputPackets[child];
 
             /* Deserialize edge in packet element [0] */
-#ifdef MRNET40
             byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
-#else
-            unsigned int unsignedIntByteArrayLen;
-            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &unsignedIntByteArrayLen));
-            byteArrayLen = unsignedIntByteArrayLen;
-#endif
             gStatGraphRoutinesTotalWidth = totalWidth;
             gStatGraphRoutinesEdgeLabelWidths = edgeLabelWidths;
             gStatGraphRoutinesCurrentIndex = rank;
@@ -439,13 +427,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
             currentPacket = inputPackets[child];
 
             /* Deserialize graph in packet element [0] */
-#ifdef MRNET40
             byteArray = (char *)((*currentPacket)[0]->get_array(&type, &byteArrayLen));
-#else
-            unsigned int unsignedIntByteArrayLen;
-            byteArray = (char *)((*currentPacket)[0]->get_array(&type, &unsignedIntByteArrayLen));
-            byteArrayLen = unsignedIntByteArrayLen;
-#endif
             if (sampleType & STAT_SAMPLE_COUNT_REP)
                 graphlibError = graphlib_deserializeBasicGraph(&currentGraph, gStatCountRepFunctions, byteArray, byteArrayLen);
             else
@@ -498,11 +480,7 @@ void statMerge(vector<PacketPtr> &inputPackets,
         }
     } /* else from if (tag == PROT_SEND_NODE_IN_EDGE_RESP) */
 
-#ifdef MRNET40
     PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), tag, "%Ac %d %d %ud", sOutputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
-#else
-    PacketPtr newPacket(new Packet(inputPackets[0]->get_StreamId(), tag, "%ac %d %d %ud", sOutputByteArray, outputByteArrayLen, totalWidth, outputRank, sampleType));
-#endif
     outputPackets.push_back(newPacket);
 
     if (edgeLabelWidths != NULL)
@@ -571,11 +549,7 @@ void fileRequestUpStream(vector<PacketPtr> &inputPackets,
                 pthread_mutex_unlock(&gFileNameToContentsMapMutex);
                 cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending cached result for %s in reverse.\n", fileName);
                 PacketPtr newPacketReverse(new Packet(inputPackets[0]->get_StreamId(),
-#ifdef MRNET40
                                            inputPackets[0]->get_Tag(), "%Ac %s", gFileNameToContentsMapIter->second.first,
-#else
-                                           inputPackets[0]->get_Tag(), "%ac %s", gFileNameToContentsMapIter->second.first,
-#endif
                                            gFileNameToContentsMapIter->second.second, fileName));
                 outputPacketsReverse.push_back(newPacketReverse);
             }
@@ -608,11 +582,7 @@ void fileRequestUpStream(vector<PacketPtr> &inputPackets,
 }
 
 //! The MRNet format string for the file request upstream filter
-#ifdef MRNET40
 const char *fileRequestDownStream_format_string = "%Ac %s";
-#else
-const char *fileRequestDownStream_format_string = "%ac %s";
-#endif
 
 //! Handles file contents sent from parent, cachces contents if last level of CPs
 /*!
@@ -654,11 +624,7 @@ void fileRequestDownStream(vector<PacketPtr> &inputPackets,
         for (i = 0; i < inputPackets.size(); i++)
         {
             currentPacket = inputPackets[i];
-#ifdef MRNET40
             currentPacket->unpack("%Ac %s", &fileContents, &fileContentsLength, &fileName);
-#else
-            currentPacket->unpack("%ac %s", &fileContents, &fileContentsLength, &fileName);
-#endif
             if (topology.get_Network()->is_LocalNodeInternal())
             {
                 cpPrintMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "caching contents of %s at CP length %lu\n", fileName, fileContentsLength);

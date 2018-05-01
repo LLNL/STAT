@@ -3,10 +3,10 @@
 """@package STATGUI
 A GUI for driving the Stack Trace Analysis Tool."""
 
-__copyright__ = """Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -20,9 +20,9 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
-__version_major__ = 3
+__version_major__ = 4
 __version_minor__ = 0
-__version_revision__ = 1
+__version_revision__ = 0
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import STAThelper
@@ -40,7 +40,7 @@ from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_
 import sys
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_GDB_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_GDB_ATTACH, STAT_SERIAL_GDB_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
 HAVE_OPENMP_SUPPORT = True
 try:
     from STAT import STAT_SAMPLE_OPENMP
@@ -174,6 +174,7 @@ class STATGUI(STATDotWindow):
                    'Trace Frequency (ms)':             1000,
                    'Num Retries':                      5,
                    'Retry Frequency (us)':             10,
+                   'Max Threads Per Daemon':           512,
                    'With Threads':                     False,
                    'With OpenMP':                      False,
                    'Gather Python Traces':             False,
@@ -488,7 +489,7 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(text_view)
         vbox.pack_start(frame, False, False, 0)
 
-        if self.STAT.getApplicationOption() != STAT_SERIAL_ATTACH:
+        if self.STAT.getApplicationOption() != STAT_SERIAL_ATTACH and self.STAT.getApplicationOption() != STAT_SERIAL_GDB_ATTACH:
             frame = gtk.Frame('Job Launcher (host:PID)')
             text_view = gtk.TextView()
             text_buffer = gtk.TextBuffer()
@@ -546,7 +547,12 @@ host[1-10,12,15-20];otherhost[30]
 
     def on_add_serial_process(self, widget, attach_dialog, serial_process_list_entry):
         text = serial_process_list_entry.get_text()
-        text += ' %s@%s:%s ' % (self.options['Serial Exe'], self.options['Remote Host'], self.options['Serial PID'])
+        exe = self.options['Serial Exe']
+        if (exe.find(' \\_') != -1):
+            exe = exe.split()[1]
+        else:
+            exe = exe.split()[0]
+        text += ' %s@%s:%s ' % (exe, self.options['Remote Host'], self.options['Serial PID'])
         text = serial_process_list_entry.set_text(text)
         attach_dialog.show_all()
 
@@ -652,9 +658,12 @@ host[1-10,12,15-20];otherhost[30]
             my_procs = []
             pid_depth = {}
             for pid in psutil.pids():
-                proc = psutil.Process(pid)
-                if proc.username() == os.getlogin():
-                    my_procs.append(proc)
+                try:
+                    proc = psutil.Process(pid)
+                    if proc.username() == os.getlogin():
+                        my_procs.append(proc)
+                except:
+                    pass
             handled_procs = []
             for proc in my_procs:
                 if proc in handled_procs:
@@ -906,7 +915,10 @@ host[1-10,12,15-20];otherhost[30]
                 self.STAT = STAT_FrontEnd()
             for process in self.process_list.split():
                 self.STAT.addSerialProcess(process)
-            self.attach_cb(None, False, True, STAT_SERIAL_ATTACH)
+            if self.options['GDB BE'] is True:
+                self.attach_cb(None, False, True, STAT_SERIAL_GDB_ATTACH)
+            else:
+                self.attach_cb(None, False, True, STAT_SERIAL_ATTACH)
         else:
             self.attach_cb(None, False, False, STAT_ATTACH)
         return True
@@ -1058,7 +1070,7 @@ host[1-10,12,15-20];otherhost[30]
         button = gtk.Button("Add Process to Attach List")
         hbox.pack_start(button, True, True, 10)
         self.serial_process_list_entry = gtk.Entry()
-        self.serial_process_list_entry.set_max_length(1024)
+        self.serial_process_list_entry.set_max_length(8192)
         self.serial_process_list_entry.set_text(self.options['Serial Process List'])
         button.connect("clicked", lambda w: self.on_add_serial_process(w, attach_dialog, self.serial_process_list_entry))
         vbox.pack_start(hbox, False, False, 10)
@@ -1195,7 +1207,11 @@ host[1-10,12,15-20];otherhost[30]
             self.STAT = STAT_FrontEnd()
         for process in processes:
             self.STAT.addSerialProcess(process)
-        self.attach_cb(attach_dialog, False, True, STAT_SERIAL_ATTACH)
+        print 'serial attach'
+        if self.options['GDB BE'] is True:
+            self.attach_cb(attach_dialog, False, True, STAT_SERIAL_GDB_ATTACH)
+        else:
+            self.attach_cb(attach_dialog, False, True, STAT_SERIAL_ATTACH)
         return True
 
     def launch_application_cb(self, entry=None, attach_dialog=None, in_args=None):
@@ -1301,7 +1317,7 @@ host[1-10,12,15-20];otherhost[30]
         self.STAT.setFilterPath(self.options['Filter Path'])
         os.environ['STAT_GDB'] = self.options['GDB Path']
         log_type = STAT_LOG_NONE
-        if self.options['GDB BE']:
+        if self.options['GDB BE'] and application_option != STAT_SERIAL_GDB_ATTACH:
             application_option = STAT_GDB_ATTACH
         if self.options['Log Frontend']:
             log_type |= STAT_LOG_FE
@@ -1388,7 +1404,7 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return False
 
-        if application_option != STAT_SERIAL_ATTACH:
+        if application_option != STAT_SERIAL_ATTACH and application_option != STAT_SERIAL_GDB_ATTACH:
             while 1:
                 run_gtk_main_loop()
                 ret = self.STAT.connectMrnetTree(False)
@@ -1522,14 +1538,11 @@ host[1-10,12,15-20];otherhost[30]
 
     def update_sample_options(self):
         """Update sample options."""
-        try:
-            self.options['Num Traces'] = int(self.spinners['Num Traces'].get_value())
-            self.options['Trace Frequency (ms)'] = int(self.spinners['Trace Frequency (ms)'].get_value())
-            self.options['Num Retries'] = int(self.spinners['Num Retries'].get_value())
-            self.options['Retry Frequency (us)'] = int(self.spinners['Retry Frequency (us)'].get_value())
-            self.options['Run Time Before Sample (sec)'] = int(self.spinners['Run Time Before Sample (sec)'].get_value())
-        except:
-            pass
+        for option in ['Num Retries', 'Retry Frequency (us)', 'Max Threads Per Daemon', 'Run Time Before Sample (sec)', 'Num Traces', 'Trace Frequency (ms)']:
+            try:
+                self.options[option] = int(self.spinners[option].get_value())
+            except:
+                pass
 
     def sleep(self, seconds):
         """Sleep for specified time with a progress bar."""
@@ -1608,7 +1621,7 @@ host[1-10,12,15-20];otherhost[30]
             sample_type += STAT_SAMPLE_PYTHON
         if self.options['Clear On Sample']:
             sample_type += STAT_SAMPLE_CLEAR_ON_SAMPLE
-        ret = self.STAT.sampleStackTraces(sample_type, 1, 1, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
+        ret = self.STAT.sampleStackTraces(sample_type, 1, 1, self.options['Num Retries'], self.options['Retry Frequency (us)'], self.options['Max Threads Per Daemon'], False, var_spec_to_string(self.var_spec))
 
         if ret != STAT_OK:
             show_error_dialog('Failed to sample stack trace:\n%s' % self.STAT.getLastErrorMessage(), self)
@@ -1699,7 +1712,7 @@ host[1-10,12,15-20];otherhost[30]
                 sample_type += STAT_SAMPLE_PYTHON
             if self.options['Clear On Sample']:
                 sample_type += STAT_SAMPLE_CLEAR_ON_SAMPLE
-            ret = self.STAT.sampleStackTraces(sample_type, 1, 0, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
+            ret = self.STAT.sampleStackTraces(sample_type, 1, 0, self.options['Num Retries'], self.options['Retry Frequency (us)'], self.options['Max Threads Per Daemon'], False, var_spec_to_string(self.var_spec))
             if ret != STAT_OK:
                 if ret == STAT_APPLICATION_EXITED:
                     ret_val = STAT_APPLICATION_EXITED
@@ -2255,7 +2268,7 @@ host[1-10,12,15-20];otherhost[30]
             arg_list.append(filepath)
             cli_attach = False
             if self.STAT is not None:
-                if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH:
+                if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH or self.STAT.getApplicationOption() != STAT_SERIAL_GDB_ATTACH:
                     cli_attach = True
             if cli_attach is True:
                 arg_list.append('-e')
@@ -2277,7 +2290,12 @@ host[1-10,12,15-20];otherhost[30]
                 for rank in subset_list:
                     str_list += '%s ' % (rank)
                 arg_list.append('-default_parallel_attach_subset=%s' % (str_list))
-                arg_list.append(self.options['Launcher Exe'].split()[0])
+                exe = self.options['Launcher Exe']
+                if (exe.find(' \\_') != -1):
+                    exe = exe.split()[1]
+                else:
+                    exe = exe.split()[0]
+                arg_list.append(exe)
         elif debugger == 'DDT':
             filepath = self.options['DDT Path']
             if not filepath or not os.access(filepath, os.X_OK):
@@ -2348,11 +2366,12 @@ host[1-10,12,15-20];otherhost[30]
         """Pack the sample options into the specified vbox."""
         frame = gtk.Frame('Per Sample Options')
         vbox2 = gtk.VBox()
-        self.pack_check_button(vbox2, 'With Threads', False, False, 5)
+        self.pack_check_button(vbox2, 'With Threads', False, False, 0)
+        self.pack_spinbutton(vbox2, 'Max Threads Per Daemon')
         if HAVE_OPENMP_SUPPORT:
-            self.pack_check_button(vbox2, 'With OpenMP', False, False, 5)
+            self.pack_check_button(vbox2, 'With OpenMP', False, False, 0)
         if HAVE_GDB_SUPPORT:
-            self.pack_check_button(vbox2, 'With CUDA Quick', False, False, 5)
+            self.pack_check_button(vbox2, 'With CUDA Quick', False, False, 0)
         self.pack_check_button(vbox2, 'Gather Python Traces', False, False, 5)
         frame2 = gtk.Frame('Stack Frame (node) Sample Options')
         vbox3 = gtk.VBox()

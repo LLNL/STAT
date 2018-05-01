@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -78,7 +78,6 @@ graphlib_graph_p statNewGraph(graphlib_functiontable_p functions)
         fprintf(stderr, "Error creating new graph\n");
         return NULL;
     }
-#ifdef GRAPHLIB_3_0
     static int init = -1;
     init++;
     for (i = 0; i < gNumNodeAttrs; i++)
@@ -99,7 +98,6 @@ graphlib_graph_p statNewGraph(graphlib_functiontable_p functions)
             return NULL;
         }
     }
-#endif
     return retGraph;
 
 }
@@ -114,7 +112,6 @@ graphlib_graph_p createRootedGraph(unsigned int sampleType)
     else
         retGraph = statNewGraph(gStatBitVectorFunctions);
 
-#ifdef GRAPHLIB_3_0
     int index;
     graphlib_nodeattr_t nodeAttr = {1, 0, 20, GRC_LIGHTGREY, 0, 0, (char *)"/", -1, NULL};
 
@@ -128,22 +125,24 @@ graphlib_graph_p createRootedGraph(unsigned int sampleType)
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error getting node attribute index for 'function'\n");
+        free(nodeAttr.attr_values);
         return NULL;
     }
     nodeAttr.attr_values[index] = strdup("/");
-#else
-    graphlib_nodeattr_t nodeAttr = {1, 0, 20, GRC_LIGHTGREY, 0, 0, (char *)"/", -1};
-#endif
+    if (nodeAttr.attr_values[index] == NULL)
+    {
+        fprintf(stderr, "Failed to strdup('/') for sentinal node %s\n", strerror(errno));
+        free(nodeAttr.attr_values);
+        return NULL;
+    }
     graphlibError = graphlib_addNode(retGraph, 0, &nodeAttr);
+    free(nodeAttr.attr_values[index]);
+    free(nodeAttr.attr_values);
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error adding sentinel node to graph\n");
         return NULL;
     }
-#ifdef GRAPHLIB_3_0
-    free(nodeAttr.attr_values[index]);
-    free(nodeAttr.attr_values);
-#endif
     return retGraph;
 }
 
@@ -193,7 +192,6 @@ void statInitializeBitVectorFunctions()
     gStatBitVectorFunctions->copy_edge = statCopyEdge;
     gStatBitVectorFunctions->free_edge = statFreeEdge;
     gStatBitVectorFunctions->edge_checksum = statEdgeCheckSum;
-#ifdef GRAPHLIB_3_0
     gStatBitVectorFunctions->serialize_node_attr = statSerializeNodeAttr;
     gStatBitVectorFunctions->serialize_node_attr_length = statSerializeNodeAttrLength;
     gStatBitVectorFunctions->deserialize_node_attr = statDeserializeNodeAttr;
@@ -210,7 +208,6 @@ void statInitializeBitVectorFunctions()
     gStatBitVectorFunctions->free_edge_attr = statFreeEdgeAttr;
     gNumNodeAttrs = sizeof(gNodeAttrs) / sizeof(gNodeAttrs[0]);
     gNumEdgeAttrs = sizeof(gEdgeAttrs) / sizeof(gEdgeAttrs[0]);
-#endif
 }
 
 void statFreeBitVectorFunctions()
@@ -245,7 +242,6 @@ void statInitializeMergeFunctions()
     gStatMergeFunctions->copy_edge = statCopyEdge;
     gStatMergeFunctions->free_edge = statFreeEdge;
     gStatMergeFunctions->edge_checksum = statEdgeCheckSum;
-#ifdef GRAPHLIB_3_0
     gStatMergeFunctions->serialize_node_attr = statSerializeNodeAttr;
     gStatMergeFunctions->serialize_node_attr_length = statSerializeNodeAttrLength;
     gStatMergeFunctions->deserialize_node_attr = statDeserializeNodeAttr;
@@ -262,7 +258,6 @@ void statInitializeMergeFunctions()
     gStatMergeFunctions->free_edge_attr = statFreeEdgeAttr;
     gNumNodeAttrs = sizeof(gNodeAttrs) / sizeof(gNodeAttrs[0]);
     gNumEdgeAttrs = sizeof(gEdgeAttrs) / sizeof(gEdgeAttrs[0]);
-#endif
 }
 
 void statFreeMergeFunctions()
@@ -297,7 +292,6 @@ void statInitializeReorderFunctions()
     gStatReorderFunctions->copy_edge = statCopyEdgeInitializeEmpty;
     gStatReorderFunctions->free_edge = statFreeEdge;
     gStatReorderFunctions->edge_checksum = statEdgeCheckSum;
-#ifdef GRAPHLIB_3_0
     gStatReorderFunctions->serialize_node_attr = statSerializeNodeAttr;
     gStatReorderFunctions->serialize_node_attr_length = statSerializeNodeAttrLength;
     gStatReorderFunctions->deserialize_node_attr = statDeserializeNodeAttr;
@@ -314,7 +308,6 @@ void statInitializeReorderFunctions()
     gStatReorderFunctions->free_edge_attr = statFreeEdgeAttr;
     gNumNodeAttrs = sizeof(gNodeAttrs) / sizeof(gNodeAttrs[0]);
     gNumEdgeAttrs = sizeof(gEdgeAttrs) / sizeof(gEdgeAttrs[0]);
-#endif
 }
 
 void statFreeReorderFunctions()
@@ -349,7 +342,6 @@ void statInitializeCountRepFunctions()
     gStatCountRepFunctions->copy_edge = statCopyCountRepEdge;
     gStatCountRepFunctions->free_edge = statFreeCountRepEdge;
     gStatCountRepFunctions->edge_checksum = statCountRepEdgeCheckSum;
-#ifdef GRAPHLIB_3_0
     gStatCountRepFunctions->serialize_node_attr = statSerializeNodeAttr;
     gStatCountRepFunctions->serialize_node_attr_length = statSerializeNodeAttrLength;
     gStatCountRepFunctions->deserialize_node_attr = statDeserializeNodeAttr;
@@ -366,7 +358,6 @@ void statInitializeCountRepFunctions()
     gStatCountRepFunctions->free_edge_attr = statFreeEdgeAttr;
     gNumNodeAttrs = sizeof(gNodeAttrs) / sizeof(gNodeAttrs[0]);
     gNumEdgeAttrs = sizeof(gEdgeAttrs) / sizeof(gEdgeAttrs[0]);
-#endif
 }
 
 void statFreeCountRepFunctions()
@@ -621,7 +612,7 @@ void statFreeEdge(void *edge)
         free(e->bitVector);
     free(e);
 }
-#ifdef GRAPHLIB_3_0
+
 long statEdgeCheckSum(const char *key, const void *edge)
 {
     unsigned int i;
@@ -644,20 +635,6 @@ long statEdgeCheckSum(const char *key, const void *edge)
     }
     return longRet;
 }
-#else
-long statEdgeCheckSum(const void *edge)
-{
-    int i;
-    long longRet = 0;
-    StatBitVectorEdge_t *e = (StatBitVectorEdge_t *)edge;
-
-    if (edge == NULL)
-        return 0;
-    for (i = 0; i < e->length; i++)
-        longRet = longRet + e->bitVector[i] * (e->length - i + 1);
-    return longRet;
-}
-#endif
 
 void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLength)
 {
@@ -818,7 +795,6 @@ void statFreeCountRepEdge(void *edge)
         free((StatCountRepEdge_t *) edge);
 }
 
-#ifdef GRAPHLIB_3_0
 long statCountRepEdgeCheckSum(const char *key, const void *edge)
 {
     unsigned int i;
@@ -842,14 +818,6 @@ long statCountRepEdgeCheckSum(const char *key, const void *edge)
     if (key == NULL)
         return *(int64_t *)edge;
 }
-#else
-long statCountRepEdgeCheckSum(const void *edge)
-{
-    if (edge == NULL)
-        return 0;
-    return ((StatCountRepEdge_t *)edge)->checksum;
-}
-#endif
 
 StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int))
 {
@@ -883,7 +851,6 @@ StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativ
     return crRet;
 }
 
-#ifdef GRAPHLIB_3_0
 void statSerializeNodeAttr(const char *key, char *buf, const void *node)
 {
   if (node !=  NULL)
@@ -1301,4 +1268,3 @@ void *statMergeEdgeAttrOrdered(const char *key, void *edge1, const void *edge2)
     }
     return NULL;
 }
-#endif

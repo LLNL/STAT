@@ -3,10 +3,10 @@
 """@package STATview
 Visualizes dot graphs outputted by STAT."""
 
-__copyright__ = """Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -20,9 +20,9 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
-__version_major__ = 3
+__version_major__ = 4
 __version_minor__ = 0
-__version_revision__ = 1
+__version_revision__ = 0
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import string
@@ -293,10 +293,8 @@ def get_cache_file_path(file_dir, source):
 def dot_file_path_split(current_graph):
     file_path = current_graph.cur_filename
     if file_path is None or file_path == '':
-        show_error_dialog('.dot file not currently loaded, no application files to cache')
         return (None, None)
     elif file_path == 'redraw.dot':
-        show_error_dialog('caching disabled for redrawn file, please click on tab with original .dot file')
         return (None, None)
     file_dir, file_name = os.path.split(file_path)
     return (file_dir, file_name)
@@ -1310,32 +1308,32 @@ class STATGraph(xdot.Graph):
                     font_color_string = color_to_string(font_color)
                     fill_color_string = color_to_string(fill_color)
                     line_nums.append((int(node_iter.attrs["line"].split('\\n')[i].strip(":")), fill_color_string, font_color_string))
-        found = False
         error_msg = ''
         file_dir, file_name = dot_file_path_split(self)
-        cache_file_path = get_cache_file_path(file_dir, source)
-        if os.path.exists(cache_file_path):
-            source_full_path = cache_file_path
-        else:
+        source_full_path = None
+        if file_dir is not None and file_name is not None:
+            cache_file_path = get_cache_file_path(file_dir, source)
+            if os.path.exists(cache_file_path):
+                source_full_path = cache_file_path
+        if source_full_path == None:
             if os.path.isabs(source):
                 if os.path.exists(source):
                     source_full_path = source
-                    found = True
                 else:
                     error_msg = 'Full path %s does not exist\n' % source
-            if found is False:
+            if source_full_path is None:
                 # find the full path to the file
                 source = os.path.basename(source)
                 for sp in search_paths['source']:
                     if not os.path.exists(sp):
                         continue
-                    if os.path.exists(sp + '/' + source):
-                        found = True
+                    tmp_source_full_path = sp + '/' + source
+                    if os.path.exists(tmp_source_full_path):
+                        source_full_path = tmp_source_full_path
                         break
-                if found is False:
+                if source_full_path is None:
                     show_error_dialog('%sFailed to find file "%s" in search paths.  Please add the source file search path for this file\n' % (error_msg, source))
                     return True
-                source_full_path = sp + '/' + source
 
         # create the source view window
         if self.source_view_window is None:
@@ -3158,7 +3156,7 @@ entered as a regular expression"""
         spinner = gtk.SpinButton(adj, 0, 0)
         spinner.set_value(self.options[option])
         hbox.pack_start(spinner, False, False, 0)
-        box.pack_start(hbox, False, False, 10)
+        box.pack_start(hbox, False, False, 0)
         self.spinners[option] = spinner
 
     def pack_combo_box(self, box, option):

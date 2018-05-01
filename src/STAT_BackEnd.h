@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -607,13 +607,11 @@ class STAT_BackEnd
         MRN::Port parentPort_;          /*!< the MRNet parent's port */
         MRN::Stream *broadcastStream_;  /*!< the main broadcast and
                                              acknowledgement stream */
-#ifdef GRAPHLIB_3_0
         std::map<int, std::map<std::string, std::string> > nodeIdToAttrs_;
         std::map<int, std::map<std::string, void *> > edgeIdToAttrs_;
         std::map<int, std::map<std::string, void *> > edgeIdToAttrs3d_;
         unsigned int threadBvLength_;
         std::vector<Dyninst::THR_ID> threadIds_;
-#endif
         std::map<int, std::string> nodes2d_; /*!< the 2D prefix tree nodes */
         std::map<int, std::string> nodes3d_; /*!< the 3D prefix tree nodes */
         std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges2d_; /*!< the 2D prefix tree edges */

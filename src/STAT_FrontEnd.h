@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -63,7 +63,8 @@ typedef enum {
     STAT_LAUNCH = 0,
     STAT_ATTACH,
     STAT_SERIAL_ATTACH,
-    STAT_GDB_ATTACH
+    STAT_GDB_ATTACH,
+    STAT_SERIAL_GDB_ATTACH
 } StatLaunch_t;
 
 //! An enum for MRNet topology specification type
@@ -294,13 +295,14 @@ class STAT_FrontEnd
             \param nRetries - the number of times to attempt to gather a
                    complete trace
             \param retryFrequency - the amount of time to wait between retries
+            \param maxDaemonNumThreads - the max number of threads per daemon
             \param blocking - [optional] set to true if blocks until all BE
                    acks received
             \param variableSpecification - [optional] a list of variables to
                    gather along with the traces
             \return STAT_OK on success
         */
-        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking = true, const char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int maxDaemonNumThreads, unsigned int retryFrequency, bool blocking = true, const char *variableSpecification = "NULL");
 
         //! Collect the most recent stack trace from all daemons
         /*!

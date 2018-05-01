@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -43,6 +43,7 @@ typedef struct
     unsigned int nRetries;                  /*!< the number of retries per sample */
     unsigned int retryFrequency;            /*!< the time between retries */
     unsigned int nDaemonsPerNode;           /*!< the number of retries per sample */
+    unsigned int maxDaemonNumThreads;       /*!< the max # threads per daemon */
     char topologySpecification[BUFSIZE];    /*!< the topology specification */
     char *remoteNode;                       /*!< the remote node running the job launcher */
     char *nodeList;                         /*!< the CP node list */
@@ -152,7 +153,7 @@ int main(int argc, char **argv)
     statFrontEnd->addPerfData(invocationString.c_str(), -1.0);
 
     /* If we're just attaching, sleep here */
-    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH)
+    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH || statArgs->applicationOption == STAT_SERIAL_GDB_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH)
         mySleep(statArgs->sleepTime);
 
     /* Launch the Daemons */
@@ -321,7 +322,7 @@ int main(int argc, char **argv)
             }
 
             /* Sample the traces */
-            statError = statFrontEnd->sampleStackTraces(statArgs->sampleType, 1, statArgs->traceFrequency, statArgs->nRetries, statArgs->retryFrequency);
+            statError = statFrontEnd->sampleStackTraces(statArgs->sampleType, 1, statArgs->traceFrequency, statArgs->nRetries, statArgs->retryFrequency, statArgs->maxDaemonNumThreads);
             if (statError != STAT_OK)
             {
                 if (statError == STAT_APPLICATION_EXITED)
@@ -416,6 +417,8 @@ void printUsage()
     fprintf(stderr, "  -P, --withpc\t\t\tsample program counter in addition to\n\t\t\t\tfunction name\n");
     fprintf(stderr, "  -m, --withmoduleoffset\tsample module offset only\n");
     fprintf(stderr, "  -i, --withline\t\tsample source line number in addition\n\t\t\t\tto function name\n");
+    fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
+    fprintf(stderr, "  -H, --maxdaemonthreads <num>\tmax number of threads per daemon\n");
 #ifdef OMP_STACKWALKER
     fprintf(stderr, "  -o, --withopenmp\t\ttranslate OpenMP stacks to logical application\n\t\t\t\tview\n");
 #endif
@@ -425,7 +428,6 @@ void printUsage()
 #endif
     fprintf(stderr, "  -c, --comprehensive\t\tgather 5 traces: function only; module offset;\n\t\t\t\tfunction + pc; function + line; and 3D function\n\t\t\t\tonly\n");
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
-    fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
     fprintf(stderr, "  -y, --pythontrace\t\tgather Python script level stack traces\n");
     fprintf(stderr, "  -s, --sleep <secs>\t\tsleep time before attaching and gathering traces\n");
     fprintf(stderr, "\nTopology options:\n");
@@ -514,6 +516,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"usertopology",        required_argument,  0, 'u'},
         {"depth",               required_argument,  0, 'd'},
         {"daemonspernode",      required_argument,  0, 'z'},
+        {"maxdaemonthreads",    required_argument,  0, 'H'},
 #ifdef DYSECTAPI
         {"dysectapi",           required_argument, 0, 'X'},
         {"dysectapi_batch",     required_argument, 0, 'b'},
@@ -529,6 +532,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     statArgs->nRetries = 0;
     statArgs->nDaemonsPerNode = 1;
     statArgs->retryFrequency = 100;
+    statArgs->maxDaemonNumThreads = 512;
     statArgs->sampleType = 0;
     statArgs->topologyType = STAT_TOPOLOGY_AUTO;
     snprintf(statArgs->topologySpecification, BUFSIZE, "0");
@@ -536,9 +540,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     while (1)
     {
 #ifdef DYSECTAPI
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:X:b:Y:N:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:H:X:b:Y:N:", longOptions, &optionIndex);
 #else
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:N:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:H:N:", longOptions, &optionIndex);
 #endif
         if (opt == -1)
             break;
@@ -714,6 +718,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         case 'z':
             statArgs->nDaemonsPerNode = atoi(optarg);
             break;
+        case 'H':
+            statArgs->maxDaemonNumThreads = atoi(optarg);
+            break;
 #ifdef DYSECTAPI
         case 'X':
             setenv("STAT_GROUP_OPS", "1", 1);
@@ -763,7 +770,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     if (optind == argc - 1 && (createJob == false && serialJob == false))
     {
 #ifdef STAT_GDB_BE
-        if (statArgs->applicationOption != STAT_GDB_ATTACH)
+        if (statArgs->applicationOption != STAT_GDB_ATTACH && statArgs->applicationOption != STAT_SERIAL_GDB_ATTACH)
             statArgs->applicationOption = STAT_ATTACH;
 #else
         statArgs->applicationOption = STAT_ATTACH;
@@ -794,7 +801,10 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     }
     else if (optind < argc && serialJob == true)
     {
-        statArgs->applicationOption = STAT_SERIAL_ATTACH;
+        if (statArgs->applicationOption == STAT_GDB_ATTACH)
+            statArgs->applicationOption = STAT_SERIAL_GDB_ATTACH;
+        else
+            statArgs->applicationOption = STAT_SERIAL_ATTACH;
         for (i = optind; i < argc; i++)
             statFrontEnd->addSerialProcess(argv[i]);
     }

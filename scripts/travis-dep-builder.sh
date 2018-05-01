@@ -31,7 +31,11 @@ declare -A checkout_sha1=(\
 
 declare -A extra_configure_opts=(\
 ["launchmon-v1.0.2"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
+<<<<<<< HEAD
 ["launchmon"]="--with-test-rm=orte --with-test-ncore-per-CN=3 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
+=======
+["launchmon"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
+>>>>>>> release-4.0
 ["v5.0.1"]="--enable-shared" \
 ["libdwarf-20161124"]="--enable-shared --disable-nonshared" \
 )

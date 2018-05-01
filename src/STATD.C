@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -73,8 +73,16 @@ int main(int argc, char **argv)
         invocationString.append(" ");
     }
     if (argc > 2)
-        if (strcmp(argv[1], "-s") == 0 || strcmp(argv[1], "--serial") == 0)
-            launchType = STATD_MRNET_LAUNCH;
+    {
+        for (i = 0; i < argc; i++)
+        {
+            if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--serial") == 0)
+            {
+                launchType = STATD_MRNET_LAUNCH;
+                break;
+            }
+        }
+    }
 
     statError = statInit(&argc, &argv, launchType);
     if (statError != STAT_OK)
@@ -202,7 +210,7 @@ int main(int argc, char **argv)
             statError = statBackEnd->addSerialProcess(serialProcesses[j].c_str());
             if (statError != STAT_OK)
             {
-                statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");
+                statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed add serial process %s\n", serialProcesses[j].c_str());
                 delete statBackEnd;
                 statFinalize(launchType);
                 return statError;

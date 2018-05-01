@@ -160,6 +160,14 @@
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>-H, --maxdaemonthreads <replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Allow sampling of up to <replaceable class="parameter">count</replaceable> threads per daemon.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>-y, --withpython</term>
     <listitem>
         <para>

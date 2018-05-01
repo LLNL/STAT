@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -169,7 +169,6 @@ void *statCopyNode(const void *node);
 */
 void statFreeNode(void *node);
 
-#ifdef GRAPHLIB_3_0
 int statGetBitVectorCount(StatBitVectorEdge_t *edge);
 
 //! Serialize the STAT node object into a buffer
@@ -234,7 +233,6 @@ void statFreeNodeAttr(const char *key, void *node);
     \param currentGraph - the current graph object
 */
 void statFreeNodeAttrs(void **nodeAttr, graphlib_graph_p currentGraph);
-#endif
 
 //! Serialize a STAT edge object into a buffer
 /*!
@@ -285,7 +283,6 @@ void *statCopyEdge(const void *edge);
 */
 void statFreeEdge(void *edge);
 
-#ifdef GRAPHLIB_3_0
 //! Serialize a STAT edge object into a buffer
 /*!
     \param key - the attribute key
@@ -356,14 +353,6 @@ void statFreeEdgeAttrs(void **edgeAttr, graphlib_graph_p currentGraph);
     \return the checksum of the edge
 */
 long statEdgeCheckSum(const char *key, const void *edge);
-#else
-//! Calculate a checksum of a STAT edge object
-/*!
-    \param edge - a pointer to the edge object
-    \return the checksum of the edge
-*/
-long statEdgeCheckSum(const void *edge);
-#endif
 
 //! Deserialize a STAT edge object for the STAT filter.
 /*!
@@ -379,7 +368,6 @@ long statEdgeCheckSum(const void *edge);
 */
 void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLength);
 
-#ifdef GRAPHLIB_3_0
 //! Deserialize a STAT edge object for the STAT filter.
 /*!
     \param[out] edge - a pointer to the edge object
@@ -393,7 +381,6 @@ void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLen
     gStatGraphRoutinesCurrentIndex must be set to the current index.
 */
 void statFilterDeserializeEdgeAttr(const char *key, void **edge, const char *buf, unsigned int bufLength);
-#endif
 
 //! Initialize an empty bit vector for initializing the FrontEnd's reorder graph
 /*!
@@ -402,14 +389,12 @@ void statFilterDeserializeEdgeAttr(const char *key, void **edge, const char *buf
 */
 void *statCopyEdgeInitializeEmpty(const void *edge);
 
-#ifdef GRAPHLIB_3_0
 //! Initialize an empty bit vector for initializing the FrontEnd's reorder graph
 /*!
     \param edge - a pointer to the edge object to be copied
     \return a pointer to the new edge copy
 */
 void *statCopyEdgeAttrInitializeEmpty(const char *key, const void *edge);
-#endif
 
 //! Merge the unordered input vector bits into the reorder graph.
 /*!
@@ -425,7 +410,6 @@ void *statCopyEdgeAttrInitializeEmpty(const char *key, const void *edge);
 */
 void *statMergeEdgeOrdered(void *edge1, const void *edge2);
 
-#ifdef GRAPHLIB_3_0
 //! Merge the unordered input vector bits into the reorder graph.
 /*!
     \param[in,out] edge1 - the edge to merge into
@@ -439,7 +423,6 @@ void *statMergeEdgeOrdered(void *edge1, const void *edge2);
     set to the start index for the bit vector in edge
 */
 void *statMergeEdgeAttrOrdered(const char *key, void *edge1, const void *edge2);
-#endif
 
 //! Serialize a STAT count + rep edge object into a buffer
 /*!
@@ -490,7 +473,6 @@ void *statCopyCountRepEdge(const void *edge);
 */
 void statFreeCountRepEdge(void *edge);
 
-#ifdef GRAPHLIB_3_0
 //! Serialize a STAT count + rep edge object into a buffer
 /*!
     \param buf - the buffer to write to
@@ -547,14 +529,6 @@ void statFreeCountRepEdgeAttr(const char * key, void *edge);
     \return the checksum of the edge
 */
 long statCountRepEdgeCheckSum(const char *key, const void *edge);
-#else
-//! Calculate a checksum of a STAT count + rep edge object
-/*!
-    \param edge - a pointer to the edge object
-    \return the checksum of the edge
-*/
-long statCountRepEdgeCheckSum(const void *edge);
-#endif
 
 //! Translate a full bit vector edge into a count + representative edge
 /*!
@@ -564,7 +538,6 @@ long statCountRepEdgeCheckSum(const void *edge);
 */
 StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int));
 
-//#ifdef GRAPHLIB_3_0
 ////! Translate a full bit vector edge into a count + representative edge
 ///*!
 //    \param edge - a pointer to the edge object
@@ -572,6 +545,5 @@ StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativ
 //    \return the count + representative version of the edge
 //*/
 //StatCountRepEdge_t *getBitVectorCountRep(StatBitVectorEdge_t *edge, int (relativeRankToAbsoluteRank)(int));
-//#endif
 
 #endif

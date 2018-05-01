@@ -51,8 +51,8 @@ AC_DEFUN([X_AC_GRAPHLIB], [
       AM_CONDITIONAL([ENABLE_GRAPHLIB30], true)
     ]
   )
-  if test "$graphlib_vers" = 1 ; then
-    AC_MSG_ERROR([STAT requires graphlib 2.0 or greater.  Specify graphlib prefix with --with-graphlib])
+  if test "$graphlib_vers" = 1 || test "$graphlib_vers" = 2.0; then
+    AC_MSG_ERROR([STAT requires graphlib 3.0 or greater. Specify graphlib prefix with --with-graphlib])
   fi
   AC_MSG_RESULT([$graphlib_vers])
   AC_CHECK_LIB(lnlgraph,graphlib_newGraph,liblnlgraph_found=yes,liblnlgraph_found=no)

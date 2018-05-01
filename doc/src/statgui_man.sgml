@@ -10,7 +10,7 @@
 ]>
 <refentry>
 <refentryinfo>
-    <date>2017-06-16</date>
+    <date>2018-02-02</date>
 </refentryinfo>
 <refmeta>
     <refentrytitle><application>stat-gui</application></refentrytitle>
@@ -38,7 +38,7 @@
 </refsynopsisdiv>
 <refsect1>
     <refsect1info>
-        <date>2017-06-16</date>
+        <date>2018-02-02</date>
     </refsect1info>
     <title>DESCRIPTION</title>
     &statgui_description
