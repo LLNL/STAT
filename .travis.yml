@@ -112,7 +112,7 @@ after_script:
   - cat stat_results/mpi_ringtopo.0001/04_mpi_ringtopo.0001.3D.dot
 #  The script test currently fails as openmpi does not support reattach when launched under a debugger (https://github.com/open-mpi/ompi/issues/3178)
 #  The script test may also hang with openmpi-2.0.3. This appears to be a race condition when deleting the stat_fe object
-  - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py -l $HOME/local/bin/mpirun || echo "failed with $?"
+#  - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py -l $HOME/local/bin/mpirun || echo "failed with $?"
   - bash <(curl -s https://codecov.io/bash)
   - coveralls --exclude lib --exclude tests -i ./src --gcov-options '\-lp'
   #- if test "$COVERAGE" = "On" ; then bash <(curl -s https://codecov.io/bash) ; fi

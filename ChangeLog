@@ -1,3 +1,12 @@
+2018-05-01 Gregory L. Lee <lee218@llnl.gov>
+	* : tag version 4.0
+
+2018-04-16 Gregory L. Lee <lee218@llnl.gov>
+	* : Added coverage tests
+
+2018-04-04 Gregory L. Lee <lee218@llnl.gov>
+	* : Fix TV launch
+
 2018-02-02 Gregory L. Lee <lee218@llnl.gov>
 	* : Allow specification of max threads per daemon
 

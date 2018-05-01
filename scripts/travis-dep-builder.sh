@@ -31,11 +31,7 @@ declare -A checkout_sha1=(\
 
 declare -A extra_configure_opts=(\
 ["launchmon-v1.0.2"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
-<<<<<<< HEAD
-["launchmon"]="--with-test-rm=orte --with-test-ncore-per-CN=3 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
-=======
 ["launchmon"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
->>>>>>> release-4.0
 ["v5.0.1"]="--enable-shared" \
 ["libdwarf-20161124"]="--enable-shared --disable-nonshared" \
 )
@@ -187,8 +183,8 @@ for pkg in $downloads; do
         wget https://github.com/open-mpi/ompi/pull/3709.patch
         patch -p1 < 3709.patch
       fi
-      make -j 8 PREFIX=${prefix} || make
-      make PREFIX=${prefix} install
+      make -j 32 PREFIX=${prefix} || make
+      make -j 32 PREFIX=${prefix} install || make PREFIX=${prefix} install
       if test "$name" = "launchmon-v1.0.2"; then
         pushd test/src
         echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
@@ -270,9 +266,9 @@ for url in $checkouts; do
       if test "$name" = "launchmon"; then
         sed -i launchmon/src/linux/sdbg_linux_launchmon.cxx -e '2975 s|disable|//disable|'
       fi
-      make PREFIX=${prefix} $make_opts &&
-      make PREFIX=${prefix} $make_opts install &&
-      make check PREFIX=${prefix} $make_opts
+      make -j 32 PREFIX=${prefix} $make_opts || make PREFIX=${prefix} $make_opts
+      make -j 32 PREFIX=${prefix} $make_opts install || make PREFIX=${prefix} $make_opts install
+      make -j 32 check PREFIX=${prefix} $make_opts || make check PREFIX=${prefix} $make_opts
       if test "$name" = "launchmon"; then
         pushd test/src
         echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
