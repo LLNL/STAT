@@ -12,7 +12,7 @@
 <bookinfo>
     <title>STAT: the Stack Trace Analysis Tool Quick Start Guide</title>
     <titleabbrev>STAT</titleabbrev>
-    <date>2010-03-25</date>
+    <date>2018-02-02</date>
     <mediaobject><imageobject>
         <imagedata scale="75" fileref="figs/stat_logo.png">
     </imageobject></mediaobject>

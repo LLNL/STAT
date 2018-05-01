@@ -11,10 +11,10 @@ TODO: There are still issues with gdb subprocesses remaining after the
       interrupt
 """
 
-__copyright__ = """Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Dane Gardner, Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -28,24 +28,28 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Dane Gardner", "Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
-__version__ = "3.0.1"
+__version_major__ = 4
+__version_minor__ = 0
+__version_revision__ = 0
+__version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 ###############################################################################
 import signal, os, sys
 
 try:
     from stat_merge_base import StatTrace, StatMerger, StatMergerArgs
-except:
-    sys.stderr.write("The following required library is missing: stat_merge_base\n")
+except Exception as e:
+    sys.stderr.write("The following required library is missing: stat_merge_base\n%s\n" % (repr(e)))
     sys.exit(1)
 
 have_bg_core_backtrace = True
 
 try:
     from bg_core_backtrace import BgCoreTrace, BgCoreMerger, BgCoreMergerArgs
-except:
+except Exception as e:
     sys.stderr.write("The following library is missing: bg_core_backtrace\n")
     sys.stderr.write("Lightweight corefile analysis will not be enabled\n")
+    sys.stderr.write("%s\n" % (repr(e)))
     have_bg_core_backtrace = False
 
 import subprocess, re, threading, glob, logging
@@ -62,7 +66,7 @@ class Gdb(object):
         self.exedir =     (options["exedir"])     and options["exedir"]     or self.directory
         self.sourcepath = (options["sourcepath"]) and options["sourcepath"] or ''
         self.objectpath = (options["objectpath"]) and options["objectpath"] or ''
-        self.executable = None
+        self.executable = options["exe"]
         self.corefile = None
         self.subprocess = None
 
@@ -82,13 +86,15 @@ class Gdb(object):
         args.append("path %s" %(self.objectpath))
         args.append('-ex')
         args.append("directory %s" %(self.sourcepath))
+        args.append('-ex')
+        args.append("set filename-display absolute")
         if corefile:
             self.corefile = corefile
             if os.path.isabs(self.corefile):
                 args.append("--core=%s" %(self.corefile))
             else:
                 args.append("--core=%s/%s" %(self.coredir, self.corefile))
-        if executable:
+        if executable and executable != "NULL":
             self.executable = executable
             if os.path.isabs(self.executable):
                 args.append("%s" %(self.executable))
@@ -135,7 +141,7 @@ class Gdb(object):
                 ch = ''
                 line = ''
             elif ch == ' ':    #Check for the prompt, and return if we get it
-                if '(gdb)' in line:
+                if '(gdb)' in line or '(cuda-gdb)' in line:
                     break
             line += ch
         return lines
@@ -151,6 +157,28 @@ class Gdb(object):
         return self.readlines()
 
 
+class CudaGdb(Gdb):
+    def __init__ (self, options):
+        Gdb.__init__(self, options)
+
+    def open(self, corefile, executable = None):
+        args = []
+        args.append('cuda-gdb')
+        args.append('-ex')
+        target_string = "target cudacore "
+
+        if corefile:
+            self.corefile = corefile
+            if os.path.isabs(self.corefile):
+                target_string += " %s" % (self.corefile)
+            else:
+                target_string += " %s/%s" % (self.coredir, self.corefile)
+        args.append(target_string)
+
+        self.subprocess = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        return self.readlines()
+
+
 ###############################################################################
 class CoreFile:
     """RegEx for finding information about a frame from a back trace.
@@ -159,14 +187,16 @@ class CoreFile:
          group(3) = source file and line number in format "file:line"  --this value may be None"""
     __reFrame = re.compile(r"#(\d+)\s+(?:0x\S+\s+in\s+)?(\S+)\s+\(.*\)(?:\s+at\s+(\S+:\d+))?")
     __options = None
+    _next_rank = 0
 
     def __init__ (self, coreFile, options):
         if CoreFile.__options is None and not options is None:
             CoreFile.__options = options
         self.coreData = {'coreFile': coreFile,
-                         'rank': high_rank,
+                         'rank': CoreFile._next_rank,
                          'rankSize': None,
                          'traces': []}
+        CoreFile._next_rank += 1
 
     def add_functions(self, functions):
         """If the functions array isn't empty, reverse it to get a proper trace, and
@@ -327,26 +357,32 @@ class CoreFile:
 
         #Open gdb against the core file
         logging.info("Connecting gdb to the core file (%s)"%self.coreData['coreFile'])
-        gdb = Gdb(CoreFile.__options)
-        lines = gdb.open(self.coreData['coreFile'])
+        if CoreFile.__options['cuda'] == 1:
+            gdb = CudaGdb(CoreFile.__options)
+        else:
+            gdb = Gdb(CoreFile.__options)
+        executable = gdb.executable
 
-        #Find the executable that generated the core file to begin with
-        executable = ''
-        for line in lines:
-            if 'Core was generated by' in line:
-                rexp = re.search(r"Core was generated by `(.+)'\.", line)
-                if rexp: executable = rexp.group(1).split()[0]
-        if not executable:
-            logging.critical("Error: Cannot discover executable that generated core file %s" %self.coreData['coreFile'])
-            return False
+#        #Find the executable that generated the core file to begin with
+        if executable == "NULL":
+            lines = gdb.open(self.coreData['coreFile'])
+            for line in lines:
+                if 'Core was generated by' in line:
+                    rexp = re.search(r"Core was generated by `(.+)'\.", line)
+                    if rexp: executable = rexp.group(1).split()[0]
+            if not executable:
+                logging.critical("Error: Cannot discover executable that generated core file %s" %self.coreData['coreFile'])
+                return False
 
-        #Exit gdb
-        logging.info("Disconnecting gdb from the core file (%s)"%self.coreData['coreFile'])
-        gdb.close()
+            #Exit gdb
+            logging.info("Disconnecting gdb from the core file (%s)"%self.coreData['coreFile'])
+            gdb.close()
 
-        #Reconnect to gdb using executable
-        logging.info("Reconnecting gdb to the core file (%s) AND the executable (%s)"%(self.coreData['coreFile'],executable))
+            #Reconnect to gdb using executable
+            logging.info("Reconnecting gdb to the core file (%s) AND the executable (%s)"%(self.coreData['coreFile'],executable))
         lines = gdb.open(self.coreData['coreFile'], executable)
+        lines2 = gdb.readlines()
+        lines += lines2
 
         #Check for gdb errors
         logging.debug("Checking for gdb errors")
@@ -366,8 +402,8 @@ class CoreFile:
                 if not force:
                     sys.exit(2)
             elif 'warning: core file may not match specified executable file.' in line:
-                logging.critical("GDB: The executable (%s/%s) doesn't match the core file (%s/%s).\n" %(exedir,executable, coredir,self.coreData['coreFile']))
                 if not force:
+                    logging.critical("GDB: The executable (%s/%s) may not match the core file (%s/%s). Use -r to run anyway\n" %(exedir,executable, coredir,self.coreData['coreFile']))
                     sys.exit(2)
             elif "%s: No such file or directory."%(executable) in line:
                 logging.critical("GDB: The executable (%s/%s) doesn't exist." %(exedir,executable))
@@ -436,6 +472,7 @@ class CoreFile:
                     else:
                         function = rexp.group(2)
                     logging.log(logging.INSANE, "Found function %s from %s"%(function, line))  #This is a very verbose debug!
+                    function = function.replace('<', '\<').replace('>', '\>')
                     functions.append( function )
 
         #Merge this process with the rest
@@ -465,6 +502,7 @@ class CoreMergerArgs(StatMergerArgs):
         self.arg_map["withline"] = StatMergerArgs.StatMergerArgElement("i", False, int, 0, "whether to gather source line number")
         self.arg_map["force"] = StatMergerArgs.StatMergerArgElement("r", False, int, 0, "whether to force parsing on warnings and errors")
         self.arg_map["threads"] = StatMergerArgs.StatMergerArgElement("T", False, int, 1, "max number of threads")
+        self.arg_map["cuda"] = StatMergerArgs.StatMergerArgElement("C", False, int, 0, "set if running on cuda cores")
 
         self.arg_map["jobid"] = self.StatMergerArgElement("j", False, None, None, "[LW] delineate traces based on Job ID in the core file")
         self.arg_map["exe"] = StatMergerArgs.StatMergerArgElement("x", True, str, "NULL", "[LW] the executable path")
@@ -491,6 +529,7 @@ class CoreMergerArgs(StatMergerArgs):
 class CoreTrace(StatTrace):
     def get_traces(self):
         self.rank = 0
+        self.tid = 0
         line_number_traces = []
         function_only_traces = []
         core_file = CoreFile(self.file_path, self.options)
@@ -552,17 +591,19 @@ def init_logging(input_loglevel, input_logfile):
 
 
 ###############################################################################
-if __name__ == '__main__':
+def STATmerge_main(arg_list):
     core_file_type = 'full'
+    sys.argv = sys.argv[1:]
     try:
-        file = sys.argv[sys.argv.index("-c") + 1]
-        if os.path.isdir(file):
-            for file_path in os.listdir(file):
-                full_path = file + '/' +  file_path
+        file_path = arg_list[arg_list.index("-c") + 1]
+        if os.path.isdir(file_path):
+            file_dir = file_path
+            for file_path in os.listdir(file_path):
+                full_path = os.path.join(file_dir, file_path)
                 if full_path.find('core') != -1 and not os.path.isdir(full_path):
-                    file = full_path
+                    file_path = full_path
                     break
-        f = open(file, "r")
+        f = open(file_path, "r")
         line = f.readline()
         if line.find("LIGHTWEIGHT COREFILE") != -1 or line.find("Summary") != -1:
             core_file_type = 'lightweight'
@@ -570,6 +611,7 @@ if __name__ == '__main__':
             core_file_type = 'full'
     except Exception as e:
         sys.stderr.write('failed to determine core file type: %s\n' %e)
+
     if core_file_type == 'lightweight' and have_bg_core_backtrace == True:
         merger = BgCoreMerger(BgCoreTrace, BgCoreMergerArgs)
     else:
@@ -578,3 +620,7 @@ if __name__ == '__main__':
     if ret != 0:
         sys.stderr.write('Merger failed\n')
         sys.exit(ret)
+
+if __name__ == '__main__':
+    sys.stderr.write('WARNING: core_file_merger.py should not be directly invoked. This has been replaced by STATmain.py and the "merge" subcommand.\n')
+    sys.exit(1)

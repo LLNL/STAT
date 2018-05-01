@@ -3,14 +3,15 @@
 
 AC_PREREQ(2.59)
 #AC_INIT(STAT, 3.0.1, lee218@llnl.gov, The Stack Trace Analysis Tool, http://www.paradyn.org/STAT/STAT.html)
-AC_COPYRIGHT([Copyright (c) 2007-2014, Lawrence Livermore National Security, LLC.])
-AC_INIT([STAT], [3.0.1])
+AC_COPYRIGHT([Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.])
+AC_INIT([STAT], [4.0.0])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([config])
 AM_INIT_AUTOMAKE
 AC_CANONICAL_HOST
+AX_CODE_COVERAGE
 
 # Checks for programs.
 AC_PROG_CXX
@@ -20,9 +21,12 @@ AC_PROG_INSTALL
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 X_AC_RSH
+X_AC_GDB
 
 # Checks for libraries.
 X_AC_TEMPORALORDERINGAPI
+AM_PATH_PYTHON
+X_AC_PYTHON
 X_AC_GUI
 X_AC_ARCH
 X_AC_DEBUGLIBS
@@ -32,6 +36,7 @@ X_AC_LAUNCHMON
 X_AC_RM_COMM
 X_AC_MRNET
 X_AC_FGFS
+X_AC_CALLPATH
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -63,11 +68,6 @@ AC_ARG_ENABLE(statbench,
 )
 
 AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
-AC_ARG_ENABLE(python-debug,
-  [AS_HELP_STRING([--enable-python-debug],[Enable the ability to gather python script debugging])],
-  [CXXFLAGS="-DPROTOTYPE_PY $CXXFLAGS"],
-  [CXXFLAGS="$CXXFLAGS"]
-)
 
 AC_ARG_WITH(procspernode,
   [AS_HELP_STRING([--with-procspernode=num],[Set the maximum number of communication processes per node equal to num, defaults to 1 if not specified])],

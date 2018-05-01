@@ -18,4 +18,9 @@ AC_DEFUN([X_AC_PYTHON], [
     PYTHONINCLUDE=$python_header_path
     CXXFLAGS="$CXXFLAGS -I$PYTHONINCLUDE/"
   fi
+  AC_MSG_CHECKING([Python version])
+  python_version=`$PYTHON -c "import distutils.sysconfig; \
+    print(distutils.sysconfig.get_python_version());"`
+  AC_MSG_RESULT($python_version)
+  AM_COND_IF([ENABLE_GDB], [BELIBS="-lpython$python_version $BELIBS"], [])
 ])

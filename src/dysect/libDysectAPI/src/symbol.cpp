@@ -262,7 +262,7 @@ bool CodeLocation::findFileLine(Dyninst::Stackwalker::Walker* proc, std::string 
     if(SymbolTable::getSymbolTable(curLibName, symtab) != OK) {
       return DYSECTWARN(false, "Could not get symbol table");
     }
-
+//    symtab->setTruncateLinePaths(true);
     findFileLine(symtab, name, line, curLibName, locations);
   }
 
@@ -330,18 +330,24 @@ DysectAPI::DysectErrorCode SymbolTable::getFileLineByAddr(string& fileName, int&
 bool CodeLocation::findFileLine(Dyninst::SymtabAPI::Symtab* symtab, std::string name, int line, string libName, std::vector<DysectAPI::CodeLocation*>& locations) {
   assert(symtab != 0);
 
+#if SW_MAJOR >= 9
+  vector<AddressRange> ranges;
+  vector<AddressRange>::iterator rangeIter;
+#else
   vector<pair<Offset, Offset> > ranges;
   vector<pair<Offset, Offset> >::iterator rangeIter;
+#endif
 
   if(!symtab->getAddressRanges(ranges, name, line)) {
-    //Err::warn(true, "getAddressRanges(.., %s, %s, %d) failed", libName.c_str(), name.c_str(), line);
+//    return Err::warn(__LINE__, __FILE__, false, "getAddressRanges(.., %s, %s, %d) failed", libName.c_str(), name.c_str(), line);
     return false;
   }
 
   if(ranges.empty()) {
-    //Err::warn(true, "getAddressRanges(.., %s, %s, %d) empty!", libName.c_str(), name.c_str(), line);
+//    return Err::warn(__LINE__, __FILE__, false, "getAddressRanges(.., %s, %s, %d) empty!", libName.c_str(), name.c_str(), line);
     return false;
   }
+  Err::warn(__LINE__, __FILE__, true, "YEAH! getAddressRanges(.., %s, %s, %d) suceeded", libName.c_str(), name.c_str(), line);
 
   DysectAPI::CodeLocation* location = new DysectAPI::CodeLocation();
   location->libName = libName;

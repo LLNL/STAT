@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2013, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
-2017 by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -98,11 +98,7 @@ SymReader *MRNetSymbolReaderFactory::openSymbolReader(std::string pathName)
                         gStatOutFp, "Unexpected tag %d when trying to receive contents of %s\n", tag, pathStr));
                 localLib = true;
             }
-#ifdef MRNET40
             else if (packet->unpack("%Ac %s", &fileContents, &fileContentsLength, &fileName) == -1)
-#else
-            else if (packet->unpack("%ac %s", &fileContents, &fileContentsLength, &fileName) == -1)
-#endif
             {
                 mrn_dbg(2, mrn_printf(__FILE__, __LINE__, "openSymbolReader",
                         gStatOutFp, "Failed to unpack contents of %s, length %d\n", pathStr, fileContentsLength));

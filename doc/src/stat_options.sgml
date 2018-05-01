@@ -160,6 +160,14 @@
     </listitem>
 </varlistentry>
 <varlistentry>
+    <term>-H, --maxdaemonthreads <replaceable class="parameter">count</replaceable></term>
+    <listitem>
+        <para>
+        Allow sampling of up to <replaceable class="parameter">count</replaceable> threads per daemon.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
     <term>-y, --withpython</term>
     <listitem>
         <para>
@@ -268,6 +276,22 @@
     <listitem>
         <para>
         Run the specified DySectAPI in batch mode. Session stops after <replaceable class="parameter">secs</replaceable> seconds or detach action.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-G, --gdb</term>
+    <listitem>
+        <para>
+        Use (cuda-)gdb to drive the daemons. If you are using cuda-gdb and want stack traces from cuda threads, you must also explicitly specify -w.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>-Q, --cudaquick</term>
+    <listitem>
+        <para>
+        When using cuda-gdb as the BE, gather less comprehensive, but faster cuda traces. Cuda frames will only show the top of the stack, not the full call path. This also defaults to display filename and line number and will not resolve the function name.
         </para>
     </listitem>
 </varlistentry>

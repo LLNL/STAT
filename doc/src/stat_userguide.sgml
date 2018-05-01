@@ -16,6 +16,7 @@
 <!ENTITY statview_node_menu SYSTEM "statview_node_menu.sgml">
 <!ENTITY statview_toolbar SYSTEM "statview_toolbar.sgml">
 <!ENTITY statgui_description SYSTEM "statgui_description.sgml">
+<!ENTITY statgui_options SYSTEM "statgui_options.sgml">
 <!ENTITY statgui_toolbar SYSTEM "statgui_toolbar.sgml">
 <!ENTITY statgui_sample_options SYSTEM "statgui_sample_options.sgml">
 <!ENTITY statgui_proc_tab SYSTEM "statgui_proc_tab.sgml">
@@ -24,6 +25,7 @@
 <!ENTITY statbench_options SYSTEM "statbench_options.sgml">
 <!ENTITY statbench_example SYSTEM "statbench_example.sgml">
 <!ENTITY statbench_description SYSTEM "statbench_description.sgml">
+<!ENTITY stat_script_description SYSTEM "stat_script_description.sgml">
 <!ENTITY stat_introduction SYSTEM "stat_introduction.sgml">
 <!ENTITY stat_overview SYSTEM "stat_overview.sgml">
 <!ENTITY stat_using_gui SYSTEM "stat_using_gui.sgml">
@@ -45,7 +47,7 @@
 <bookinfo>
     <title>STAT: the Stack Trace Analysis Tool</title>
     <titleabbrev>STAT</titleabbrev>
-    <date>2010-03-25</date>
+    <date>2018-02-02</date>
     <mediaobject><imageobject>
         <imagedata scale="75" fileref="figs/stat_logo.png">
     </imageobject></mediaobject>
@@ -101,6 +103,7 @@
 <chapter>
     <title>Using the stat-gui GUI</title>
     <section><title>Description</title>&statgui_description</section>
+    <section><title>stat-gui Options</title>&statgui_options</section>
     <section><title>The stat-gui GUI Toolbar</title>&statgui_toolbar</section>
     <section><title>Sample Options</title>&statgui_sample_options</section>
     <section><title>Process Table</title>&statgui_proc_tab</section>
@@ -130,6 +133,10 @@
     <section><title>Description</title>&statbench_description</section>
     <section><title>stat-bench Options</title>&statbench_options</section>
     <section><title>stat-bench Usage Example</title>&statbench_example</section>
+</chapter>
+<chapter>
+    <title>Using the stat-script Python Interface</title>
+    <section><title>Description</title>&stat_script_description</section>
 </chapter>
 <chapter>
     <title>Troubleshooting Guide</title>

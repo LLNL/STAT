@@ -2,10 +2,10 @@
 A base class and implementation for merging trace files into a .dot format
 suitable for the Stack Trace Analysis Tool."""
 
-__copyright__ = """Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -42,6 +42,7 @@ class StatTrace(object):
         self.file_path = file_path
         self.options = options
         self.rank = 0
+        self.tid = 0
         self.traces = self.get_traces()
 
     def get_traces(self):
@@ -67,6 +68,7 @@ class StatTrace(object):
         """
 
         self.rank = 0
+        self.tid = 0
         traces = []
         sub_traces = []
         current = []
@@ -322,7 +324,7 @@ class StatMerger(object):
                             handles.append(handle)
 
                         # add the current trace
-                        ret = STATmerge.Add_Trace(handles[j], trace_object.rank, sub_trace)
+                        ret = STATmerge.Add_Trace(handles[j], trace_object.rank, trace_object.tid, sub_trace)
                         if ret != 0:
                             sys.stderr.write('Failed to add trace\n')
                             sys.exit(1)

@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -21,6 +21,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #define STATBE_MAX_HN_LEN 256
 #define STAT_SW_DEBUG_BUFFER_LENGTH 33554432
+
+#ifdef STAT_GDB_BE
+#include <Python.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,16 +56,14 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "frame.h"
 #include "swk_errors.h"
 #include "Type.h"
+#include "local_var.h"
+#include "Variable.h"
+#include "Function.h"
 #ifdef SW_VERSION_8_0_0
   #include "PlatFeatures.h"
   #include "ProcessSet.h"
   #include "PCErrors.h"
   #define GROUP_OPS
-#endif
-#if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
-  #include "local_var.h"
-  #include "Variable.h"
-  #include "Function.h"
 #endif
 #ifdef OMP_STACKWALKER
   #include "OpenMPStackWalker.h"
@@ -198,6 +200,14 @@ class STAT_BackEnd
             \return STAT_OK on success
         */
         StatError_t init();
+
+#ifdef STAT_GDB_BE
+        //! Initialize and set up the GDB module
+        /*
+            \return STAT_OK on success
+        */
+        StatError_t initGdb();
+#endif
 
         //! Initialize and set up LaunchMON
         /*
@@ -597,13 +607,11 @@ class STAT_BackEnd
         MRN::Port parentPort_;          /*!< the MRNet parent's port */
         MRN::Stream *broadcastStream_;  /*!< the main broadcast and
                                              acknowledgement stream */
-#ifdef GRAPHLIB_3_0
         std::map<int, std::map<std::string, std::string> > nodeIdToAttrs_;
         std::map<int, std::map<std::string, void *> > edgeIdToAttrs_;
         std::map<int, std::map<std::string, void *> > edgeIdToAttrs3d_;
         unsigned int threadBvLength_;
         std::vector<Dyninst::THR_ID> threadIds_;
-#endif
         std::map<int, std::string> nodes2d_; /*!< the 2D prefix tree nodes */
         std::map<int, std::string> nodes3d_; /*!< the 3D prefix tree nodes */
         std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges2d_; /*!< the 2D prefix tree edges */
@@ -639,6 +647,11 @@ class STAT_BackEnd
 #ifdef DYSECTAPI
         DysectAPI::BE* dysectBE_;
 #endif
+
+#ifdef STAT_GDB_BE
+        PyObject *gdbModule_;   /*!< the Python stat_cuda_gdb module */
+#endif
+        bool usingGdb_;     /*!< whether we are using GDB instead of Dyninst */
 
 };
 

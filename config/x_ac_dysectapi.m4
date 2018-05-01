@@ -25,7 +25,7 @@ AC_DEFUN([X_AC_DYSECTAPI], [
     [AS_HELP_STRING([--with-depcore=prefix],
       [Add the compile and link search paths for libdepositcore]
     )],
-    [ CXXFLAGS="$CXXFLAGS -DDYSECTAPI_DEPCORE"
+    [ CXXFLAGS="$CXXFLAGS -DDYSECTAPI_DEPCORE -fpermissive"
       DEPCOREPREFIX="${withval}"
       WITH_DEPCORE=yes
       AM_CONDITIONAL([ENABLE_DEPCORE], true)

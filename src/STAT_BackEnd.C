@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -130,9 +130,6 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
 #endif
     gBePtr = this;
     registerSignalHandlers(true);
-#ifdef GRAPHLIB_3_0
-    threadBvLength_ = STAT_BITVECTOR_BITS * 8; // for now we restict to 512 threads per STAT daemon (i.e., node)
-#endif
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -202,6 +199,7 @@ STAT_BackEnd::~STAT_BackEnd()
 
     registerSignalHandlers(false);
     gBePtr = NULL;
+    usingGdb_ = false;
 }
 
 void STAT_BackEnd::clear2dNodesAndEdges()
@@ -213,15 +211,12 @@ void STAT_BackEnd::clear2dNodesAndEdges()
         if (edgesIter->second.second != NULL)
             statFreeEdge(edgesIter->second.second);
     edges2d_.clear();
-#ifdef GRAPHLIB_3_0
-    nodeIdToAttrs_.clear();
     map<int, map<string, void *> >::iterator edgeIdToAttrsIter;
     map<string, void *>::iterator edgeAttrsIter;
     for (edgeIdToAttrsIter = edgeIdToAttrs_.begin(); edgeIdToAttrsIter != edgeIdToAttrs_.end(); edgeIdToAttrsIter++)
         for (edgeAttrsIter = edgeIdToAttrsIter->second.begin(); edgeAttrsIter != edgeIdToAttrsIter->second.end(); edgeAttrsIter++)
             statFreeEdgeAttr(edgeAttrsIter->first.c_str(), edgeAttrsIter->second);
     edgeIdToAttrs_.clear();
-#endif
 }
 
 void STAT_BackEnd::clear3dNodesAndEdges()
@@ -234,7 +229,6 @@ void STAT_BackEnd::clear3dNodesAndEdges()
             statFreeEdge(edgesIter->second.second);
     edges3d_.clear();
 
-#ifdef GRAPHLIB_3_0
     nodeIdToAttrs_.clear();
     map<int, map<string, void *> >::iterator edgeIdToAttrsIter;
     map<string, void *>::iterator edgeAttrsIter;
@@ -242,7 +236,6 @@ void STAT_BackEnd::clear3dNodesAndEdges()
         for (edgeAttrsIter = edgeIdToAttrsIter->second.begin(); edgeAttrsIter != edgeIdToAttrsIter->second.end(); edgeAttrsIter++)
             statFreeEdgeAttr(edgeAttrsIter->first.c_str(), edgeAttrsIter->second);
     edgeIdToAttrs3d_.clear();
-#endif
 }
 
 
@@ -269,7 +262,6 @@ StatError_t STAT_BackEnd::update3dNodesAndEdges()
         }
         statMergeEdge(edges3d_[edgesIter->first].second, edgesIter->second.second);
 
-#ifdef GRAPHLIB_3_0
         int i, dst;
         StatCountRepEdge_t *countRepEdge = NULL;
         dst = edgesIter->first;
@@ -315,8 +307,6 @@ StatError_t STAT_BackEnd::update3dNodesAndEdges()
             edgeIdToAttrs3d_[dst]["tbvsum"] = statCopyEdgeAttr("tbvsum", (void *)&tbvsum);
             statFreeCountRepEdge(countRepEdge);
         }
-#endif
-
     } // for edgesIter
 
     return STAT_OK;
@@ -339,7 +329,6 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
     }
     statMergeEdge(edges2d_[dst].second, edge);
 
-#ifdef GRAPHLIB_3_0
     int i, tidIndex;
     map<string, void *> edgeAttrs;
     StatCountRepEdge_t *countRepEdge = NULL;
@@ -397,7 +386,6 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
         edgeIdToAttrs_[dst]["sum"] = statMergeEdgeAttr("sum", edgeIdToAttrs_[dst]["sum"], (void *)&countRepEdge->checksum);
         statFreeCountRepEdge(countRepEdge);
     }
-#endif
 
     return STAT_OK;
 }
@@ -409,14 +397,8 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
     string tempString;
     graphlib_graph_p *currentGraph;
     graphlib_error_t graphlibError;
-#ifdef GRAPHLIB_3_0
     graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1,NULL};
     graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0,NULL};
-#else
-    StatCountRepEdge_t *countRepEdge = NULL;
-    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1};
-    graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
-#endif
     map<int, string> *nodes;
     map<int, pair<int, StatBitVectorEdge_t *> > *edges;
     map<int, string>::iterator nodesIter;
@@ -454,7 +436,6 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
         for (nodesIter = (*nodes).begin(); nodesIter != (*nodes).end(); nodesIter++)
         {
 
-#ifdef GRAPHLIB_3_0
             int index;
             map<string, string>::iterator nodeAttrIter;
             nodeAttr.attr_values = (void **)calloc(1, gNumNodeAttrs * sizeof(void *));
@@ -469,55 +450,22 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get node attr index for key %s\n", nodeAttrIter->first.c_str());
+                    free(nodeAttr.attr_values);
                     return STAT_GRAPHLIB_ERROR;
                 }
                 nodeAttr.attr_values[index] =  statCopyNodeAttr(nodeAttrIter->first.c_str(), nodeAttrIter->second.c_str());
             }
-#else
-            /* Add \ character before '<' and '>' characters for dot format */
-            tempString = nodesIter->second;
-            delimPos = -2;
-            while (1)
-            {
-                delimPos = tempString.find('<', delimPos + 2);
-                if (delimPos == string::npos)
-                    break;
-                tempString.insert(delimPos, "\\");
-            }
-            delimPos = -2;
-            while (1)
-            {
-                delimPos = tempString.find('>', delimPos + 2);
-                if (delimPos == string::npos)
-                    break;
-                tempString.insert(delimPos, "\\");
-            }
-            nodeAttr.label = (void *)tempString.c_str();
-#endif
             graphlibError = graphlib_addNode(*currentGraph, nodesIter->first, &nodeAttr);
             if (GRL_IS_FATALERROR(graphlibError))
             {
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
+                free(nodeAttr.attr_values);
                 return STAT_GRAPHLIB_ERROR;
             }
-#ifdef GRAPHLIB_3_0
-            for (int j = 0; j < gNumNodeAttrs; j++)
-            {
-                char *nodeAttrKey;
-                graphlibError = graphlib_getNodeAttrKey(*currentGraph, j, &nodeAttrKey);
-                if (GRL_IS_FATALERROR(graphlibError))
-                {
-                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error getting key for attribute %d\n", j);
-                    return STAT_GRAPHLIB_ERROR;
-                }
-                statFreeNodeAttr(nodeAttrKey, nodeAttr.attr_values[j]);
-            }
-            free(nodeAttr.attr_values);
-#endif
+            statFreeNodeAttrs(nodeAttr.attr_values, *currentGraph);
         }
         for (edgesIter = (*edges).begin(); edgesIter != (*edges).end(); edgesIter++)
         {
-#ifdef GRAPHLIB_3_0
             int index;
             edgeAttr.attr_values = (void **)calloc(1, gNumEdgeAttrs * sizeof(void *));
             if (edgeAttr.attr_values == NULL)
@@ -542,6 +490,7 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 if (GRL_IS_FATALERROR(graphlibError))
                 {
                     printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get edge attr index for key %s\n", edgeAttrIter->first.c_str());
+                    free(edgeAttr.attr_values);
                     return STAT_GRAPHLIB_ERROR;
                 }
                 if ((sampleType_ & STAT_SAMPLE_COUNT_REP && strcmp(edgeAttrIter->first.c_str(), "bv") == 0) || strcmp(edgeAttrIter->first.c_str(), "tbv") == 0)
@@ -552,52 +501,15 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 edgeAttr.attr_values[index] = statCopyEdgeAttr(edgeAttrIter->first.c_str(), edgeAttrIter->second);
                 edgeAttrIter++;
             }
-#else
-            if (sampleType_ & STAT_SAMPLE_COUNT_REP)
-            {
-                countRepEdge = getBitVectorCountRep(edgesIter->second.second, statRelativeRankToAbsoluteRank);
-                if (countRepEdge == NULL)
-                {
-                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to translate bit vector into count + representative\n");
-                    return STAT_ALLOCATE_ERROR;
-                }
-                edgeAttr.label = (void *)countRepEdge;
-            }
-            else
-                edgeAttr.label = (void *)edgesIter->second.second;
-#endif
 
             graphlibError = graphlib_addDirectedEdge(*currentGraph, edgesIter->second.first, edgesIter->first, &edgeAttr);
             if (GRL_IS_FATALERROR(graphlibError))
             {
+                statFreeEdgeAttrs(edgeAttr.attr_values, *currentGraph);
                 printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
                 return STAT_GRAPHLIB_ERROR;
             }
-#ifdef GRAPHLIB_3_0
-            for (int j = 0; j < gNumEdgeAttrs; j++)
-            {
-                char *edgeAttrKey;
-                graphlibError = graphlib_getEdgeAttrKey(*currentGraph, j, &edgeAttrKey);
-                if (GRL_IS_FATALERROR(graphlibError))
-                {
-                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get edge attr key for index %d\n", j);
-                    return STAT_GRAPHLIB_ERROR;
-                }
-                statFreeEdgeAttr(edgeAttrKey, edgeAttr.attr_values[j]);
-            }
-            free(edgeAttr.attr_values);
-#else
-            if (sampleType_ & STAT_SAMPLE_COUNT_REP)
-            {
-                graphlibError = graphlib_delEdgeAttr(edgeAttr, statFreeCountRepEdge);
-                if (GRL_IS_FATALERROR(graphlibError))
-                {
-                    printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to free edge attr\n");
-                    return STAT_GRAPHLIB_ERROR;
-                }
-            }
-#endif
-
+            statFreeEdgeAttrs(edgeAttr.attr_values, *currentGraph);
         }
     }
 
@@ -675,9 +587,35 @@ StatError_t STAT_BackEnd::init()
     envValue = getenv("STAT_GROUP_OPS");
     doGroupOps_ = (envValue != NULL);
 #endif
+    return STAT_OK;
+}
+
+#ifdef STAT_GDB_BE
+StatError_t STAT_BackEnd::initGdb()
+{
+    PyObject *pName;
+    const char *moduleName = "stat_cuda_gdb";
+    Py_Initialize();
+    pName = PyString_FromString(moduleName);
+    if (pName == NULL)
+    {
+        fprintf(errOutFp_, "Cannot convert argument\n");
+        return STAT_SYSTEM_ERROR;
+    }
+
+    gdbModule_ = PyImport_Import(pName);
+    Py_DECREF(pName);
+    if (gdbModule_ == NULL)
+    {
+        fprintf(errOutFp_, "Failed to import Python module %s\n", moduleName);
+        PyErr_Print();
+        return STAT_SYSTEM_ERROR;
+    }
+    usingGdb_ = true;
 
     return STAT_OK;
 }
+#endif
 
 
 StatError_t STAT_BackEnd::initLmon()
@@ -903,6 +841,7 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
         if (proctab_ == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
+            free(remoteNode);
             return STAT_ALLOCATE_ERROR;
         }
 
@@ -1179,7 +1118,7 @@ StatError_t STAT_BackEnd::mainLoop()
     do
     {
 #if defined(GROUP_OPS)
-        if (doGroupOps_)
+        if (doGroupOps_ && usingGdb_ == false)
         {
   #ifdef DYSECTAPI
             /* Let BPatch handle its events */
@@ -1189,7 +1128,7 @@ StatError_t STAT_BackEnd::mainLoop()
 #endif
 
         /* Set the stackwalker notification file descriptor */
-        if (processMap_.size() > 0 and processMapNonNull_ > 0)
+        if (processMap_.size() > 0 && processMapNonNull_ > 0 && usingGdb_ == false)
             swNotificationFd = ProcDebug::getNotificationFD();
         else
             swNotificationFd = -1;
@@ -1318,7 +1257,7 @@ StatError_t STAT_BackEnd::mainLoop()
                 break;
 
             case PROT_SAMPLE_TRACES:
-                if (packet->unpack("%ud %ud %ud %ud %ud %s", &nTraces, &traceFrequency, &nRetries, &retryFrequency, &sampleType_, &variableSpecification) == -1)
+                if (packet->unpack("%ud %ud %ud %ud %ud %ud %s", &nTraces, &traceFrequency, &nRetries, &retryFrequency, &sampleType_, &threadBvLength_, &variableSpecification) == -1)
                 {
                     printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "unpack(PROT_SAMPLE_TRACES) failed\n");
                     if (sendAck(stream, PROT_SAMPLE_TRACES_RESP, intRet) != STAT_OK)
@@ -1648,13 +1587,9 @@ StatError_t STAT_BackEnd::mainLoop()
 
         if (ackTag == PROT_SEND_NODE_IN_EDGE_RESP || ackTag == PROT_SEND_LAST_TRACE_RESP || ackTag == PROT_SEND_TRACES_RESP)
         {
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE with tag %d\n", ackTag);
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE with tag %d, length %d\n", ackTag, byteArrayLen);
             bitVectorLength = statBitVectorLength(proctabSize_);
-#ifdef MRNET40
             if (stream->send(ackTag, "%Ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
-#else
-            if (stream->send(ackTag, "%ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
-#endif
             {
                 printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send(%d) failure\n", ackTag);
                 return STAT_MRNET_ERROR;
@@ -1713,6 +1648,81 @@ StatError_t STAT_BackEnd::attach()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
+#ifdef STAT_GDB_BE
+    if (usingGdb_ == true)
+    {
+        string attachFunctionName, newFunctionName;
+        PyObject *attachFunc, *newFunc, *pArgs, *pValue;
+
+        newFunctionName = "new_gdb_instance";
+        newFunc = PyObject_GetAttrString(gdbModule_, newFunctionName.c_str());
+        if (!newFunc || !PyCallable_Check(newFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", newFunctionName.c_str());
+            return STAT_ATTACH_ERROR;
+        }
+
+        attachFunctionName = "attach";
+        attachFunc = PyObject_GetAttrString(gdbModule_, attachFunctionName.c_str());
+        if (!attachFunc || !PyCallable_Check(attachFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", attachFunctionName.c_str());
+            return STAT_ATTACH_ERROR;
+        }
+
+        for (i = 0; i < proctabSize_; i++)
+        {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
+            pArgs = Py_BuildValue("(i)", proctab_[i].pd.pid);
+            if (!pArgs)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
+                continue;
+            }
+
+            pValue = PyObject_CallObject(newFunc, pArgs);
+            if (pValue == NULL)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", newFunctionName.c_str(), proctab_[i].pd.pid);
+                PyErr_Print();
+                Py_DECREF(pArgs);
+                Py_DECREF(pValue);
+                continue;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", newFunctionName.c_str(), PyInt_AsLong(pValue));
+            if (PyInt_AsLong(pValue) == -1)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "attach failed for pid %d\n", proctab_[i].pd.pid);
+                Py_DECREF(pArgs);
+                Py_DECREF(pValue);
+                continue;
+            }
+            Py_DECREF(pValue);
+
+            pValue = PyObject_CallObject(attachFunc, pArgs);
+            if (pValue == NULL)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", attachFunctionName.c_str(), proctab_[i].pd.pid);
+                PyErr_Print();
+                Py_DECREF(pArgs);
+                Py_DECREF(pValue);
+                continue;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", attachFunctionName.c_str(), PyInt_AsLong(pValue));
+
+            Py_DECREF(pArgs);
+            Py_DECREF(pValue);
+        }
+        Py_DECREF(attachFunc);
+        Py_DECREF(newFunc);
+
+        return STAT_OK;
+    }
+#endif
 
 #if defined(GROUP_OPS)
   #ifndef OMP_STACKWALKER
@@ -1852,7 +1862,6 @@ StatError_t STAT_BackEnd::attach()
 #endif
     }
 
-
     isRunning_ = false;
 
     return STAT_OK;
@@ -1864,6 +1873,51 @@ StatError_t STAT_BackEnd::pause()
     map<unsigned int, Walker *>::iterator processMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
+
+#ifdef STAT_GDB_BE
+    if (usingGdb_ == true)
+    {
+        unsigned int i;
+        string pauseFunctionName;
+        PyObject *pauseFunc, *pArgs, *pValue;
+
+        pauseFunctionName = "pause";
+        pauseFunc = PyObject_GetAttrString(gdbModule_, pauseFunctionName.c_str());
+        if (!pauseFunc || !PyCallable_Check(pauseFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", pauseFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+
+        for (i = 0; i < proctabSize_; i++)
+        {
+            pArgs = Py_BuildValue("(i)", proctab_[i].pd.pid);
+            if (!pArgs)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
+                continue;
+            }
+
+            pValue = PyObject_CallObject(pauseFunc, pArgs);
+            if (pValue == NULL)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", pauseFunctionName.c_str(), proctab_[i].pd.pid);
+                PyErr_Print();
+                Py_DECREF(pArgs);
+                continue;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", pauseFunctionName.c_str(), PyInt_AsLong(pValue));
+            Py_DECREF(pArgs);
+            Py_DECREF(pValue);
+        }
+        Py_DECREF(pauseFunc);
+
+        isRunning_ = false;
+        return STAT_OK;
+    }
+#endif
 
 #if defined(GROUP_OPS)
     if (doGroupOps_)
@@ -1899,6 +1953,52 @@ StatError_t STAT_BackEnd::resume()
     map<unsigned int, Walker *>::iterator processMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
+
+#ifdef STAT_GDB_BE
+    if (usingGdb_ == true)
+    {
+        unsigned int i;
+        string resumeFunctionName;
+        PyObject *resumeFunc, *pArgs, *pValue;
+
+        resumeFunctionName = "resume";
+        resumeFunc = PyObject_GetAttrString(gdbModule_, resumeFunctionName.c_str());
+        if (!resumeFunc || !PyCallable_Check(resumeFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", resumeFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+
+        for (i = 0; i < proctabSize_; i++)
+        {
+            pArgs = Py_BuildValue("(i)", proctab_[i].pd.pid);
+            if (!pArgs)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
+                continue;
+            }
+
+            pValue = PyObject_CallObject(resumeFunc, pArgs);
+            if (pValue == NULL)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", resumeFunctionName.c_str(), proctab_[i].pd.pid);
+                PyErr_Print();
+                Py_DECREF(pArgs);
+                continue;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", resumeFunctionName.c_str(), PyInt_AsLong(pValue));
+            Py_DECREF(pArgs);
+            Py_DECREF(pValue);
+        }
+        Py_DECREF(resumeFunc);
+
+        isRunning_ = true;
+        return STAT_OK;
+    }
+#endif
+
 #if defined(GROUP_OPS)
     if (doGroupOps_)
   #ifdef DYSECTAPI
@@ -2100,7 +2200,6 @@ StatError_t STAT_BackEnd::getSourceLine(Walker *proc, Address addr, char *outBuf
 StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, char *outBuf, unsigned int outBufSize)
 {
     int intRet;
-#if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
     int i;
     bool boolRet, found = false;
     char buf[BUFSIZE];
@@ -2160,12 +2259,7 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
         }
     }
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s in frame %s\n", outBuf, frameName.c_str());
-#else
-    printMsg(STAT_WARNING, __FILE__, __LINE__, "Prototype variable extraction feature not enabled!\n");
-    intRet = -1;
-    memcpy(outBuf, &intRet, sizeof(int));
-#endif
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s in frame %s\n", variableName, frameName.c_str());
     return STAT_OK;
 }
 
@@ -2179,7 +2273,12 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     map<unsigned int, Walker *>::iterator processMapIter;
     map<int, StatBitVectorEdge_t *>::iterator nodeInEdgeMapIter;
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with variables %s and type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, variableSpecification, sampleType_);
+#ifdef STAT_GDB_BE
+    if (threadBvLength_ < STAT_BITVECTOR_BITS *2048 && usingGdb_ == true)
+        threadBvLength_ = STAT_BITVECTOR_BITS * 2048; // for CUDA we increase to at least 131072 threads per STAT daemon (i.e., node)
+#endif
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with max threads %d with variables %s and type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, threadBvLength_, variableSpecification, sampleType_);
 
     wasRunning = isRunning_;
     if (sampleType_ & STAT_SAMPLE_CLEAR_ON_SAMPLE)
@@ -2196,6 +2295,278 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     }
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering and merging %d traces from each task\n", nTraces);
+
+#ifdef STAT_GDB_BE
+    if (usingGdb_ == true)
+    {
+        static int threadCountWarning = 0;
+        int nodeId, prevId, k, l, count, cudaQuick = 0;
+        char *allTraces, *currentFrame;
+        const char *countDelim = "#count#";
+        string sampleFunctionName, cudaSampleFunctionName, path, name, currentFrameString;
+        string::size_type startPos, endPos;
+        PyObject *sampleFunc, *cudaSampleFunc, *pArgs, *pValue, *pSampleArgs;
+        StatBitVectorEdge_t *edge = NULL;
+        map<string, string>::iterator nodeAttrsIter;
+
+        sampleFunctionName = "get_all_host_traces";
+        sampleFunc = PyObject_GetAttrString(gdbModule_, sampleFunctionName.c_str());
+        if (!sampleFunc || !PyCallable_Check(sampleFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", sampleFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+
+        cudaSampleFunctionName = "get_all_device_traces";
+        cudaSampleFunc = PyObject_GetAttrString(gdbModule_, cudaSampleFunctionName.c_str());
+        if (!cudaSampleFunc || !PyCallable_Check(cudaSampleFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            Py_DECREF(sampleFunc);
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", cudaSampleFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+        if (sampleType_ & STAT_SAMPLE_CUDA_QUICK)
+        {
+            sampleType_ |= STAT_SAMPLE_LINE;
+            cudaQuick = 1;
+        }
+
+        for (i = 0; i < nTraces; i++)
+        {
+            k = 1;
+            clear2dNodesAndEdges();
+            isLastTrace = (i == nTraces - 1);
+
+            /* Pause process as necessary */
+            if (isRunning_)
+            {
+                statError = pause();
+                if (statError != STAT_OK)
+                    printMsg(statError, __FILE__, __LINE__, "Failed to pause processes\n");
+            }
+
+            for (j = 0; j < proctabSize_; j++)
+            {
+                /* Set edge label */
+                edge = initializeBitVectorEdge(proctabSize_);
+                if (edge == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+                    Py_DECREF(sampleFunc);
+                    Py_DECREF(cudaSampleFunc);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                edge->bitVector[j / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(j % STAT_BITVECTOR_BITS);
+
+                pArgs = Py_BuildValue("(i)", proctab_[j].pd.pid);
+                if (!pArgs)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[j].pd.pid);
+                    statFreeEdge(edge);
+                    continue;
+                }
+
+                pSampleArgs = Py_BuildValue("(iiii)", proctab_[j].pd.pid, nRetries, retryFrequency, cudaQuick);
+                if (!pSampleArgs)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pSampleArgs for pid %d\n", proctab_[j].pd.pid);
+                    statFreeEdge(edge);
+                    Py_DECREF(pArgs);
+                    continue;
+                }
+
+                pValue = PyObject_CallObject(sampleFunc, pArgs);
+                if (pValue == NULL)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", sampleFunctionName.c_str(), proctab_[j].pd.pid);
+                    statFreeEdge(edge);
+                    PyErr_Print();
+                    Py_DECREF(pArgs);
+                    Py_DECREF(pSampleArgs);
+                    continue;
+                }
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", sampleFunctionName.c_str(), PyString_AsString(pValue));
+
+                allTraces = PyString_AsString(pValue);
+                prevId = 0;
+                path = "";
+                if (find(threadIds_.begin(), threadIds_.end(), k) == threadIds_.end())
+                {
+                    threadIds_.push_back(k);
+                    if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
+                    {
+                        printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
+                        threadCountWarning++;
+                    }
+                }
+                currentFrame = strtok(allTraces, "\n");
+                while (currentFrame != NULL)
+                {
+                    if (strcmp(currentFrame, "#endtrace") == 0)
+                    {
+                        path = "";
+                        k++;
+                        prevId = 0;
+                        if (find(threadIds_.begin(), threadIds_.end(), k) == threadIds_.end())
+                        {
+                            threadIds_.push_back(k);
+                            if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
+                            {
+                                printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
+                                threadCountWarning++;
+                            }
+                        }
+                        if (!(sampleType_ & STAT_SAMPLE_THREADS))
+                            break;
+                    }
+                    else
+                    {
+                        name = "";
+                        currentFrameString = currentFrame;
+                        map<string, string> nodeAttrs;
+                        startPos = 0;
+                        endPos = currentFrameString.find("@");
+                        name += currentFrameString.substr(startPos, endPos - startPos);
+                        nodeAttrs["function"] = currentFrameString.substr(startPos, endPos - startPos);
+                        if (sampleType_ & STAT_SAMPLE_LINE)
+                        {
+                            startPos = endPos + 1;
+                            endPos = currentFrameString.find_last_of(":");
+                            name += "@" + currentFrameString.substr(startPos, endPos - startPos) + ":";
+                            nodeAttrs["source"] = currentFrameString.substr(startPos, endPos - startPos);
+                            startPos = endPos + 1;
+                            endPos = currentFrameString.size();
+                            name += currentFrameString.substr(startPos, endPos - startPos);
+                            nodeAttrs["line"] = currentFrameString.substr(startPos, endPos - startPos);
+                        }
+                        path += name;
+                        nodeId = statStringHash(path.c_str());
+                        nodes2d_[nodeId] = name;
+                        for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
+                            nodeIdToAttrs_[nodeId][nodeAttrsIter->first] = nodeAttrsIter->second;
+                        update2dEdge(prevId, nodeId, edge, k);
+                        prevId = nodeId;
+                    }
+                    currentFrame = strtok(NULL, "\n");
+                }
+                Py_DECREF(pValue);
+                if (!(sampleType_ & STAT_SAMPLE_THREADS))
+                {
+                    statFreeEdge(edge);
+                    Py_DECREF(pArgs);
+                    Py_DECREF(pSampleArgs);
+                    continue;
+                }
+
+                pValue = PyObject_CallObject(cudaSampleFunc, pSampleArgs);
+                if (pValue == NULL)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", cudaSampleFunctionName.c_str(), proctab_[j].pd.pid);
+                    statFreeEdge(edge);
+                    PyErr_Print();
+                    Py_DECREF(pArgs);
+                    Py_DECREF(pSampleArgs);
+                    continue;
+                }
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", cudaSampleFunctionName.c_str(), PyString_AsString(pValue));
+
+                allTraces = PyString_AsString(pValue);
+                prevId = 0;
+                count = 1;
+                path = "";
+                currentFrame = strtok(allTraces, "\n");
+                while (currentFrame != NULL)
+                {
+                    currentFrameString = currentFrame;
+                    if (currentFrameString.find(countDelim) != string::npos)
+                    {
+                        string countString = currentFrameString.substr(strlen(countDelim), currentFrameString.size() - strlen(countDelim));
+                        count = atoi(countString.c_str());
+                        for (l = 0; l < count; l++)
+                        {
+                            if (find(threadIds_.begin(), threadIds_.end(), k + l) == threadIds_.end())
+                            {
+                                threadIds_.push_back(k + l);
+                                if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
+                                {
+                                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
+                                    threadCountWarning++;
+                                }
+                            }
+                        }
+                    }
+                    else if (strcmp(currentFrame, "#endtrace") == 0)
+                    {
+                        path = "";
+                        k = k + count;
+                        prevId = 0;
+                    }
+                    else
+                    {
+                        name = "";
+                        currentFrameString = currentFrame;
+                        map<string, string> nodeAttrs;
+                        startPos = 0;
+                        endPos = currentFrameString.find("@");
+                        name += currentFrameString.substr(startPos, endPos - startPos);
+                        nodeAttrs["function"] = currentFrameString.substr(startPos, endPos - startPos);
+                        if (sampleType_ & STAT_SAMPLE_LINE)
+                        {
+                            startPos = endPos + 1;
+                            endPos = currentFrameString.find_last_of(":");
+                            name += "@" + currentFrameString.substr(startPos, endPos - startPos) + ":";
+                            nodeAttrs["source"] = currentFrameString.substr(startPos, endPos - startPos);
+                            startPos = endPos + 1;
+                            endPos = currentFrameString.size();
+                            name += currentFrameString.substr(startPos, endPos - startPos);
+                            nodeAttrs["line"] = currentFrameString.substr(startPos, endPos - startPos);
+                        }
+                        path += name;
+                        nodeId = statStringHash(path.c_str());
+                        nodes2d_[nodeId] = name;
+                        for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
+                            nodeIdToAttrs_[nodeId][nodeAttrsIter->first] = nodeAttrsIter->second;
+                        for (l = 0; l < count; l++)
+                            update2dEdge(prevId, nodeId, edge, k + l);
+                        prevId = nodeId;
+                    }
+                    currentFrame = strtok(NULL, "\n");
+                } // while (currentFrame != NULL)
+                statFreeEdge(edge);
+                Py_DECREF(pArgs);
+                Py_DECREF(pSampleArgs);
+                Py_DECREF(pValue);
+            } // for (j = 0; j < proctabSize_; j++)
+
+            /* Continue the process if necessary */
+            if (isLastTrace == false || wasRunning == true)
+            {
+                statError = resume();
+                if (statError != STAT_OK)
+                    printMsg(statError, __FILE__, __LINE__, "Failed to resume processes\n");
+            }
+
+            if (isLastTrace == false)
+                usleep(traceFrequency * 1000);
+
+            statError = update3dNodesAndEdges();
+            if (statError != STAT_OK)
+            {
+                printMsg(statError, __FILE__, __LINE__, "Error updating 3d nodes and edges for trace %d of %d\n", i + 1, nTraces);
+                return statError;
+            }
+        } // for (i = 0; i < nTraces; i++)
+        Py_DECREF(sampleFunc);
+        Py_DECREF(cudaSampleFunc);
+
+        return STAT_OK;
+    } // if (usingGdb_ == true)
+#endif // #ifdef STAT_GDB_BE
+
     for (i = 0; i < nTraces; i++)
     {
         clear2dNodesAndEdges();
@@ -2291,7 +2662,10 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
                 nodeAttrs["line"] = buf;
             }
             else
+            {
+                nodeAttrs["function"] = pyFun;
                 name = pyFun;
+            }
             free(pyFun);
             free(pySource);
             isPyTrace_ = true;
@@ -2340,7 +2714,7 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
     {
 #ifdef SW_VERSION_8_0_0
   #ifdef OMP_STACKWALKER
-        if (frame.isTopFrame() == true and !(sampleType_ & STAT_SAMPLE_OPENMP))
+        if (frame.isTopFrame() == true && !(sampleType_ & STAT_SAMPLE_OPENMP))
   #else
         if (frame.isTopFrame() == true)
   #endif
@@ -2404,9 +2778,7 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
     StatBitVectorEdge_t *edge = NULL;
     vector<Dyninst::THR_ID> threads;
     ProcDebug *pDebug = NULL;
-#ifdef GRAPHLIB_3_0
     static int threadCountWarning = 0;
-#endif
 #ifdef OMP_STACKWALKER
     OpenMPStackWalker *ompWalker = NULL;
 #endif
@@ -2460,17 +2832,15 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
     /* Loop over the threads and get the traces */
     for (j = 0; j < threads.size(); j++)
     {
-#ifdef GRAPHLIB_3_0
         if (find(threadIds_.begin(), threadIds_.end(), threads[j]) == threadIds_.end())
         {
             threadIds_.push_back(threads[j]);
-            if (threadCountWarning == 0 and threadIds_.size() >= threadBvLength_)
+            if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
             {
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
                 threadCountWarning++;
             }
         }
-#endif
         trace.clear();
         prevId = 0;
         path = "";
@@ -2479,11 +2849,9 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
         if (proc == NULL)
         {
             trace.push_back("[task_exited]"); /* We're not attached so return a trace denoting the task has exited */
-#ifdef GRAPHLIB_3_0
             map<string, string> nodeAttrs;
             nodeAttrs["function"] = "StackWalker_Error";
             nameToNodeAttrs["StackWalker_Error"] = nodeAttrs;
-#endif
         }
         else
         {
@@ -2567,11 +2935,9 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
             {
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "StackWalker reported an error in walking the stack: %s\n", Stackwalker::getLastErrorMsg());
                 trace.push_back("StackWalker_Error");
-#ifdef GRAPHLIB_3_0
                 map<string, string> nodeAttrs;
                 nodeAttrs["function"] = "StackWalker_Error";
                 nameToNodeAttrs["StackWalker_Error"] = nodeAttrs;
-#endif
             }
             else
             {
@@ -2610,11 +2976,9 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
             path += trace[i].c_str();
             nodeId = statStringHash(path.c_str());
             nodes2d_[nodeId] = trace[i];
-#ifdef GRAPHLIB_3_0
             map<string, string> nodeAttrs = nameToNodeAttrs[trace[i].c_str()];
             for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
                 nodeIdToAttrs_[nodeId][nodeAttrsIter->first] = nodeAttrsIter->second;
-#endif
             update2dEdge(prevId, nodeId, edge, threads[j]);
             prevId = nodeId;
         }
@@ -2657,9 +3021,7 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
     map<Walker *, int>::iterator procsToRanksIter;
     StatBitVectorEdge_t *edge;
     StatError_t statError;
-#ifdef GRAPHLIB_3_0
     static int threadCountWarning = 0;
-#endif
 
     /* Add the Frame associated with stackwalkerNode to the graphlibGraph, below the given graphlibNode */
     /* Note: Lots of complexity here to deal with adding edge labels (all the std::set work). We could get rid of this if graphlib had graph traversal functions. */
@@ -2676,17 +3038,15 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
         {
             /* We hit a thread, that means the end of the callstack. Add the associated rank to our edge label set. */
             threadId = child->getThread();
-#ifdef GRAPHLIB_3_0
             if (find(threadIds_.begin(), threadIds_.end(), threadId) == threadIds_.end())
             {
                 threadIds_.push_back(threadId);
-                if (threadCountWarning == 0 and threadIds_.size() >= threadBvLength_)
+                if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
                 {
                     printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
                     threadCountWarning++;
                 }
             }
-#endif
             if (threadId == NULL_LWP)
             {
                 printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Thread ID is NULL\n");
@@ -2757,11 +3117,9 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
             newNodeIdNames = nodeIdNames + name;
             newChildId = statStringHash(newNodeIdNames.c_str());
             nodes2d_[newChildId] = name;
-#ifdef GRAPHLIB_3_0
             map<string, string> nodeAttrs = nameToNodeAttrs[name];
             for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
                 nodeIdToAttrs_[newChildId][nodeAttrsIter->first] = nodeAttrsIter->second;
-#endif
         }
 
         /* Traversal 2.1: For each new node, recursively add its children to the graph */
@@ -3006,11 +3364,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         procSet_ = procSet_->set_difference(terminatedSubset);
     }
 
-#if defined(PROTOTYPE_TO) || defined(PROTOTYPE_PY)
     CallTree tree(statFrameCmp);
-#else
-    CallTree tree(frame_lib_offset_cmp);
-#endif
 
 #ifdef SW_VERSION_8_1_0
     swSuccess = walkerSet_->walkStacks(tree, !(sampleType_ & STAT_SAMPLE_THREADS));
@@ -3069,9 +3423,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
 
         int newChildId = statStringHash(msg.c_str());
         nodes2d_[newChildId] = msg;
-#ifdef GRAPHLIB_3_0
         nodeIdToAttrs_[newChildId]["function"] = msg;
-#endif
 
         StatBitVectorEdge_t *edge = initializeBitVectorEdge(proctabSize_);
         if (edge == NULL)
@@ -3107,7 +3459,7 @@ int STAT_BackEnd::getProctabSize()
 int statRelativeRankToAbsoluteRank(int rank)
 {
     int absoluteRank = 0;
-    if (gBePtr->getProctab() != NULL &&  rank >= 0 && rank <= gBePtr->getProctabSize())
+    if (gBePtr->getProctab() != NULL && rank >= 0 && rank <= gBePtr->getProctabSize())
         absoluteRank = gBePtr->getProctab()[rank].mpirank;
     return absoluteRank;
 }
@@ -3125,6 +3477,58 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
     ProcDebug *pDebug = NULL;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
+
+#ifdef STAT_GDB_BE
+    if (usingGdb_ == true)
+    {
+        /* Pause process, otherwise we won't have a gdb prompt */
+        if (isRunning_)
+        {
+            StatError_t statError = pause();
+            if (statError != STAT_OK)
+                printMsg(statError, __FILE__, __LINE__, "Failed to pause processes\n");
+        }
+
+        string detachFunctionName;
+        PyObject *detachFunc, *pArgs, *pValue;
+
+        detachFunctionName = "detach";
+        detachFunc = PyObject_GetAttrString(gdbModule_, detachFunctionName.c_str());
+        if (!detachFunc || !PyCallable_Check(detachFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", detachFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+
+        for (i = 0; i < proctabSize_; i++)
+        {
+            pArgs = Py_BuildValue("(i)", proctab_[i].pd.pid);
+            if (!pArgs)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
+                continue;
+            }
+
+            pValue = PyObject_CallObject(detachFunc, pArgs);
+            if (pValue == NULL)
+            {
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", detachFunctionName.c_str(), proctab_[i].pd.pid);
+                PyErr_Print();
+                Py_DECREF(pArgs);
+                continue;
+            }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", detachFunctionName.c_str(), PyInt_AsLong(pValue));
+            Py_DECREF(pArgs);
+            Py_DECREF(pValue);
+        }
+        Py_DECREF(detachFunc);
+
+        isRunning_ = true;
+        return STAT_OK;
+    }
+#endif
 
 #if defined(GROUP_OPS)
     if (doGroupOps_ && stopArrayLen == 0)
@@ -3280,10 +3684,8 @@ StatError_t STAT_BackEnd::startLog(unsigned int logType, char *logOutDir, int mr
             printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
             return STAT_FILE_ERROR;
         }
-#ifdef MRNET40
         if (logType_ & STAT_LOG_MRN)
             mrn_printf_init(gStatOutFp);
-#endif
         set_OutputLevel(mrnetOutputLevel);
     }
 
@@ -3408,10 +3810,8 @@ void STAT_BackEnd::swDebugBufferToFile()
                     printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed for %s\n", strerror(errno), fileName);
                     return;
                 }
-#ifdef MRNET40
                 if (logType_ & STAT_LOG_MRN)
                     mrn_printf_init(gStatOutFp);
-#endif
             }
             fflush(gStatOutFp);
             statOutFD = fileno(gStatOutFp);
@@ -3462,7 +3862,6 @@ vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 
 StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, char **pyFun, char **pySource, int *pyLineNo)
 {
-#ifdef PROTOTYPE_PY
     int i, found = 0, fLastIVal = -1, address, lineNo, firstLineNo;
     long length, pAddr;
     unsigned long long baseAddr, pyCodeObjectBaseAddr, pyUnicodeObjectAddr;
@@ -3674,7 +4073,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
         } /* for i */
     } /* if any static offset field == -1, i.e., has not been set yet */
 
-    if (pythonOffsets->obSvalOffset == -1 and pythonOffsets->obSizeOffset == -1 and pythonOffsets->isUnicode == true)
+    if (pythonOffsets->obSvalOffset == -1 && pythonOffsets->obSizeOffset == -1 && pythonOffsets->isUnicode == true)
     {
         /* Python 3.3 uses PyASCIIObject string for name container */
         boolRet = symtab->findType(type, "PyASCIIObject");
@@ -3881,7 +4280,6 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
         *pyLineNo = -1;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found Python frame information %s@%s:%d\n", *pyFun, *pySource, *pyLineNo);
-#endif
 
     return STAT_OK;
 }
@@ -4224,9 +4622,7 @@ StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned i
     path += "__libc_start_main";
     nodeId = statStringHash(path.c_str());
     nodes2d_[nodeId] = "__libc_start_main";
-#ifdef GRAPHLIB_3_0
     nodeIdToAttrs_[nodeId]["function"] = nodes2d_[nodeId];
-#endif
     update2dEdge(prevId, nodeId, edge, 0);
     prevId = nodeId;
 
@@ -4234,9 +4630,7 @@ StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned i
     path += "main";
     nodeId = statStringHash(path.c_str());
     nodes2d_[nodeId] = "main";
-#ifdef GRAPHLIB_3_0
     nodeIdToAttrs_[nodeId]["function"] = nodes2d_[nodeId];
-#endif
     update2dEdge(prevId, nodeId, edge, 0);
     prevId = nodeId;
 
@@ -4253,9 +4647,7 @@ StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned i
         path += frame;
         nodeId = statStringHash(path.c_str());
         nodes2d_[nodeId] = frame;
-#ifdef GRAPHLIB_3_0
         nodeIdToAttrs_[nodeId]["function"] = nodes2d_[nodeId];
-#endif
         update2dEdge(prevId, nodeId, edge, 0);
         prevId = nodeId;
     }

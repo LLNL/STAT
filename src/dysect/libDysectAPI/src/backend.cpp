@@ -893,7 +893,7 @@ DysectErrorCode Backend::irpc(Process::ptr process, string libraryPath, string f
 
   buffer = (unsigned char *)malloc(size);
   if (!buffer) {
-    DYSECTWARN(false, "Failed to allocate %d bytes for target %d", size);
+    DYSECTWARN(false, "Failed to allocate %d bytes for target", size);
     return Error;
   }
   memcpy(buffer, begin, size);

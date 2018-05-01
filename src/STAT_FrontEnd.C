@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -521,7 +521,37 @@ StatError_t STAT_FrontEnd::launchDaemons()
         printMsg(statError, __FILE__, __LINE__, "Failed to increase limits... attemting to run with current configuration\n");
 #endif
 
-    if (applicationOption_ != STAT_SERIAL_ATTACH)
+#ifdef STAT_GDB_BE
+        if (applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH)
+        {
+            // On PPC64LE systems the FE environment is not passed to the daemons.
+            // We need to send PYTHONPATH for the GDB BE component.
+            // We also need to send the GDB path since this variable isn't propagated either.
+            char *gdbCommand, *pythonPath;
+            pythonPath = getenv("PYTHONPATH");
+            if (pythonPath == NULL)
+                pythonPath = ":";
+            gdbCommand = getenv("STAT_GDB");
+            if (gdbCommand == NULL)
+                gdbCommand = "gdb";
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using STAT GDB attach %s and PYTHONPATH %s\n", gdbCommand, pythonPath);
+            daemonArgc += 4;
+            daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+            if (daemonArgv == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[daemonArgc - 5] = strdup("-P");
+            daemonArgv[daemonArgc - 4] = strdup(pythonPath);
+            daemonArgv[daemonArgc - 3] = strdup("-G");
+            daemonArgv[daemonArgc - 2] = strdup(gdbCommand);
+            daemonArgv[daemonArgc - 1] = NULL;
+        }
+#endif
+
+
+    if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH)
     {
         if (iIsFirstRun == true)
         {
@@ -570,7 +600,6 @@ StatError_t STAT_FrontEnd::launchDaemons()
             printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Tool daemon path not set\n");
             return STAT_ARG_ERROR;
         }
-
         daemonArgc += 2;
         daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
         if (daemonArgv == NULL)
@@ -592,7 +621,7 @@ StatError_t STAT_FrontEnd::launchDaemons()
         for (i = 0; i < daemonArgc; i++)
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "daemonArgv[%d] = %s\n", i, daemonArgv[i]);
 
-        if (applicationOption_ == STAT_ATTACH)
+        if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_GDB_ATTACH)
         {
             if (launcherPid_ == 0)
             {
@@ -663,7 +692,7 @@ StatError_t STAT_FrontEnd::launchDaemons()
             printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get RM Info\n");
             return STAT_LMON_ERROR;
         }
-    } /* if (applicationOption_ != STAT_SERIAL_ATTACH) */
+    } /* if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH) */
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering application information\n");
 
@@ -791,8 +820,8 @@ void topologyChangeCb(Event *event, void *statObject)
 
 StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *topologySpecification, char *nodeList, bool blocking, StatCpPolicy_t cpPolicy)
 {
-    int daemonArgc, statArgc, i;
-    unsigned int j;
+    int daemonArgc = 1, statArgc, i;
+    unsigned int j, currentArg;
     char topologyFileName[BUFSIZE], **daemonArgv = NULL, temp[BUFSIZE];
     bool boolRet;
     StatError_t statError;
@@ -820,18 +849,48 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tInitializing MRNet...\n");
     gStartTime.setTime();
 
-    if (applicationOption_ == STAT_SERIAL_ATTACH)
+    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH)
     {
+
+#ifdef STAT_GDB_BE
+        if (applicationOption_ == STAT_SERIAL_GDB_ATTACH)
+        {
+            // On PPC64LE systems the FE environment is not passed to the daemons.
+            // We need to send PYTHONPATH for the GDB BE component.
+            // We also need to send the GDB path since this variable isn't propagated either.
+            char *gdbCommand, *pythonPath;
+            pythonPath = getenv("PYTHONPATH");
+            if (pythonPath == NULL)
+                pythonPath = ":";
+            gdbCommand = getenv("STAT_GDB");
+            if (gdbCommand == NULL)
+                gdbCommand = "gdb";
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using STAT GDB attach %s and PYTHONPATH %s\n", gdbCommand, pythonPath);
+            daemonArgc += 4;
+            daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+            if (daemonArgv == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[daemonArgc - 5] = strdup("-P");
+            daemonArgv[daemonArgc - 4] = strdup(pythonPath);
+            daemonArgv[daemonArgc - 3] = strdup("-G");
+            daemonArgv[daemonArgc - 2] = strdup(gdbCommand);
+            daemonArgv[daemonArgc - 1] = NULL;
+        }
+#endif
+
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\tSetting up daemon args for serial attach and MRNet launch\n");
-        statArgc = 2 + 2 * proctabSize_;
-        daemonArgc = statArgc;
-        daemonArgv = (char **)malloc(daemonArgc * sizeof(char *));
+        statArgc = 1 + 2 * proctabSize_;
+        daemonArgc += statArgc;
+        daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
         if (daemonArgv == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to allocate %d bytes for argv\n", strerror(errno), daemonArgc);
             return STAT_ALLOCATE_ERROR;
         }
-        daemonArgv[0] = strdup("-s");
+        daemonArgv[daemonArgc - statArgc - 1] = strdup("-s");
         if (daemonArgv[0] == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[0]\n", strerror(errno));
@@ -840,18 +899,20 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         }
         for (j = 0; j < proctabSize_; j++)
         {
-            daemonArgv[2 * j + 1] = strdup("-p");
-            if (daemonArgv[2 * j + 1] == NULL)
+            currentArg = daemonArgc - statArgc - 1 + 2 * j + 1;
+            daemonArgv[currentArg] = strdup("-p");
+            if (daemonArgv[currentArg] == NULL)
             {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), 2 * j + 1);
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup argv[%d]\n", strerror(errno), currentArg);
                 free(daemonArgv);
                 return STAT_ALLOCATE_ERROR;
             }
             snprintf(temp, BUFSIZE, "%s@%s:%d", proctab_[j].pd.executable_name, proctab_[j].pd.host_name, proctab_[j].pd.pid);
-            daemonArgv[2 * j + 2] = strdup(temp);
-            if (daemonArgv[2 * j + 2] == NULL)
+            currentArg++;
+            daemonArgv[currentArg] = strdup(temp);
+            if (daemonArgv[currentArg] == NULL)
             {
-                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) argv[%d]\n", strerror(errno), temp, 2 * j + 2);
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s Failed to strdup(%s) argv[%d]\n", strerror(errno), temp, currentArg);
                 free(daemonArgv);
                 return STAT_ALLOCATE_ERROR;
             }
@@ -861,7 +922,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         statError = addDaemonLogArgs(daemonArgc, daemonArgv);
         if (statError != STAT_OK)
         {
-            printMsg(statError, __FILE__, __LINE__, "Failed to add daemon logging args\n");             free(daemonArgv);
+            printMsg(statError, __FILE__, __LINE__, "Failed to add daemon logging args\n");              free(daemonArgv);
             return statError;
         }
 
@@ -885,6 +946,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         for (i = 0; i < daemonArgc; i++)
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\targv[%d] = %s\n", i, daemonArgv[i]);
         network_ = Network::CreateNetworkFE(topologyFileName, toolDaemonExe_, (const char **)daemonArgv);
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\tCalled CreateNetworkFE with %d args:\n", daemonArgc);
         isConnected_ = true;
         if (daemonArgv != NULL)
         {
@@ -896,7 +958,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
             }
             free(daemonArgv);
         }
-    } /* if (applicationOption_ == STAT_SERIAL_ATTACH) */
+    } /* if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH) */
     else
     {
         if (lmonRmInfo_.rm_supported_types[lmonRmInfo_.index_to_cur_instance] == RC_alps)
@@ -913,7 +975,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         else
             network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
 
-    } /* else branch of if (applicationOption_ == STAT_SERIAL_ATTACH) */
+    } /* else branch of if (applicationOption_ == STAT_SERIAL_ATTAC || applicationOption_ == STAT_SERIAL_GDB_ATTACHH) */
 
     if (network_ == NULL)
     {
@@ -962,7 +1024,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         return STAT_MRNET_ERROR;
     }
     topologySize_ = leafInfo_.networkTopology->get_NumNodes();
-    if (applicationOption_ == STAT_SERIAL_ATTACH)
+    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH)
         topologySize_ -= nApplNodes_; /* We need topologySize_ to not include BEs */
 
     leafInfo_.daemons = applicationNodeMultiSet_;
@@ -984,7 +1046,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 
     leafInfo_.networkTopology->get_Leaves(leafInfo_.leafCps);
 
-    if (applicationOption_ != STAT_SERIAL_ATTACH)
+    if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH)
     {
         gStartTime.setTime();
         statError = sendDaemonInfo();
@@ -1484,11 +1546,7 @@ StatError_t STAT_FrontEnd::serveFileRequest(const char *receiveFileName)
         tag = PROT_LIB_REQ_RESP;
     }
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "sending contents of file %s, length %lu bytes\n", receiveFileName, fileSize);
-#ifdef MRNET40
     if (fileRequestStream_->send(tag, "%Ac %s", fileContents, fileSize, receiveFileName) == -1)
-#else
-    if (fileRequestStream_->send(tag, "%ac %s", fileContents, fileSize, receiveFileName) == -1)
-#endif
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send file contents\n");
         return STAT_MRNET_ERROR;
@@ -1642,10 +1700,8 @@ StatError_t STAT_FrontEnd::startLog(unsigned int logType, char *logOutDir, bool 
             printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to open FE log file %s\n", strerror(errno), fileName);
             return STAT_FILE_ERROR;
         }
-#ifdef MRNET40
         if (logging_ & STAT_LOG_MRN)
             mrn_printf_init(gStatOutFp);
-#endif
     }
 
     return STAT_OK;
@@ -1754,7 +1810,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
     }
     if (intRet != 0)
     {
-        printMsg(STAT_RESUME_ERROR, __FILE__, __LINE__, "%d daemons reported an error\n", intRet);
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "%d daemons reported an error\n", intRet);
         isPendingAck_ = false;
         return STAT_DAEMON_ERROR;
     }
@@ -2411,10 +2467,10 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     /* Initialized vector iterators */
     if (topology == "") /* Flat topology */
     {
-        if (applicationOption_ != STAT_SERIAL_ATTACH)
+        if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH)
             fprintf(file, "%s;\n", treeList[0].c_str());
     }
-    else if (topology == "0" && applicationOption_ != STAT_SERIAL_ATTACH) /* Flat topology */
+    else if (topology == "0" && applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH) /* Flat topology */
         fprintf(file, "%s;\n", treeList[0].c_str());
     else
     {
@@ -2469,7 +2525,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         }
     }
 
-    if (applicationOption_ == STAT_SERIAL_ATTACH)
+    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH)
     {
         applicationNodeMultiSetIter = applicationNodeMultiSet_.begin();
         for (i = 0; i < parentCount; i++)
@@ -2834,7 +2890,7 @@ bool STAT_FrontEnd::isRunning()
     return isRunning_;
 }
 
-StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, bool blocking, const char *variableSpecification)
+StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int maxDaemonNumThreads, bool blocking, const char *variableSpecification)
 {
     StatError_t statError;
 
@@ -2870,7 +2926,7 @@ StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned i
     printMsg(STAT_STDOUT, __FILE__, __LINE__, "Sampling traces...\n");
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "%d traces with %d frequency, %d retries with %d frequency, type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, sampleType);
 
-    if (broadcastStream_->send(PROT_SAMPLE_TRACES, "%ud %ud %ud %ud %ud %s", nTraces, traceFrequency, nRetries, retryFrequency, sampleType, variableSpecification) == -1)
+    if (broadcastStream_->send(PROT_SAMPLE_TRACES, "%ud %ud %ud %ud %ud %ud %s", nTraces, traceFrequency, nRetries, retryFrequency, sampleType, maxDaemonNumThreads, variableSpecification) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send request to sample\n");
         return STAT_MRNET_ERROR;
@@ -3001,9 +3057,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     uint64_t byteArrayLen;
     unsigned int sampleType;
     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL;
-#ifdef GRAPHLIB_3_0
     char **graphAttrKeys, **graphAttrValues, tmpStr[BUFSIZE];
-#endif
     list<int>::iterator ranksIter;
     set<int>::iterator missingRanksIter;
     graphlib_graph_p stackTraces = NULL, sortedStackTraces = NULL, withMissingStackTraces = NULL;
@@ -3051,24 +3105,18 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     isPendingAck_ = false;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
-#ifdef MRNET40
     if (packet->unpack("%Ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
-#else
-    if (packet->unpack("%ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
-#endif
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::unpack(PROT_COLLECT_TRACES_RESP, \"%%auc\") failed\n");
         return STAT_MRNET_ERROR;
     }
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Deserializing graph, byteArrayLen = %d\n", byteArrayLen);
-#ifdef GRAPHLIB_3_0
     if (sampleType & STAT_SAMPLE_THREADS)
     {
         gStatBitVectorFunctions->edge_checksum = statCountRepEdgeCheckSum;
         gStatReorderFunctions->edge_checksum = statCountRepEdgeCheckSum;
     }
-#endif
     if (sampleType & STAT_SAMPLE_COUNT_REP)
         graphlibError = graphlib_deserializeBasicGraph(&stackTraces, gStatCountRepFunctions, byteArray, byteArrayLen);
     else
@@ -3148,7 +3196,6 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error creating rooted graph\n");
             return STAT_GRAPHLIB_ERROR;
         }
-#ifdef GRAPHLIB_3_0
         int functionIndex;
         map<string, string>::iterator nodeAttrIter;
 
@@ -3162,22 +3209,20 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get node attr index for function\n");
+            free(nodeAttr.attr_values);
             return STAT_GRAPHLIB_ERROR;
         }
         nodeAttr.attr_values[functionIndex] = statCopyNodeAttr("function", nodeAttr.label);
-#endif
         nodeId = statStringHash((char *)nodeAttr.label);
         graphlibError = graphlib_addNode(withMissingStackTraces, nodeId, &nodeAttr);
         if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding node to graph\n");
+            free(nodeAttr.attr_values);
             return STAT_GRAPHLIB_ERROR;
         }
-#ifdef GRAPHLIB_3_0
         free(nodeAttr.attr_values);
-#endif
 
-#ifdef GRAPHLIB_3_0
         map<string, string>::iterator edgeAttrIter;
         edgeAttr.attr_values = (void **)calloc(1, gNumEdgeAttrs * sizeof(void *));
         if (edgeAttr.attr_values == NULL)
@@ -3185,13 +3230,13 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error callocing %d edgeAttr.attr_values\n", strerror(errno), gNumEdgeAttrs);
             return STAT_ALLOCATE_ERROR;
         }
-#endif
         if (sampleType & STAT_SAMPLE_COUNT_REP)
         {
             countRepEdge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
             if (countRepEdge == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to initialize edge\n", strerror(errno));
+                free(edgeAttr.attr_values);
                 return STAT_ALLOCATE_ERROR;
             }
             countRepEdge->count = missingRanks_.size();
@@ -3207,6 +3252,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             if (edge == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+                free(edgeAttr.attr_values);
                 return STAT_ALLOCATE_ERROR;
             }
             for (missingRanksIter = missingRanks_.begin(); missingRanksIter != missingRanks_.end(); missingRanksIter++)
@@ -3214,7 +3260,6 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             edgeAttr.label = (void *)edge;
         }
 
-#ifdef GRAPHLIB_3_0
         int index;
         if (sampleType & STAT_SAMPLE_COUNT_REP)
         {
@@ -3235,48 +3280,33 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             graphlib_getEdgeAttrIndex(withMissingStackTraces, "bv", &index);
             edgeAttr.attr_values[index] = statCopyEdgeAttr("bv", (void *)edge);
         }
-#endif
 
         graphlibError = graphlib_addDirectedEdge(withMissingStackTraces, 0, nodeId, &edgeAttr);
         if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
+            statFreeEdgeAttrs(edgeAttr.attr_values, withMissingStackTraces);
+            if (countRepEdge != NULL)
+                statFreeCountRepEdge(countRepEdge);
             return STAT_GRAPHLIB_ERROR;
         }
         if (countRepEdge != NULL)
             statFreeCountRepEdge(countRepEdge);
         if (edge != NULL)
             statFreeEdge(edge);
-#ifdef GRAPHLIB_3_0
-        int i;
-        char *edgeAttrKey;
-        for (i = 0; i < gNumEdgeAttrs; i++)
-        {
-            graphlibError = graphlib_getEdgeAttrKey(withMissingStackTraces, i, &edgeAttrKey);
-            if (GRL_IS_FATALERROR(graphlibError))
-            {
-                printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to get edge attr key for index %d\n", i);
-                return STAT_GRAPHLIB_ERROR;
-            }
-            statFreeEdgeAttr(edgeAttrKey, edgeAttr.attr_values[i]);
-        }
-        free(edgeAttr.attr_values);
-#endif
-        if (GRL_IS_FATALERROR(graphlibError))
-        {
-            printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error adding edge to graph\n");
-            return STAT_GRAPHLIB_ERROR;
-        }
+        statFreeEdgeAttrs(edgeAttr.attr_values, withMissingStackTraces);
         graphlibError = graphlib_mergeGraphs(withMissingStackTraces, sortedStackTraces);
         if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph with missing tasks\n");
+            free(edgeAttr.attr_values);
             return STAT_GRAPHLIB_ERROR;
         }
         graphlibError = graphlib_delGraph(sortedStackTraces);
         if (GRL_IS_FATALERROR(graphlibError))
         {
             printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Error deleting graph\n");
+            free(edgeAttr.attr_values);
             return STAT_GRAPHLIB_ERROR;
         }
         sortedStackTraces = withMissingStackTraces;
@@ -3287,16 +3317,12 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Exporting %s graph to dot\n", outSuffix);
     gStartTime.setTime();
-#ifdef GRAPHLIB_3_0
     if (sampleType & STAT_SAMPLE_COUNT_REP)
         graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "sum");
     else if (sampleType & STAT_SAMPLE_THREADS)
         graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "tbvsum");
     else
         graphlibError = graphlib_colorGraphByLeadingEdgeAttr(sortedStackTraces, "bv");
-#else
-    graphlibError = graphlib_colorGraphByLeadingEdgeLabel(sortedStackTraces);
-#endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error coloring graph by leading edge\n");
@@ -3314,7 +3340,6 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         snprintf(outFile, BUFSIZE, "%s/%02d_%s.%s.dot", outDir_, sMergeCount, filePrefix_, outSuffix);
     snprintf(lastDotFileName_, BUFSIZE, "%s", outFile);
 
-#ifdef GRAPHLIB_3_0
     graphAttrKeys = (char **)malloc(sizeof(char *));
     if (graphAttrKeys == NULL)
     {
@@ -3326,6 +3351,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     if (graphAttrValues == NULL)
     {
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate for graph attr values\n", strerror(errno));
+        free(graphAttrKeys[0]);
         return STAT_ALLOCATE_ERROR;
     }
     snprintf(tmpStr, BUFSIZE, "stat_%d_%d", STAT_MAJOR_VERSION, STAT_MINOR_VERSION);
@@ -3335,9 +3361,6 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     free(graphAttrValues[0]);
     free(graphAttrKeys);
     free(graphAttrValues);
-#else
-    graphlibError = graphlib_exportGraph(outFile, GRF_DOT, sortedStackTraces);
-#endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "graphlib error exporting graph to dot format\n");
@@ -3352,13 +3375,11 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     if (statError != STAT_OK)
         printMsg(statError, __FILE__, __LINE__, "Failed to dump performance results\n");
 
-#ifdef GRAPHLIB_3_0
     if (sampleType & STAT_SAMPLE_THREADS)
     {
         gStatBitVectorFunctions->edge_checksum = statEdgeCheckSum;
         gStatReorderFunctions->edge_checksum = statEdgeCheckSum;
     }
-#endif
 
     if (stackTraces != NULL)
     {
@@ -3389,11 +3410,7 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
 {
     int tag, intRet, totalWidth, dummyRank, offset;
     unsigned int sampleType;
-#ifdef MRNET40
     uint64_t byteArrayLen;
-#else
-    unsigned int byteArrayLen;
-#endif
     char *byteArray = NULL, *edgeLabel;
     list<int>::iterator ranksIter;
     set<int>::iterator missingRanksIter;
@@ -3476,11 +3493,7 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
         }
 
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
-#ifdef MRNET40
         if (packet->unpack("%Ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
-#else
-        if (packet->unpack("%ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
-#endif
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::unpack(PROT_SEND_NODE_IN_EDGE_RESP) failed\n");
             return NULL;
@@ -3662,9 +3675,7 @@ StatError_t STAT_FrontEnd::dumpPerf()
             else
             {
                 if (getenv("USER") != NULL)
-                {
                     userName = strdup(getenv("USER"));
-                }
             }
         }
         if (userName == NULL)

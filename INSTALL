@@ -26,13 +26,14 @@ Dependent Packages
    StackWalker Lightweight stack trace sampling
    https://github.com/dyninst/dyninst
 
-   In addition, the STAT GUI requires Python with PyGTK, both of
-   which are commonly preinstalled with many Linux operating
-   systems. The Pygments Python module can optionally be installed
-   to allow the STAT GUI to perform syntax highlighting of source
-   code. The STAT GUI also requires SWIG to generate Python
-   wrappers for STAT's core functionality. Another GUI requirement
-   is the Graphviz package to render the DOT format graph files.
+   In addition, STAT requires Python and the STAT GUI requires
+   PyGTK, both of which are commonly preinstalled with many Linux
+   operating systems. STAT also requires SWIG to generate Python
+   wrappers for STAT's core functionality. The Pygments Python
+   module can optionally be installed to allow the STAT GUI to
+   perform syntax highlighting of source code. Another GUI
+   requirement is the Graphviz package to render the DOT format
+   graph files.
 
    STAT can also be optionally built with the Fast Global File
    Status (FGFS) library. This library helps STAT identify when a
@@ -47,14 +48,6 @@ Dependent Packages
      __________________________________________________________
 
 Installation
-
-   A script that downloads and installs STAT and all its
-   dependencies for BlueGene/Q has been created and can be
-   downloaded at
-   https://github.com/LLNL/STAT/blob/master/script-stat-install or
-   can be found in the top-level directory of the STAT source.
-   Note this script was developed for BlueGene/Q systems, but can
-   be used as guidance for other systems as well.
 
    STAT and its dependencies can also be built via the Spack
    package management tool, available at
@@ -79,7 +72,7 @@ Installation
 
    STAT creates wrapper scripts for the stat-cl and stat-gui
    commands. These wrappers set appropriate paths for the
-   launchmon and mrnet_commnode executables, based on the the
+   launchmon and mrnet_commnode executables, based on the
    --with-launchmon and --with-mrnet configure options, thus it is
    important to specify both of these even if they share a prefix.
 
@@ -99,14 +92,7 @@ Installation
    get MRNet to bind to the appropriate network interface that can
    communicate with the I/O nodes. By default, STAT will append
    "-io" to the hostname. Alternatively, you can specify the
-   hostname with the STAT_FE_HOSTNAME environment variable. A
-   script that downloads and install STAT and all its dependencies
-   for BlueGene/Q has been created and can be downloaded at
-   https://github.com/lee218llnl/STAT/blob/master/script-stat-inst
-   all or can be found in the top-level directory of the STAT
-   source. Due to system configurations, this may not completely
-   work out of the box, but it provides good guidance on the steps
-   required.
+   hostname with the STAT_FE_HOSTNAME environment variable.
 
    To compile on Cray systems runnig alps, you no longer need to
    specify --with-cray-alps. An example configure line for Cray:
@@ -142,3 +128,8 @@ make install
    behavior can be disabled by specifying --with-rpath=no.
    However, when doing so, you must be sure to set LD_LIBRARY_PATH
    to point to the directories containing the dependent libraries.
+
+   STAT can also be configured to use GDB as a backend instead of
+   DynInst. To specify the path to gdb, use the --with-gdb flag.
+   Note that STAT currently still requires DynInst as a dependence
+   even when using the GDB backend.

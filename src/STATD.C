@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -16,9 +16,9 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <getopt.h>
 #include "config.h"
 #include "STAT_BackEnd.h"
+#include <getopt.h>
 
 using namespace std;
 
@@ -44,6 +44,8 @@ int main(int argc, char **argv)
         {"mrnetprintf",         no_argument,        0, 'm'},
         {"serial",              no_argument,        0, 's'},
         {"mrnet",               no_argument,        0, 'M'},
+        {"gdb",                 required_argument,  0, 'G'},
+        {"pythonpath",          required_argument,  0, 'P'},
         {"mrnetoutputlevel",    required_argument,  0, 'o'},
         {"pid",                 required_argument,  0, 'p'},
         {"logdir",              required_argument,  0, 'L'},
@@ -71,8 +73,16 @@ int main(int argc, char **argv)
         invocationString.append(" ");
     }
     if (argc > 2)
-        if (strcmp(argv[1], "-s") == 0 || strcmp(argv[1], "--serial") == 0)
-            launchType = STATD_MRNET_LAUNCH;
+    {
+        for (i = 0; i < argc; i++)
+        {
+            if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--serial") == 0)
+            {
+                launchType = STATD_MRNET_LAUNCH;
+                break;
+            }
+        }
+    }
 
     statError = statInit(&argc, &argv, launchType);
     if (statError != STAT_OK)
@@ -92,7 +102,7 @@ int main(int argc, char **argv)
 
     while (1)
     {
-        opt = getopt_long(argc, argv,"hVmsMo:p:L:l:d:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVmsMG:P:o:p:L:l:d:", longOptions, &optionIndex);
         if (opt == -1)
             break;
         if (opt == 'M')
@@ -134,6 +144,28 @@ int main(int argc, char **argv)
                 statFinalize(launchType);
                 return STAT_ARG_ERROR;
             }
+            break;
+        case 'P':
+            // On PPC64LE systems the FE environment is not passed to the daemons.
+            // We need to set PYTHONPATH for the GDB BE component.
+            i = setenv("PYTHONPATH", optarg, 1);
+            if (i != 0)
+                statBackEnd->printMsg(STAT_WARNING, __FILE__, __LINE__, "%s: setenv(%s) returned %d\n", strerror(errno), optarg, i);
+            break;
+        case 'G':
+#ifdef STAT_GDB_BE
+            i = setenv("STAT_GDB", optarg, 1);
+            if (i != 0)
+                statBackEnd->printMsg(STAT_WARNING, __FILE__, __LINE__, "%s: setenv(%s) returned %d\n", strerror(errno), optarg, i);
+            statError = statBackEnd->initGdb();
+            if (statError != STAT_OK)
+            {
+                statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to initialize GDB BE\n", optarg);
+                delete statBackEnd;
+                statFinalize(launchType);
+                return statError;
+            }
+#endif
             break;
         case 's':
             break;
@@ -178,7 +210,7 @@ int main(int argc, char **argv)
             statError = statBackEnd->addSerialProcess(serialProcesses[j].c_str());
             if (statError != STAT_OK)
             {
-                statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed Start debug log\n");
+                statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed add serial process %s\n", serialProcesses[j].c_str());
                 delete statBackEnd;
                 statFinalize(launchType);
                 return statError;

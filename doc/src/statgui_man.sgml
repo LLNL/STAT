@@ -4,12 +4,13 @@
 <!ENTITY % llnluserguide "IGNORE">
 <!ENTITY stat_copyright SYSTEM "stat_copyright.sgml">
 <!ENTITY statgui_description SYSTEM "statgui_description.sgml">
+<!ENTITY statgui_options SYSTEM "statgui_options.sgml">
 <!ENTITY statgui_toolbar SYSTEM "statgui_toolbar.sgml">
 <!ENTITY statgui_eq_class SYSTEM "statgui_eq_class.sgml">
 ]>
 <refentry>
 <refentryinfo>
-    <date>2010-03-25</date>
+    <date>2018-02-02</date>
 </refentryinfo>
 <refmeta>
     <refentrytitle><application>stat-gui</application></refentrytitle>
@@ -25,17 +26,28 @@
 </refnamediv>
 <refsynopsisdiv>
     <cmdsynopsis>
-    <command>stat-gui</command> 
+    <command>stat-gui</command> <arg><replaceable class="option">OPTIONS</replaceable></arg>
     </cmdsynopsis>
+    <para>
+    where
+    <synopsis>
+    <cmdsynopsis><arg><replaceable class="option">OPTIONS</replaceable></arg></cmdsynopsis>
+    represents zero or more stat-gui options.
+    </synopsis>
+    </para>
 </refsynopsisdiv>
 <refsect1>
     <refsect1info>
-        <date>2010-03-25</date>
+        <date>2018-02-02</date>
     </refsect1info>
     <title>DESCRIPTION</title>
     &statgui_description
     &statgui_toolbar
     &statgui_eq_class
+</refsect1>
+<refsect1>
+    <title>OPTIONS</title>
+    &statgui_options
 </refsect1>
 <refsect1>
     <title>AUTHOR</title>

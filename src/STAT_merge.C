@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -19,6 +19,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <Python.h>
 #include "graphlib.h"
 #include <vector>
+#include <string>
 #include <errno.h>
 #include "STAT_GraphRoutines.h"
 
@@ -32,13 +33,19 @@ vector<graphlib_graph_p> *gGraphs = NULL;
 //! the highest rank task to represent
 int gHighRank;
 
-#ifdef COUNTREP
-//! the count and representative routines
-extern graphlib_functiontable_p gStatCountRepFunctions;
-#else
+//! the bit merge routines
+extern graphlib_functiontable_p gStatMergeFunctions;
+
 //! the bit vector routines
 extern graphlib_functiontable_p gStatBitVectorFunctions;
-#endif
+
+//! the count and representative routines
+extern graphlib_functiontable_p gStatCountRepFunctions;
+
+extern const char *gNodeAttrs[];
+extern const char *gEdgeAttrs[];
+extern int gNumNodeAttrs;
+extern int gNumEdgeAttrs;
 
 //! Initialize graphlib and set the graph routines
 static PyObject *py_Init_Graphlib(PyObject *self, PyObject *args)
@@ -54,14 +61,11 @@ static PyObject *py_Init_Graphlib(PyObject *self, PyObject *args)
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Failed to init graphlib\n");
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
-
-#ifdef COUNTREP
-    statInitializeCountRepFunctions();
-#else
     statInitializeBitVectorFunctions();
-#endif
+    statInitializeMergeFunctions();
+    statInitializeCountRepFunctions();
 
     return Py_BuildValue("i", 0);
 }
@@ -74,15 +78,10 @@ static PyObject *py_newGraph(PyObject *self, PyObject *args)
     graphlib_error_t graphlibError;
 
 #ifdef COUNTREP
-    graphlibError = graphlib_newGraph(&newGraph, gStatCountRepFunctions);
+    newGraph = createRootedGraph(0 | STAT_SAMPLE_COUNT_REP);
 #else
-    graphlibError = graphlib_newGraph(&newGraph, gStatBitVectorFunctions);
+    newGraph = createRootedGraph(0);
 #endif
-    if (GRL_IS_FATALERROR(graphlibError))
-    {
-        fprintf(stderr, "Error intializing graph\n");
-        return Py_BuildValue("i", -1);
-    }
 
     if (gGraphs == NULL)
         gGraphs = new vector<graphlib_graph_p>;
@@ -92,82 +91,146 @@ static PyObject *py_newGraph(PyObject *self, PyObject *args)
     return Py_BuildValue("i", handle);
 }
 
+//! Translate a relative (local daemon) rank to an absolute (global MPI) rank
+int statMergeRelativeRankToAbsoluteRank(int rank)
+{
+    return rank;
+}
+
 //! Add a stack trace to a previously generated graph
 static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
 {
-    int i, task, count, size, nodeId, prevId, handle, bit, byte;
-    char *trace, *ptr, *next, *tmp;
+    int i, task, tid, count, size, nodeId, prevId, handle, bit, byte;
+    int bvIndex, countIndex, repIndex, sumIndex, tcountIndex, tbvsumIndex, tbvIndex, functionIndex, sourceIndex, lineIndex;
+    char *trace, *ptr, *next, *curFrame, *tmp;
     char path[BUFSIZE], prevPath[BUFSIZE];
-#ifdef COUNTREP
-    StatCountRepEdge_t *edge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
-#else
-    StatBitVectorEdge_t *edge;
-#endif
-    graphlib_graph_p cur_graph, graphPtr = NULL;
+    StatBitVectorEdge_t *newEdge = NULL, *newTEdge = NULL;
+    StatCountRepEdge_t *countRepEdge = NULL;
+    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,(char *)"",-1,NULL};
+    graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0,NULL};
+    graphlib_graph_p currentGraph, graphPtr = NULL;
     graphlib_error_t graphlibError;
-    graphlib_nodeattr_t nodeAttr = {1,0,20,GRC_LIGHTGREY,0,0,NULL,1};
-    graphlib_edgeattr_t edgeAttr = {1,0,NULL,0,0,0};
 
-    if (!PyArg_ParseTuple(args, "iiis", &handle, &task, &count, &trace))
+    if (!PyArg_ParseTuple(args, "iiiis", &handle, &task, &tid, &count, &trace))
     {
         fprintf(stderr, "Failed to parse args, expecting (int, int, string)\n");
         return Py_BuildValue("i", -1);
     }
 
     graphPtr = (*gGraphs)[handle];
-
 #ifdef COUNTREP
-    edge = (StatCountRepEdge_t *)malloc(sizeof(StatCountRepEdge_t));
-    if (edge == NULL)
-    {
-        fprintf(stderr, "Failed to create bit edge\n");
-        return Py_BuildValue("i", -1);
-    }
-    edge->count = 1;
-    edge->representative = task;
-    edge->checksum = task;
-    edgeAttr.label = (void *)edge;
-    graphlibError = graphlib_newGraph(&cur_graph, gStatCountRepFunctions);
-    if (GRL_IS_FATALERROR(graphlibError))
-    {
-        fprintf(stderr, "Failed to create new graph\n");
-        return Py_BuildValue("i", -1);
-    }
+    currentGraph = createRootedGraph(0 | STAT_SAMPLE_COUNT_REP);
 #else
-    edge = initializeBitVectorEdge(gHighRank);
-    if (edge == NULL)
-    {
-        fprintf(stderr, "Failed to create bit edge\n");
-        return Py_BuildValue("i", -1);
-    }
-
-    byte = task / STAT_BITVECTOR_BITS;
-    bit = task % STAT_BITVECTOR_BITS;
-    edge->bitVector[byte] |= STAT_GRAPH_BIT(bit);
-
-    edgeAttr.label = (void *)edge;
-
-    graphlibError = graphlib_newGraph(&cur_graph, gStatBitVectorFunctions);
-    if (GRL_IS_FATALERROR(graphlibError))
-    {
-        fprintf(stderr, "Failed to create new graph\n");
-        return Py_BuildValue("i", -1);
-    }
+    currentGraph = createRootedGraph(0);
 #endif
-
-    tmp = (char *)malloc(2 * sizeof(char));
-    snprintf(tmp, 2, "/");
-    nodeAttr.label = (void *)tmp;
-    snprintf(path, BUFSIZE, "%s", (char *)nodeAttr.label);
-    nodeId = 0;
-    prevId = 0;
-    graphlibError = graphlib_addNode(cur_graph, nodeId, &nodeAttr);
-    if (GRL_IS_FATALERROR(graphlibError))
+    if (currentGraph == NULL)
     {
-        fprintf(stderr, "Failed to add node\n");
-        return Py_BuildValue("i", -1);
+        fprintf(stderr, "Error initializing graph\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
 
+    edgeAttr.attr_values = (void **)calloc(1, gNumEdgeAttrs * sizeof(void *));
+    if (edgeAttr.attr_values == NULL)
+    {
+        fprintf(stderr, "%s: Error callocing %d edgeAttr.attr_values\n", strerror(errno), gNumEdgeAttrs);
+        return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
+    }
+    newEdge = initializeBitVectorEdge(gHighRank);
+    if (newEdge == NULL)
+    {
+        fprintf(stderr, "Failed to initialize newEdge\n");
+        return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
+    }
+    newEdge->bitVector[task / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(task % STAT_BITVECTOR_BITS);
+    graphlibError = graphlib_getEdgeAttrIndex(currentGraph, "bv", &bvIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key bv\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    graphlibError = graphlib_getEdgeAttrIndex(currentGraph, "count", &countIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key count\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    graphlibError = graphlib_getEdgeAttrIndex(currentGraph, "rep", &repIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key rep\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    graphlibError = graphlib_getEdgeAttrIndex(currentGraph, "sum", &sumIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key sum\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    graphlibError = graphlib_getEdgeAttrIndex(currentGraph, "tbv", &tbvIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key tbv\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    graphlibError = graphlib_getEdgeAttrIndex(currentGraph, "tcount", &tcountIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key tcount\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    graphlibError = graphlib_getEdgeAttrIndex(currentGraph, "tbvsum", &tbvsumIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key tbvsum\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+
+    edgeAttr.attr_values[bvIndex] = newEdge;
+    countRepEdge = getBitVectorCountRep(newEdge, statMergeRelativeRankToAbsoluteRank);
+    if (countRepEdge == NULL)
+    {
+        fprintf(stderr, "Failed to translate bit vector into count + representative\n");
+        return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
+    }
+#ifdef COUNTREP
+    edgeAttr.attr_values[countIndex] = statCopyEdgeAttr("count", (void *)&countRepEdge->count);
+    edgeAttr.attr_values[repIndex] = statCopyEdgeAttr("rep" , (void *)&countRepEdge->representative);
+    edgeAttr.attr_values[sumIndex] = statCopyEdgeAttr("sum" , (void *)&countRepEdge->checksum);
+#endif
+//    newTEdge = initializeBitVectorEdge(64);
+//    if (newTEdge == NULL)
+//    {
+//        fprintf(stderr, "Failed to initialize newTEdge\n");
+//        return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
+//    }
+//    tid = tid % 64;
+//    newTEdge->bitVector[tid / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(tid % STAT_BITVECTOR_BITS);
+//    edgeAttr.attr_values[tbvIndex] = newTEdge;
+    edgeAttr.attr_values[tcountIndex] = statCopyEdgeAttr("tcount", (void *)&countRepEdge->count);
+    int64_t tbvsum = countRepEdge->checksum * (task + 1);
+    edgeAttr.attr_values[tbvsumIndex] = statCopyEdgeAttr("tbvsum", (void *)&tbvsum);
+    statFreeCountRepEdge(countRepEdge);
+
+    graphlibError = graphlib_getNodeAttrIndex(currentGraph, "function", &functionIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key function\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    graphlibError = graphlib_getNodeAttrIndex(currentGraph, "source", &sourceIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key source\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    graphlibError = graphlib_getNodeAttrIndex(currentGraph, "line", &lineIndex);
+    if (GRL_IS_FATALERROR(graphlibError))
+    {
+        fprintf(stderr, "Failed to get node attr index for key line\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
+    }
+    snprintf(path, BUFSIZE, "/");
+    prevId = 0;
     next = trace;
     ptr = trace;
     for (i = 0; i < count; i++)
@@ -179,53 +242,91 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
             size++;
             ptr += 1;
         }
-        tmp = (char *)malloc((size + 1) * sizeof(char));
-        snprintf(tmp, size, "%s", next);
-        nodeAttr.label = (void *)tmp;
+        curFrame = (char *)malloc((size + 1) * sizeof(char));
+        if (curFrame == NULL)
+        {
+            fprintf(stderr, "%s: Error mallocing %d bytes for curFrame\n", strerror(errno), size + 1);
+            return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
+        }
+        snprintf(curFrame, size, "%s", next);
+        string curFrameString = curFrame;
+        nodeAttr.attr_values = (void **)calloc(1, gNumNodeAttrs * sizeof(void *));
+        if (nodeAttr.attr_values == NULL)
+        {
+            fprintf(stderr, "%s: Error callocing %d nodeAttr.attr_values\n", strerror(errno), gNumNodeAttrs);
+            return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
+        }
+        if (curFrameString.find("@") != string::npos)
+        {
+            string function = curFrameString.substr(0, curFrameString.find("@"));
+            string sourceLine = curFrameString.substr(curFrameString.find("@") + 1);
+            string source = sourceLine.substr(0, sourceLine.find(":"));
+            string line = sourceLine.substr(sourceLine.find(":") + 1);
+            tmp = strdup(function.c_str());
+            if (tmp == NULL)
+            {
+                fprintf(stderr, "Failed to strdup function %s\n", function.c_str());
+                return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
+            }
+            nodeAttr.attr_values[functionIndex] = (void *)tmp;
+            tmp = strdup(source.c_str());
+            if (tmp == NULL)
+            {
+                fprintf(stderr, "Failed to strdup source %s\n", source.c_str());
+                return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
+            }
+            nodeAttr.attr_values[sourceIndex] = (void *)tmp;
+            tmp = strdup(line.c_str());
+            if (tmp == NULL)
+            {
+                fprintf(stderr, "Failed to strdup line %s\n", line.c_str());
+                return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
+            }
+            nodeAttr.attr_values[lineIndex] = (void *)tmp;
+        }
+        else
+        {
+            tmp = strdup(curFrame);
+            nodeAttr.attr_values[functionIndex] = (void *)tmp;
+        }
         next += size;
         snprintf(prevPath, BUFSIZE, "%s", path);
-        snprintf(path, BUFSIZE, "%s%s", prevPath, (char *)nodeAttr.label);
+        snprintf(path, BUFSIZE, "%s%s", prevPath, curFrame);
+        free(curFrame);
         nodeId = statStringHash(path);
 
-        graphlibError = graphlib_addNode(cur_graph, nodeId, &nodeAttr);
+        graphlibError = graphlib_addNode(currentGraph, nodeId, &nodeAttr);
         if (GRL_IS_FATALERROR(graphlibError))
         {
             fprintf(stderr, "Failed to add node\n");
-            return Py_BuildValue("i", -1);
+            return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
         }
 
-        graphlibError = graphlib_addDirectedEdge(cur_graph, prevId, nodeId, &edgeAttr);
+        statFreeNodeAttrs(nodeAttr.attr_values, currentGraph);
+        nodeAttr.attr_values = NULL;
+        graphlibError = graphlib_addDirectedEdge(currentGraph, prevId, nodeId, &edgeAttr);
         if (GRL_IS_FATALERROR(graphlibError))
         {
             fprintf(stderr, "Failed to add edge\n");
-            return Py_BuildValue("i", -1);
+            return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
         }
         prevId = nodeId;
     }
 
-    graphlibError = graphlib_mergeGraphs(graphPtr, cur_graph);
+    graphlibError = graphlib_mergeGraphs(graphPtr, currentGraph);
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error merging graph\n");
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
 
-#ifdef COUNTREP
-    graphlibError = graphlib_delEdgeAttr(edgeAttr, statFreeCountRepEdge);
-#else
-    graphlibError = graphlib_delEdgeAttr(edgeAttr, statFreeEdge);
-#endif
-    if (GRL_IS_FATALERROR(graphlibError))
-    {
-        fprintf(stderr, "Error deleting edge attr\n");
-        return Py_BuildValue("i", -1);
-    }
-
-    graphlibError = graphlib_delGraph(cur_graph);
+    statFreeEdgeAttrs(edgeAttr.attr_values, currentGraph);
+    edgeAttr.attr_values = NULL;
+    graphlibError = graphlib_delGraph(currentGraph);
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error deleting graph\n");
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
 
     return Py_BuildValue("i", 0);
@@ -235,7 +336,7 @@ static PyObject *py_Add_Trace(PyObject *self, PyObject *args)
 static PyObject *py_Merge_Traces(PyObject *self, PyObject *args)
 {
     int handle1, handle2;
-    graphlib_graph_p cur_graph, graphPtr;
+    graphlib_graph_p currentGraph, graphPtr;
     graphlib_error_t graphlibError;
 
     if (!PyArg_ParseTuple(args, "ii", &handle1, &handle2))
@@ -244,13 +345,13 @@ static PyObject *py_Merge_Traces(PyObject *self, PyObject *args)
         return Py_BuildValue("i", -1);
     }
     graphPtr = (*gGraphs)[handle1];
-    cur_graph = (*gGraphs)[handle2];
+    currentGraph = (*gGraphs)[handle2];
 
-    graphlibError = graphlib_mergeGraphs(graphPtr, cur_graph);
+    graphlibError = graphlib_mergeGraphs(graphPtr, currentGraph);
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error merging graph\n");
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
 
     return Py_BuildValue("i", 0);
@@ -278,7 +379,7 @@ static PyObject *py_Serialize_Graph(PyObject *self, PyObject *args)
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "%d Error serializing graph %d\n", graphlibError, handle);
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
 
     f = fopen(fileName, "w");
@@ -325,21 +426,21 @@ static PyObject *py_Deserialize_Graph(PyObject *self, PyObject *args)
     if (f == NULL)
     {
         fprintf(stderr, "%s: Error opening file %s\n", strerror(errno), fileName);
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_FILE_ERROR);
     }
 
     ret = fseek(f, 0, SEEK_END);
     if (ret != 0)
     {
         fprintf(stderr, "%s: %d Error seeking file %s\n", strerror(errno), ret, fileName);
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_FILE_ERROR);
     }
 
     bufLen = ftell(f);
     if (bufLen < 0)
     {
         fprintf(stderr, "%s: %ld Error ftell file %s\n", strerror(errno), bufLen, fileName);
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_FILE_ERROR);
     }
 
     ret = fseek(f, 0, SEEK_SET);
@@ -353,32 +454,32 @@ static PyObject *py_Deserialize_Graph(PyObject *self, PyObject *args)
     if (buf == NULL)
     {
         fprintf(stderr, "%s: Error allocating %ld bytes for file %s\n", strerror(errno), bufLen, fileName);
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_ALLOCATE_ERROR);
     }
 
     ret = fread(buf, bufLen, 1, f);
     if (ret != 1)
     {
         fprintf(stderr, "%s: Error reading serialized graph from file %s.  %d of %ld bytes read\n", strerror(errno), fileName, ret, bufLen);
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_FILE_ERROR);
     }
 
     ret = fclose(f);
     if (ret != 0)
     {
         fprintf(stderr, "%s: %d Error closing file %s\n", strerror(errno), ret, fileName);
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_FILE_ERROR);
     }
 
 #ifdef COUNTREP
     graphlibError = graphlib_deserializeBasicGraph(&graphPtr, gStatCountRepFunctions, buf, (unsigned int)bufLen);
 #else
-    graphlibError = graphlib_deserializeBasicGraph(&graphPtr, gStatBitVectorFunctions, buf, (unsigned int)bufLen);
+    graphlibError = graphlib_deserializeBasicGraph(&graphPtr, gStatMergeFunctions, buf, (unsigned int)bufLen);
 #endif
     if (GRL_IS_FATALERROR(graphlibError))
     {
         fprintf(stderr, "Error serializing graph\n");
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
 
     if (gGraphs == NULL)
@@ -405,32 +506,32 @@ static PyObject *py_Output_Graph(PyObject *self, PyObject *args)
 
     graphPtr = (*gGraphs)[handle];
 
-    graphlibError = graphlib_colorGraphByLeadingEdgeLabel(graphPtr);
+    graphlibError = graphlib_colorGraphByLeadingEdgeAttr(graphPtr, "tbvsum");
     if (GRL_IS_FATALERROR(graphlibError))
     {
-        fprintf(stderr, "graphlib error coloring graph by leading edge label\n");
-        return Py_BuildValue("i", -1);
+        fprintf(stderr, "graphlib error coloring graph by leading edge attr\n");
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
 
     graphlibError =  graphlib_scaleNodeWidth(graphPtr, 80, 160);
     if ( GRL_IS_FATALERROR(graphlibError) )
     {
         fprintf(stderr, "graphlib error scaling node width\n");
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
 
     graphlibError = graphlib_exportGraph(fileName, GRF_DOT, graphPtr);
     if ( GRL_IS_FATALERROR(graphlibError) )
     {
         fprintf(stderr, "graphlib error exporting graph\n");
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
 
     graphlibError = graphlib_delGraph(graphPtr);
     if ( GRL_IS_FATALERROR(graphlibError) )
     {
         fprintf(stderr, "graphlib error deleting graph\n");
-        return Py_BuildValue("i", -1);
+        return Py_BuildValue("i", STAT_GRAPHLIB_ERROR);
     }
 
     return Py_BuildValue("i", 0);

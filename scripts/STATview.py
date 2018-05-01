@@ -3,10 +3,10 @@
 """@package STATview
 Visualizes dot graphs outputted by STAT."""
 
-__copyright__ = """Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -20,14 +20,14 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
-__version_major__ = 3
+__version_major__ = 4
 __version_minor__ = 0
-__version_revision__ = 1
+__version_revision__ = 0
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
-import os.path
 import string
 import sys
+import shutil
 import os
 import math
 import re
@@ -36,7 +36,6 @@ import traceback
 import shelve
 from collections import defaultdict
 import copy
-#import inspect
 
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
@@ -46,8 +45,7 @@ sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
 # Make sure $DISPLAY is set (not good for Windows!)
 if os.name != 'nt':
     if not "DISPLAY" in os.environ:
-        sys.stderr.write('$DISPLAY is not set.  Ensure that X11 forwarding is enabled.\n')
-        sys.exit(1)
+        raise Exception('$DISPLAY is not set.  Ensure that X11 forwarding is enabled.\n')
 
 # Check for required modules
 try:
@@ -55,29 +53,19 @@ try:
     import gobject
     import pango
 except ImportError as e:
-    sys.stderr.write('%s\n' % repr(e))
-    sys.stderr.write('STATview requires gtk and gobject\n')
-    sys.exit(1)
+    raise Exception('%s\nSTATview requires gtk and gobject\n' % repr(e))
 except RuntimeError as e:
-    sys.stderr.write('%s\n' % repr(e))
-    sys.stderr.write('There was a problem loading the gtk and gobject module.\n')
-    sys.stderr.write('Is X11 forwarding enabled?\n')
-    sys.exit(1)
+    raise Exception('%s\nThere was a problem loading the gtk and gobject module.\nIs X11 forwarding enabled?\n' % repr(e))
 except Exception as e:
-    sys.stderr.write('%s\n' % repr(e))
-    sys.stderr.write('There was a problem loading the gtk module.\n')
-    sys.exit(1)
+    raise Exception('%s\nThere was a problem loading the gtk module.\n' % repr(e))
 
 try:
     import STAThelper
     from STAThelper import which, color_to_string, DecomposedNode, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, has_module_offset_and_not_collapsed, label_has_source, label_has_module_offset, label_collapsed, translate, expr, node_attr_to_label, edge_attr_to_label, get_truncated_edge_label, get_num_tasks
 except Exception as e:
-    sys.stderr.write('%s\n' % repr(e))
-    sys.stderr.write('There was a problem loading the STAThelper module.\n')
-    sys.exit(1)
+    raise Exception('%s\nThere was a problem loading the STAThelper module.\n' % repr(e))
 if HAVE_PYGMENTS:
     import pygments
-    #from pygments import highlight
     from pygments.lexers import CLexer
     from pygments.lexers import CppLexer
     from pygments.lexers import FortranLexer
@@ -86,9 +74,7 @@ if HAVE_PYGMENTS:
 try:
     import xdot
 except:
-    sys.stderr.write('STATview requires xdot\n')
-    sys.stderr.write('xdot can be downloaded from http://code.google.com/p/jrfonseca/wiki/XDot\n')
-    sys.exit(1)
+    raise Exception('STATview requires xdot\nxdot can be downloaded from http://code.google.com/p/jrfonseca/wiki/XDot\n')
 
 # Check for optional modules
 ## A variable to determine whther we have the temporal ordering module
@@ -132,6 +118,8 @@ task_label_to_id = {}
 ## A counter to keep track of unique label IDs
 next_label_id = -1
 
+## A default name for the source cache directory
+cache_directory = 'stat_source_cache'
 
 ## \param label - the edge label
 #  \return the list of ranks
@@ -286,6 +274,30 @@ def create_temp(dot_filename, truncate, max_node_name):
 
     return temp_dot_filename
 
+
+## \param file_dir - the .dot file directory
+## \param source - the source file name
+#  \return the cache file path
+#
+#  \n
+def get_cache_file_path(file_dir, source):
+    cache_directory_path = os.path.abspath(os.path.join(file_dir, cache_directory))
+    cache_file_path = cache_directory_path + '/' + source
+    return cache_file_path
+
+
+## \param current_graph - the currently opened graph object
+#  \return directory and filename of the current graph's .dot file
+#
+#  \n
+def dot_file_path_split(current_graph):
+    file_path = current_graph.cur_filename
+    if file_path is None or file_path == '':
+        return (None, None)
+    elif file_path == 'redraw.dot':
+        return (None, None)
+    file_dir, file_name = os.path.split(file_path)
+    return (file_dir, file_name)
 
 def run_gtk_main_loop(iters = 100):
     iter = 0
@@ -1296,27 +1308,32 @@ class STATGraph(xdot.Graph):
                     font_color_string = color_to_string(font_color)
                     fill_color_string = color_to_string(fill_color)
                     line_nums.append((int(node_iter.attrs["line"].split('\\n')[i].strip(":")), fill_color_string, font_color_string))
-        found = False
         error_msg = ''
-        if os.path.isabs(source):
-            if os.path.exists(source):
-                source_full_path = source
-                found = True
-            else:
-                error_msg = 'Full path %s does not exist\n' % source
-        if found is False:
-            # find the full path to the file
-            source = os.path.basename(source)
-            for sp in search_paths['source']:
-                if not os.path.exists(sp):
-                    continue
-                if os.path.exists(sp + '/' + source):
-                    found = True
-                    break
-            if found is False:
-                show_error_dialog('%sFailed to find file "%s" in search paths.  Please add the source file search path for this file\n' % (error_msg, source))
-                return True
-            source_full_path = sp + '/' + source
+        file_dir, file_name = dot_file_path_split(self)
+        source_full_path = None
+        if file_dir is not None and file_name is not None:
+            cache_file_path = get_cache_file_path(file_dir, source)
+            if os.path.exists(cache_file_path):
+                source_full_path = cache_file_path
+        if source_full_path == None:
+            if os.path.isabs(source):
+                if os.path.exists(source):
+                    source_full_path = source
+                else:
+                    error_msg = 'Full path %s does not exist\n' % source
+            if source_full_path is None:
+                # find the full path to the file
+                source = os.path.basename(source)
+                for sp in search_paths['source']:
+                    if not os.path.exists(sp):
+                        continue
+                    tmp_source_full_path = sp + '/' + source
+                    if os.path.exists(tmp_source_full_path):
+                        source_full_path = tmp_source_full_path
+                        break
+                if source_full_path is None:
+                    show_error_dialog('%sFailed to find file "%s" in search paths.  Please add the source file search path for this file\n' % (error_msg, source))
+                    return True
 
         # create the source view window
         if self.source_view_window is None:
@@ -2668,7 +2685,7 @@ class STATDotWidget(xdot.DotWidget):
             f = file(temp_dot_filename, 'r')
             dotcode2 = f.read()
             f.close()
-        except:
+        except Exception as e:
             show_error_dialog('Failed to read temp dot file %s' % temp_dot_filename, self, exception=e)
             return False
         os.remove(temp_dot_filename)
@@ -2911,6 +2928,7 @@ class STATDotWindow(xdot.DotWindow):
     ui += '            <menuitem action="LoadPrefs"/>\n'
     ui += '            <separator/>\n'
     ui += '            <menuitem action="SearchPath"/>\n'
+    ui += '            <menuitem action="CacheSources"/>\n'
     ui += '            <separator/>\n'
     ui += '            <menuitem action="NewTab"/>\n'
     ui += '            <menuitem action="ResetLayout"/>\n'
@@ -2978,6 +2996,7 @@ class STATDotWindow(xdot.DotWindow):
         actions.append(('SavePrefs', gtk.STOCK_SAVE_AS, 'Save Pr_eferences', '<control>E', 'Load saved preference settings', self.on_save_prefs))
         actions.append(('LoadPrefs', gtk.STOCK_OPEN, '_Load Preferences', '<control>L', 'Save current preference settings', self.on_load_prefs))
         actions.append(('SearchPath', gtk.STOCK_ADD, '_Add Search Paths', '<control>A', 'Add search paths for application source and header files', self.on_modify_search_paths))
+        actions.append(('CacheSources', gtk.STOCK_ADD, '_Cache Source Files', '<control>U', 'Cache all source files', self.on_cache_sources))
         actions.append(('NewTab', gtk.STOCK_NEW, '_New Tab', '<control>T', 'Create new tab', lambda x: self.menu_item_response(gtk.STOCK_NEW, 'New Tab')))
         actions.append(('CloseTab', gtk.STOCK_CLOSE, 'Close Tab', '<control>W', 'Close current tab', lambda x: self.menu_item_response(None, 'Close Tab')))
         actions.append(('Quit', gtk.STOCK_QUIT, '_Quit', '<control>Q', 'Quit', self.on_destroy))
@@ -3137,7 +3156,7 @@ entered as a regular expression"""
         spinner = gtk.SpinButton(adj, 0, 0)
         spinner.set_value(self.options[option])
         hbox.pack_start(spinner, False, False, 0)
-        box.pack_start(hbox, False, False, 10)
+        box.pack_start(hbox, False, False, 0)
         self.spinners[option] = spinner
 
     def pack_combo_box(self, box, option):
@@ -3554,7 +3573,7 @@ entered as a regular expression"""
             temp_dot_filename = '%s/redraw.dot' % home_dir
             try:
                 temp_dot_file = open(temp_dot_filename, 'w')
-            except:
+            except Exception as e:
                 show_error_dialog('Failed to open temp dot file %s for writing' % temp_dot_filename, exception=e)
                 return False
         temp_dot_file.close()
@@ -3577,7 +3596,7 @@ entered as a regular expression"""
             temp_dot_filename = '%s/tranlsated.dot' % home_dir
             try:
                 temp_dot_file = open(temp_dot_filename, 'w')
-            except:
+            except Exception as e:
                 show_error_dialog('Failed to open temp dot file %s for writing' % temp_dot_filename, exception=e)
                 return False
         temp_dot_file.close()
@@ -3588,6 +3607,38 @@ entered as a regular expression"""
         self.open_file(temp_dot_filename)
         os.remove(temp_dot_filename)
         return True
+
+    def on_cache_sources(self, action):
+        """Callback to cache all source files found in this .dot file."""
+        current_graph = self.get_current_graph()
+        file_dir, file_name = dot_file_path_split(current_graph)
+        if file_dir is None or file_dir == '':
+            show_error_dialog('unable to determine directory of .dot file, STAT will not cache sources')
+            return False
+        source_files = set()
+        for node in current_graph.nodes:
+            source_file_path = node.attrs['source']
+            if source_file_path != '' and os.path.exists(source_file_path):
+                source_files.add(source_file_path)
+        cache_directory_path = os.path.abspath(os.path.join(file_dir, cache_directory))
+        if not os.path.exists(cache_directory_path):
+            try:
+                os.makedirs(cache_directory_path)
+            except Exception as e:
+                show_error_dialog('Failed to create cache directory %s' % cache_directory_path, exception=e)
+                return False
+        for source_file in source_files:
+            cache_file_path = cache_directory_path + '/' + source_file
+            cache_file_dir, cache_file_name = os.path.split(cache_file_path)
+            if not os.path.exists(cache_file_path):
+                try:
+                    if not os.path.exists(cache_file_dir):
+                        os.makedirs(cache_file_dir)
+                    shutil.copyfile(source_file, cache_file_path)
+                except Exception as e:
+                    show_error_dialog('Failed to copy %s to %s' % (source_file, cache_file_path), exception=e)
+                    return False
+
 
     def on_modify_search_paths(self, action):
         """Callback to generate dialog to modify search paths."""
@@ -4512,13 +4563,13 @@ enterered as a regular expression.
             pass
 
 
-def STATview_main(argv):
+def STATview_main(args):
     """The STATview main."""
     global window
     window = STATDotWindow()
-    if len(argv) >= 2:
+    if args.files:
         i = -1
-        for filename in argv[1:]:
+        for filename in args.files:
             i += 1
             try:
                 with open(filename, 'r') as f:
@@ -4526,11 +4577,11 @@ def STATview_main(argv):
                         window.create_new_tab()
                     stat_wait_dialog.show_wait_dialog_and_run(window.set_dotcode, (f.read(), filename, i), ['Opening DOT file'], window)
             except IOError as e:
-                sys.stderr.write('\n%s\nfailed to open file %s\n\n' % (repr(e), filename), exception=e)
+                sys.stderr.write('\n%s\nfailed to open file %s\n\n' % (repr(e), filename))
                 sys.stderr.write('usage:\n\tSTATview [<your_STAT_generated_graph.dot>]*\n\n')
                 sys.exit(-1)
             except Exception as e:
-                sys.stderr.write('\n%s\nfailed to proess file %s\n\n' % (repr(e), filename), exception=e)
+                sys.stderr.write('\n%s\nfailed to proess file %s\n\n' % (repr(e), filename))
                 sys.stderr.write('usage:\n\tSTATview [<your_STAT_generated_graph.dot>]*\n\n')
                 sys.exit(-1)
     window.connect('destroy', window.on_destroy)
@@ -4539,4 +4590,5 @@ def STATview_main(argv):
 
 
 if __name__ == '__main__':
-    STATview_main(sys.argv)
+    sys.stderr.write('WARNING: STATview.py should not be directly invoked. This has been replaced by STATmain.py and the "view" subcommand.\n')
+    sys.exit(1)

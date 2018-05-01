@@ -9,8 +9,6 @@ AC_DEFUN([X_AC_GUI], [
   AM_CONDITIONAL([ENABLE_GUI], [test "$WITH_GUI" = yes])
   if test "$WITH_GUI" = yes
   then
-     AM_PATH_PYTHON
-     X_AC_PYTHON
      X_AC_SWIG
      X_AC_GRAPHVIZ
   fi  

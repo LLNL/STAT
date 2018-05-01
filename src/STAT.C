@@ -1,8 +1,8 @@
 /*
-Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -43,6 +43,7 @@ typedef struct
     unsigned int nRetries;                  /*!< the number of retries per sample */
     unsigned int retryFrequency;            /*!< the time between retries */
     unsigned int nDaemonsPerNode;           /*!< the number of retries per sample */
+    unsigned int maxDaemonNumThreads;       /*!< the max # threads per daemon */
     char topologySpecification[BUFSIZE];    /*!< the topology specification */
     char *remoteNode;                       /*!< the remote node running the job launcher */
     char *nodeList;                         /*!< the CP node list */
@@ -59,6 +60,9 @@ typedef struct
 #ifdef DYSECTAPI
     int dysectArgc;
     char **dysectArgv;
+#endif
+#ifdef STAT_GDB_BE
+    bool withCudaQuick;
 #endif
 } StatArgs_t;
 
@@ -149,13 +153,13 @@ int main(int argc, char **argv)
     statFrontEnd->addPerfData(invocationString.c_str(), -1.0);
 
     /* If we're just attaching, sleep here */
-    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH)
+    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH || statArgs->applicationOption == STAT_SERIAL_GDB_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH)
         mySleep(statArgs->sleepTime);
 
     /* Launch the Daemons */
     statFrontEnd->setNDaemonsPerNode(statArgs->nDaemonsPerNode);
     statFrontEnd->setApplicationOption(statArgs->applicationOption);
-    if (statArgs->applicationOption == STAT_ATTACH)
+    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH)
         statError = statFrontEnd->attachAndSpawnDaemons(statArgs->pid, statArgs->remoteNode);
     else if (statArgs->applicationOption == STAT_LAUNCH)
         statError = statFrontEnd->launchAndSpawnDaemons(statArgs->remoteNode);
@@ -318,7 +322,7 @@ int main(int argc, char **argv)
             }
 
             /* Sample the traces */
-            statError = statFrontEnd->sampleStackTraces(statArgs->sampleType, 1, statArgs->traceFrequency, statArgs->nRetries, statArgs->retryFrequency);
+            statError = statFrontEnd->sampleStackTraces(statArgs->sampleType, 1, statArgs->traceFrequency, statArgs->nRetries, statArgs->retryFrequency, statArgs->maxDaemonNumThreads);
             if (statError != STAT_OK)
             {
                 if (statError == STAT_APPLICATION_EXITED)
@@ -401,9 +405,9 @@ void printUsage()
 {
     fprintf(stderr, "\nSTAT, the Stack Trace Analysis Tool, is a highly scalable, lightweight tool that gathers and merges stack traces from a parallel application's processes.  STAT can gather and merge multiple stack traces per process, showing the application's time varying behavior.  The output shows the global application behavior and can be used to identify process equivalence classes, subsets of tasks that exhibit similar behavior.  A representative of each equivalence class can be fed into a heavyweight debugger for root cause analysis.  Running STAT will create a stat_results directory that contains \".dot\" files that are best viewed with the STATview GUI.  They can also be viewed with the \"dotty\" utility from graphviz.\n");
     fprintf(stderr, "\nUsage:\n");
-    fprintf(stderr, "\tSTAT [OPTIONS] <launcherPid_>\n");
-    fprintf(stderr, "\tSTAT [OPTIONS] -C <application_launch_command>\n");
-    fprintf(stderr, "\tSTAT [OPTIONS] -I [<exe>@<host:pid>]+\n");
+    fprintf(stderr, "\tstat-cl [OPTIONS] <launcherPid_>\n");
+    fprintf(stderr, "\tstat-cl [OPTIONS] -C <application_launch_command>\n");
+    fprintf(stderr, "\tstat-cl [OPTIONS] -I [<exe>@<host:pid>]+\n");
     fprintf(stderr, "\nStack trace sampling options:\n");
     fprintf(stderr, "  -t, --traces <count>\t\tnumber of traces per process\n");
     fprintf(stderr, "  -T, --tracefreq <frequency>\ttime between samples in milli-seconds\n");
@@ -413,12 +417,17 @@ void printUsage()
     fprintf(stderr, "  -P, --withpc\t\t\tsample program counter in addition to\n\t\t\t\tfunction name\n");
     fprintf(stderr, "  -m, --withmoduleoffset\tsample module offset only\n");
     fprintf(stderr, "  -i, --withline\t\tsample source line number in addition\n\t\t\t\tto function name\n");
+    fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
+    fprintf(stderr, "  -H, --maxdaemonthreads <num>\tmax number of threads per daemon\n");
 #ifdef OMP_STACKWALKER
     fprintf(stderr, "  -o, --withopenmp\t\ttranslate OpenMP stacks to logical application\n\t\t\t\tview\n");
 #endif
+#ifdef STAT_GDB_BE
+    fprintf(stderr, "  -G, --gdb\t\t\tuse (cuda) gdb to drive the daemons\n");
+    fprintf(stderr, "  -Q, --cudaquick\t\tgather less comprehensive, but faster cuda traces\n");
+#endif
     fprintf(stderr, "  -c, --comprehensive\t\tgather 5 traces: function only; module offset;\n\t\t\t\tfunction + pc; function + line; and 3D function\n\t\t\t\tonly\n");
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
-    fprintf(stderr, "  -w, --withthreads\t\tsample helper threads in addition to the\n\t\t\t\tmain thread\n");
     fprintf(stderr, "  -y, --pythontrace\t\tgather Python script level stack traces\n");
     fprintf(stderr, "  -s, --sleep <secs>\t\tsleep time before attaching and gathering traces\n");
     fprintf(stderr, "\nTopology options:\n");
@@ -488,6 +497,8 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"sampleindividual",    no_argument,        0, 'S'},
         {"mrnetprintf",         no_argument,        0, 'M'},
         {"countrep",            no_argument,        0, 'U'},
+        {"gdb",                 no_argument,        0, 'G'},
+        {"cudaquick",           no_argument,        0, 'Q'},
         {"fanout",              required_argument,  0, 'f'},
         {"nodes",               required_argument,  0, 'n'},
         {"nodesfile",           required_argument,  0, 'N'},
@@ -505,6 +516,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"usertopology",        required_argument,  0, 'u'},
         {"depth",               required_argument,  0, 'd'},
         {"daemonspernode",      required_argument,  0, 'z'},
+        {"maxdaemonthreads",    required_argument,  0, 'H'},
 #ifdef DYSECTAPI
         {"dysectapi",           required_argument, 0, 'X'},
         {"dysectapi_batch",     required_argument, 0, 'b'},
@@ -520,6 +532,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     statArgs->nRetries = 0;
     statArgs->nDaemonsPerNode = 1;
     statArgs->retryFrequency = 100;
+    statArgs->maxDaemonNumThreads = 512;
     statArgs->sampleType = 0;
     statArgs->topologyType = STAT_TOPOLOGY_AUTO;
     snprintf(statArgs->topologySpecification, BUFSIZE, "0");
@@ -527,9 +540,9 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     while (1)
     {
 #ifdef DYSECTAPI
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:X:b:Y:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:H:X:b:Y:N:", longOptions, &optionIndex);
 #else
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:H:N:", longOptions, &optionIndex);
 #endif
         if (opt == -1)
             break;
@@ -692,9 +705,21 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         case 'U':
             statArgs->countRep = true;
             statArgs->sampleType |= STAT_SAMPLE_COUNT_REP;
+#ifdef STAT_GDB_BE
+        case 'G':
+            statArgs->applicationOption = STAT_GDB_ATTACH;
             break;
+        case 'Q':
+            statArgs->withCudaQuick = true;
+            statArgs->sampleType |= STAT_SAMPLE_CUDA_QUICK;
+            statArgs->comprehensive = false;
+            break;
+#endif
         case 'z':
             statArgs->nDaemonsPerNode = atoi(optarg);
+            break;
+        case 'H':
+            statArgs->maxDaemonNumThreads = atoi(optarg);
             break;
 #ifdef DYSECTAPI
         case 'X':
@@ -744,7 +769,12 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
 
     if (optind == argc - 1 && (createJob == false && serialJob == false))
     {
+#ifdef STAT_GDB_BE
+        if (statArgs->applicationOption != STAT_GDB_ATTACH && statArgs->applicationOption != STAT_SERIAL_GDB_ATTACH)
+            statArgs->applicationOption = STAT_ATTACH;
+#else
         statArgs->applicationOption = STAT_ATTACH;
+#endif
         remotePid = argv[optind++];
         colonPos = remotePid.find_first_of(":");
         if (colonPos != string::npos)
@@ -771,7 +801,10 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     }
     else if (optind < argc && serialJob == true)
     {
-        statArgs->applicationOption = STAT_SERIAL_ATTACH;
+        if (statArgs->applicationOption == STAT_GDB_ATTACH)
+            statArgs->applicationOption = STAT_SERIAL_GDB_ATTACH;
+        else
+            statArgs->applicationOption = STAT_SERIAL_ATTACH;
         for (i = optind; i < argc; i++)
             statFrontEnd->addSerialProcess(argv[i]);
     }

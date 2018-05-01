@@ -1,11 +1,11 @@
 #!/bin/sh
 #set -ex
-prefix="/usr/local"
+prefix="/collab/usr/global/tools/stat/toss_3_x86_64_ib/stat-test"
 testnums="01 02 03"
 testmodes="attach launch"
 
 statcl_command="${prefix}/bin/stat-cl"
-app_exe="${prefix}/share/STAT/examples/bin/dysect_test"
+app_exe="${prefix}/share/stat/examples/bin/dysect_test"
 logmode=" -l FE -l BE -l CP "
 topologymode=" -u 1-1-1 -p 8 -A -n 8 "
 

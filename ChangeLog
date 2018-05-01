@@ -1,3 +1,112 @@
+2018-05-01 Gregory L. Lee <lee218@llnl.gov>
+	* : tag version 4.0
+
+2018-04-16 Gregory L. Lee <lee218@llnl.gov>
+	* : Added coverage tests
+
+2018-04-04 Gregory L. Lee <lee218@llnl.gov>
+	* : Fix TV launch
+
+2018-02-02 Gregory L. Lee <lee218@llnl.gov>
+	* : Allow specification of max threads per daemon
+
+2018-01-16 Gregory L. Lee <lee218@llnl.gov>
+	* : Require Graphlib 3.0 or greater
+	* : Require MRNet 4.0 or greater
+
+2018-01-09 Gregory L. Lee <lee218@llnl.gov>
+	* : added license info to new .py files
+
+2017-12-11 Gregory L. Lee <lee218@llnl.gov>
+	* STATGUI.py: fixed remote host shell toggle in GUI
+	* : fixed parsing of function name for gdb BE
+
+2017-12-07 Gregory L. Lee <lee218@llnl.gov>
+	* STATGUI.py: fixed arg passing to TotalView
+
+2017-10-17 Gregory L. Lee <lee218@llnl.gov>
+	* : pass PYTHONPATH and STAT_GDB to BE as args
+
+2017-10-16 Gregory L. Lee <lee218@llnl.gov>
+	* doc/src/* : documentation updates for GDB and CUDA debugging
+
+2017-10-03 Gregory L. Lee <lee218@llnl.gov>
+	* : allow use of vanilla gdb in addition to cuda-gdb
+	* : better error checking of gdb module functions
+	* : enable retry for cuda traces when not in cuda kernel
+	* STAT_BackEnd.C : don't clear nodIdToAttrs_ in clear2dNodes and Edges (broke 3D traces)
+	* : enable quick cuda traces (from "info cuda threads")
+
+2017-09-19 Gregory L. Lee <lee218@llnl.gov>
+	* STAT_BackEnd.C : improved python function arg creation
+
+2017-09-15 Gregory L. Lee <lee218@llnl.gov>
+	* : added cuda-gdb backend implementation
+
+2017-08-15 Gregory L. Lee <lee218@llnl.gov>
+	* : added callpath wrapper
+	* : dysect dump lightweight core via callpath
+
+2017-06-30 Gregory L. Lee <lee218@llnl.gov>
+	* core_file_merger.py : CUDA core file merging added
+
+2017-06-20 Gregory L. Lee <lee218@llnl.gov>
+	* : Core file merger updated to use graphlib 3.0 interface
+	* : Core file merger add thread count
+
+2017-06-16 Gregory L. Lee <lee218@llnl.gov>
+	* : Updated documentation
+	* : Fixes to core file merger
+
+2017-06-15 Gregory L. Lee <lee218@llnl.gov>
+	* : Major travis build fixes
+
+2017-06-07 Gregory L. Lee <lee218@llnl.gov>
+	* STATview.py, STATmain.py : main launcher should allow cl to be run when import of STATview or STATGUI fails
+
+2017-06-05 Gregory L. Lee <lee218@llnl.gov>
+	* x_ac_debuglibs.m4 : do not explicitly link in libelf, libdwarf, libiberty
+
+2017-06-01 Gregory L. Lee <lee218@llnl.gov>
+	* STATGUI.py : imporoved process listing and filtering
+
+2017-05-18 Gregory L. Lee <lee218@llnl.gov>
+	* STATview.py : GUI option to cache app source files
+
+2017-05-17 Gregory L. Lee <lee218@llnl.gov>
+	* : Added arg parsing to GUI
+	* : Run through STATmain.py with subcommands
+
+2017-05-11 Gregory L. Lee <lee218@llnl.gov>
+	* : Enable Python-script-level debugging by default
+
+2017-05-04 Gregory L. Lee <lee218@llnl.gov>
+	* : Doc update for Intel MPI
+	* STAT_BackEnd.C : Fix frame function name for Python traces
+
+2017-04-11 Gregory L. Lee <lee218@llnl.gov>
+	* : Require Python even when GUI disabled
+
+2017-04-10 Gregory L. Lee <lee218@llnl.gov>
+	* : build system fixes
+	* .travis.yml : travis build fixes
+
+2017-03-30 Gregory L. Lee <lee218@llnl.gov>
+	* : tag version 3.0.1
+	* x_ac_debuglibs.m4 : Dyninst 9.3 support
+
+2017-03-20 Gregory L. Lee <lee218@llnl.gov>
+	* : GUI fixes to handle special characters
+
+2017-03-20 Gregory L. Lee <lee218@llnl.gov>
+	* : GUI fixes to handle special characters
+
+2017-03-13 Gregory L. Lee <lee218@llnl.gov>
+	* : Build system fixes and script test arg parsing
+
+2017-02-17 Gregory L. Lee <lee218@llnl.gov>
+	* .travis.yml : Added travis build tests
+
 2017-02-13 Gregory L. Lee <lee218@llnl.gov>
 	* MRNetSymbolReader.* : Added new virtual functions
 

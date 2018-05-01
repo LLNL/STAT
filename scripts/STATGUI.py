@@ -3,10 +3,10 @@
 """@package STATGUI
 A GUI for driving the Stack Trace Analysis Tool."""
 
-__copyright__ = """Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -20,13 +20,13 @@ Redistribution and use in source and binary forms, with or without modification,
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
-__version_major__ = 3
+__version_major__ = 4
 __version_minor__ = 0
-__version_revision__ = 1
+__version_revision__ = 0
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import STAThelper
-from STAThelper import var_spec_to_string, get_task_list, get_proctab, HAVE_PYGMENTS
+from STAThelper import var_spec_to_string, get_task_list, get_proctab, HAVE_PYGMENTS, exec_and_exit
 if HAVE_PYGMENTS:
     import pygments
     import pango
@@ -40,12 +40,17 @@ from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_
 import sys
 import DLFCN
 sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_GDB_ATTACH, STAT_SERIAL_GDB_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
 HAVE_OPENMP_SUPPORT = True
 try:
     from STAT import STAT_SAMPLE_OPENMP
 except:
     HAVE_OPENMP_SUPPORT = False
+HAVE_GDB_SUPPORT = True
+try:
+    from STAT import STAT_SAMPLE_CUDA_QUICK
+except:
+    HAVE_GDB_SUPPORT = False
 HAVE_DYSECT = True
 try:
     from STAT import DysectAPI_OK, DysectAPI_Error, DysectAPI_InvalidSystemState, DysectAPI_LibraryNotLoaded, DysectAPI_SymbolNotFound, DysectAPI_SessionCont, DysectAPI_SessionQuit, DysectAPI_DomainNotFound, DysectAPI_NetworkError, DysectAPI_DomainExpressionError, DysectAPI_StreamError, DysectAPI_OptimizedOut
@@ -58,6 +63,11 @@ try:
     import attach_helper
 except:
     HAVE_ATTACH_HELPER = False
+HAVE_PSUTIL = True
+try:
+    import psutil
+except:
+    HAVE_PSUTIL = False
 import commands
 import subprocess
 import time
@@ -66,6 +76,7 @@ import os
 import gtk
 import gobject
 import re
+import argparse
 
 
 ## The STATGUI window adds STAT operations to the STATview window.
@@ -86,7 +97,7 @@ class STATGUI(STATDotWindow):
     ui2 += '    </toolbar>\n'
     ui2 += '</ui>\n'
 
-    def __init__(self):
+    def __init__(self, args):
         """The constructor.
 
         Initializes all instance varaibles and creates the GUI window.
@@ -103,7 +114,6 @@ class STATGUI(STATDotWindow):
         self.marked_line_number = None
         self.attached = False
         self.reattach = False
-        self.serial_process_list = None
         self.serial_attach = False
         self.visualizer_window = None
         self.sample_task_list = ['Sample Stack Traces', 'Gather Stack Traces', 'Render Stack Traces']
@@ -114,14 +124,20 @@ class STATGUI(STATDotWindow):
                  'Sample Type':       ['function only', 'function and pc', 'module offset', 'function and line'],
                  'Edge Type':         ['full list', 'count and representative'],
                  'Remote Host Shell': ['rsh', 'ssh'],
+                 'Serial Remote Host Shell': ['rsh', 'ssh'],
                  'Resource Manager':  ['Auto', 'Alps', 'Slurm'],
                  'CP Policy':         ['none', 'share app nodes', 'exclusive']}
         if not hasattr(self, "types"):
             self.types = {}
         for opt in types:
             self.types[opt] = types[opt]
+        try:
+            gdb_path = os.environ['STAT_GDB']
+        except:
+            gdb_path = 'gdb'
         options = {'Remote Host':                      "localhost",
                    'Remote Host Shell':                "rsh",
+                   'Serial Remote Host Shell':                "rsh",
                    'Resource Manager':                 "Auto",
                    'PID':                              None,
                    'Launcher Exe':                     '',
@@ -135,10 +151,12 @@ class STATGUI(STATDotWindow):
                    'Daemons per Node':                 1,
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
-                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun|mpiexec',
+                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun|mpiexec|jsrun',
                    'Job ID':                           '',
                    'Filter Ranks':                     '',
                    'Filter Hosts':                     '',
+                   'Filter Full Command Line':         False,
+                   'Filter Full Command Line ':        False, # this option is for serial attach and adds a space at the end to avoid conflict
                    'Log Dir':                          os.environ['HOME'],
                    'Log Frontend':                     False,
                    'Log Backend':                      False,
@@ -146,6 +164,9 @@ class STATGUI(STATDotWindow):
                    'Log SW':                           False,
                    'Log SWERR':                        False,
                    'Use MRNet Printf':                 False,
+                   'GDB BE':                           False,
+                   'GDB Path':                         gdb_path,
+                   'With CUDA Quick':                  False,
                    'Verbosity Type':                   'error',
                    'Communication Nodes':              '',
                    'Communication Processes per Node': 8,
@@ -153,6 +174,7 @@ class STATGUI(STATDotWindow):
                    'Trace Frequency (ms)':             1000,
                    'Num Retries':                      5,
                    'Retry Frequency (us)':             10,
+                   'Max Threads Per Daemon':           512,
                    'With Threads':                     False,
                    'With OpenMP':                      False,
                    'Gather Python Traces':             False,
@@ -229,6 +251,43 @@ class STATGUI(STATDotWindow):
                     sys.stderr.write('%s\nfailed to process preferences file %s\n' % (repr(e), path))
                     continue
 
+        if args is not None:
+            if args.withmoduleoffset is True:
+                self.options['Sample Type'] = 'module offset'
+            elif args.withpc is True:
+                self.options['Sample Type'] = 'function and pc'
+            elif args.withline is True:
+                self.options['Sample Type'] = 'function and line'
+            if args.countrep is True:
+                self.options['Edge Type'] = 'count and representative'
+            if args.pythontrace is True:
+                self.options['Gather Python Traces'] = True
+            if args.withthreads is True:
+                self.options['With Threads'] = True
+            if args.withopenmp is True:
+                self.options['With Threads'] = True
+                self.options['With OpenMP'] = True
+            if args.debugdaemons is True:
+                self.options['Debug Backends'] = True
+            if args.logdir is not None:
+                self.options['Log Dir'] = args.logdir
+            if HAVE_GDB_SUPPORT:
+                if args.gdb is True:
+                    self.options['GDB BE'] = True
+                if args.cudaquick is True:
+                    self.options['With CUDA Quick'] = True
+            if args.log is not None:
+                if 'CP' in args.log:
+                    self.options['Log CP'] = True
+                if 'FE' in args.log:
+                    self.options['Log Frontend'] = True
+                if 'BE' in args.log:
+                    self.options['Log Backend'] = True
+            if args.mrnetprintf is True:
+                self.options['Use MRNet Printf'] = True
+            if args.sleep is not None:
+                sys.stdout.write('sleeping for %d seconds\n' % (args.sleep))
+                time.sleep(args.sleep)
         self.var_spec = []
         self.filter_entry = None
         self.serial_filter_entry = None
@@ -278,6 +337,23 @@ host[1-10,12,15-20]
 host[1-10,12,15-20];otherhost[30]
 """
         self.search_types.append(('hosts', self.search_hosts, help_text))
+
+        if args is not None:
+            if args.attach is not None:
+                self.options['PID'] = int(args.attach.split(':')[-1])
+                if args.attach.find(':') != -1:
+                    self.options['Remote Host'] = args.attach.split(':')[0]
+                if args.gdb is not None:
+                    self.options['GDB BE'] = True
+                stat_wait_dialog.show_wait_dialog_and_run(self.attach_cb, (None, False, False, STAT_ATTACH), self.attach_task_list)
+                return
+            elif args.serial is not None:
+                self.serial_attach = True
+                stat_wait_dialog.show_wait_dialog_and_run(self.attach_serial_processes_cb, (None, None, args.serial), self.attach_task_list)
+                return
+            elif args.create is not None:
+                stat_wait_dialog.show_wait_dialog_and_run(self.launch_application_cb, (None, None, args.create), self.attach_task_list)
+                return
         self.on_attach(None)
 
     def search_hosts(self, text, match_case_check_box):
@@ -413,7 +489,7 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(text_view)
         vbox.pack_start(frame, False, False, 0)
 
-        if self.STAT.getApplicationOption() != STAT_SERIAL_ATTACH:
+        if self.STAT.getApplicationOption() != STAT_SERIAL_ATTACH and self.STAT.getApplicationOption() != STAT_SERIAL_GDB_ATTACH:
             frame = gtk.Frame('Job Launcher (host:PID)')
             text_view = gtk.TextView()
             text_buffer = gtk.TextBuffer()
@@ -471,7 +547,12 @@ host[1-10,12,15-20];otherhost[30]
 
     def on_add_serial_process(self, widget, attach_dialog, serial_process_list_entry):
         text = serial_process_list_entry.get_text()
-        text += ' %s@%s:%s ' % (self.options['Serial Exe'], self.options['Remote Host'], self.options['Serial PID'])
+        exe = self.options['Serial Exe']
+        if (exe.find(' \\_') != -1):
+            exe = exe.split()[1]
+        else:
+            exe = exe.split()[0]
+        text += ' %s@%s:%s ' % (exe, self.options['Remote Host'], self.options['Serial PID'])
         text = serial_process_list_entry.set_text(text)
         attach_dialog.show_all()
 
@@ -549,9 +630,16 @@ host[1-10,12,15-20];otherhost[30]
     def _on_update_process_listing2(self, attach_dialog, listing_filter, vbox, is_parallel):
         """Search for user processes."""
         self.options['Remote Host Shell'] = self.types['Remote Host Shell'][self.combo_boxes['Remote Host Shell'].get_active()]
+        self.options['Serial Remote Host Shell'] = self.types['Serial Remote Host Shell'][self.combo_boxes['Serial Remote Host Shell'].get_active()]
+        if is_parallel is True:
+            my_rsh = self.options['Remote Host Shell']
+        else:
+            my_rsh = self.options['Serial Remote Host Shell']
         pid_list = ''
+        if listing_filter is not None:
+            filter_compiled_re = re.compile(listing_filter.get_text())
         if HAVE_ATTACH_HELPER and self.options['Job ID'] != '':
-            self.options['Remote Host'], rm_exe, pids = attach_helper.jobid_to_hostname_pid(self.options['Resource Manager'], self.options['Job ID'], self.options['Remote Host Shell'])
+            self.options['Remote Host'], rm_exe, pids = attach_helper.jobid_to_hostname_pid(self.options['Resource Manager'], self.options['Job ID'], my_rsh)
             self.options['Job Launcher'] = rm_exe
             if self.options['Remote Host'] == None:
                 show_error_dialog('Failed to find host for job ID %s' % self.options['Job ID'], attach_dialog)
@@ -564,61 +652,108 @@ host[1-10,12,15-20];otherhost[30]
                 pid_list += str(pid)
             self.filter_entry.set_text(self.options['Job Launcher'])
             self.rh_entry.set_text(self.options['Remote Host'])
-        if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
-            output = commands.getoutput('ps xww')
-        else:
-            if pid_list != '':
-                output = commands.getoutput('%s %s ps ww -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
+        psutil_success = False
+        process_list = [] # format of item = (pid, cmd_line)
+        if HAVE_PSUTIL is True and (self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == ''):
+            my_procs = []
+            pid_depth = {}
+            for pid in psutil.pids():
+                try:
+                    proc = psutil.Process(pid)
+                    if proc.username() == os.getlogin():
+                        my_procs.append(proc)
+                except:
+                    pass
+            handled_procs = []
+            for proc in my_procs:
+                if proc in handled_procs:
+                    continue
+                cmd_line =  ' '.join(proc.cmdline())
+                pid = proc.pid
+                try:
+                    exe = os.path.realpath(proc.exe())
+                except:
+                    continue
+                if listing_filter is not None:
+                    if listing_filter.get_text() != '':
+                        if (not self.options["Filter Full Command Line"] and is_parallel) or (not self.options["Filter Full Command Line "] and not is_parallel):
+                            my_filter = filter_compiled_re.search(exe)
+                        else:
+                            my_filter = filter_compiled_re.search(cmd_line)
+                        if my_filter is None:
+                            continue
+                try:
+                    pid_depth[pid] = pid_depth[proc.parent().pid] + 1
+                except Exception as e:
+                    pid_depth[pid] = 0
+                handled_procs.append(proc)
+                if pid_depth[pid] > 0:
+                    cmd_line = ' \\_ '.rjust(pid_depth[pid] * 3 + 3) + cmd_line
+                output = commands.getoutput('file %s' % (exe))
+                process_list.append((pid, cmd_line))
+            psutil_success = True
+        if psutil_success == False:
+            if self.options['Remote Host'] == 'localhost' or self.options['Remote Host'] == '':
+                output = commands.getoutput('ps xww')
             else:
-                output = commands.getoutput('%s %s ps xww' % (self.options['Remote Host Shell'], self.options['Remote Host']))
-            if output.find('Hostname not found') != -1 or output.find('PID') == -1:
-                show_error_dialog('Failed to get process listing for %s' % self.options['Remote Host'], attach_dialog)
-                return False
-        output = output.split('\n')
-        pid_index = 0
-        for line in output:
-            if line.find('PID') != -1:
-                break
-            pid_index += 1
-        output = output[pid_index:]
-        line = output[0].split()
-        pid_index = 0
-        command_index = 0
-        for counter, token in enumerate(line):
-            if token == 'PID':
-                pid_index = counter
-            elif token == 'COMMAND':
-                command_index = counter
-        if listing_filter is not None:
-            filter_compiled_re = re.compile(listing_filter.get_text())
+                if pid_list != '':
+                    output = commands.getoutput('%s %s ps ww -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
+                else:
+                    output = commands.getoutput('%s %s ps xww' % (self.options['Remote Host Shell'], self.options['Remote Host']))
+                if output.find('Hostname not found') != -1 or output.find('PID') == -1:
+                    show_error_dialog('Failed to get process listing for %s:\n\t %s' % (self.options['Remote Host'], output), attach_dialog)
+                    return False
+            output = output.split('\n')
+            pid_index = 0
+            for line in output:
+                if line.find('PID') != -1:
+                    break
+                pid_index += 1
+            output = output[pid_index:]
+            line = output[0].split()
+            pid_index = 0
+            command_index = 0
+            for counter, token in enumerate(line):
+                if token == 'PID':
+                    pid_index = counter
+                elif token == 'COMMAND':
+                    command_index = counter
+            for line in output[1:]:
+                try:
+                    cmd_line = ''
+                    for token in line.split()[command_index:]:
+                        cmd_line += ' %s' % token
+                except:
+                    continue
+                if listing_filter is not None:
+                    if listing_filter.get_text() != '':
+                        if (not self.options["Filter Full Command Line"] and is_parallel) or (not self.options["Filter Full Command Line "] and not is_parallel):
+                            my_filter = filter_compiled_re.search(cmd_line.split()[0])
+                        else:
+                            my_filter = filter_compiled_re.search(cmd_line)
+                        if my_filter is None:
+                            continue
+                process_list.append((int(line.split()[pid_index]), cmd_line))
+
         started = False
-        for line in output[1:]:
-            try:
-                text = '% 5d ' % int(line.split()[pid_index])
-                for token in line.split()[command_index:]:
-                    text += ' %s' % token
-            except:
-                continue
-            if listing_filter is not None:
-                if listing_filter.get_text() != '':
-                    if filter_compiled_re.search(text) is None:
-                        continue
+        for (pid, cmd_line) in process_list:
+            text = '% 5d %s' %(pid, cmd_line)
             if started is False:
                 started = True
-                radio_button = gtk.RadioButton(None, text)
+                radio_button = gtk.RadioButton(None, text, False)
                 radio_button.set_active(True)
                 if is_parallel:
-                    self.options['PID'] = int(line.split()[pid_index])
-                    self.options['Launcher Exe'] = line.split()[command_index]
+                    self.options['PID'] = pid
+                    self.options['Launcher Exe'] = cmd_line
                 else:
-                    self.options['Serial PID'] = int(line.split()[pid_index])
-                    self.options['Serial Exe'] = line.split()[command_index]
+                    self.options['Serial PID'] = pid
+                    self.options['Serial Exe'] = cmd_line
             else:
-                radio_button = gtk.RadioButton(radio_button, text)
+                radio_button = gtk.RadioButton(radio_button, text, False)
             if is_parallel:
-                radio_button.connect("toggled", self.pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
+                radio_button.connect("toggled", self.pid_toggle_cb, pid, cmd_line)
             else:
-                radio_button.connect("toggled", self.serial_pid_toggle_cb, int(line.split()[pid_index]), line.split()[command_index])
+                radio_button.connect("toggled", self.serial_pid_toggle_cb, pid, cmd_line)
             vbox.pack_start(radio_button, False, False, 0)
 
     def _on_update_process_listing(self, widget, frame, attach_dialog, listing_filter=None):
@@ -780,7 +915,10 @@ host[1-10,12,15-20];otherhost[30]
                 self.STAT = STAT_FrontEnd()
             for process in self.process_list.split():
                 self.STAT.addSerialProcess(process)
-            self.attach_cb(None, False, True, STAT_SERIAL_ATTACH)
+            if self.options['GDB BE'] is True:
+                self.attach_cb(None, False, True, STAT_SERIAL_GDB_ATTACH)
+            else:
+                self.attach_cb(None, False, True, STAT_SERIAL_ATTACH)
         else:
             self.attach_cb(None, False, False, STAT_ATTACH)
         return True
@@ -867,9 +1005,8 @@ host[1-10,12,15-20];otherhost[30]
         hbox = gtk.HBox()
         self.pack_combo_box(hbox, 'Remote Host Shell')
         vbox.pack_start(hbox, False, False, 0)
-
         vbox.pack_start(process_frame, True, True, 0)
-
+        self.pack_check_button(vbox, 'Filter Full Command Line', False, False, 5)
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label('Filter Process List'), False, False, 5)
         self.filter_entry = self.pack_entry_and_button(self.options['Job Launcher'], self.on_update_process_listing, process_frame, attach_dialog, "Filter", hbox, True, True, 0)
@@ -918,13 +1055,14 @@ host[1-10,12,15-20];otherhost[30]
         hbox.pack_start(gtk.Label('Search Host'), False, False, 5)
         self.pack_entry_and_button(self.options['Remote Host'], self.on_update_serial_remote_host, serial_process_frame, attach_dialog, "Search", hbox)
         hbox.pack_start(gtk.VSeparator(), False, False, 5)
-        self.pack_combo_box(hbox, 'Remote Host Shell')
+        self.pack_combo_box(hbox, 'Serial Remote Host Shell')
         vbox.pack_start(hbox, False, False, 0)
+        vbox.pack_start(serial_process_frame, True, True, 0)
+        self.pack_check_button(vbox, 'Filter Full Command Line ', False, False, 5)
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label('Filter Process List'), False, False, 5)
         self.serial_filter_entry = self.pack_entry_and_button("", self.on_update_serial_process_listing, serial_process_frame, attach_dialog, "Filter", hbox, True, True, 0)
         vbox.pack_start(hbox, False, False, 0)
-        vbox.pack_start(serial_process_frame, True, True, 0)
         hbox = gtk.HBox()
         button = gtk.Button("Refresh Process List")
         button.connect("clicked", lambda w: self.on_update_serial_process_listing(w, serial_process_frame, attach_dialog, self.serial_filter_entry))
@@ -932,7 +1070,7 @@ host[1-10,12,15-20];otherhost[30]
         button = gtk.Button("Add Process to Attach List")
         hbox.pack_start(button, True, True, 10)
         self.serial_process_list_entry = gtk.Entry()
-        self.serial_process_list_entry.set_max_length(1024)
+        self.serial_process_list_entry.set_max_length(8192)
         self.serial_process_list_entry.set_text(self.options['Serial Process List'])
         button.connect("clicked", lambda w: self.on_add_serial_process(w, attach_dialog, self.serial_process_list_entry))
         vbox.pack_start(hbox, False, False, 10)
@@ -1015,6 +1153,9 @@ host[1-10,12,15-20];otherhost[30]
         vbox2 = gtk.VBox()
         self.pack_string_option(vbox2, 'Tool Daemon Path', attach_dialog)
         self.pack_string_option(vbox2, 'Filter Path', attach_dialog)
+        if HAVE_GDB_SUPPORT:
+            self.pack_check_button(vbox2, 'GDB BE')
+            self.pack_string_option(vbox2, 'GDB Path', attach_dialog)
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 5)
         frame = gtk.Frame('Debug Logs')
@@ -1049,13 +1190,16 @@ host[1-10,12,15-20];otherhost[30]
         attach_dialog.run()
         self.sw = None
         self.serial_sw = None
+        return True
 
-    def attach_serial_processes_cb(self, entry, attach_dialog):
+    def attach_serial_processes_cb(self, entry=None, attach_dialog=None, in_processes=None):
         """Callback to attach to serial processes."""
-        processes = entry.get_text()
+        processes = in_processes
+        if processes == None:
+            processes = entry.get_text()
+            processes = processes.split()
+        self.process_list = ' '.join(processes)
         self.serial_attach = True
-        self.process_list = processes
-        processes = processes.split()
         if len(processes) <= 0:
             show_error_dialog('No processes selected.  Please select processes\nto attach to by selecting the desired radio\nbuttons and clicking "Add Serial Process" or by\nmanually entering host:pid pairs in the text entry.', self)
             return False
@@ -1063,12 +1207,19 @@ host[1-10,12,15-20];otherhost[30]
             self.STAT = STAT_FrontEnd()
         for process in processes:
             self.STAT.addSerialProcess(process)
-        self.attach_cb(attach_dialog, False, True, STAT_SERIAL_ATTACH)
+        print 'serial attach'
+        if self.options['GDB BE'] is True:
+            self.attach_cb(attach_dialog, False, True, STAT_SERIAL_GDB_ATTACH)
+        else:
+            self.attach_cb(attach_dialog, False, True, STAT_SERIAL_ATTACH)
+        return True
 
-    def launch_application_cb(self, entry, attach_dialog):
+    def launch_application_cb(self, entry=None, attach_dialog=None, in_args=None):
         """Callback to launch an application under STAT's control."""
-        args = entry.get_text()
-        args = args.split()
+        args = in_args
+        if args == None:
+            args = entry.get_text()
+            args = args.split()
         if len(args) <= 0:
             show_error_dialog('No launch string specified.  Please enter\nthe application launch string.\n', self)
             return False
@@ -1076,6 +1227,7 @@ host[1-10,12,15-20];otherhost[30]
         for arg in args:
             self.STAT.addLauncherArgv(arg)
         self.attach_cb(attach_dialog, True, False, STAT_LAUNCH)
+        return True
 
     def destroy_dysect_dialog(self, dialog):
         self.dysect_dialog = None
@@ -1144,11 +1296,14 @@ host[1-10,12,15-20];otherhost[30]
             run_gtk_main_loop()
             attach_dialog.destroy()
         stat_wait_dialog.update_progress_bar(0.01)
-        self.options['Topology Type'] = self.types['Topology Type'][self.combo_boxes['Topology Type'].get_active()]
-        self.options['CP Policy'] = self.types['CP Policy'][self.combo_boxes['CP Policy'].get_active()]
-        self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
-        self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
-        self.options['Daemons per Node'] = int(self.spinners['Daemons per Node'].get_value())
+        try:
+            self.options['Topology Type'] = self.types['Topology Type'][self.combo_boxes['Topology Type'].get_active()]
+            self.options['CP Policy'] = self.types['CP Policy'][self.combo_boxes['CP Policy'].get_active()]
+            self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
+            self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
+            self.options['Daemons per Node'] = int(self.spinners['Daemons per Node'].get_value())
+        except:
+            pass
         if self.options['Check Node Access'] == True:
             os.environ['STAT_CHECK_NODE_ACCESS'] = '1'
         if self.STAT is None:
@@ -1160,7 +1315,10 @@ host[1-10,12,15-20];otherhost[30]
 
         self.STAT.setToolDaemonExe(self.options['Tool Daemon Path'])
         self.STAT.setFilterPath(self.options['Filter Path'])
+        os.environ['STAT_GDB'] = self.options['GDB Path']
         log_type = STAT_LOG_NONE
+        if self.options['GDB BE'] and application_option != STAT_SERIAL_GDB_ATTACH:
+            application_option = STAT_GDB_ATTACH
         if self.options['Log Frontend']:
             log_type |= STAT_LOG_FE
         if self.options['Log Backend']:
@@ -1246,7 +1404,7 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return False
 
-        if application_option != STAT_SERIAL_ATTACH:
+        if application_option != STAT_SERIAL_ATTACH and application_option != STAT_SERIAL_GDB_ATTACH:
             while 1:
                 run_gtk_main_loop()
                 ret = self.STAT.connectMrnetTree(False)
@@ -1380,17 +1538,11 @@ host[1-10,12,15-20];otherhost[30]
 
     def update_sample_options(self):
         """Update sample options."""
-        try:
-            self.options['Num Traces'] = int(self.spinners['Num Traces'].get_value())
-            self.options['Trace Frequency (ms)'] = int(self.spinners['Trace Frequency (ms)'].get_value())
-        except:
-            pass
-        self.options['Num Retries'] = int(self.spinners['Num Retries'].get_value())
-        self.options['Retry Frequency (us)'] = int(self.spinners['Retry Frequency (us)'].get_value())
-        try:
-            self.options['Run Time Before Sample (sec)'] = int(self.spinners['Run Time Before Sample (sec)'].get_value())
-        except:
-            pass
+        for option in ['Num Retries', 'Retry Frequency (us)', 'Max Threads Per Daemon', 'Run Time Before Sample (sec)', 'Num Traces', 'Trace Frequency (ms)']:
+            try:
+                self.options[option] = int(self.spinners[option].get_value())
+            except:
+                pass
 
     def sleep(self, seconds):
         """Sleep for specified time with a progress bar."""
@@ -1463,11 +1615,13 @@ host[1-10,12,15-20];otherhost[30]
             sample_type += STAT_SAMPLE_THREADS
         if self.options['With OpenMP'] and HAVE_OPENMP_SUPPORT:
             sample_type += STAT_SAMPLE_OPENMP
+        if self.options['With CUDA Quick'] and HAVE_GDB_SUPPORT:
+            sample_type += STAT_SAMPLE_CUDA_QUICK
         if self.options['Gather Python Traces']:
             sample_type += STAT_SAMPLE_PYTHON
         if self.options['Clear On Sample']:
             sample_type += STAT_SAMPLE_CLEAR_ON_SAMPLE
-        ret = self.STAT.sampleStackTraces(sample_type, 1, 1, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
+        ret = self.STAT.sampleStackTraces(sample_type, 1, 1, self.options['Num Retries'], self.options['Retry Frequency (us)'], self.options['Max Threads Per Daemon'], False, var_spec_to_string(self.var_spec))
 
         if ret != STAT_OK:
             show_error_dialog('Failed to sample stack trace:\n%s' % self.STAT.getLastErrorMessage(), self)
@@ -1552,11 +1706,13 @@ host[1-10,12,15-20];otherhost[30]
                 sample_type += STAT_SAMPLE_THREADS
             if self.options['With OpenMP'] and HAVE_OPENMP_SUPPORT:
                 sample_type += STAT_SAMPLE_OPENMP
+            if self.options['With CUDA Quick'] and HAVE_GDB_SUPPORT:
+                sample_type += STAT_SAMPLE_CUDA_QUICK
             if self.options['Gather Python Traces']:
                 sample_type += STAT_SAMPLE_PYTHON
             if self.options['Clear On Sample']:
                 sample_type += STAT_SAMPLE_CLEAR_ON_SAMPLE
-            ret = self.STAT.sampleStackTraces(sample_type, 1, 0, self.options['Num Retries'], self.options['Retry Frequency (us)'], False, var_spec_to_string(self.var_spec))
+            ret = self.STAT.sampleStackTraces(sample_type, 1, 0, self.options['Num Retries'], self.options['Retry Frequency (us)'], self.options['Max Threads Per Daemon'], False, var_spec_to_string(self.var_spec))
             if ret != STAT_OK:
                 if ret == STAT_APPLICATION_EXITED:
                     ret_val = STAT_APPLICATION_EXITED
@@ -2112,7 +2268,7 @@ host[1-10,12,15-20];otherhost[30]
             arg_list.append(filepath)
             cli_attach = False
             if self.STAT is not None:
-                if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH:
+                if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH or self.STAT.getApplicationOption() != STAT_SERIAL_GDB_ATTACH:
                     cli_attach = True
             if cli_attach is True:
                 arg_list.append('-e')
@@ -2134,7 +2290,12 @@ host[1-10,12,15-20];otherhost[30]
                 for rank in subset_list:
                     str_list += '%s ' % (rank)
                 arg_list.append('-default_parallel_attach_subset=%s' % (str_list))
-                arg_list.append(self.options['Launcher Exe'])
+                exe = self.options['Launcher Exe']
+                if (exe.find(' \\_') != -1):
+                    exe = exe.split()[1]
+                else:
+                    exe = exe.split()[0]
+                arg_list.append(exe)
         elif debugger == 'DDT':
             filepath = self.options['DDT Path']
             if not filepath or not os.access(filepath, os.X_OK):
@@ -2168,7 +2329,7 @@ host[1-10,12,15-20];otherhost[30]
 
         sys.stdout.write('fork exec %s %s\n' % (debugger, arg_list))
         if os.fork() == 0:
-            self.exec_and_exit(arg_list)
+            exec_and_exit(arg_list)
 
     def get_full_edge_label(self, widget, button_clicked, node):
         edge_label = self.STAT.getNodeInEdge(int(node.node_name))
@@ -2201,18 +2362,16 @@ host[1-10,12,15-20];otherhost[30]
         self.attached = False
         self.show_all()
 
-    def exec_and_exit(self, arg_list):
-        """Run a command and exits."""
-        subprocess.call(arg_list)
-        sys.exit(0)
-
     def pack_sample_options(self, vbox, multiple, attach=False):
         """Pack the sample options into the specified vbox."""
         frame = gtk.Frame('Per Sample Options')
         vbox2 = gtk.VBox()
-        self.pack_check_button(vbox2, 'With Threads', False, False, 5)
+        self.pack_check_button(vbox2, 'With Threads', False, False, 0)
+        self.pack_spinbutton(vbox2, 'Max Threads Per Daemon')
         if HAVE_OPENMP_SUPPORT:
-            self.pack_check_button(vbox2, 'With OpenMP', False, False, 5)
+            self.pack_check_button(vbox2, 'With OpenMP', False, False, 0)
+        if HAVE_GDB_SUPPORT:
+            self.pack_check_button(vbox2, 'With CUDA Quick', False, False, 0)
         self.pack_check_button(vbox2, 'Gather Python Traces', False, False, 5)
         frame2 = gtk.Frame('Stack Frame (node) Sample Options')
         vbox3 = gtk.VBox()
@@ -2248,13 +2407,14 @@ host[1-10,12,15-20];otherhost[30]
             vbox.pack_start(frame, False, False, 5)
 
 
-def STATGUI_main():
+def STATGUI_main(args):
     """The STATGUI main."""
-    window = STATGUI()
+    window = STATGUI(args)
     STATview.window = window
     window.connect('destroy', window.on_destroy)
     #gtk.gdk.threads_init()
     gtk.main()
 
 if __name__ == '__main__':
-    STATGUI_main()
+    sys.stderr.write('WARNING: STATGUI.py should not be directly invoked. This has been replaced by STATmain.py and the "view" subcommand.\n')
+    sys.exit(1)

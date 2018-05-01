@@ -6,6 +6,7 @@ export exec_prefix=@exec_prefix@
 if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
 fi
+export STATBENCH_BIN=$prefix/bin/STATBenchbin
 
 if test -z "$STAT_LMON_REMOTE_LOGIN" ; then
     export STAT_LMON_REMOTE_LOGIN=@rshcmd@
@@ -58,4 +59,5 @@ if test -z "$LMON_FE_ENGINE_TIMEOUT" ; then
     export LMON_FE_ENGINE_TIMEOUT=600
 fi
 
-exec $prefix/bin/STATBenchbin $@
+export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
+exec @STATPYTHON@ @pythondir@/STATmain.py bench $@

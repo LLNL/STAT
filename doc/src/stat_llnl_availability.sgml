@@ -1,7 +1,3 @@
 <para>
-The STAT GUI is available on all TLCC systems (i.e., x86_64 machines) and BlueGene systems in <command>/usr/local/bin/stat-gui</command>. Man pages are also available (<command>man stat-gui</command>).
+STAT has been ported to Linux x86 clusters, IBM BlueGene systems, CORAL and CORAL EA systems, Cray systems, and Intel Xeon Phi systems. It can be run against various resource managers, including SLURM, OpenMPI's OpenRTE, and Intel MPI's mpiexec.hyrdra.
 </para>
-
-
-
-

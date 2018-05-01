@@ -1,10 +1,10 @@
 """@package STATmerge
 Interface to the _STATmerge module, used to generate merged stack traces."""
 
-__copyright__ = """Copyright (c) 2007-2017, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
-LLNL-CODE-727016.
+LLNL-CODE-750488.
 All rights reserved.
 
 This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
@@ -39,15 +39,16 @@ def New_Graph():
 ## Add a trace to the graph
 #  \param handle - the integer handle for the graph to add the trace to
 #  \param rank - the rank of the task associated with the trace
+#  \param tid - the thread ID of the task associated with the trace
 #  \param trace - the stack trace (list of string frames) with the earliest frame (i.e., _start or main) first
 #  \return 0 on success
-def Add_Trace(handle, rank, trace):
+def Add_Trace(handle, rank, tid, trace):
     trace_string = ''
     count = len(trace)
     # convert the list of frames to a string of frames separated by newlines
     for frame in trace:
         trace_string += frame + '\n'
-    return _STATmerge.Add_Trace(handle, rank, count, trace_string)
+    return _STATmerge.Add_Trace(handle, rank, tid, count, trace_string)
 
 
 ## Merge a graph to the graph

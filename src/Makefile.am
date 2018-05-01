@@ -5,14 +5,19 @@ endif
 SUBDIRS = $(MAYBE_DYSECT)
 
 # what flags you want to pass to the C compiler & linker
-AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
+AM_CFLAGS = -DSTAT_PREFIX=\"$(prefix)\" $(CODE_COVERAGE_CFLAGS)
+SWIGFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
+AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\" $(CODE_COVERAGE_CXXFLAGS)
 if ENABLE_DYSECTAPI
 AM_CXXFLAGS += -DDYSECTAPI
 endif
 if ENABLE_OPENMP
 AM_CXXFLAGS += -DOMP_STACKWALKER
 endif
-AM_LDFLAGS =
+if ENABLE_GDB
+AM_CXXFLAGS += -DSTAT_GDB_BE
+endif
+AM_LDFLAGS = $(CODE_COVERAGE_LIBS)
 
 include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h
 if ENABLE_DYSECTAPI
@@ -48,6 +53,13 @@ endif
 bin_PROGRAMS = STATbin STATD $(stat_bin_programs_statbench)
 lib_LTLIBRARIES = libstatfe.la libstatbe.la
 
+if ENABLE_CALLPATH
+lib_LTLIBRARIES += libcallpathwrap.la
+libcallpathwrap_la_SOURCES = callpathWrap.h callpathWrap.C
+libcallpathwrap_la_CPPFLAGS = -I@ADEPTUTILSPREFIX@/include -I@CALLPATHPREFIX@/include -I@MPIH_HEADERPATH@ -g -O0
+libcallpathwrap_la_LDFLAGS = -L@CALLPATHPREFIX@/lib -Wl,-rpath=@CALLPATHPREFIX@/lib -lcallpath -Wl,-init=depositlightcorewrap_init -ldl
+endif
+
 STATbin_SOURCES = STAT.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 STATD_SOURCES = STATD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
 STATbin_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
@@ -69,7 +81,7 @@ pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
 pkglibdir = $(libdir)
 
 STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C $(stat_graphlib_sources) $(stat_fd_la_sources_add_dysectapi)
-STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi)
+STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi) $(CODE_COVERAGE_LIBS)
 STAT_FilterDefinitions_la_LIBADD = @MWLIBS@ $(stat_fd_ldadd_add_dysectapi)
 STAT_FilterDefinitions_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
 
@@ -77,7 +89,7 @@ pyexec_LTLIBRARIES = _STATmerge.la
 _STATmerge_la_SOURCES = STAT_merge.C STAT_GraphRoutines.C
 _STATmerge_la_CPPFLAGS = -I./
 _STATmerge_la_LDFLAGS = -module -avoid-version
-_STATmerge_la_LIBADD = -llnlgraph
+_STATmerge_la_LIBADD = -llnlgraph $(CODE_COVERAGE_LIBS)
 
 python_PYTHON =
 if ENABLE_GUI
@@ -87,10 +99,10 @@ python_PYTHON += STAT.py
 _STAT_la_SOURCES = STAT_wrap.C $(GUI_SWIG_SOURCES)
 _STAT_la_CPPFLAGS = -I./ $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
 _STAT_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi)
-_STAT_la_LIBADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
+_STAT_la_LIBADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@ $(CODE_COVERAGE_LIBS)
 
 STAT_wrap.C:$(GUI_SWIG_SOURCES) Makefile
-	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) $(AM_CXXFLAGS) -o $@ $<
+	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) $(SWIGFLAGS) -o $@ $<
 
 STAT.py:$(GUI_SWIG_SOURCES) Makefile
 	$(MAKE) $(AM_MAKEFLAGS) STAT_wrap.C
