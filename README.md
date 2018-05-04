@@ -13,6 +13,7 @@ STAT is released under the Berkeley Software Distribution (BSD) license. Please 
 
 ### BUILDING STAT
 STAT has several dependent libraries that must be installed:
+<<<<<<< HEAD
 * [MRNet](https://github.com/dyninst/mrnet)
 * [LaunchMON](https://github.com/LLNL/LaunchMON)
 * [GraphLib](https://github.com/LLNL/graphlib)
@@ -27,6 +28,17 @@ git clone https://github.com/spack/spack.git
 cd spack
 ./bin spack install stat
 ```
+=======
+* MRNet
+* [LaunchMON](https://github.com/LLNL/LaunchMON)
+* [GraphLib](https://github.com/LLNL/graphlib)
+* Stackwalker
+* libdwarf
+
+In addition, the STAT GUI requires Python with PyGTK, both of which are commonly preinstalled with many Linux operating systems. 
+
+Please refer to [INSTALL](/INSTALL) for instructions on building STAT.
+>>>>>>> 7ff8f39... Minor readme updates
 
 ### SUPPORTED PLATFORMS
 STAT is able to run on any machine where all of the dependent libraries run.  This currently includes:
