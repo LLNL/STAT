@@ -206,7 +206,7 @@ class STAT_FrontEnd
         StatError_t pause(bool blocking = true);
         StatError_t resume(bool blocking = true);
         bool isRunning();
-        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int maxDaemonNumThreads, unsigned int retryFrequency, bool blocking = true, const char *variableSpecification = "NULL");
+        StatError_t sampleStackTraces(unsigned int sampleType, unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, unsigned int maxDaemonNumThreads = 1024, bool blocking = true, const char *variableSpecification = "NULL");
         StatError_t gatherLastTrace(bool blocking = true, const char *altDotFilename = NULL);
         StatError_t gatherTraces(bool blocking = true, const char *altDotFilename = NULL);
         char *getLastDotFilename();
