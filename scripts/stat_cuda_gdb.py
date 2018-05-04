@@ -51,11 +51,11 @@ def new_gdb_instance(pid, gdb_type='gdb'):
 
     try:
         if 'cuda-gdb' in os.environ['STAT_GDB']:
-            gdb = CudaGdbDriver(pid, 'debug', 'log.txt')
+            gdb = CudaGdbDriver(pid, 'error', 'stderr')
         else:
-            gdb = GdbDriver(pid, 'debug', 'log.txt')
+            gdb = GdbDriver(pid, 'error', 'stderr')
     except:
-        gdb = GdbDriver(pid, 'debug', 'log.txt')
+        gdb = GdbDriver(pid, 'error', 'stderr')
     if gdb.launch() is False:
         return -1
     gdb_instances[pid] = gdb
