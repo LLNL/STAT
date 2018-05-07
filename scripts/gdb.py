@@ -30,6 +30,7 @@ import sys
 import signal
 import os
 import logging
+import time
 from datetime import datetime
 
 def init_logging(input_loglevel, input_logfile):
@@ -115,6 +116,7 @@ class GdbDriver(object):
         line = ''
         lines = []
         while True:
+            time.sleep(.00001) # the poll sometimes would hang in the absence of a short sleep
             ret = self.subprocess.poll()
             if ret != None:
                 error_msg = 'Subprocess terminated with ret code %d\n' %(ret)

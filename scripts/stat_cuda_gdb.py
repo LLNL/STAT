@@ -47,7 +47,7 @@ def new_gdb_instance(pid, gdb_type='gdb'):
     #    (cudbgApiAttach) will be abandoned.
     #    When the function is done executing, GDB will silently stop.
     if "TMPDIR" not in os.environ:
-        os.environ["TMPDIR"]="/var/tmp/%s" %(pwd.getpwuid( os.getuid() ).pw_name)
+        os.environ["TMPDIR"]="/var/tmp"
 
     try:
         if 'cuda-gdb' in os.environ['STAT_GDB']:
