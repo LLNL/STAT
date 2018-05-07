@@ -33,7 +33,7 @@ __device__ void foo()
 #ifdef NOHANG
    for (i = 0; i <= 1000000; i++)
 #else
-   for (i = 0; i >=0; i++)
+   for (i = 0; i >= 0; i++)
 #endif
    {
     x = i;
@@ -70,15 +70,18 @@ void add2(int *a, int *b)
 int main(int argc, char **argv)
 {
     int ha[N], hb[N], hc[N];
+    char hostname[256];
+    gethostname(hostname, 256);
 #ifdef USEMPI
     int numtasks, rank;
-    char hostname[256];
     MPI_Init(&argc,&argv);
     MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    gethostname(hostname, 256);
     printf("Hello world from %s %d/%d\n", hostname, rank, numtasks);
+#else
+    printf("Hello serial world from %s\n", hostname);
 #endif
+    fflush(stdout);
     int *da, *db;
     cudaMalloc((void **)&da, N*sizeof(int));
     cudaMalloc((void **)&db, N*sizeof(int));
