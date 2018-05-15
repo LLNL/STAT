@@ -1207,7 +1207,6 @@ host[1-10,12,15-20];otherhost[30]
             self.STAT = STAT_FrontEnd()
         for process in processes:
             self.STAT.addSerialProcess(process)
-        print 'serial attach'
         if self.options['GDB BE'] is True:
             self.attach_cb(attach_dialog, False, True, STAT_SERIAL_GDB_ATTACH)
         else:

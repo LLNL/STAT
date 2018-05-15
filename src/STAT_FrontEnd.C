@@ -527,7 +527,7 @@ StatError_t STAT_FrontEnd::launchDaemons()
             // On PPC64LE systems the FE environment is not passed to the daemons.
             // We need to send PYTHONPATH for the GDB BE component.
             // We also need to send the GDB path since this variable isn't propagated either.
-            char *gdbCommand, *pythonPath;
+            const char *gdbCommand, *pythonPath;
             pythonPath = getenv("PYTHONPATH");
             if (pythonPath == NULL)
                 pythonPath = ":";
@@ -858,7 +858,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
             // On PPC64LE systems the FE environment is not passed to the daemons.
             // We need to send PYTHONPATH for the GDB BE component.
             // We also need to send the GDB path since this variable isn't propagated either.
-            char *gdbCommand, *pythonPath;
+            const char *gdbCommand, *pythonPath;
             pythonPath = getenv("PYTHONPATH");
             if (pythonPath == NULL)
                 pythonPath = ":";

@@ -1,3 +1,6 @@
+2018-05-15 Gregory L. Lee <lee218@llnl.gov>
+	* STATview.py : use lru_cache for translating edge labels
+
 2018-05-01 Gregory L. Lee <lee218@llnl.gov>
 	* : tag version 4.0
 

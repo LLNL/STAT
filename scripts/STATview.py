@@ -77,12 +77,25 @@ except:
     raise Exception('STATview requires xdot\nxdot can be downloaded from http://code.google.com/p/jrfonseca/wiki/XDot\n')
 
 # Check for optional modules
-## A variable to determine whther we have the temporal ordering module
+## A variable to determine whether we have the temporal ordering module
 HAVE_TOMOD = True
 try:
     import tomod
 except Exception as e:
     HAVE_TOMOD = False
+
+## A variable to determine wehther we have the lru_cache decorator
+HAVE_FUNCTOOLS=True
+try:
+    from functools import lru_cache
+except ImportError:
+    HAVE_FUNCTOOLS=False
+if HAVE_FUNCTOOLS==False:
+    try:
+        from backports.functools_lru_cache import lru_cache
+        HAVE_FUNCTOOLS=True
+    except:
+        pass
 
 ## The location of the STAT logo image
 try:
@@ -121,10 +134,24 @@ next_label_id = -1
 ## A default name for the source cache directory
 cache_directory = 'stat_source_cache'
 
+
+## A decorator that uses the requested decorator upon a condition
+class conditional_decorator(object):
+    def __init__(self, dec, condition):
+        self.decorator = dec
+        self.condition = condition
+
+    def __call__(self, func):
+        if not self.condition:
+            return func
+        return self.decorator(func)
+
+
 ## \param label - the edge label
 #  \return the list of ranks
 #
 #  \n
+@conditional_decorator(lambda func: lru_cache(maxsize=None, typed=True)(func), (HAVE_FUNCTOOLS is True))
 def get_task_list(label):
     if label == '' or label == None:
         return []
@@ -149,6 +176,7 @@ def get_task_list(label):
 #  \return the string representation
 #
 #  \n
+@conditional_decorator(lambda func: lru_cache(maxsize=None, typed=True)(func), (HAVE_FUNCTOOLS is True))
 def list_to_string(task_list):
     """Translate a list of tasks into a range string."""
     global next_label_id
