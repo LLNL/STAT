@@ -49,11 +49,12 @@ enum StatSampleOptions_t {
     STAT_SAMPLE_PYTHON = 0x20,
     STAT_SAMPLE_MODULE_OFFSET = 0x40,
 #ifdef OMP_STACKWALKER
-    STAT_SAMPLE_OPENMP = 0x80
+    STAT_SAMPLE_OPENMP = 0x80,
 #endif
 #ifdef STAT_GDB_BE
-    STAT_SAMPLE_CUDA_QUICK = 0x100
+    STAT_SAMPLE_CUDA_QUICK = 0x100,
 #endif
+    STAT_SAMPLE_UNKNOWN=0xff
 } ;
 
 //! An enum for MRNet message tags
