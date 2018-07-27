@@ -183,8 +183,15 @@ for pkg in $downloads; do
         wget https://github.com/open-mpi/ompi/pull/3709.patch
         patch -p1 < 3709.patch
       fi
-      make -j 32 PREFIX=${prefix} || make
-      make -j 32 PREFIX=${prefix} install || make PREFIX=${prefix} install
+      if test "$name" = "v9.3.2"; then
+        # parallel build of dyninst was causing travis error:
+        # No output has been received in the last 10m0s, this potentially indicates a stalled build or something wrong with the build itself.
+        make PREFIX=${prefix}
+        make PREFIX=${prefix} install
+      else
+        make -j 32 PREFIX=${prefix} 
+        make -j 32 PREFIX=${prefix} install
+      fi
       if test "$name" = "launchmon-v1.0.2"; then
         pushd test/src
         echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
