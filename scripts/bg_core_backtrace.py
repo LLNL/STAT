@@ -88,6 +88,7 @@ class BgCoreTrace(StatTrace):
         patterns[CoreType.LCF] = r"([^:]+):(.*)"
         patterns[CoreType.FUNCTION_SOURCE_LINE] = r"([^@]+)@([^:]+):([0-9\?]+)"
         patterns[CoreType.UNKNOWN] = r"[.]*"
+        any_lcf = False
         for line in f:
             if line.find('Job ID') != -1:
                 job_id = int(line.split(':')[1][1:])
@@ -103,7 +104,7 @@ class BgCoreTrace(StatTrace):
                 function_only_trace = []
                 continue
             elif line.find('---STACK') != -1 or line.find('End of stack') != -1:
-                if core_type == CoreType.DYSECT or core_type == CoreType.FUNCTION_SOURCE_LINE:
+                if (core_type == CoreType.DYSECT or core_type == CoreType.FUNCTION_SOURCE_LINE) and any_lcf == False:
                     # module offset frames are coming from callpath and need to be
                     # flipped such that the TOS is at the end of the trace
                     line_number_trace.reverse()
@@ -156,6 +157,7 @@ class BgCoreTrace(StatTrace):
             match = re.match(patterns[CoreType.LCF], line.replace("::", "STATDOUBLECOLON"))
             if line_info is None and match:
                 core_type = CoreType.LCF
+                any_lcf = True
                 function = match.group(1).replace("STATDOUBLECOLON", "::")
                 source_line = match.group(2).replace("STATDOUBLECOLON", "::")
                 match = re.match(r"([^:]+):(.*)", source_line)
