@@ -42,16 +42,6 @@ except Exception as e:
     sys.stderr.write("The following required library is missing: stat_merge_base\n%s\n" % (repr(e)))
     sys.exit(1)
 
-have_bg_core_backtrace = True
-
-try:
-    from bg_core_backtrace import BgCoreTrace, BgCoreMerger, BgCoreMergerArgs
-except Exception as e:
-    sys.stderr.write("The following library is missing: bg_core_backtrace\n")
-    sys.stderr.write("Lightweight corefile analysis will not be enabled\n")
-    sys.stderr.write("%s\n" % (repr(e)))
-    have_bg_core_backtrace = False
-
 import subprocess, re, threading, glob, logging
 from datetime import datetime
 
@@ -613,7 +603,14 @@ def STATmerge_main(arg_list):
     except Exception as e:
         sys.stderr.write('failed to determine core file type: %s\n' %e)
 
-    if core_file_type == 'lightweight' and have_bg_core_backtrace == True:
+    if core_file_type == 'lightweight':
+        try:
+            from bg_core_backtrace import BgCoreTrace, BgCoreMerger, BgCoreMergerArgs
+        except Exception as e:
+            sys.stderr.write("The following library is missing: bg_core_backtrace\n")
+            sys.stderr.write("Lightweight corefile analysis will not be enabled\n")
+            sys.stderr.write("%s\n" % (repr(e)))
+            sys.exit(1)
         merger = BgCoreMerger(BgCoreTrace, BgCoreMergerArgs)
     else:
         merger = CoreMerger(CoreTrace, CoreMergerArgs)
