@@ -38,8 +38,17 @@ import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO, run_gtk_main_loop
 
 import sys
-import DLFCN
-sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
+import os
+dlopenflags_set = False
+try:
+    import DLFCN
+    sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
+    dlopenflags_set = True
+except:
+    pass
+if dlopenflags_set == False:
+    sys.setdlopenflags(os.RTLD_NOW | os.RTLD_GLOBAL)
+
 from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_GDB_ATTACH, STAT_SERIAL_GDB_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
 HAVE_OPENMP_SUPPORT = True
 try:
@@ -68,15 +77,75 @@ try:
     import psutil
 except:
     HAVE_PSUTIL = False
-import commands
 import subprocess
+HAVE_COMMANDS=True
+try:
+    import commands
+except:
+    HAVE_COMMANDS=False
+    commands = subprocess
 import time
 import string
-import os
-import gtk
-import gobject
 import re
 import argparse
+
+try:
+    import xdot
+except:
+    raise Exception('STATview requires xdot\nxdot can be downloaded from https://github.com/jrfonseca/xdot.py\n')
+try:
+    # xdot 0.9: compatibility wrapper
+    xdot_ui_actions = xdot.ui.actions
+    xdot_ui_elements = xdot.ui.elements
+    xdot_ui_window = xdot.ui.window
+    xdot_dot_parser = xdot.dot.parser
+    xdot_dot_lexer = xdot.dot.lexer
+except:
+    # STAT-shipped xdot.py wrapper
+    xdot_ui_actions = xdot
+    xdot_ui_elements = xdot
+    xdot_ui_window = xdot
+    xdot_dot_parser = xdot
+    xdot_dot_lexer = xdot
+
+has_gtk = False
+import_error = ''
+try:
+    import gtk
+    import gobject
+    import pango
+    gtk_wrap_new_with_label_from_widget = gtk.RadioButton
+    gtk_wrap_new_from_widget = gtk.RadioButton
+    has_gtk = True
+except ImportError as e:
+    import_error = e
+    pass #raise Exception('%s\nSTATview requires gtk and gobject\n' % repr(e))
+except RuntimeError as e:
+    import_error = e
+    pass #raise Exception('%s\nThere was a problem loading the gtk and gobject module.\nIs X11 forwarding enabled?\n' % repr(e))
+except Exception as e:
+    import_error = e
+    pass #raise Exception('%s\nThere was a problem loading the gtk module.\n' % repr(e))
+
+if has_gtk == False:
+    try:
+        import gi
+        gi.require_version('Gtk', '3.0')
+        from gi.repository import Gtk as gtk
+        from gi.repository import Gdk as gdk
+        from gi.repository import GObject as gobject
+        from gi.repository import GdkPixbuf
+        gtk.POLICY_AUTOMATIC = gtk.PolicyType.AUTOMATIC
+        gtk.POLICY_NEVER = gtk.PolicyType.NEVER
+        gtk.Orientation.VERTICAL = gtk.Orientation.VERTICAL
+        gtk.POS_TOP = gtk.PositionType.TOP
+        gtk.gdk = gdk
+        gtk.ORIENTATION_VERTICAL = gtk.Orientation.VERTICAL
+        gtk.gdk.pixbuf_new_from_file = GdkPixbuf.Pixbuf.new_from_file
+        gtk_wrap_new_with_label_from_widget = gtk.RadioButton.new_with_label_from_widget
+        gtk_wrap_new_from_widget = gtk.RadioButton.new_from_widget
+    except Exception as e2:
+        raise Exception('%s\n%s\nThere was a problem loading the gtk module.\n' % (repr(import_error), repr(e2)))
 
 
 ## The STATGUI window adds STAT operations to the STATview window.
@@ -216,15 +285,15 @@ class STATGUI(STATDotWindow):
                             if len(split_line) != 2:
                                 sys.stderr.write('invalid preference specification %s in file %s\n' % (line.strip('\n'), path))
                                 continue
-                            option = string.lstrip(string.rstrip(split_line[0]))
-                            value = string.lstrip(string.rstrip(split_line[1]))
+                            option = split_line[0].strip()
+                            value = split_line[1].strip()
                             if option in self.options.keys():
                                 if type(self.options[option]) == int:
                                     value = int(value)
                                 elif type(self.options[option]) == bool:
-                                    if string.lower(value) == 'true':
+                                    if value.lower() == 'true':
                                         value = True
-                                    elif string.lower(value) == 'false':
+                                    elif value.lower() == 'false':
                                         value = False
                                     else:
                                         sys.stderr.write('invalid value %s for option %s as specified in file %s.  Expecting either "true" or "false".\n' % (value, option, path))
@@ -309,7 +378,7 @@ class STATGUI(STATDotWindow):
         toolbar = uimanager.get_widget('/STAT_Actions')
         toolbar.set_orientation(gtk.ORIENTATION_VERTICAL)
         self.hbox = gtk.HBox()
-        self.hbox.pack_start(toolbar, False, False)
+        self.hbox.pack_start(toolbar, False, False, 0)
         lines = STATDotWindow.ui.split('\n')
         count = 0
         for line in lines:
@@ -401,7 +470,7 @@ host[1-10,12,15-20];otherhost[30]
         try:
             pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
             about_dialog.set_logo(pixbuf)
-        except gobject.GError:
+        except Exception as e:
             pass
         about_dialog.set_website('https://github.com/lee218llnl/STAT')
         about_dialog.show_all()
@@ -445,6 +514,7 @@ host[1-10,12,15-20];otherhost[30]
 
         job_launcher = "%s:%d" % (self.proctab.launcher_host, self.proctab.launcher_pid)
         entries = range(len(self.proctab.process_list))
+        entries = list(entries)
         for rank, host, pid, exe_index in self.proctab.process_list:
             entries[rank] = '%d %s:%d %d\n' % (rank, host, pid, exe_index)
 
@@ -453,7 +523,7 @@ host[1-10,12,15-20];otherhost[30]
         self.properties_window.connect('destroy', self.on_properties_destroy)
         vbox = gtk.VBox()
 
-        frame = gtk.Frame('Application Executable(s) (index:path)')
+        frame = gtk.Frame(label='Application Executable(s) (index:path)')
         text_view = gtk.TextView()
         text_buffer = gtk.TextBuffer()
         exes = ''
@@ -467,7 +537,7 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(text_view)
         vbox.pack_start(frame, False, False, 0)
 
-        frame = gtk.Frame('Number of application nodes')
+        frame = gtk.Frame(label='Number of application nodes')
         text_view = gtk.TextView()
         text_buffer = gtk.TextBuffer()
         text_buffer.set_text('%d' % num_nodes)
@@ -478,7 +548,7 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(text_view)
         vbox.pack_start(frame, False, False, 0)
 
-        frame = gtk.Frame('Number of application processes')
+        frame = gtk.Frame(label='Number of application processes')
         text_view = gtk.TextView()
         text_buffer = gtk.TextBuffer()
         text_buffer.set_text('%d' % num_procs)
@@ -490,7 +560,7 @@ host[1-10,12,15-20];otherhost[30]
         vbox.pack_start(frame, False, False, 0)
 
         if self.STAT.getApplicationOption() != STAT_SERIAL_ATTACH and self.STAT.getApplicationOption() != STAT_SERIAL_GDB_ATTACH:
-            frame = gtk.Frame('Job Launcher (host:PID)')
+            frame = gtk.Frame(label='Job Launcher (host:PID)')
             text_view = gtk.TextView()
             text_buffer = gtk.TextBuffer()
             text_buffer.set_text(job_launcher)
@@ -501,7 +571,7 @@ host[1-10,12,15-20];otherhost[30]
             frame.add(text_view)
             vbox.pack_start(frame, False, False, 0)
 
-        proctab_frame = gtk.Frame('Process Table (rank host:PID exe_index)')
+        proctab_frame = gtk.Frame(label='Process Table (rank host:PID exe_index)')
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label('Filter Ranks'), False, False, 5)
         self.rank_filter_entry = self.pack_entry_and_button(self.options['Filter Ranks'], self.on_update_filter_ranks, proctab_frame, self.properties_window, "Filter Ranks", hbox, True, True, 0)
@@ -513,7 +583,7 @@ host[1-10,12,15-20];otherhost[30]
         self.on_update_proctab(None, proctab_frame, self.properties_window)
         vbox.pack_start(proctab_frame, True, True, 0)
 
-        #frame = gtk.Frame('Process Table (rank host:PID exe_index)')
+        #frame = gtk.Frame(label='Process Table (rank host:PID exe_index)')
         #text_view = gtk.TextView()
         #text_view.set_size_request(400, 200)
         #text_buffer = gtk.TextBuffer()
@@ -740,8 +810,9 @@ host[1-10,12,15-20];otherhost[30]
             text = '% 5d %s' %(pid, cmd_line)
             if started is False:
                 started = True
-                radio_button = gtk.RadioButton(None, text, False)
-                radio_button.set_active(True)
+                first_radio_button = gtk_wrap_new_with_label_from_widget(None, text)
+                first_radio_button.set_active(True)
+                radio_button = first_radio_button
                 if is_parallel:
                     self.options['PID'] = pid
                     self.options['Launcher Exe'] = cmd_line
@@ -749,7 +820,8 @@ host[1-10,12,15-20];otherhost[30]
                     self.options['Serial PID'] = pid
                     self.options['Serial Exe'] = cmd_line
             else:
-                radio_button = gtk.RadioButton(radio_button, text, False)
+                radio_button = gtk_wrap_new_with_label_from_widget(first_radio_button, text)
+                radio_button.set_active(False)
             if is_parallel:
                 radio_button.connect("toggled", self.pid_toggle_cb, pid, cmd_line)
             else:
@@ -806,7 +878,7 @@ host[1-10,12,15-20];otherhost[30]
 
     def on_cancel_attach(self, widget, dialog):
         """Callback to handle canceling of attach dialog."""
-        dialog.destroy()
+        dialog.hide()
 
     def manipulate_cb(self, widget, data, node):
         """Overloaded manipulate callback to handle variable search."""
@@ -827,7 +899,7 @@ host[1-10,12,15-20];otherhost[30]
     def clear_var_spec_and_destroy_dialog(self, dialog):
         """Handle case where we don't want to gather loop variable."""
         self.var_spec = []
-        dialog.destroy()
+        dialog.hide()
 
     def check_for_loop_variable(self):
         """Searches for loop ordering variables.
@@ -902,8 +974,8 @@ host[1-10,12,15-20];otherhost[30]
 
     def run_and_destroy_dialog(self, function, args, dialog):
         """Run the specified function and destroys the specified dialog."""
-        apply(function, args)
-        dialog.destroy()
+        function(*args)
+        dialog.hide()
 
     def on_reattach(self, action):
         """Attach to the same job as the previous session.
@@ -980,10 +1052,10 @@ host[1-10,12,15-20];otherhost[30]
         notebook.set_scrollable(False)
 
         # parallel attach
-        process_frame = gtk.Frame('Current Process List')
+        process_frame = gtk.Frame(label='Current Process List')
         vbox = gtk.VBox()
 
-        self.rm_expander = gtk.Expander("Search for job by Resource Manager job ID")
+        self.rm_expander = gtk.Expander(label="Search for job by Resource Manager job ID")
         hbox = gtk.HBox()
         self.jobid_entry = self.pack_entry_and_button(self.options['Job ID'], self.on_update_job_id, process_frame, attach_dialog, "Search for Job", hbox, True, True, 0)
         hbox.pack_start(gtk.VSeparator(), False, False, 5)
@@ -991,7 +1063,7 @@ host[1-10,12,15-20];otherhost[30]
         self.rm_expander.add(hbox)
         vbox.pack_start(self.rm_expander, False, False, 0)
 
-        self.hn_expander = gtk.Expander("Search for job by hostname")
+        self.hn_expander = gtk.Expander(label="Search for job by hostname")
         hbox = gtk.HBox()
         self.rh_entry = self.pack_entry_and_button(self.options['Remote Host'], self.on_update_remote_host, process_frame, attach_dialog, "Search Remote Host", hbox)
         self.hn_expander.add(hbox)
@@ -1049,7 +1121,7 @@ host[1-10,12,15-20];otherhost[30]
         notebook.append_page(vbox, label)
 
         # serial attach tab
-        serial_process_frame = gtk.Frame('Current Process List')
+        serial_process_frame = gtk.Frame(label='Current Process List')
         vbox = gtk.VBox()
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label('Search Host'), False, False, 5)
@@ -1095,7 +1167,7 @@ host[1-10,12,15-20];otherhost[30]
         # DySect options
         if HAVE_DYSECT:
             vbox = gtk.VBox()
-            frame = gtk.Frame('DySectAPI Options')
+            frame = gtk.Frame(label='DySectAPI Options')
             dysect_vbox = gtk.VBox()
             self.pack_check_button(dysect_vbox, 'Enable DySectAPI', False, False, 5)
             label = gtk.Label('Session: %s' % self.options['DySectAPI Session'])
@@ -1128,7 +1200,7 @@ host[1-10,12,15-20];otherhost[30]
 
         # topology options
         vbox = gtk.VBox()
-        frame = gtk.Frame('Topology Options')
+        frame = gtk.Frame(label='Topology Options')
         vbox2 = gtk.VBox()
         self.pack_combo_box(vbox2, 'Topology Type')
         self.pack_string_option(vbox2, 'Topology', attach_dialog)
@@ -1149,7 +1221,7 @@ host[1-10,12,15-20];otherhost[30]
 
         # misc options
         vbox = gtk.VBox()
-        frame = gtk.Frame('Tool Paths')
+        frame = gtk.Frame(label='Tool Paths')
         vbox2 = gtk.VBox()
         self.pack_string_option(vbox2, 'Tool Daemon Path', attach_dialog)
         self.pack_string_option(vbox2, 'Filter Path', attach_dialog)
@@ -1158,7 +1230,7 @@ host[1-10,12,15-20];otherhost[30]
             self.pack_string_option(vbox2, 'GDB Path', attach_dialog)
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 5)
-        frame = gtk.Frame('Debug Logs')
+        frame = gtk.Frame(label='Debug Logs')
         vbox2 = gtk.VBox()
         self.pack_check_button(vbox2, 'Log Frontend')
         self.pack_check_button(vbox2, 'Log Backend')
@@ -1169,7 +1241,7 @@ host[1-10,12,15-20];otherhost[30]
         self.pack_check_button(vbox2, 'Use MRNet Printf')
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 5)
-        frame = gtk.Frame('Misc')
+        frame = gtk.Frame(label='Misc')
         vbox2 = gtk.VBox()
         self.pack_combo_box(vbox2, 'Verbosity Type')
         self.pack_check_button(vbox2, 'Debug Backends')
@@ -1293,7 +1365,7 @@ host[1-10,12,15-20];otherhost[30]
             self.serial_attach = True
         if attach_dialog is not None:
             run_gtk_main_loop()
-            attach_dialog.destroy()
+            attach_dialog.hide()
         stat_wait_dialog.update_progress_bar(0.01)
         try:
             self.options['Topology Type'] = self.types['Topology Type'][self.combo_boxes['Topology Type'].get_active()]
@@ -1301,7 +1373,7 @@ host[1-10,12,15-20];otherhost[30]
             self.options['Verbosity Type'] = self.types['Verbosity Type'][self.combo_boxes['Verbosity Type'].get_active()]
             self.options['Communication Processes per Node'] = int(self.spinners['Communication Processes per Node'].get_value())
             self.options['Daemons per Node'] = int(self.spinners['Daemons per Node'].get_value())
-        except:
+        except Exception as e:
             pass
         if self.options['Check Node Access'] == True:
             os.environ['STAT_CHECK_NODE_ACCESS'] = '1'
@@ -1545,13 +1617,13 @@ host[1-10,12,15-20];otherhost[30]
 
     def sleep(self, seconds):
         """Sleep for specified time with a progress bar."""
-        for i in xrange(int(seconds * 100)):
+        for i in range(int(seconds * 100)):
             stat_wait_dialog.update_progress_bar(float(i) / seconds / 100)
             time.sleep(.01)
 
     def update_prefs_and_sample_cb(self, sample_function, widget, dialog, action):
         """Callback to update sample preferences and sample traces."""
-        dialog.destroy()
+        dialog.hide()
         self.update_sample_options()
         if self.options['Run Time Before Sample (sec)'] != 0:
             if self.STAT.isRunning() is False:
@@ -1676,7 +1748,7 @@ host[1-10,12,15-20];otherhost[30]
         stat_wait_dialog.update_progress_bar(0.01)
 
         previous_clear = self.options['Clear On Sample']
-        for i in xrange(self.options['Num Traces']):
+        for i in range(self.options['Num Traces']):
             if stat_wait_dialog.cancelled is True:
                 stat_wait_dialog.cancelled = False
                 break
@@ -1776,7 +1848,7 @@ host[1-10,12,15-20];otherhost[30]
                 elif ret != STAT_OK:
                     return ret
                 self.set_action_sensitivity('running')
-                for i in xrange(int(self.options['Trace Frequency (ms)'] / 10)):
+                for i in range(int(self.options['Trace Frequency (ms)'] / 10)):
                     time.sleep(.01)
                     run_gtk_main_loop()
         self.options['Clear On Sample'] = previous_clear
@@ -1829,7 +1901,7 @@ host[1-10,12,15-20];otherhost[30]
             show_error_dialog('DySect compiler %s not found' % dysect_c, self)
             self.on_fatal_error()
             return -1
-        proc = subprocess.Popen([dysect_c, self.options['DySectAPI Session']], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen([dysect_c, self.options['DySectAPI Session']], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         stdout_output, stderr_output = proc.communicate()
         if stderr_output != '':
             sys.stderr.write('dysectc outputted error message: %s\n' % stderr_output)
@@ -1855,7 +1927,7 @@ host[1-10,12,15-20];otherhost[30]
         self.dysect_dialog.set_destroy_with_parent(True)
         self.dysect_dialog.connect('destroy', lambda w: self.destroy_dysect_dialog(w))
         vpaned = gtk.VPaned()
-        my_frame = gtk.Frame("Session %s:" % self.options['DySectAPI Session'])
+        my_frame = gtk.Frame(label="Session %s:" % self.options['DySectAPI Session'])
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         text_view = gtk.TextView()
@@ -1896,7 +1968,7 @@ host[1-10,12,15-20];otherhost[30]
                             args.append('italics_tag')
                         if underline:
                             args.append('underline_tag')
-                        apply(text_view_buffer.insert_with_tags_by_name, tuple(args))
+                        text_view_buffer.insert_with_tags_by_name(*tuple(args))
             else:
                 text_view_buffer.set_text(dysect_session_file.read())
         vpaned.pack1(my_frame, True, True)
@@ -1905,7 +1977,7 @@ host[1-10,12,15-20];otherhost[30]
 
         self.out_dir = self.STAT.getOutDir()
         dysect_outfile = os.path.join(self.out_dir, 'dysect_output.txt')
-        my_frame = gtk.Frame("Output %s:" % dysect_outfile)
+        my_frame = gtk.Frame(label="Output %s:" % dysect_outfile)
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         text_view = gtk.TextView()
@@ -2009,7 +2081,7 @@ host[1-10,12,15-20];otherhost[30]
         self.dont_recurse = False
         eq_dialog = gtk.Dialog("Equivalence Classes", self)
         eq_dialog.set_default_size(400, 400)
-        my_frame = gtk.Frame("%d Equivalence Classes:" % (len(num_eq_classes)))
+        my_frame = gtk.Frame(label="%d Equivalence Classes:" % (len(num_eq_classes)))
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         classes = []
@@ -2064,9 +2136,9 @@ host[1-10,12,15-20];otherhost[30]
         none_button.connect('toggled', lambda w: self.on_toggle_eq(w, 'all', 'none_button'))
         for item in classes:
             hbox = gtk.HBox()
-            rep_button = gtk.RadioButton(None)
-            all_button = gtk.RadioButton(rep_button)
-            none_button = gtk.RadioButton(rep_button)
+            rep_button = gtk_wrap_new_from_widget(None)
+            all_button = gtk_wrap_new_from_widget(rep_button)
+            none_button = gtk_wrap_new_from_widget(rep_button)
             rep_button.connect('toggled', lambda w: self.on_toggle_eq(w, classes.index(item), 'rep_button'))
             all_button.connect('toggled', lambda w: self.on_toggle_eq(w, classes.index(item), 'all_button'))
             none_button.connect('toggled', lambda w: self.on_toggle_eq(w, classes.index(item), 'none_button'))
@@ -2097,7 +2169,7 @@ host[1-10,12,15-20];otherhost[30]
         sw.add_with_viewport(vbox)
         my_frame.add(sw)
         eq_dialog.vbox.pack_start(my_frame, True, True, 5)
-        my_frame = gtk.Frame("Manually Specify Additional Tasks:")
+        my_frame = gtk.Frame(label="Manually Specify Additional Tasks:")
         entry = gtk.Entry()
         entry.set_max_length(65536)
         my_frame.add(entry)
@@ -2125,7 +2197,7 @@ host[1-10,12,15-20];otherhost[30]
     def set_debugger_options_cb(self, w, parent):
         """Callback to update debugger options."""
         dialog = gtk.Dialog('Debugger Options', parent)
-        frame = gtk.Frame('Options')
+        frame = gtk.Frame(label='Options')
         vbox = gtk.VBox()
         self.pack_string_option(vbox, 'DDT Path', dialog)
         self.pack_string_option(vbox, 'DDT LaunchMON Prefix', dialog)
@@ -2363,7 +2435,7 @@ host[1-10,12,15-20];otherhost[30]
 
     def pack_sample_options(self, vbox, multiple, attach=False):
         """Pack the sample options into the specified vbox."""
-        frame = gtk.Frame('Per Sample Options')
+        frame = gtk.Frame(label='Per Sample Options')
         vbox2 = gtk.VBox()
         self.pack_check_button(vbox2, 'With Threads', False, False, 0)
         self.pack_spinbutton(vbox2, 'Max Threads Per Daemon')
@@ -2372,12 +2444,12 @@ host[1-10,12,15-20];otherhost[30]
         if HAVE_GDB_SUPPORT:
             self.pack_check_button(vbox2, 'With CUDA Quick', False, False, 0)
         self.pack_check_button(vbox2, 'Gather Python Traces', False, False, 5)
-        frame2 = gtk.Frame('Stack Frame (node) Sample Options')
+        frame2 = gtk.Frame(label='Stack Frame (node) Sample Options')
         vbox3 = gtk.VBox()
         self.pack_radio_buttons(vbox3, 'Sample Type')
         frame2.add(vbox3)
         vbox2.pack_start(frame2, False, False, 5)
-        frame2 = gtk.Frame('Process Set (edge) Sample Options')
+        frame2 = gtk.Frame(label='Process Set (edge) Sample Options')
         vbox3 = gtk.VBox()
         self.pack_radio_buttons(vbox3, 'Edge Type')
         frame2.add(vbox3)
@@ -2385,7 +2457,7 @@ host[1-10,12,15-20];otherhost[30]
 
         if attach is False:
             self.pack_spinbutton(vbox2, 'Run Time Before Sample (sec)')
-        expander = gtk.Expander("Advanced")
+        expander = gtk.Expander(label="Advanced")
         hbox = gtk.HBox()
         self.pack_spinbutton(hbox, 'Num Retries')
         self.pack_spinbutton(hbox, 'Retry Frequency (us)')
@@ -2394,7 +2466,7 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 5)
         if multiple:
-            frame = gtk.Frame('Multiple Sample Options')
+            frame = gtk.Frame(label='Multiple Sample Options')
             vbox2 = gtk.VBox()
             hbox = gtk.HBox()
             self.pack_spinbutton(hbox, 'Num Traces')

@@ -9,7 +9,10 @@ if ENABLE_GDB
 python_PYTHON += stat_cuda_gdb.py cuda_gdb.py gdb.py
 endif
 if ENABLE_GUI
-python_PYTHON += STATGUI.py STATview.py xdot.py STAThelper.py
+python_PYTHON += STATGUI.py STATview.py STAThelper.py
+if ENABLE_PYTHON2
+python_PYTHON += xdot.py
+endif
 if ENABLE_DYSECTAPI
 python_PYTHON += DysectView.py
 bin_SCRIPTS += dysect-view

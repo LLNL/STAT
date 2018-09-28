@@ -186,7 +186,7 @@ class StatMergerArgs(object):
         # parse the args
         try:
             opts, args = getopt.getopt(sys.argv[1:], self.get_short_args_string(), self.get_long_args_list())
-        except getopt.GetoptError, err:
+        except getopt.GetoptError as err:
             sys.stderr.write('\n%s\n' % str(err))
             self.print_usage()
         except Exception as e:
@@ -250,9 +250,9 @@ class StatMerger(object):
     def generate_unique_filenames(self, count):
         if self.options["fileprefix"] == 'NULL':
             # make sure we generate unique file names
-            for i in xrange(8192):
+            for i in range(8192):
                 filenames = []
-                for j in xrange(count):
+                for j in range(count):
                     num = ''
                     if j != 0:
                         num = '_%d' % j
@@ -267,7 +267,7 @@ class StatMerger(object):
                     break
         else:
             filenames = []
-            for j in xrange(count):
+            for j in range(count):
                 num = ''
                 if j != 0:
                     num = '_%d' % j
@@ -378,7 +378,7 @@ class StatMerger(object):
                         command.append('--%s' % (name))
             command.append('-c')
             command += trace_files_subset
-            sub_processes[i] = [tmp_file_prefix, subprocess.Popen(command)]
+            sub_processes[i] = [tmp_file_prefix, subprocess.Popen(command, universal_newlines=True)]
         sys.stdout.write('\n')
         sys.stdout.flush()
         return sub_processes
@@ -392,7 +392,7 @@ class StatMerger(object):
         sys.stdout.flush()
         while remain > 0:
             time.sleep(.1)
-            for i in xrange(remain):
+            for i in range(remain):
                 key, (tmp_file_prefix, sub_process) = sub_processes.items()[i]
                 ret = sub_process.poll()
                 if ret is not None:
@@ -402,7 +402,7 @@ class StatMerger(object):
                         sys.stdout.write('\b\b\b\b%03u%%' % ((1 + total - remain) / (total / 100.0)))
                         sys.stdout.flush()
 
-                        for j in xrange(8192):
+                        for j in range(8192):
                             num = ''
                             if j != 0:
                                 num = '_%d' % j

@@ -218,35 +218,35 @@ if __name__ == "__main__":
     for thread_id in tids:
         bt = gdb.bt(thread_id)
         for frame in bt:
-            print frame
-        print
+            print(frame)
+        print()
     gdb.resume()
     gdb.pause()
 #    bt = gdb.bt(1)
-#    print bt
+#    print(bt)
     devices = gdb.get_cuda_devices()
-    print '\ndevices'
+    print('\ndevices')
     for device in devices:
         if gdb.cuda_device_focus(device):
-            print 'device focused', device
+            print('device focused', device)
     kernels = gdb.get_cuda_kernels()
-    print '\nkernels'
+    print('\nkernels')
     for kernel in kernels:
         if gdb.cuda_kernel_focus(kernel):
-            print 'kernel focused', kernel
+            print('kernel focused', kernel)
     bt = gdb.cuda_bt()
 #    for frame in bt:
-#        print frame
-#    print
+#        print(frame)
+#    print()
     threads = gdb.get_cuda_threads()
     for thread in threads:
         gdb.cuda_block_thread_focus(thread['start_block'], thread['start_thread'])
         bt = gdb.cuda_bt()
-        print thread['start_block'], thread['start_thread'], thread['count']
+        print(thread['start_block'], thread['start_thread'], thread['count'])
         for frame in bt:
-            print frame
-        print
+            print(frame)
+        print()
         break
 #    gdb.kill()
-    print '\ndetaching'
+    print('\ndetaching')
     gdb.detach()

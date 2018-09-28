@@ -180,7 +180,7 @@ class BgCoreTrace(StatTrace):
                 function = line
                 line_info = line
             elif core_type == CoreType.BGQ or core_type == CoreType.DYSECT or core_type == CoreType.HEXADDR:
-                output = Popen([addr2line_exe, '-e', module, '--demangle', '-s', '-f', addr], stdout=PIPE).communicate()[0]
+                output = Popen([addr2line_exe, '-e', module, '--demangle', '-s', '-f', addr], stdout=PIPE, universal_newlines=True).communicate()[0]
                 out_lines = output.split('\n')
                 line_info = '%s@%s' % (out_lines[0], out_lines[1])
                 if line_info.find('@') != -1:

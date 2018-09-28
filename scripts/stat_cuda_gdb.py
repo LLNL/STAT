@@ -34,7 +34,7 @@ try:
     from gdb import GdbDriver
     from cuda_gdb import CudaGdbDriver
 except Exception as e:
-    print e
+    print(e)
 gdb_instances = {}
 
 def new_gdb_instance(pid, gdb_type='gdb'):
@@ -125,21 +125,21 @@ if __name__ == "__main__":
         pause(pid)
         device_traces = get_all_device_traces(pid)
     #    devices = gdb_instances[pid].get_cuda_devices()
-    #    print '\ndevices'
+    #    print('\ndevices')
     #    for device in devices:
     #        if gdb_instances[pid].cuda_device_focus(device):
-    #            print 'device focused', device
+    #            print('device focused', device)
     #    kernels = gdb_instances[pid].get_cuda_kernels()
-    #    print '\nkernels'
+    #    print('\nkernels')
     #    for kernel in kernels:
     #        if gdb_instances[pid].cuda_kernel_focus(kernel):
-    #            print 'kernel focused', kernel
+    #            print('kernel focused', kernel)
     #    bt = gdb_instances[pid].cuda_bt()
     #    for frame in bt:
-    #        print frame
-    #    print
+    #        print(frame)
+    #    print()
     #    gdb_instances[pid].kill()
     for pid in pids:
         pid = int(pid)
-        print '\ndetaching %d' %(pid)
+        print('\ndetaching %d' %(pid))
         detach(pid)

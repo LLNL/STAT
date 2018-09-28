@@ -99,4 +99,4 @@ if __name__ == "__main__":
         sys.stderr.write('failed to find hostname:pid for specified jobid\n')
         sys.exit(1)
     for pid in pids:
-        print "%s:%d" %(hostname, pid)
+        print("%s:%d" %(hostname, pid))

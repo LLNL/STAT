@@ -596,7 +596,11 @@ StatError_t STAT_BackEnd::initGdb()
     PyObject *pName;
     const char *moduleName = "stat_cuda_gdb";
     Py_Initialize();
+#if PY_MAJOR_VERSION >= 3
+    pName = PyUnicode_FromString(moduleName);
+#else
     pName = PyString_FromString(moduleName);
+#endif
     if (pName == NULL)
     {
         fprintf(errOutFp_, "Cannot convert argument\n");
@@ -1690,11 +1694,15 @@ StatError_t STAT_BackEnd::attach()
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", newFunctionName.c_str(), proctab_[i].pd.pid);
                 PyErr_Print();
                 Py_DECREF(pArgs);
-                Py_DECREF(pValue);
                 continue;
             }
+#if PY_MAJOR_VERSION >= 3
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", newFunctionName.c_str(), PyLong_AsLong(pValue));
+            if (PyLong_AsLong(pValue) == -1)
+#else
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", newFunctionName.c_str(), PyInt_AsLong(pValue));
             if (PyInt_AsLong(pValue) == -1)
+#endif
             {
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "attach failed for pid %d\n", proctab_[i].pd.pid);
                 Py_DECREF(pArgs);
@@ -1709,10 +1717,13 @@ StatError_t STAT_BackEnd::attach()
                 printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", attachFunctionName.c_str(), proctab_[i].pd.pid);
                 PyErr_Print();
                 Py_DECREF(pArgs);
-                Py_DECREF(pValue);
                 continue;
             }
+#if PY_MAJOR_VERSION >= 3
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", attachFunctionName.c_str(), PyLong_AsLong(pValue));
+#else
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", attachFunctionName.c_str(), PyInt_AsLong(pValue));
+#endif
 
             Py_DECREF(pArgs);
             Py_DECREF(pValue);
@@ -1908,7 +1919,11 @@ StatError_t STAT_BackEnd::pause()
                 Py_DECREF(pArgs);
                 continue;
             }
+#if PY_MAJOR_VERSION >= 3
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", pauseFunctionName.c_str(), PyLong_AsLong(pValue));
+#else
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", pauseFunctionName.c_str(), PyInt_AsLong(pValue));
+#endif
             Py_DECREF(pArgs);
             Py_DECREF(pValue);
         }
@@ -1988,7 +2003,11 @@ StatError_t STAT_BackEnd::resume()
                 Py_DECREF(pArgs);
                 continue;
             }
+#if PY_MAJOR_VERSION >= 3
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", resumeFunctionName.c_str(), PyLong_AsLong(pValue));
+#else
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", resumeFunctionName.c_str(), PyInt_AsLong(pValue));
+#endif
             Py_DECREF(pArgs);
             Py_DECREF(pValue);
         }
@@ -2301,8 +2320,8 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     {
         static int threadCountWarning = 0;
         int nodeId, prevId, k, l, count, cudaQuick = 0;
-        char *allTraces, *currentFrame;
-        const char *countDelim = "#count#";
+        char *currentFrame;
+        const char *countDelim = "#count#", *allTraces;
         string sampleFunctionName, cudaSampleFunctionName, path, name, currentFrameString;
         string::size_type startPos, endPos;
         PyObject *sampleFunc, *cudaSampleFunc, *pArgs, *pValue, *pSampleArgs;
@@ -2389,9 +2408,13 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                     Py_DECREF(pSampleArgs);
                     continue;
                 }
+#if PY_MAJOR_VERSION >= 3
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", sampleFunctionName.c_str(), PyUnicode_AsUTF8(pValue));
+                allTraces = PyUnicode_AsUTF8(pValue);
+#else
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", sampleFunctionName.c_str(), PyString_AsString(pValue));
-
                 allTraces = PyString_AsString(pValue);
+#endif
                 prevId = 0;
                 path = "";
                 if (find(threadIds_.begin(), threadIds_.end(), k) == threadIds_.end())
@@ -2403,7 +2426,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                         threadCountWarning++;
                     }
                 }
-                currentFrame = strtok(allTraces, "\n");
+                currentFrame = strtok((char *)allTraces, "\n");
                 while (currentFrame != NULL)
                 {
                     if (strcmp(currentFrame, "#endtrace") == 0)
@@ -2472,13 +2495,17 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                     Py_DECREF(pSampleArgs);
                     continue;
                 }
+#if PY_MAJOR_VERSION >= 3
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", cudaSampleFunctionName.c_str(), PyUnicode_AsUTF8(pValue));
+                allTraces = PyUnicode_AsUTF8(pValue);
+#else
                 printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", cudaSampleFunctionName.c_str(), PyString_AsString(pValue));
-
                 allTraces = PyString_AsString(pValue);
+#endif
                 prevId = 0;
                 count = 1;
                 path = "";
-                currentFrame = strtok(allTraces, "\n");
+                currentFrame = strtok((char *)allTraces, "\n");
                 while (currentFrame != NULL)
                 {
                     currentFrameString = currentFrame;
@@ -3519,7 +3546,11 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
                 Py_DECREF(pArgs);
                 continue;
             }
+#if PY_MAJOR_VERSION >= 3
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", detachFunctionName.c_str(), PyLong_AsLong(pValue));
+#else
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", detachFunctionName.c_str(), PyInt_AsLong(pValue));
+#endif
             Py_DECREF(pArgs);
             Py_DECREF(pValue);
         }

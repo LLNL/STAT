@@ -37,8 +37,15 @@ import shelve
 from collections import defaultdict
 import copy
 
-import DLFCN
-sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
+dlopenflags_set = False
+try:
+    import DLFCN
+    sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
+    dlopenflags_set = True
+except:
+    pass
+if dlopenflags_set == False:
+    sys.setdlopenflags(os.RTLD_NOW | os.RTLD_GLOBAL)
 
 (MODEL_INDEX_HIDE, MODEL_INDEX_NAME, MODEL_INDEX_CASESENSITIVE, MODEL_INDEX_REGEX, MODEL_INDEX_EDITABLE, MODEL_INDEX_NOTEDITABLE, MODEL_INDEX_CALLBACK, MODEL_INDEX_ICON, MODEL_INDEX_BUTTONNAME) = range(9)
 
@@ -48,16 +55,79 @@ if os.name != 'nt':
         raise Exception('$DISPLAY is not set.  Ensure that X11 forwarding is enabled.\n')
 
 # Check for required modules
+
+try:
+    import xdot
+except:
+    raise Exception('STATview requires xdot\nxdot can be downloaded from https://github.com/jrfonseca/xdot.py\n')
+# old xdot vs new xdot compatibility wrapper
+try:
+    xdot_ui_actions = xdot.ui.actions
+    xdot_ui_elements = xdot.ui.elements
+    xdot_ui_window = xdot.ui.window
+    xdot_dot_parser = xdot.dot.parser
+    xdot_dot_lexer = xdot.dot.lexer
+except:
+    xdot_ui_actions = xdot
+    xdot_ui_elements = xdot
+    xdot_ui_window = xdot
+    xdot_dot_parser = xdot
+    xdot_dot_lexer = xdot
+
+has_gtk = False
+import_error = ''
 try:
     import gtk
     import gobject
     import pango
+    gtk_wrap_new_with_label_from_widget = gtk.RadioButton
+    gtk_wrap_new_from_widget = gtk.RadioButton
+    has_gtk = True
 except ImportError as e:
-    raise Exception('%s\nSTATview requires gtk and gobject\n' % repr(e))
+    import_error = e
+    pass #raise Exception('%s\nSTATview requires gtk and gobject\n' % repr(e))
 except RuntimeError as e:
-    raise Exception('%s\nThere was a problem loading the gtk and gobject module.\nIs X11 forwarding enabled?\n' % repr(e))
+    import_error = e
+    pass #raise Exception('%s\nThere was a problem loading the gtk and gobject module.\nIs X11 forwarding enabled?\n' % repr(e))
 except Exception as e:
-    raise Exception('%s\nThere was a problem loading the gtk module.\n' % repr(e))
+    import_error = e
+    pass #raise Exception('%s\nThere was a problem loading the gtk module.\n' % repr(e))
+
+if has_gtk == False:
+    try:
+        import gi
+        gi.require_version('Gtk', '3.0')
+        from gi.repository import Gtk as gtk
+        from gi.repository import Gdk as gdk
+        from gi.repository import GObject as gobject
+
+        # wrap some old functionality
+        gtk.FILE_CHOOSER_ACTION_OPEN = gtk.FileChooserAction.OPEN
+        gtk.FILE_CHOOSER_ACTION_SAVE = gtk.FileChooserAction.SAVE
+        gtk.RESPONSE_CANCEL = gtk.ResponseType.CANCEL
+        gtk.RESPONSE_OK = gtk.ResponseType.OK
+        gtk.WRAP_CHAR = gtk.WrapMode.CHAR
+        gtk.WRAP_WORD = gtk.WrapMode.WORD
+        gtk.STATE_SELECTED = gtk.StateType.SELECTED
+        gtk.STATE_NORMAL = gtk.StateType.NORMAL
+        gtk.STATE_PRELIGHT = gtk.StateType.PRELIGHT
+        gtk.SHADOW_ETCHED_IN = gtk.ShadowType.ETCHED_IN
+        gtk.SHADOW_ETCHED_OUT = gtk.ShadowType.ETCHED_OUT
+        gtk.SHADOW_OUT = gtk.ShadowType.OUT
+        gtk.CELL_RENDERER_PRELIT = gtk.CellRendererState.PRELIT
+        gtk.POLICY_AUTOMATIC = gtk.PolicyType.AUTOMATIC
+        gtk.SELECTION_SINGLE = gtk.SelectionMode.SINGLE
+        gtk.CELL_RENDERER_MODE_ACTIVATABLE = gtk.CellRendererMode.ACTIVATABLE
+        gtk.TREE_VIEW_COLUMN_FIXED = gtk.TreeViewColumnSizing.FIXED
+        gdk.BUTTON_PRESS = gdk.EventType.BUTTON_PRESS
+        gtk.FILE_CHOOSER_ACTION_OPEN = gtk.FileChooserAction.OPEN
+        gtk.POS_TOP = gtk.PositionType.TOP
+        gtk.combo_box_new_text = gtk.ComboBoxText
+        gtk.gdk = gdk
+        gtk_wrap_new_with_label_from_widget = gtk.RadioButton.new_with_label_from_widget
+        gtk_wrap_new_from_widget = gtk.RadioButton.new_from_widget
+    except Exception as e2:
+        raise Exception('%s\n%s\nThere was a problem loading the gtk module.\n' % (repr(import_error), repr(e2)))
 
 try:
     import STAThelper
@@ -70,12 +140,6 @@ if HAVE_PYGMENTS:
     from pygments.lexers import CppLexer
     from pygments.lexers import FortranLexer
     from STAThelper import STATviewFormatter
-
-try:
-    import xdot
-except:
-    raise Exception('STATview requires xdot\nxdot can be downloaded from http://code.google.com/p/jrfonseca/wiki/XDot\n')
-
 # Check for optional modules
 ## A variable to determine whether we have the temporal ordering module
 HAVE_TOMOD = True
@@ -99,7 +163,7 @@ if HAVE_FUNCTOOLS==False:
 
 ## The location of the STAT logo image
 try:
-    STAT_LOGO = os.path.join(os.path.dirname(__file__), '../../../share/STAT/STATlogo.gif')
+    STAT_LOGO = os.path.join(os.path.dirname(__file__), '../../../share/stat/STATlogo.gif')
 except:
     STAT_LOGO = 'STATlogo.gif'
 
@@ -134,6 +198,9 @@ next_label_id = -1
 ## A default name for the source cache directory
 cache_directory = 'stat_source_cache'
 
+def my_lower(text):
+    return text.lower()
+string.lower = my_lower
 
 ## A decorator that uses the requested decorator upon a condition
 class conditional_decorator(object):
@@ -153,6 +220,10 @@ class conditional_decorator(object):
 #  \n
 @conditional_decorator(lambda func: lru_cache(maxsize=None, typed=True)(func), (HAVE_FUNCTOOLS is True))
 def get_task_list(label):
+    try:
+        label = label.decode('utf-8')
+    except:
+        pass
     if label == '' or label == None:
         return []
     if label[0] != '[':
@@ -176,7 +247,6 @@ def get_task_list(label):
 #  \return the string representation
 #
 #  \n
-@conditional_decorator(lambda func: lru_cache(maxsize=None, typed=True)(func), (HAVE_FUNCTOOLS is True))
 def list_to_string(task_list):
     """Translate a list of tasks into a range string."""
     global next_label_id
@@ -234,7 +304,12 @@ def create_temp(dot_filename, truncate, max_node_name):
     temp_dot_file.write('digraph G {\n\tnode [shape=record,style=filled,labeljust=c,height=0.2];\n')
     try:
         with open(dot_filename, 'r') as dot_file:
-            parser = STATDotParser(dot_file.read())
+            contents = dot_file.read()
+            try:
+                dot_code = bytes(contents, 'utf-8')
+            except:
+                dot_code = contents
+            parser = STATDotParser(dot_code)
             parser.parse()
             for i, attr in enumerate(parser.graph_attrs.keys()):
                 if i == 0:
@@ -331,7 +406,10 @@ def run_gtk_main_loop(iters = 100):
     iter = 0
     while gtk.events_pending() and iter < iters:
         iter += 1
-        gtk.main_iteration(False)
+        try:
+            gtk.main_iteration(False)
+        except:
+            gtk.main_iteration()
 
 
 class CellRendererButtonPixbuf(gtk.CellRendererPixbuf):
@@ -340,7 +418,8 @@ class CellRendererButtonPixbuf(gtk.CellRendererPixbuf):
     _button_height = 30
 
     def __init__(self):
-        self.__gobject_init__()
+        if hasattr(self, '__gobject_init__'):
+            self.__gobject_init__()
         gtk.CellRendererPixbuf.__init__(self)
         self.set_property("xalign", 0.5)
         self.set_property("mode", gtk.CELL_RENDERER_MODE_ACTIVATABLE)
@@ -377,22 +456,6 @@ class CellRendererButtonPixbuf(gtk.CellRendererPixbuf):
             x = max(0, xalign * (cell_area.width - w))
             y = max(0, yalign * (cell_area.height - h))
         return (x, y, w, h)
-
-    def do_render(self, window, wid, bg_area, cell_area, expose_area, flags):
-        if not window:
-            return
-        xpad = self.get_property("xpad")
-        ypad = self.get_property("ypad")
-        x, y, w, h = self.get_size(wid, cell_area)
-        if flags & gtk.CELL_RENDERER_PRELIT:
-            state = gtk.STATE_PRELIGHT
-            shadow = gtk.SHADOW_ETCHED_OUT
-        else:
-            state = gtk.STATE_NORMAL
-            shadow = gtk.SHADOW_OUT
-        wid.get_style().paint_box(window, state, shadow, cell_area, wid, "button", cell_area.x + x + xpad, cell_area.y + y + ypad, w - 6, h - 6)
-        flags = flags & ~gtk.STATE_SELECTED
-        gtk.CellRendererPixbuf.do_render(self, window, wid, bg_area, (cell_area[0], cell_area[1] + ypad, cell_area[2], cell_area[3]), expose_area, flags)
 
     def do_activate(self, event, wid, path, bg_area, cell_area, flags):
         cb = self.get_property("callable")
@@ -444,22 +507,6 @@ class CellRendererButtonText(gtk.CellRendererText):
             x = max(0, xalign * (cell_area.width - w))
             y = max(0, yalign * (cell_area.height - h))
         return (x, y, w, h)
-
-    def do_render(self, window, wid, bg_area, cell_area, expose_area, flags):
-        if not window:
-            return
-        xpad = self.get_property("xpad")
-        ypad = self.get_property("ypad")
-        x, y, w, h = self.get_size(wid, cell_area)
-        if flags & gtk.CELL_RENDERER_PRELIT:
-            state = gtk.STATE_PRELIGHT
-            shadow = gtk.SHADOW_ETCHED_OUT
-        else:
-            state = gtk.STATE_NORMAL
-            shadow = gtk.SHADOW_OUT
-        wid.get_style().paint_box(window, state, shadow, cell_area, wid, "button", cell_area.x + x + xpad, cell_area.y + y + ypad, w - 6, h - 6)
-        flags = flags & ~gtk.STATE_SELECTED
-        gtk.CellRendererText.do_render(self, window, wid, bg_area, (cell_area[0], cell_area[1] + ypad, cell_area[2], cell_area[3]), expose_area, flags)
 
     def do_activate(self, event, wid, path, bg_area, cell_area, flags):
         cb = self.get_property("callable")
@@ -517,7 +564,7 @@ class STAT_wait_dialog(object):
             active_bar.set_fraction(0.0)
             self.task_progress_bars.append(active_bar)
             hbox.pack_start(active_bar, False, False, 5)
-            self.wait_dialog.vbox.pack_start(hbox)
+            self.wait_dialog.vbox.pack_start(hbox, True, True, 0)
         if len(task_list) != 1:
             if len(task_list) == 0:
                 label = gtk.Label("Please Wait...")
@@ -531,14 +578,14 @@ class STAT_wait_dialog(object):
             self.progress_bar = gtk.ProgressBar()
             self.progress_bar.set_fraction(0.0)
             hbox.pack_start(self.progress_bar, False, False, 5)
-            self.wait_dialog.vbox.pack_start(hbox)
+            self.wait_dialog.vbox.pack_start(hbox, True, True, 0)
         if cancelable is True:
             self.wait_dialog.vbox.pack_start(gtk.HSeparator(), False, False, 5)
             hbox = gtk.HButtonBox()
             button = gtk.Button(stock=gtk.STOCK_CANCEL)
             button.connect("clicked", lambda w: self.on_cancel(w))
             hbox.pack_end(button, False, False, 0)
-            self.wait_dialog.vbox.pack_start(hbox)
+            self.wait_dialog.vbox.pack_start(hbox, True, True, 0)
         self.wait_dialog.show_all()
         ret = self.run_and_destroy_wait_dialog(fun, (args), parent)
         return ret
@@ -562,13 +609,13 @@ class STAT_wait_dialog(object):
     def run_and_destroy_wait_dialog(self, fun, args, parent=None):
         """Run the specified command and destroy any pending wait dialog."""
         try:
-            ret = apply(fun, (args))
+            ret = fun(*args)
         except Exception as e:
             ret = False
             show_error_dialog('Unexpected error:  %s\n%s\n%s\n' % (sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]), exception=e)
-        self.destroy()
         if len(self.task_progress_bars) != 0:
             gobject.source_remove(self.timer)
+        self.destroy()
         return ret
 
     ## \param self - the instance
@@ -617,13 +664,16 @@ def show_error_dialog(text, parent=None, exception=None):
         traceback.print_exc()
 
     # create error dialog with error message
+    if parent == None:
+        global window
+        parent = window
     error_dialog = gtk.Dialog('Error', parent)
     label = gtk.Label(text)
     label.set_line_wrap(True)
-    error_dialog.vbox.pack_start(label)
+    error_dialog.vbox.pack_start(label, True, True, 0)
     button = gtk.Button(stock=gtk.STOCK_OK)
     button.connect("clicked", lambda w, d: error_dialog.destroy(), "ok")
-    error_dialog.vbox.pack_start(button)
+    error_dialog.vbox.pack_start(button, True, True, 0)
     error_dialog.show_all()
     error_dialog.run()
 
@@ -664,7 +714,8 @@ def load_model_cuts(filename):
     return model_list
 
 
-def re_search(function_name, (search_text, match_case)):
+def re_search(function_name, search_text_and_match_case):
+    search_text, match_case = search_text_and_match_case
     """Function to test whether a search string matches a re"""
     if match_case is False:
         search_text = string.lower(search_text)
@@ -675,7 +726,7 @@ def re_search(function_name, (search_text, match_case)):
 
 
 ## Overloaded DragAction for use with scroll bars.
-class STATPanAction(xdot.DragAction):
+class STATPanAction(xdot_ui_actions.DragAction):
     """Overloaded DragAction for use with scroll bars."""
 
     def drag(self, deltax, deltay):
@@ -705,11 +756,11 @@ class STATPanAction(xdot.DragAction):
                 y = rect.height - vspan
             self.dot_widget.dotsw.get_vscrollbar().emit('change-value', gtk.SCROLL_JUMP, y)
         else:
-            xdot.DragAction.drag(self, deltax, deltay)
+            xdot_ui_actions.DragAction.drag(self, deltax, deltay)
 
 
 ## A shape composed of multiple sub shapes.
-class STATCompoundShape(xdot.CompoundShape):
+class STATCompoundShape(xdot_ui_elements.CompoundShape):
     """A shape composed of multiple sub shapes.
 
     Adds a hide attribute to the CompoundShape class.
@@ -717,7 +768,7 @@ class STATCompoundShape(xdot.CompoundShape):
 
     def __init__(self, shapes):
         """The constructor"""
-        xdot.CompoundShape.__init__(self, shapes)
+        xdot_ui_elements.CompoundShape.__init__(self, shapes)
         self.hide = False
 
     def draw(self, cr, highlight=False):
@@ -735,7 +786,7 @@ class STATCompoundShape(xdot.CompoundShape):
             color = shape.pen.fillcolor
             r, g, b, p = color
             shape.pen.fillcolor = (r, g, b, a_val)
-        xdot.CompoundShape.draw(self, cr, highlight)
+        xdot_ui_elements.CompoundShape.draw(self, cr, highlight)
 
 
 ## A new object to gather the edge label.
@@ -805,7 +856,16 @@ class STATNode(STATElement):
         self.y1 = y1
         self.x2 = x2
         self.y2 = y2
-        self.attrs = attrs
+        self.attrs = {}
+        for key in attrs:
+            try:
+                self.attrs[key] = attrs[key].decode('utf-8')
+            except:
+                self.attrs[key] = attrs[key]
+        try:
+            label = label.decode('utf-8')
+        except:
+            pass
         self.attrs["label"] = label
         self.source_dir = None
         self.edge_label = None
@@ -867,7 +927,7 @@ class STATNode(STATElement):
         if self.hide is True:
             return None
         if self.is_inside(x, y):
-            return xdot.Jump(self, self.x, self.y)
+            return xdot_ui_elements.Jump(self, self.x, self.y)
         return None
 
     def draw(self, cr, highlight=False):
@@ -877,14 +937,14 @@ class STATNode(STATElement):
     def get_text(self):
         """Return the text shape for the node."""
         for shape in self.shapes:
-            if isinstance(shape, xdot.TextShape):
+            if isinstance(shape, xdot_ui_elements.TextShape):
                 return shape.t
         return ''
 
     def set_text(self, text):
         """Set the text for the text shape of this node."""
         for shape in self.shapes:
-            if isinstance(shape, xdot.TextShape):
+            if isinstance(shape, xdot_ui_elements.TextShape):
                 shape.t = text
                 try:
                     shape.layout.set_text(text)
@@ -974,7 +1034,12 @@ class STATEdge(STATElement):
         self.src = src
         self.dst = dst
         self.points = points
-        self.attrs = attrs
+        self.attrs = {}
+        for key in attrs:
+            try:
+                self.attrs[key] = attrs[key].decode('utf-8')
+            except:
+                self.attrs[key] = attrs[key]
         self.attrs["label"] = label
         self.hide = False
         self.undo = []
@@ -1000,15 +1065,15 @@ class STATEdge(STATElement):
 
     def get_jump(self, x, y):
         """Get the jump object if specified coordintes are in the edge."""
-        if xdot.square_distance(x, y, *self.points[0]) <= self.RADIUS*self.RADIUS:
-            return xdot.Jump(self, self.dst.x, self.dst.y, highlight=set([self, self.dst]))
-        if xdot.square_distance(x, y, *self.points[-1]) <= self.RADIUS*self.RADIUS:
-            return xdot.Jump(self, self.src.x, self.src.y, highlight=set([self, self.dst]))
+        if xdot_ui_elements.square_distance(x, y, *self.points[0]) <= self.RADIUS*self.RADIUS:
+            return xdot_ui_elements.Jump(self, self.dst.x, self.dst.y, highlight=set([self, self.dst]))
+        if xdot_ui_elements.square_distance(x, y, *self.points[-1]) <= self.RADIUS*self.RADIUS:
+            return xdot_ui_elements.Jump(self, self.src.x, self.src.y, highlight=set([self, self.dst]))
         return None
 
 
 ## A STAT graph object.
-class STATGraph(xdot.Graph):
+class STATGraph(xdot_ui_elements.Graph):
     """A STAT graph object.
 
     Derrived from xdot's Graph class and adds several STAT specific
@@ -1017,7 +1082,7 @@ class STATGraph(xdot.Graph):
 
     def __init__(self, width=1, height=1, shapes=(), nodes=(), edges=()):
         """The constructor."""
-        xdot.Graph.__init__(self, width, height, shapes, nodes, edges)
+        xdot_ui_elements.Graph.__init__(self, width, height, shapes, nodes, edges)
         for node in self.nodes:
             if self.is_leaf(node):
                 node.is_leaf = True
@@ -1310,7 +1375,7 @@ class STATGraph(xdot.Graph):
 
         # get the node font and background colors
         for shape in node.shapes:
-            if isinstance(shape, xdot.TextShape):
+            if isinstance(shape, xdot_ui_elements.TextShape):
                 font_color = shape.pen.color
             else:
                 fill_color = shape.pen.fillcolor
@@ -1329,7 +1394,7 @@ class STATGraph(xdot.Graph):
                     continue
                 if this_source == source:
                     for shape in node_iter.shapes:
-                        if isinstance(shape, xdot.TextShape):
+                        if isinstance(shape, xdot_ui_elements.TextShape):
                             font_color = shape.pen.color
                         else:
                             fill_color = shape.pen.fillcolor
@@ -1372,7 +1437,7 @@ class STATGraph(xdot.Graph):
         if self.source_view_notebook is None:
             self.source_view_notebook = gtk.Notebook()
             self.source_view_window.add(self.source_view_notebook)
-        frame = gtk.Frame("")
+        frame = gtk.Frame(label="")
         source_view = gtk.TextView()
         source_view.set_wrap_mode(False)
         source_view.set_editable(False)
@@ -1477,7 +1542,7 @@ class STATGraph(xdot.Graph):
                         args.append('italics_tag')
                     if underline:
                         args.append('underline_tag')
-                    apply(source_view.get_buffer().insert_with_tags_by_name, tuple(args))
+                    source_view.get_buffer().insert_with_tags_by_name(*tuple(args))
             else:
                 source_string = "%0*d| " % (width, count)
                 source_string += line
@@ -1504,7 +1569,10 @@ class STATGraph(xdot.Graph):
 
         # run iterations to get sw generated so we can scroll
         run_gtk_main_loop()
-        source_view.scroll_to_mark(cur_line_mark, 0.0, True)
+        try:
+            source_view.scroll_to_mark(cur_line_mark, 0.0, True)
+        except:
+            source_view.scroll_to_mark(cur_line_mark, 0.0, True, 0.0, 0.0)
 
     def on_source_view_destroy(self, action):
         """Clean up source view state."""
@@ -1529,7 +1597,10 @@ class STATGraph(xdot.Graph):
                     menu.append(menu_item)
                     menu_item.connect('activate', self.menu_item_response, option)
                     menu_item.show()
-                menu.popup(None, None, None, event.button, event.time)
+                try:
+                    menu.popup(None, None, None, None, event.button, event.time)
+                except:
+                    menu.popup(None, None, None, event.button, event.time)
 
     def menu_item_response(self, widget, string):
         """Handle tab menu responses."""
@@ -1892,7 +1963,7 @@ class STATGraph(xdot.Graph):
                     if node.hide:
                         continue
                     for shape in node.shapes:
-                        if isinstance(shape, xdot.TextShape):
+                        if isinstance(shape, xdot_ui_elements.TextShape):
                             font_color = shape.pen.color
                             node_text = shape.t
                         else:
@@ -1967,7 +2038,7 @@ class STATGraph(xdot.Graph):
             ret = self.save_dot(temp_dot_filename, False, False)
             if ret is True:
                 file_format = '-T' + os.path.splitext(filename)[1][1:]
-                proc = subprocess.Popen(["dot", file_format, temp_dot_filename, "-o", filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                proc = subprocess.Popen(["dot", file_format, temp_dot_filename, "-o", filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
                 stdout_output, stderr_output = proc.communicate()
                 if stderr_output != '':
                     sys.stderr.write('dot outputted error message: %s\n' % stderr_output)
@@ -2200,7 +2271,7 @@ class STATGraph(xdot.Graph):
                 except:
                     longest_map[node.depth] = []
                     longest_map[node.depth].append(node)
-        keys = longest_map.keys()
+        keys = list(longest_map.keys())
         if len(keys) < longest_depth:
             return False
         keys.sort()
@@ -2270,7 +2341,7 @@ class STATGraph(xdot.Graph):
                 except:
                     shortest_map[node.depth] = []
                     shortest_map[node.depth].append(node)
-        keys = shortest_map.keys()
+        keys = list(shortest_map.keys())
         if len(keys) < shortest_depth:
             return False
         keys.sort()
@@ -2328,7 +2399,7 @@ class STATGraph(xdot.Graph):
             except:
                 least_map[task_count] = []
                 least_map[task_count].append(node)
-        keys = least_map.keys()
+        keys = list(least_map.keys())
         if len(keys) < least_tasks:
             return False
         keys.sort()
@@ -2359,7 +2430,7 @@ class STATGraph(xdot.Graph):
             except:
                 most_map[task_count] = []
                 most_map[task_count].append(node)
-        keys = most_map.keys()
+        keys = list(most_map.keys())
         if len(keys) < most_tasks:
             return False
         keys.sort()
@@ -2522,7 +2593,7 @@ class STATGraph(xdot.Graph):
         for node in leaves:
             # get the node font and background colors
             for shape in node.shapes:
-                if isinstance(shape, xdot.TextShape):
+                if isinstance(shape, xdot_ui_elements.TextShape):
                     font_color = shape.pen.color
                 else:
                     fill_color = shape.pen.fillcolor
@@ -2565,28 +2636,44 @@ class STATGraph(xdot.Graph):
         return num_eq_classes
 
 
-class STATDotParser(xdot.DotParser):
+class STATDotParser(xdot_dot_parser.DotParser):
 
     def __init__(self, dot_code):
         self.nodes = []
         self.edges = []
         self.graph_attrs = {}
-        xdot.DotParser.__init__(self, xdot.DotLexer(buf=dot_code))
+        xdot_dot_parser.DotParser.__init__(self, xdot_dot_lexer.DotLexer(buf=dot_code))
 
     def handle_graph(self, attrs):
-        self.graph_attrs.update(attrs)
+        new_attrs = {}
+        for key in attrs:
+            if type(attrs[key]) != bytes:
+                self.graph_attrs.update(attrs)
+                return
+            new_attrs[key] = attrs[key].decode("utf-8")
+        self.graph_attrs.update(new_attrs)
 
     def handle_node(self, id, attrs):
-        self.nodes.append((id, attrs))
-        pass
+        new_attrs = {}
+        for key in attrs:
+            if type(attrs[key]) != bytes:
+                self.nodes.append((id, attrs))
+                return
+            new_attrs[key] = attrs[key].decode("utf-8")
+        self.nodes.append((id.decode("utf-8"), new_attrs))
 
     def handle_edge(self, src_id, dst_id, attrs):
-        self.edges.append((src_id, dst_id, attrs))
-        pass
+        new_attrs = {}
+        for key in attrs:
+            if type(attrs[key]) != bytes:
+                self.edges.append((src_id, dst_id, attrs))
+                return
+            new_attrs[key] = attrs[key].decode("utf-8")
+        self.edges.append((src_id.decode("utf-8"), dst_id.decode("utf-8"), new_attrs))
 
 
 ## The STAT XDot Parser.
-class STATXDotParser(xdot.XDotParser):
+class STATXDotParser(xdot_dot_parser.XDotParser):
     """The STAT XDot Parser.
 
     Derrived form the XDotParser and overrides some XDotParser methods
@@ -2597,23 +2684,34 @@ class STATXDotParser(xdot.XDotParser):
     def __init__(self, xdotcode):
         """The constructor."""
         self.graph_attrs = {}
-        xdot.XDotParser.__init__(self, xdotcode)
+        xdot_dot_parser.XDotParser.__init__(self, xdotcode)
 
     def parse(self):
         """Parse the dot file."""
-        xdot.DotParser.parse(self)
+        xdot_dot_parser.DotParser.parse(self)
         if ("type" in self.graph_attrs.keys()) and (self.graph_attrs["type"] == "dysect"):
             raise Exception('This is a DySectAPI .dot graph, open with dysect-view')
         return STATGraph(self.width, self.height, (), self.nodes, self.edges)
 
     def handle_graph(self, attrs):
         self.graph_attrs.update(attrs)
-        xdot.XDotParser.handle_graph(self, attrs)
+
+        new_attrs = {}
+        for key in attrs:
+            if type(attrs[key]) != bytes:
+                xdot_dot_parser.XDotParser.handle_graph(self, attrs)
+                return
+            new_attrs[key] = attrs[key].decode("utf-8")
+        xdot_dot_parser.XDotParser.handle_graph(self, attrs)
 
     def handle_node(self, node_id, attrs):
         """Handle a node attribute to create a STATNode."""
+        try:
+            node_id = node_id.decode('utf-8')
+        except:
+            pass
         new_id = node_id.strip('"')
-        xdot.XDotParser.handle_node(self, new_id, attrs)
+        xdot_dot_parser.XDotParser.handle_node(self, new_id, attrs)
         node = self.node_by_name[new_id]
         label = attrs.get('originallabel', None)
         if label == None:
@@ -2626,18 +2724,31 @@ class STATXDotParser(xdot.XDotParser):
 
     def handle_edge(self, src_id, dst_id, attrs):
         """Handle an edge attribute to create a STATNode."""
+        try:
+            src_id = src_id.decode('utf-8')
+            dst_id = dst_id.decode('utf-8')
+        except:
+            pass
         new_src_id = src_id.strip('"')
         new_dst_id = dst_id.strip('"')
-        xdot.XDotParser.handle_edge(self, new_src_id, new_dst_id, attrs)
+        xdot_dot_parser.XDotParser.handle_edge(self, new_src_id, new_dst_id, attrs)
         label = attrs.get('label', None)
         if label == None:
             return False
+        try:
+            label = label.decode('utf-8')
+        except:
+            pass
         edge = self.edges.pop()
         stat_edge = STATEdge(edge.src, edge.dst, edge.points, edge.shapes, label, attrs)
         self.edges.append(stat_edge)
         stat_edge.src.out_edges.append(stat_edge)
         stat_edge.dst.in_edge = stat_edge
         new_dst_label = attrs.get('originallabel', None)
+        try:
+            new_dst_label = new_dst_label.decode('utf-8')
+        except:
+            pass
         if new_dst_label == None:
             new_dst_label = label# attrs["label"]
         if src_id == '0':
@@ -2649,7 +2760,7 @@ class STATXDotParser(xdot.XDotParser):
 
 
 ## The STATNullAction overloads the xdot NullAction.
-class STATNullAction(xdot.DragAction):
+class STATNullAction(xdot_ui_actions.DragAction):
     """The STATNullAction overloads the xdot NullAction.
 
     Allows highlighting the entire call path of a given node.
@@ -2667,7 +2778,10 @@ class STATNullAction(xdot.DragAction):
                 if not hasattr(node, "hide"):
                     return False
                 if node.hide is False:
-                    dot_widget.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.HAND2))
+                    if hasattr(dot_widget.window, "set_cursor"):
+                        dot_widget.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.ARROW))
+                    else:
+                        dot_widget.get_window().set_cursor(gdk.Cursor(gdk.CursorType.ARROW))
                     highlight_list = []
                     while node is not None:
                         #highlight_list.append(node)
@@ -2678,15 +2792,21 @@ class STATNullAction(xdot.DragAction):
                         node = edge.src
                     dot_widget.set_highlight(highlight_list)
             else:
-                dot_widget.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.ARROW))
+                if hasattr(dot_widget.window, "set_cursor"):
+                    dot_widget.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.ARROW))
+                else:
+                    dot_widget.get_window().set_cursor(gdk.Cursor(gdk.CursorType.ARROW))
                 dot_widget.set_highlight(None)
         else:
-            dot_widget.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.ARROW))
+            if hasattr(dot_widget.window, "set_cursor"):
+                dot_widget.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.ARROW))
+            else:
+                dot_widget.get_window().set_cursor(gdk.Cursor(gdk.CursorType.ARROW))
             dot_widget.set_highlight(None)
 
 
 ## PyGTK widget that draws STAT generated dot graphs.
-class STATDotWidget(xdot.DotWidget):
+class STATDotWidget(xdot_ui_window.DotWidget):
     """PyGTK widget that draws STAT generated dot graphs.
 
     Derrived from xdot's DotWidget class.
@@ -2694,12 +2814,17 @@ class STATDotWidget(xdot.DotWidget):
 
     def __init__(self):
         """The constructor."""
-        xdot.DotWidget.__init__(self)
+        xdot_ui_window.DotWidget.__init__(self)
         self.graph = STATGraph()
+        try:
+            self.window = self
+        except:
+            # TODO: for some reason python 2 + xdot.py doesn't like this
+            pass
         self.drag_action = STATNullAction(self)
         self.user_zoom = False
 
-    def set_dotcode(self, dotcode, filename='<stdin>', truncate="front", max_node_name=64):
+    def set_dotcode(self, dotcode, filename='<stdin>', truncate="front", max_node_name=64, center=True):
         """Set the dotcode for the widget.
 
         Create a temporary dot file with truncated edge labels from the
@@ -2710,18 +2835,23 @@ class STATDotWidget(xdot.DotWidget):
             if temp_dot_filename is None:
                 return False
         try:
-            f = file(temp_dot_filename, 'r')
-            dotcode2 = f.read()
+            #f = file(temp_dot_filename, 'r')
+            f = open(temp_dot_filename, 'r')
+            contents = f.read()
+            try:
+                dotcode2 = bytes(contents, 'utf-8')
+            except:
+                dotcode2 = contents
             f.close()
         except Exception as e:
             show_error_dialog('Failed to read temp dot file %s' % temp_dot_filename, self, exception=e)
             return False
         os.remove(temp_dot_filename)
-        xdot.DotWidget.set_dotcode(self, dotcode2, filename)
+        xdot_ui_window.DotWidget.set_dotcode(self, dotcode2, filename)
         self.graph.cur_filename = filename
         return True
 
-    def set_xdotcode(self, xdotcode):
+    def set_xdotcode(self, xdotcode, center=True):
         """Parse the xdot code to create a STAT Graph."""
         parser = STATXDotParser(xdotcode)
         self.graph = parser.parse()
@@ -2792,12 +2922,12 @@ class STATDotWidget(xdot.DotWidget):
             width = int(math.ceil(self.graph.width * self.zoom_ratio)) + 2 * self.ZOOM_TO_FIT_MARGIN
             height = int(math.ceil(self.graph.height * self.zoom_ratio)) + 2 * self.ZOOM_TO_FIT_MARGIN
             self.set_size_request(max(width, 1), max(height, 1))
-        xdot.DotWidget.queue_draw(self)
+        xdot_ui_window.DotWidget.queue_draw(self)
 
     def is_click(self, event, click_fuzz=4, click_timeout=1.0):
         if event.x != self.pressx or event.y != self.pressy:
             self.user_zoom = True
-        return xdot.DotWidget.is_click(self, event, click_fuzz, click_timeout)
+        return xdot_ui_window.DotWidget.is_click(self, event, click_fuzz, click_timeout)
 
     def get_drag_action(self, event):
         """Overloaded get_drag_action for scroll window."""
@@ -2805,14 +2935,14 @@ class STATDotWidget(xdot.DotWidget):
             state = event.state
             if event.button in (1, 2):  # left or middle button
                 if state & gtk.gdk.CONTROL_MASK:
-                    return xdot.ZoomAction
+                    return xdot_ui_actions.ZoomAction
                 elif state & gtk.gdk.SHIFT_MASK:
-                    return xdot.ZoomAreaAction
+                    return xdot_ui_actions.ZoomAreaAction
                 else:
                     return STATPanAction
-            return xdot.NullAction
+            return xdot_ui_actions.NullAction
         else:
-            return xdot.DotWidget.get_drag_action(self, event)
+            return xdot_ui_window.DotWidget.get_drag_action(self, event)
 
     def zoom_to_fit(self):
         """Overloaded zoom_to_fit for scroll window."""
@@ -2836,7 +2966,7 @@ class STATDotWidget(xdot.DotWidget):
                 self.zoom_image(zoom_ratio, False, (x, y))
             self.zoom_to_fit_on_resize = True
         else:
-            return xdot.DotWidget.zoom_to_fit(self)
+            return xdot_ui_window.DotWidget.zoom_to_fit(self)
 
     def on_zoom_fit(self, action):
         self.user_zoom = False
@@ -2845,7 +2975,7 @@ class STATDotWidget(xdot.DotWidget):
 
     def on_area_scroll_event(self, area, event):
         self.user_zoom = True
-        return xdot.DotWidget.on_area_scroll_event(self, area, event)
+        return xdot_ui_window.DotWidget.on_area_scroll_event(self, area, event)
 
     def on_key_press_event(self, widget, event):
         if event.keyval in (gtk.keysyms.Page_Up, gtk.keysyms.plus, gtk.keysyms.equal, gtk.keysyms.KP_Add, gtk.keysyms.Page_Down, gtk.keysyms.minus, gtk.keysyms.KP_Subtract, gtk.keysyms.Left, gtk.keysyms.Right, gtk.keysyms.Up, gtk.keysyms.Down):
@@ -2854,7 +2984,7 @@ class STATDotWidget(xdot.DotWidget):
             global window
             window.on_toolbar_action(None, 'Reset', self.graph.on_original_graph, (widget,))
             return
-        ret = xdot.DotWidget.on_key_press_event(self, widget, event)
+        ret = xdot_ui_window.DotWidget.on_key_press_event(self, widget, event)
         if event.keyval == gtk.keysyms.r:
             self.user_zoom = False
             self.zoom_to_fit()
@@ -2862,11 +2992,11 @@ class STATDotWidget(xdot.DotWidget):
 
     def on_zoom_in(self, action):
         self.user_zoom = True
-        return xdot.DotWidget.on_zoom_in(self, action)
+        return xdot_ui_window.DotWidget.on_zoom_in(self, action)
 
     def on_zoom_out(self, action):
         self.user_zoom = True
-        return xdot.DotWidget.on_zoom_out(self, action)
+        return xdot_ui_window.DotWidget.on_zoom_out(self, action)
 
     def zoom_image(self, zoom_ratio, center=False, pos=None):
         """Overloaded zoom_image for scroll window."""
@@ -2897,11 +3027,11 @@ class STATDotWidget(xdot.DotWidget):
                 vpos = y * adj_zoom_ratio - vspan / 2.0 + self.ZOOM_TO_FIT_MARGIN
                 self.dotsw.get_vscrollbar().get_adjustment().set_value(vpos)
         else:
-            return xdot.DotWidget.zoom_image(self, zoom_ratio, center, pos)
+            return xdot_ui_window.DotWidget.zoom_image(self, zoom_ratio, center, pos)
 
 
 ## The window object containing the STATDotWidget
-class STATDotWindow(xdot.DotWindow):
+class STATDotWindow(xdot_ui_window.DotWindow):
     """The window object containing the STATDotWidget
 
     The STATDotWindow is derrived from xdot's DotWindow class.
@@ -2938,7 +3068,7 @@ class STATDotWindow(xdot.DotWindow):
             sw = gtk.ScrolledWindow()
             sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
             sw.add(self.history_view)
-            frame = gtk.Frame("Command History")
+            frame = gtk.Frame(label="Command History")
             frame.set_size_request(150, 60)
             frame.add(sw)
             self.hpaned.pack2(frame, False, True)
@@ -3067,28 +3197,33 @@ class STATDotWindow(xdot.DotWindow):
         menubar = uimanager.get_widget('/MenuBar')
         self.vbox = gtk.VBox()
         self.add(self.vbox)
-        self.vbox.pack_start(menubar, False)
+        self.vbox.pack_start(menubar, False, True, 0)
         hbox = gtk.HBox()
-        hbox.pack_start(toolbar, True)
+        hbox.pack_start(toolbar, True, True, 0)
         image = gtk.Image()
         try:
-            pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
+            if hasattr(gtk.gdk, "pixbuf_new_from_file"):
+                pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
+            elif hasattr(gtk, "Image"):
+                image = gtk.Image()
+                image.set_from_file(STAT_LOGO)
+                pixbuf = image.get_pixbuf()
             image.set_from_pixbuf(pixbuf)
-            hbox.pack_start(image, False)
+            hbox.pack_start(image, False, True, 0)
         except gobject.GError:
             pass
-        self.vbox.pack_start(hbox, False)
+        self.vbox.pack_start(hbox, False, True, 0)
         self.tabs = []
         self.notebook = gtk.Notebook()
         self.create_new_tab()
         self.notebook.set_tab_pos(gtk.POS_TOP)
         self.notebook.set_scrollable(True)
         try:
-            self.hbox.pack_start(self.notebook)
+            self.hbox.pack_start(self.notebook, True, True, 0)
         except:
             self.hbox = gtk.HBox()
-            self.hbox.pack_start(self.notebook)
-        self.vbox.pack_start(self.hbox)
+            self.hbox.pack_start(self.notebook, True, True, 0)
+        self.vbox.pack_start(self.hbox, True, True, 0)
         if HAVE_TOMOD is True:
             for path in search_paths['include']:
                 tomod.add_include_path(path)
@@ -3103,7 +3238,7 @@ of tasks.  Example task lists:
         help_string = """Search for callpaths containing the
 specified text, which may be
 entered as a regular expression"""
-        self.search_types.append(('text', self.search_text, 'Search for callpaths containing the\nspecified text, which may be\nentered as a regular expression'))
+        self.search_types.append(('text', self.search_for_text, 'Search for callpaths containing the\nspecified text, which may be\nentered as a regular expression'))
         if not hasattr(self, "types"):
             self.types = {}
         self.types["truncate"] = ["front", "rear"]
@@ -3149,10 +3284,10 @@ entered as a regular expression"""
         entry = gtk.Entry()
         entry.set_max_length(1024)
         entry.set_text(entry_text)
-        entry.connect("activate", lambda w: apply(function, (w, frame, dialog, entry)))
+        entry.connect("activate", lambda w: function(*(w, frame, dialog, entry)))
         hbox.pack_start(entry, True, True, 0)
         button = gtk.Button(button_text)
-        button.connect("clicked", lambda w: apply(function, (w, frame, dialog, entry)))
+        button.connect("clicked", lambda w: function(*(w, frame, dialog, entry)))
         hbox.pack_start(button, False, False, 0)
         box.pack_start(hbox, fill, center, pad)
         return entry
@@ -3161,9 +3296,9 @@ entered as a regular expression"""
         """Pack a set of radio buttons for a specified option."""
         for option_type in self.types[option]:
             if option_type == self.types[option][0]:
-                radio_button = gtk.RadioButton(None, option_type)
+                radio_button = gtk_wrap_new_with_label_from_widget(None, option_type)
             else:
-                radio_button = gtk.RadioButton(radio_button, option_type)
+                radio_button = gtk_wrap_new_with_label_from_widget(radio_button, option_type)
             if option_type == self.options[option]:
                 radio_button.set_active(True)
                 self.toggle_radio_button(None, (option, option_type))
@@ -3181,7 +3316,7 @@ entered as a regular expression"""
         label = gtk.Label(option)
         hbox.pack_start(label, False, False, 0)
         adj = gtk.Adjustment(1.0, 0.0, 1000000.0, 1.0, 100.0, 0.0)
-        spinner = gtk.SpinButton(adj, 0, 0)
+        spinner = gtk.SpinButton(adjustment=adj, climb_rate=0, digits=0)
         spinner.set_value(self.options[option])
         hbox.pack_start(spinner, False, False, 0)
         box.pack_start(hbox, False, False, 0)
@@ -3227,7 +3362,7 @@ entered as a regular expression"""
         box.pack_start(button, False, False, 0)
 
     def update_prefs_cb(self, w, dialog):
-        dialog.destroy()
+        dialog.hide()
         try:
             self.options['max node name'] = int(self.spinners['max node name'].get_value())
             self.options['truncate'] = self.types["truncate"][self.combo_boxes['truncate'].get_active()]
@@ -3260,7 +3395,8 @@ entered as a regular expression"""
 
     def on_load_prefs(self, action):
         """Load user-saved preferences from a file."""
-        chooser = gtk.FileChooserDialog(title="Load Preferences", action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
+        myaction = gtk.FILE_CHOOSER_ACTION_OPEN
+        chooser = gtk.FileChooserDialog(title="Load Preferences", action=myaction, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_SAVE_AS, gtk.RESPONSE_OK))
         chooser.set_default_response(gtk.RESPONSE_OK)
         file_filter = gtk.FileFilter()
         file_filter.set_name('STAT Prefs File')
@@ -3358,7 +3494,11 @@ entered as a regular expression"""
                 if child == tab.widget:
                     break
             self.notebook.set_current_page(n)
-            if event.button == 3:
+            if hasattr(event.button, 'button'):
+                button = event.button.button
+            else:
+                button = event.button
+            if button == 3:
                 options = ['New Tab', 'Close Tab']
                 menu = gtk.Menu()
                 for option in options:
@@ -3366,7 +3506,7 @@ entered as a regular expression"""
                     menu.append(menu_item)
                     menu_item.connect('activate', self.menu_item_response, option)
                     menu_item.show()
-                menu.popup(None, None, None, event.button, event.time)
+                menu.popup(None, None, None, None, button, event.time)
 
     def get_current_widget(self):
         """Get the widget of the current tab."""
@@ -3418,7 +3558,12 @@ entered as a regular expression"""
         about_dialog.set_license(__license__)
         about_dialog.set_wrap_license(80)
         try:
-            pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
+            if hasattr(gtk.gdk, "pixbuf_new_from_file"):
+                pixbuf = gtk.gdk.pixbuf_new_from_file(STAT_LOGO)
+            elif hasattr(gtk, "Image"):
+                image = gtk.Image()
+                image.set_from_file(STAT_LOGO)
+                pixbuf = image.get_pixbuf()
             about_dialog.set_logo(pixbuf)
         except gobject.GError:
             pass
@@ -3556,7 +3701,7 @@ entered as a regular expression"""
                 self.ext_type = 'dot'
                 self.ext_dialog = gtk.Dialog("Choose Extension", self)
                 self.ext_dialog.set_default_size(300, 80)
-                ext_frame = gtk.Frame("File type explanation")
+                ext_frame = gtk.Frame(label="File type explanation")
                 explanation = 'Saving as an AT&T dot format graph file allows the file to be reopened by this application.  Saving as an image or document file generates a file that can be easily viewed by other users and on other systems, but can not be manipulated by this application.'
                 ext_explanation = gtk.Label(explanation)
                 ext_explanation.set_line_wrap(True)
@@ -3565,10 +3710,10 @@ entered as a regular expression"""
                 ext_vbox2 = gtk.VBox(False, 0)
                 for extension in file_extensions:
                     if extension == file_extensions[0]:
-                        radio_button = gtk.RadioButton(None, extension)
+                        radio_button = gtk_wrap_new_with_label_from_widget(None, extension)
                         radio_button.set_active(True)
                     else:
-                        radio_button = gtk.RadioButton(radio_button, extension)
+                        radio_button = gtk_wrap_new_with_label_from_widget(radio_button, extension)
                     radio_button.connect("toggled", self.save_type_toggle_cb, extension.split()[0])
                     ext_vbox2.pack_start(radio_button, False, True, 5)
 
@@ -3671,11 +3816,11 @@ entered as a regular expression"""
     def on_modify_search_paths(self, action):
         """Callback to generate dialog to modify search paths."""
         search_dialog = gtk.Dialog('add file search path', self)
-        frame = gtk.Frame("Current Search Paths")
+        frame = gtk.Frame(label="Current Search Paths")
         hpaned = gtk.HPaned()
         path_views = {}
         for path_type2 in ["source", "include"]:
-            frame2 = gtk.Frame(path_type2)
+            frame2 = gtk.Frame(label=path_type2)
             path_view = gtk.TextView()
             path_view.set_size_request(400, 200)
             path_view.set_wrap_mode(False)
@@ -3699,7 +3844,7 @@ entered as a regular expression"""
         separator = gtk.HSeparator()
         search_dialog.vbox.pack_start(separator, False, True, 5)
         vbox = gtk.VBox(False, 0)
-        frame = gtk.Frame("Add Search Paths")
+        frame = gtk.Frame(label="Add Search Paths")
         entry = gtk.Entry()
         entry.set_max_length(65536)
         check_buttons = {}
@@ -3744,7 +3889,7 @@ entered as a regular expression"""
         entry.set_text('')
         paths = []
         if path == '' and destroy is True:
-            search_dialog.destroy()
+            search_dialog.hide()
             return
         elif path == '' and destroy is False:
             return
@@ -3768,7 +3913,7 @@ entered as a regular expression"""
                     paths_string += path + '\n'
                 path_views[path_type2].get_buffer().set_text(paths_string)
         if destroy is True:
-            search_dialog.destroy()
+            search_dialog.hide()
             return
         search_dialog.show_all()
 
@@ -3778,7 +3923,7 @@ entered as a regular expression"""
             return False
         if name is not None:
             self.get_current_graph().set_undo_list()
-        ret = apply(function, args)
+        ret = function(*args)
         if ret is True:
             if name is not None:
                 self.get_current_graph().action_history.append(name)
@@ -3856,7 +4001,7 @@ entered as a regular expression"""
     def search_tasks(self, text, dummy=None):
         self.get_current_graph().focus_tasks(text)
 
-    def search_text(self, text, match_case_check_box):
+    def search_for_text(self, text, match_case_check_box):
         self.get_current_graph().focus_text(text, match_case_check_box.get_active())
         highlight_list = []
         search_text = text
@@ -3900,7 +4045,7 @@ entered as a regular expression"""
             self.programming_models += load_model_cuts(user_models_path)
         self.model_dialog = gtk.Dialog('Hide Programming Model Frames', self)
         self.model_dialog.set_default_size(400, 400)
-        frame = gtk.Frame("Programming Models")
+        frame = gtk.Frame(label="Programming Models")
         vbox = gtk.VBox()
 
         sw = gtk.ScrolledWindow()
@@ -3920,14 +4065,13 @@ entered as a regular expression"""
         renderer.set_property('cell-background', 'grey')
         column = gtk.TreeViewColumn(" Click\nto hide")
         column.set_fixed_width(20)
-        column.pack_start(renderer)
+        column.pack_start(renderer, True)
         column.set_attributes(renderer, stock_id=MODEL_INDEX_ICON, callable=MODEL_INDEX_CALLBACK, cell_background_set=MODEL_INDEX_NOTEDITABLE)
         treeview.append_column(column)
 
         # name column
         renderer = gtk.CellRendererText()
-        renderer.connect("edited", self.on_cell_edited, list_store)
-        renderer.set_data("column", MODEL_INDEX_NAME)
+        renderer.connect("edited", self.on_cell_edited, list_store, MODEL_INDEX_NAME)
         renderer.set_property('cell-background', 'grey')
         column = gtk.TreeViewColumn("Programming\n     Model", renderer, text=MODEL_INDEX_NAME, editable=MODEL_INDEX_EDITABLE, cell_background_set=MODEL_INDEX_NOTEDITABLE)
         treeview.append_column(column)
@@ -3943,8 +4087,7 @@ entered as a regular expression"""
 
         # regex column
         renderer = gtk.CellRendererText()
-        renderer.connect("edited", self.on_cell_edited, list_store)
-        renderer.set_data("column", MODEL_INDEX_REGEX)
+        renderer.connect("edited", self.on_cell_edited, list_store, MODEL_INDEX_REGEX)
         renderer.set_property('cell-background', 'grey')
         column = gtk.TreeViewColumn("Regex", renderer, text=MODEL_INDEX_REGEX, editable=MODEL_INDEX_EDITABLE, cell_background_set=MODEL_INDEX_NOTEDITABLE)
         treeview.append_column(column)
@@ -3954,10 +4097,10 @@ entered as a regular expression"""
         hbox = gtk.HBox(True, 4)
         button = gtk.Button("_Add Model")
         button.connect("clicked", self.on_add_item_clicked, list_store)
-        hbox.pack_start(button)
+        hbox.pack_start(button, True, True, 0)
         button = gtk.Button("_Remove Model")
         button.connect("clicked", self.on_remove_item_clicked, treeview)
-        hbox.pack_start(button)
+        hbox.pack_start(button, True, True, 0)
         vbox.pack_start(hbox, False, False, 0)
         frame.add(vbox)
         self.model_dialog.vbox.pack_start(frame, True, True, 0)
@@ -3967,7 +4110,7 @@ entered as a regular expression"""
         hbox = gtk.HBox(True, 4)
         button = gtk.Button("_Done")
         button.connect("clicked", lambda w: self.model_dialog.destroy())
-        hbox.pack_start(button)
+        hbox.pack_start(button, True, True, 0)
         self.model_dialog.vbox.pack_start(hbox, False, False, 0)
 
         self.model_dialog.show_all()
@@ -4013,16 +4156,9 @@ entered as a regular expression"""
                 list_store.remove(iterator)
                 del self.programming_models[path]
 
-    def on_cell_edited(self, cell, path_string, new_text, list_store):
-        iterator = list_store.get_iter_from_string(path_string)
-        path = list_store.get_path(iterator)[0]
-        column = cell.get_data("column")
-        if column == MODEL_INDEX_NAME:
-            self.programming_models[path][MODEL_INDEX_NAME] = new_text
-            list_store.set(iterator, column, self.programming_models[path][MODEL_INDEX_NAME])
-        elif column == MODEL_INDEX_REGEX:
-            self.programming_models[path][MODEL_INDEX_REGEX] = new_text
-            list_store.set(iterator, column, self.programming_models[path][MODEL_INDEX_REGEX])
+    def on_cell_edited(self, widget, path, new_text, list_store, column):
+        list_store[int(path)][column] = new_text
+        self.programming_models[int(path)][column] = new_text
 
     def on_search(self, action):
         """Callback to handle pressing of focus task button."""
@@ -4219,7 +4355,7 @@ enterered as a regular expression.
             self.on_reset_layout()
             for node in graph.nodes:
                 node.attrs = copy.copy(old_attrs[node.node_name])
-            for i in xrange(len(graph.edges) - num_edges):
+            for i in range(len(graph.edges) - num_edges):
                 graph.edges.pop()
             graph.undo(False)
         return ret
@@ -4249,7 +4385,7 @@ enterered as a regular expression.
         num_eq_classes = self.get_current_graph().identify_real_num_eq_classes(self.get_current_widget())
         #num_eq_classes = self.get_current_graph().identify_num_eq_classes(self.get_current_widget())
         eq_dialog = gtk.Dialog("Equivalence Classes", self)
-        my_frame = gtk.Frame("%d Equivalence Classes:" % (len(num_eq_classes)))
+        my_frame = gtk.Frame(label="%d Equivalence Classes:" % (len(num_eq_classes)))
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         task_view = gtk.TextView()
@@ -4302,8 +4438,13 @@ enterered as a regular expression.
             node = event
         else:
             node = widget.get_node(int(event.x), int(event.y))
-        label = node.attrs["label"].replace('\\n', '\n').replace('\\<', '<').replace('\\>', '>')
-        tasks = node.edge_label
+        try:
+            label = node.attrs["label"].decode('utf-8')
+            tasks = node.edge_label.decode('utf-8')
+        except:
+            label = node.attrs["label"]
+            tasks = node.edge_label
+        label = label.replace('\\n', '\n').replace('\\<', '<').replace('\\>', '>')
         if node.hide is True:
             return True
         options = ['Join Equivalence Class', 'Collapse', 'Collapse Depth', 'Hide', 'Expand', 'Expand All', 'Focus', 'View Source', 'Translate']
@@ -4319,12 +4460,12 @@ enterered as a regular expression.
                 pass
             self.my_dialog = gtk.Dialog("Node", self)
             vpaned1 = gtk.VPaned()
-            my_frame = gtk.Frame("Stack Frame:")
+            my_frame = gtk.Frame(label="Stack Frame:")
             sw = gtk.ScrolledWindow()
             sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
             text_view = gtk.TextView()
             for shape in node.shapes:
-                if isinstance(shape, xdot.TextShape):
+                if isinstance(shape, xdot_ui_elements.TextShape):
                     font_color = shape.pen.color
                 else:
                     fill_color = shape.pen.fillcolor
@@ -4354,9 +4495,9 @@ enterered as a regular expression.
                 if num_leaf_tasks != 0 and num_leaf_tasks == len(leaf_tasks):
                     vpaned2 = gtk.VPaned()
                     if num_leaf_tasks == 1:
-                        my_frame = gtk.Frame("%d Leaf Task:" % (num_leaf_tasks))
+                        my_frame = gtk.Frame(label="%d Leaf Task:" % (num_leaf_tasks))
                     else:
-                        my_frame = gtk.Frame("%d Leaf Tasks:" % (num_leaf_tasks))
+                        my_frame = gtk.Frame(label="%d Leaf Tasks:" % (num_leaf_tasks))
                     sw = gtk.ScrolledWindow()
                     sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
                     task_view = gtk.TextView()
@@ -4364,6 +4505,7 @@ enterered as a regular expression.
                     task_view.set_cursor_visible(False)
                     task_view_buffer = task_view.get_buffer()
                     task_view.set_wrap_mode(gtk.WRAP_WORD)
+                    x = list_to_string(leaf_tasks)
                     task_view_buffer.set_text(list_to_string(leaf_tasks).replace(",", ", ").strip('[').strip(']'))
                     sw.add(task_view)
                     my_frame.add(sw)
@@ -4373,9 +4515,9 @@ enterered as a regular expression.
                         vpaned1.add2(my_frame)
                 if num_tasks != num_leaf_tasks:
                     if num_tasks == 1:
-                        my_frame = gtk.Frame("%d Total Task:" % (num_tasks))
+                        my_frame = gtk.Frame(label="%d Total Task:" % (num_tasks))
                     else:
-                        my_frame = gtk.Frame("%d Total Tasks:" % (num_tasks))
+                        my_frame = gtk.Frame(label="%d Total Tasks:" % (num_tasks))
                     sw = gtk.ScrolledWindow()
                     sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
                     task_view = gtk.TextView()
@@ -4394,7 +4536,7 @@ enterered as a regular expression.
             else:
                 num_tasks = node.num_tasks
                 num_leaf_tasks = node.get_num_leaf_tasks()
-                my_frame = gtk.Frame("Node summary:")
+                my_frame = gtk.Frame(label="Node summary:")
                 sw = gtk.ScrolledWindow()
                 sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
                 summary_view = gtk.TextView()
@@ -4408,8 +4550,8 @@ enterered as a regular expression.
                 vpaned1.add2(my_frame)
             self.my_dialog.vbox.pack_start(vpaned1, True, True, 5)
 
-            expander = gtk.Expander("Advanced")
-            my_frame = gtk.Frame("Node Attributes:")
+            expander = gtk.Expander()
+            expander.set_label(label="Advanced")
             sw = gtk.ScrolledWindow()
             sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
             attributes_view = gtk.TextView()
@@ -4420,9 +4562,10 @@ enterered as a regular expression.
             attributes_text = str(node)
             attributes_view_buffer.set_text(attributes_text)
             sw.add(attributes_view)
-            my_frame.add(sw)
-            expander.add(my_frame)
-            self.my_dialog.vbox.pack_start(expander, True, True, 5)
+            #expander.add(sw)
+            #self.my_dialog.vbox.pack_start(expander, True, True, 5)
+            # TODO: When the sw is in an expander, it doesn't resize
+            self.my_dialog.vbox.pack_start(sw, True, True, 5)
 
             self.separator = gtk.HSeparator()
             self.my_dialog.vbox.pack_start(self.separator, False, True, 5)
@@ -4493,13 +4636,16 @@ enterered as a regular expression.
                     if not node.can_join_eq_c():
                         menu_item.set_sensitive(False)
                 menu_item.show()
-            menu.popup(None, None, None, event.button, event.time)
+            try:
+                menu.popup(None, None, None, None, event.button, event.time)
+            except:
+                menu.popup(None, None, None, event.button, event.time)
         return True
 
     def on_select_source_enter_cb(self, combo_box, node):
         """Callback to handle activation of source selection."""
-        self.my_dialog.destroy()
         index = combo_box.get_active()
+        self.my_dialog.destroy()
         self.get_current_graph().view_source(node, index)
 
     def select_source(self, node):
@@ -4508,7 +4654,7 @@ enterered as a regular expression.
         if len(frames) == 1:
             self.get_current_graph().view_source(node)
         else:
-            self.my_dialog = gtk.Dialog("Select Frame")
+            self.my_dialog = gtk.Dialog("Select Frame", self)
             hbox = gtk.HBox()
             hbox.pack_start(gtk.Label("Select a frame"), False, False, 0)
             combo_box = gtk.combo_box_new_text()
@@ -4582,7 +4728,7 @@ enterered as a regular expression.
             old_graph = self.get_current_graph()
             self.on_reset_layout()
             node.attrs = copy.copy(old_attrs)
-            for i in xrange(len(old_graph.edges) - num_edges):
+            for i in range(len(old_graph.edges) - num_edges):
                 old_graph.edges.pop()
             old_graph.undo(False)
         try:

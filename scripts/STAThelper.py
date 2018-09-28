@@ -208,7 +208,10 @@ class ProcTab(object):
 def get_proctab(proctab_file_path):
     """Retrieve the proctab object from a process table file"""
     with open(proctab_file_path, 'r') as proctab_file:
-        launcher = proctab_file.next().strip('\n').split(':')
+        if hasattr(proctab_file, 'next'):
+            launcher = proctab_file.next().strip('\n').split(':')
+        else:
+            launcher = next(proctab_file).strip('\n').split(':')
         proctab = ProcTab()
         proctab.launcher_host = launcher[0]
         proctab.launcher_pid = int(launcher[1])
@@ -572,7 +575,7 @@ class Translator:
             args = [self.addr2line]
             args.append('-C')
             args += ["-f", "-e", self.filename]
-            self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.proc = subprocess.Popen(args, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         except Exception as e:
             sys.stderr.write("%s failed for %s: %s\n" % (self.addr2line, self.filename, e))
             self.proc = None
@@ -584,6 +587,7 @@ class Translator:
         if self.proc:
             try:
                 self.proc.stdin.write("%s\n" % addr)
+                self.proc.stdin.flush()
                 function = self.proc.stdout.readline().rstrip("\n")
                 line = self.proc.stdout.readline().rstrip("\n")
                 return "%s@%s" % (function, line)

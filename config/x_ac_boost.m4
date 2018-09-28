@@ -16,7 +16,11 @@ AC_DEFUN([X_AC_BOOST], [
     #
     if test -f "$with_boost_path"/include/boost/algorithm/string.hpp ; then
       AC_SUBST(BOOST_INCLUDE, -I$with_boost_path/include)
-      AC_SUBST(LIBBOOSTDIR, [$with_boost_path/lib])
+      if test -f "$with_boost_path"/lib64/libboost_timer.so ; then
+        AC_SUBST(LIBBOOSTDIR, [$with_boost_path/lib64])
+      else
+        AC_SUBST(LIBBOOSTDIR, [$with_boost_path/lib])
+      fi
       AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system-mt -lboost_wave-mt"])
       AC_DEFINE(HAVE_BOOST_TO,1,[Define 1 if a compatible boost package is found])	
       boost_found="yes"
@@ -34,12 +38,18 @@ AC_DEFUN([X_AC_BOOST], [
     if test -f $boost_dflt_dir/include/boost/algorithm/string.hpp ; then
       AC_SUBST(BOOST_INCLUDE, -I$boost_dflt_dir/include)
       AC_DEFINE(HAVE_BOOST_TO,1,[Define 1 if a compatible boost package is found])	
-      AC_SUBST(LIBBOOSTDIR, [$boost_dflt_dir/lib])
+      if test -f $boost_dflt_dir/lib64/libboost_timer.so ; then
+        AC_SUBST(LIBBOOSTDIR, [$boost_dflt_dir/lib64])
+      else
+        AC_SUBST(LIBBOOSTDIR, [$boost_dflt_dir/lib])
+      fi
       AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system-mt -lboost_wave-mt"])
       boost_found="yes"
     else
       boost_found="no"
     fi
   fi
+  CXXFLAGS="$CXXFLAGS $BOOST_INCLUDE"
+  LDFLAGS="$LDFLAGS -L$LIBBOOSTDIR -Wl,-rpath=$LIBBOOSTDIR"
   AC_MSG_RESULT($boost_found)
 ])
