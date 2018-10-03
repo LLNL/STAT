@@ -4,7 +4,7 @@ The most typical usage is to invoke STAT on the job launcher's PID:
 <informalexample>
     <screen>
   % srun mpi_application arg1 arg2 &
-  [1] 16482
+  [1] 16842
   
   % ps
     PID TTY          TIME CMD
@@ -12,7 +12,7 @@ The most typical usage is to invoke STAT on the job launcher's PID:
   16842 pts/0    00:00:00 srun
   16871 pts/0    00:00:00 ps
   
-  % stat-cl 16482
+  % stat-cl 16842
     </screen>
 </informalexample>
 <para>
