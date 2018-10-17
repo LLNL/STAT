@@ -1,3 +1,12 @@
+2018-10-17 Gregory L. Lee <lee218@llnl.gov>
+	* STATview.py : Handle .dot file lines longer than 16K
+
+2018-09-28 Gregory L. Lee <lee218@llnl.gov>
+	* : Python 3 and xdot 0.9 support added
+
+2018-08-07 Gregory L. Lee <lee218@llnl.gov>
+	* : Fixed core file merging
+
 2018-05-15 Gregory L. Lee <lee218@llnl.gov>
 	* STATview.py : use lru_cache for translating edge labels
 

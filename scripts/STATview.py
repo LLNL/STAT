@@ -2835,13 +2835,19 @@ class STATDotWidget(xdot_ui_window.DotWidget):
             if temp_dot_filename is None:
                 return False
         try:
-            #f = file(temp_dot_filename, 'r')
             f = open(temp_dot_filename, 'r')
             contents = f.read()
+            # We need to break lines so they are no longer than 16K characters
+            new_contents = ''
+            for line in contents.split('\n'):
+                while len(line) > 16000:
+                    new_contents += line[:16000] + '\\\n'
+                    line = line[16000:]
+                new_contents += line + '\n'
             try:
-                dotcode2 = bytes(contents, 'utf-8')
+                dotcode2 = bytes(new_contents, 'utf-8')
             except:
-                dotcode2 = contents
+                dotcode2 = new_contents
             f.close()
         except Exception as e:
             show_error_dialog('Failed to read temp dot file %s' % temp_dot_filename, self, exception=e)
