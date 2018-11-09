@@ -90,6 +90,9 @@ class BgCoreTrace(StatTrace):
         patterns[CoreType.UNKNOWN] = r"[.]*"
         any_lcf = False
         for line in f:
+            if line == '\n':
+                continue
+            line = line.strip('"')
             if line.find('Job ID') != -1:
                 job_id = int(line.split(':')[1][1:])
                 if job_id not in job_ids:
@@ -176,7 +179,8 @@ class BgCoreTrace(StatTrace):
                 addr = match.group(1)
                 line_info = ''
             if line_info is None:
-                sys.stderr.write('\nWarning: format of stack frame "%s" not recognized\n\n' %(line))
+                if line != '***FAULT':
+                    sys.stderr.write('\nWarning: format of stack frame "%s" not recognized for core type %s\n\n' %(line, core_type))
                 function = line
                 line_info = line
             elif core_type == CoreType.BGQ or core_type == CoreType.DYSECT or core_type == CoreType.HEXADDR:

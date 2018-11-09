@@ -310,24 +310,26 @@ class StatMerger(object):
 
                 trace_object = self.trace_type(filename, self.options)
                 for j, trace in enumerate(trace_object.traces):
-                    for k, sub_trace in enumerate(trace):
-                        if i == 0 and k == 0:
-                            # initialize graphlib and generate the graph objects
-                            ret = STATmerge.Init_Graphlib(self.options["high"])
-                            if ret != 0:
-                                sys.stderr.write('Failed to initialize graphlib\n')
-                                sys.exit(1)
-                            handle = STATmerge.New_Graph()
-                            if handle == -1:
-                                sys.stderr.write('Failed to create new graph\n')
-                                sys.exit(1)
-                            handles.append(handle)
-
-                        # add the current trace
-                        ret = STATmerge.Add_Trace(handles[j], trace_object.rank, trace_object.tid, sub_trace)
+                    if i == 0:
+                        # initialize graphlib and generate the graph objects
+                        ret = STATmerge.Init_Graphlib(self.options["high"])
                         if ret != 0:
-                            sys.stderr.write('Failed to add trace\n')
+                            sys.stderr.write('Failed to initialize graphlib\n')
                             sys.exit(1)
+                        handle = STATmerge.New_Graph()
+                        if handle == -1:
+                            sys.stderr.write('Failed to create new graph\n')
+                            sys.exit(1)
+                        handles.append(handle)
+                    for k, sub_trace in enumerate(trace):
+                        # add the current trace
+                        try:
+                            ret = STATmerge.Add_Trace(handles[j], trace_object.rank, trace_object.tid, sub_trace)
+                            if ret != 0:
+                                sys.stderr.write('Failed to add trace\n')
+                                sys.exit(1)
+                        except:
+                            pass
 
             if self.verbose:
                 sys.stdout.write('... done!\n')

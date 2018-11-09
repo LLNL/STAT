@@ -76,6 +76,32 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   fi
   AC_MSG_RESULT([$dyninst_vers_93])
 
+  AC_MSG_CHECKING([Checking Dyninst Version 10.0 or greater])
+  dyninst_vers_10=no
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "dyninstversion.h"
+    int main()
+    {
+      return 0;
+    }])],
+    [dyninst_vers_10=yes],
+    []
+  )
+
+  if test "$dyninst_vers_10" = yes; then
+    AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "dyninstversion.h"
+      #if DYNINST_MAJOR_VERSION < 10
+        #error
+      #endif
+      int main()
+      {
+        return 0;
+      }])],
+      [CXXFLAGS="$CXXFLAGS -std=c++11"],
+      [dyninst_vers_10=no]
+    )
+  fi
+  AC_MSG_RESULT([$dyninst_vers_10])
+
   AC_CHECK_HEADER(Symtab.h,
     [],
     [AC_MSG_ERROR([Symtab.h is required.  Specify prefix with --with-stackwalker])],
