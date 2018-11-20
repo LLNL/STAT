@@ -21,15 +21,15 @@ AC_DEFUN([X_AC_BOOST], [
       else
         AC_SUBST(LIBBOOSTDIR, [$with_boost_path/lib])
       fi
-      AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system-mt -lboost_wave-mt"])
+      AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system -lboost_system-mt -lboost_wave-mt"])
       AC_DEFINE(HAVE_BOOST_TO,1,[Define 1 if a compatible boost package is found])	
       boost_found="yes"
     elif test -f "$with_boost_path"/include/boost-1_37/boost/algorithm/string.hpp ; then 
       AC_SUBST(BOOST_INCLUDE, -I$with_boost_path/include/boost-1_37)
       AC_SUBST(LIBBOOSTDIR, [$with_boost_path/lib])
-      AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system-mt -lboost_wave-mt"])
+      AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system -lboost_system-mt -lboost_wave-mt"])
       AC_DEFINE(HAVE_BOOST_TO,1,[Define 1 if a compatible boost package is found])	
-      boost_found="yes"
+      boost_found="yes  $LIBBOOSTDIR"
     else
       boost_found="no"
     fi
@@ -43,13 +43,13 @@ AC_DEFUN([X_AC_BOOST], [
       else
         AC_SUBST(LIBBOOSTDIR, [$boost_dflt_dir/lib])
       fi
-      AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system-mt -lboost_wave-mt"])
-      boost_found="yes"
+      AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system -lboost_system-mt -lboost_wave-mt"])
+      boost_found="yes $LIBBOOSTDIR"
     else
       boost_found="no"
     fi
   fi
   CXXFLAGS="$CXXFLAGS $BOOST_INCLUDE"
-  LDFLAGS="$LDFLAGS -L$LIBBOOSTDIR -Wl,-rpath=$LIBBOOSTDIR"
+  LDFLAGS="$LDFLAGS -L$LIBBOOSTDIR -Wl,-rpath=$LIBBOOSTDIR $LIBBOOST"
   AC_MSG_RESULT($boost_found)
 ])

@@ -1,3 +1,6 @@
+2018-11-20 Gregory L. Lee <lee218@llnl.gov>
+	* : Added dyninst 10.0 support
+
 2018-10-17 Gregory L. Lee <lee218@llnl.gov>
 	* STATview.py : Handle .dot file lines longer than 16K
 
