@@ -65,7 +65,7 @@ class MRNetSymbolReader :public Dyninst::SymReader
         virtual Symbol_t getContainingSymbol(Dyninst::Offset offset);
         virtual std::string getInterpreterName();
         virtual unsigned getAddressWidth();
-#if SW_MAJOR == 9 && SW_MINOR == 3
+#if (SW_MAJOR == 9 && SW_MINOR == 3) || SW_MAJOR >= 10
         virtual bool getABIVersion(int &major, int &minor) const;
         virtual bool isBigEndianDataEncoding() const;
         virtual Architecture getArchitecture() const;

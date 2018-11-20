@@ -3854,11 +3854,19 @@ void STAT_BackEnd::swDebugBufferToFile()
 }
 
 
+#if DYNINST_MAJOR_VERSION >= 10
+tbb::concurrent_vector<Field *> *STAT_BackEnd::getComponents(Type *type)
+#else
 vector<Field *> *STAT_BackEnd::getComponents(Type *type)
+#endif
 {
     typeTypedef *tt = NULL;
     typeStruct *ts = NULL;
+#if DYNINST_MAJOR_VERSION >= 10
+    tbb::concurrent_vector<Field *> *components = NULL;
+#else
     vector<Field *> *components = NULL;
+#endif
 
     tt = type->getTypedefType();
     if (tt == NULL)
@@ -3902,7 +3910,11 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
     StatPythonOffsets_t *pythonOffsets = NULL;
     Symtab *symtab = NULL;
     Type *type = NULL;
+#if DYNINST_MAJOR_VERSION >= 10
+    tbb::concurrent_vector<Field *> *components = NULL;
+#else
     vector<Field *> *components = NULL;
+#endif
     Field *field = NULL;
 #ifdef SW_VERSION_8_0_0
     LibraryPool::iterator libsIter;
