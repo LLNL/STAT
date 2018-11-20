@@ -3512,7 +3512,10 @@ entered as a regular expression"""
                     menu.append(menu_item)
                     menu_item.connect('activate', self.menu_item_response, option)
                     menu_item.show()
-                menu.popup(None, None, None, None, button, event.time)
+                try:
+                    menu.popup(None, None, None, None, button, event.time)
+                except:
+                    menu.popup(None, None, None, event.button, event.time)
 
     def get_current_widget(self):
         """Get the widget of the current tab."""
