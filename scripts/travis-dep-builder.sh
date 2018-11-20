@@ -13,9 +13,10 @@ components=all
 #  NOTE: Code currently assumes .tar.gz suffix...
 #
 #https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz \
+#https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.3.tar.gz \
 # NOTE: openmpi and dyninst both take a long time to build and will likely cause travis to timeout after 50 minutes, so they should be built in two passes
 downloads="\
-https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.3.tar.gz \
+https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.3.tar.gz \
 https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz \
 https://github.com/dyninst/mrnet/archive/v5.0.1.tar.gz \
 https://www.prevanders.net/libdwarf-20161124.tar.gz \
@@ -33,6 +34,7 @@ declare -A extra_configure_opts=(\
 ["launchmon-v1.0.2"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
 ["launchmon"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
 ["v5.0.1"]="--enable-shared" \
+["openmpi-3.1.3"]="--enable-orterun-prefix-by-default" \
 ["libdwarf-20161124"]="--enable-shared --disable-nonshared" \
 )
 
@@ -129,10 +131,10 @@ for pkg in $downloads; do
     if test "$components" = "dyninst" -a "$name" != "v9.3.2"; then
       continue
     fi
-    if test "$components" = "ompi" -a "$name" != "openmpi-2.0.3"; then
+    if test "$components" = "ompi" -a "$name" != "openmpi-3.1.3"; then
       continue
     fi
-    if test "$components" = "other" -a "$name" = "openmpi-2.0.3"; then
+    if test "$components" = "other" -a "$name" = "openmpi-3.1.3"; then
       continue
     fi
     if test "$components" = "other" -a "$name" = "v9.3.2"; then
@@ -153,7 +155,7 @@ for pkg in $downloads; do
       export CC=gcc-4.8
       export CXX=g++-4.8
     fi
-    if test "$name" = "openmpi-2.0.3"; then
+    if test "$name" = "openmpi-3.1.3"; then
       export CC=gcc-4.8
       export CXX=g++-4.8
     fi

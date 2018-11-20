@@ -8,17 +8,23 @@ sudo: required
 
 env:
   matrix:
+    - fast_finish: true
     - gcc-4.8
       COVERAGE=On
 
 addons:
   apt:
+    update: true
+    sources:
+#      - sourceline: 'ppa:mhier/libboost-latest'
+      - ubuntu-toolchain-r-test
     packages:
       - cmake
       - cmake-data
       - libelf-dev
       - libdwarf-dev
       - libboost-all-dev
+#      - boost1.67
       - swig
       - lcov
       - graphviz
@@ -35,6 +41,20 @@ before_install:
   - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq
   - sudo apt-get install -qq g++-4.8
+#  - ls -l /
+#  - ls -l /lib
+#  - ls -l /lib64
+#  - ls -l /usr
+#  - ls -l /usr/lib
+#  - ls -l /usr/lib/x86_64-linux-gnu
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libboost_date_time.so /usr/lib/libboost_date_time-mt.so
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libboost_thread.so /usr/lib/libboost_thread-mt.so
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libboost_filesystem.so /usr/lib/libboost_filesystem-mt.so
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libboost_program_options.so /usr/lib/libboost_program_options-mt.so
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libboost_regex.so /usr/lib/libboost_regex-mt.so
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libboost_system.so /usr/lib/libboost_system-mt.so
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libboost_wave.so /usr/lib/libboost_wave-mt.so
+  - ls -l /usr/lib
   - export CC="gcc-4.8"
   - export CXX="g++-4.8"
   - gem install coveralls-lcov
@@ -48,18 +68,34 @@ before_install:
 script:
   - export CC=gcc-4.8
   - export CXX=g++-4.8
-  - ls -l $HOME/local
-  - ls -l $HOME/local/lib
-  - ls -l $HOME/local/bin
-  - ls -l $HOME/local/etc
-  - cat $HOME/local/etc/rm_openrte.conf
-  - ls -l $HOME/local/include
-  - cd $HOME/build/LLNL/STAT
+#  - ls -l $HOME/local
+#  - ls -l $HOME/local/lib
+#  - ls -l $HOME/local/lib/openmpi
+#  - file /home/travis/local/lib/openmpi/mca_state_staged_orted.so
+#  - ldd /home/travis/local/lib/openmpi/mca_state_staged_orted.so
+#  - file /home/travis/local/lib/openmpi/mca_state_staged_hnp.so
+#  - ldd /home/travis/local/lib/openmpi/mca_state_staged_hnp.so
+#  - file /home/travis/local/lib/openmpi/mca_oob_usock.so
+#  - ldd /home/travis/local/lib/openmpi/mca_oob_usock.so
+#  - ls -l $HOME/local/bin
+#  - ls -l $HOME/local/etc
+#  - cat $HOME/local/etc/rm_openrte.conf
+#  - ls -l $HOME/local/include
+#  - cd $HOME/build/LLNL/STAT
   - ./bootstrap
+#  - ls -l /usr/lib
+#  - ls -l /usr/lib64
+#  - ls -l /usr/include/boost
+#  - ls -l /opt
+#  - ls -l /
+#  - ls -l /usr
+#  - ls -l /usr/bin
   - export LDFLAGS=-Wl,-no-as-needed
 #  - if test "$COVERAGE" = "On" ; then export CFLAGS="-coverage" ; export CXXFLAGS="-coverage" ; fi
+  - echo $PATH
   - ./configure --prefix=$HOME/stat --with-stackwalker=$HOME/local/dyninst --with-mrnet=$HOME/local --with-graphlib=$HOME/local --with-launchmon=$HOME/local --enable-debug --enable-code-coverage || cat config.log
   - make && make install
+  - /usr/bin/mpicc -g examples/src/mpi_ringtopo.c -o $HOME/stat/bin/mpi_ringtopo.out
 
 after_script:
   - ls -l $HOME/stat/bin
@@ -90,7 +126,18 @@ after_script:
   - mpirun --version
   - export LMON_FE_ENGINE_TIMEOUT=20
   - sleep 40
-  - mpirun -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 40 & $HOME/stat/bin/stat-cl -s 2 -l FE -l BE -L $HOME $!
+  - ping -c 1 localhost
+  - rsh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no `hostname` hostname  & export RSHPID=$! ; sleep 5; kill -9 $RSHPID
+  - ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no `hostname` hostname  & export RSHPID=$! ; sleep 5; kill -9 $RSHPID
+  - export MYHN=`hostname`
+  - ping -c 1 $MYHN
+  - rsh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $MYHN hostname  & export RSHPID=$! ; sleep 5; kill -9 $RSHPID
+  - ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $MYHN hostname  & export RSHPID=$! ; sleep 5; kill -9 $RSHPID
+  - alias ssh='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no' 
+  - ssh $MYHN hostname  & export RSHPID=$! ; sleep 5; kill -9 $RSHPID
+  - /usr/bin/mpirun -n 4 $HOME/stat/bin/mpi_ringtopo.out 10
+  - /usr/bin/mpirun --mca btl self,sm,tcp --mca btl_base_verbose 30 --host $MYHN,$MYHN,$MYHN,$MYHN -n 4 $HOME/stat/bin/mpi_ringtopo 40
+  - /home/travis/local/bin/mpirun --mca btl self,sm,tcp --mca btl_base_verbose 30 --oversubscribe --host $MYHN,$MYHN,$MYHN,$MYHN -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 40 & $HOME/stat/bin/stat-cl -s 2 -l FE -l BE -L $HOME $!
   - wait $!
   - cat stat_results/mpi_ringtopo.0000/mpi_ringtopo.0000.top
   - cat stat_results/mpi_ringtopo.0000/mpi_ringtopo.0000.fulltop
@@ -99,7 +146,7 @@ after_script:
   - cat stat_results/mpi_ringtopo.0000/02_mpi_ringtopo.0000.2D.dot
   - cat stat_results/mpi_ringtopo.0000/03_mpi_ringtopo.0000.2D.dot
   - cat stat_results/mpi_ringtopo.0000/04_mpi_ringtopo.0000.3D.dot
-  - $HOME/stat/bin/stat-cl -s 5 -l FE -l BE -L $HOME -C $HOME/local/bin/mpirun -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 40 &
+  - $HOME/stat/bin/stat-cl -s 5 -l FE -l BE -L $HOME -C $HOME/local/bin/mpirun --oversubscribe -n 4 $HOME/stat/share/stat/examples/bin/mpi_ringtopo 40 &
   - sleep 40
   - kill -18 $!
   - ps x | grep mpirun | grep -v grep | cut -f 1 -d " " | xargs kill -18
@@ -110,9 +157,9 @@ after_script:
   - cat stat_results/mpi_ringtopo.0001/02_mpi_ringtopo.0001.2D.dot
   - cat stat_results/mpi_ringtopo.0001/03_mpi_ringtopo.0001.2D.dot
   - cat stat_results/mpi_ringtopo.0001/04_mpi_ringtopo.0001.3D.dot
-#  The script test currently fails as openmpi does not support reattach when launched under a debugger (https://github.com/open-mpi/ompi/issues/3178)
 #  The script test may also hang with openmpi-2.0.3. This appears to be a race condition when deleting the stat_fe object
 #  - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py -l $HOME/local/bin/mpirun || echo "failed with $?"
   - bash <(curl -s https://codecov.io/bash)
   - coveralls --exclude lib --exclude tests -i ./src --gcov-options '\-lp'
   #- if test "$COVERAGE" = "On" ; then bash <(curl -s https://codecov.io/bash) ; fi
+  - echo 'done'

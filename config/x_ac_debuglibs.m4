@@ -10,6 +10,18 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
      STACKWALKERPREFIX="${withval}"]
   )  
 
+  AC_ARG_WITH(elfutils,
+    [AS_HELP_STRING([--with-elfutils=prefix],
+      [Add the compile and link search paths for elfutils]
+    )],
+    [CXXFLAGS="$CXXFLAGS -I${withval}/include"
+     LDFLAGS="-L${withval}/lib -ldw $LDFLAGS"
+     ELFUTILSPREFIX="${withval}"
+     RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"],
+    [CXXFLAGS="$CXXFLAGS"
+     ELFUTILSPREFIX="${withval}"]
+  )
+
   AC_ARG_WITH(stackwalker,
     [AS_HELP_STRING([--with-stackwalker=prefix],
       [Add the compile and link search paths for stackwalker]
@@ -121,7 +133,7 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   if test "$libstackwalk_found" = yes; then
     BELIBS="-ldyninstAPI -lstackwalk -lpcontrol -lparseAPI -linstructionAPI -lsymtabAPI -lcommon -ldynElf -ldynDwarf -lsymLite $BELIBS"
   else
-    LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lpcontrol -lparseAPI -linstruction -lcommon -lpthread"
+    LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lpcontrol -lparseAPI -linstructionAPI -lcommon -lpthread"
     AC_LINK_IFELSE([AC_LANG_PROGRAM(#include "walker.h"
       using namespace Dyninst;
       using namespace Dyninst::Stackwalker;
@@ -131,7 +143,7 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     )
     LDFLAGS=$TMP_LDFLAGS
     if test "$libstackwalk_found" = yes; then
-      BELIBS="-ldyninstAPI -lstackwalk -lsymtabAPI -lpcontrol -lparseAPI -linstruction -lcommon $BELIBS"
+      BELIBS="-ldyninstAPI -lstackwalk -lsymtabAPI -lpcontrol -lparseAPI -linstructionAPI -lcommon $BELIBS"
     else
       LDFLAGS="$LDFLAGS -lstackwalk -lsymtabAPI -lcommon -lpthread"
       AC_LINK_IFELSE([AC_LANG_PROGRAM(#include "walker.h"

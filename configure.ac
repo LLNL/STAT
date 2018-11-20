@@ -57,7 +57,7 @@ AC_ARG_ENABLE(rpath,
 )
 if test "$WITH_RPATH" = "yes"
 then
-  LDFLAGS="$LDFLAGS $RPATH_FLAGS"
+  LDFLAGS="$RPATH_FLAGS $LDFLAGS"
 else
   LDFLAGS="$LDFLAGS"
 fi
