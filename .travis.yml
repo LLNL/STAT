@@ -8,6 +8,7 @@ sudo: required
 
 env:
   matrix:
+    - fast_finish: true
     - gcc-4.8
       COVERAGE=On
 
@@ -67,28 +68,28 @@ before_install:
 script:
   - export CC=gcc-4.8
   - export CXX=g++-4.8
-  - ls -l $HOME/local
-  - ls -l $HOME/local/lib
-  - ls -l $HOME/local/lib/openmpi
-  - file /home/travis/local/lib/openmpi/mca_state_staged_orted.so
-  - ldd /home/travis/local/lib/openmpi/mca_state_staged_orted.so
-  - file /home/travis/local/lib/openmpi/mca_state_staged_hnp.so
-  - ldd /home/travis/local/lib/openmpi/mca_state_staged_hnp.so
-  - file /home/travis/local/lib/openmpi/mca_oob_usock.so
-  - ldd /home/travis/local/lib/openmpi/mca_oob_usock.so
-  - ls -l $HOME/local/bin
-  - ls -l $HOME/local/etc
-  - cat $HOME/local/etc/rm_openrte.conf
-  - ls -l $HOME/local/include
-  - cd $HOME/build/LLNL/STAT
+#  - ls -l $HOME/local
+#  - ls -l $HOME/local/lib
+#  - ls -l $HOME/local/lib/openmpi
+#  - file /home/travis/local/lib/openmpi/mca_state_staged_orted.so
+#  - ldd /home/travis/local/lib/openmpi/mca_state_staged_orted.so
+#  - file /home/travis/local/lib/openmpi/mca_state_staged_hnp.so
+#  - ldd /home/travis/local/lib/openmpi/mca_state_staged_hnp.so
+#  - file /home/travis/local/lib/openmpi/mca_oob_usock.so
+#  - ldd /home/travis/local/lib/openmpi/mca_oob_usock.so
+#  - ls -l $HOME/local/bin
+#  - ls -l $HOME/local/etc
+#  - cat $HOME/local/etc/rm_openrte.conf
+#  - ls -l $HOME/local/include
+#  - cd $HOME/build/LLNL/STAT
   - ./bootstrap
-  - ls -l /usr/lib
-  - ls -l /usr/lib64
-  - ls -l /usr/include/boost
-  - ls -l /opt
-  - ls -l /
-  - ls -l /usr
-  - ls -l /usr/bin
+#  - ls -l /usr/lib
+#  - ls -l /usr/lib64
+#  - ls -l /usr/include/boost
+#  - ls -l /opt
+#  - ls -l /
+#  - ls -l /usr
+#  - ls -l /usr/bin
   - export LDFLAGS=-Wl,-no-as-needed
 #  - if test "$COVERAGE" = "On" ; then export CFLAGS="-coverage" ; export CXXFLAGS="-coverage" ; fi
   - echo $PATH
@@ -161,3 +162,4 @@ after_script:
   - bash <(curl -s https://codecov.io/bash)
   - coveralls --exclude lib --exclude tests -i ./src --gcov-options '\-lp'
   #- if test "$COVERAGE" = "On" ; then bash <(curl -s https://codecov.io/bash) ; fi
+  - echo 'done'

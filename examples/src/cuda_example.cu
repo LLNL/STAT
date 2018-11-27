@@ -19,9 +19,44 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <assert.h>
 
 #ifdef USEMPI
 #include "mpi.h"
+
+char hostname[256];
+int sleeptime = -1;
+void do_SendOrStall(int to, int tag, int rank, int* buf, MPI_Request* req, int n)
+{
+    int i;
+    if (rank == 1)
+    {
+        if (sleeptime == -1)
+        {
+            printf("%s, MPI task %d of %d stalling\n", hostname, rank, n);
+            fflush(stdout);
+            while(1) ;
+        }
+        else
+        {
+            for (i = sleeptime/10; i > 0; i = i - 1)
+            {
+                printf("%s, MPI task %d of %d stalling for %d of %d seconds\n", hostname, rank, n, i*10, sleeptime);
+                fflush(stdout);
+                sleep(10);
+            }
+            printf("%s, MPI task %d of %d proceeding\n", hostname, rank, n);
+            fflush(stdout);
+        }
+    }
+
+    MPI_Isend(buf, 1, MPI_INT, to, tag, MPI_COMM_WORLD, req);
+}
+
+void do_Receive(int from, int tag, int* buf, MPI_Request* req)
+{
+    MPI_Irecv(buf, 1, MPI_INT, from, tag, MPI_COMM_WORLD, req);
+}
 #endif
 
 #define N (32*10)
@@ -30,6 +65,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 __device__ void foo()
 {
    int i, x, y;
+#ifdef CRASH
+   assert(0);
+#endif
 #ifdef NOHANG
    for (i = 0; i <= 1000000; i++)
 #else
@@ -49,13 +87,25 @@ __device__ void bar()
 __global__
 void add(int *a, int *b)
 {
-    int i = threadIdx.x + blockIdx.x * blockDim.x;
+    int i = threadIdx.x + blockIdx.x * blockDim.x, *z;
     if (i<N)
+    {
         b[i] = 2*a[i];
+#ifdef CRASH
+        z[i] = b[i];
+        b[i] = z[i];
+#endif
+    }
     if (threadIdx.x % 32 == 0)
         bar();
     else
         bar();
+#ifdef CRASH
+    free(z);
+    free(z);
+    free(a);
+    free(b);
+#endif
 }
 
 __global__
@@ -70,9 +120,11 @@ void add2(int *a, int *b)
 int main(int argc, char **argv)
 {
     int ha[N], hb[N], hc[N];
-    char hostname[256];
     gethostname(hostname, 256);
 #ifdef USEMPI
+    int next, prev, buf[2], tag=2;
+    MPI_Request reqs[2];
+    MPI_Status stats[2];
     int numtasks, rank;
     MPI_Init(&argc,&argv);
     MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
@@ -95,14 +147,44 @@ int main(int argc, char **argv)
 #ifdef USEMPI
     if (rank % 2 == 0)
 #endif
+#ifdef HOSTCRASH
+    {
+        free(da);
+        free(da);
+        free(0);
+    }
+#endif
     add<<<N/THREADS_PER_BLOCK, THREADS_PER_BLOCK>>>(da, db);
     add2<<<N/THREADS_PER_BLOCK, THREADS_PER_BLOCK>>>(dc, dd);
+
+#ifdef USEMPI
+
+    if (argc > 1)
+        sleeptime = atoi(argv[1]);
+    prev = rank-1;
+    next = rank+1;
+    if (rank == 0)
+        prev = numtasks - 1;
+    if (rank == (numtasks - 1))
+        next = 0;
+
+    do_Receive(prev, tag, &buf[0], &reqs[0]);
+    do_SendOrStall(next, tag, rank, &buf[1], &reqs[1], numtasks);
+    MPI_Waitall(2, reqs, stats);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+#endif
     cudaMemcpy(hc, dd, N*sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(hb, db, N*sizeof(int), cudaMemcpyDeviceToHost);
     for (int i = 0; i<N; ++i)
       if (i == 99)
         printf("%d\n", hb[i], hc[i]);
+    fflush(stdout);
     cudaFree(da);
     cudaFree(db);
+#ifdef USEMPI
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Finalize();
+#endif
     return 0;
 }
