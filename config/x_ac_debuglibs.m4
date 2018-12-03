@@ -1,5 +1,5 @@
 AC_DEFUN([X_AC_DEBUGLIBS], [
-
+  [CXXFLAGS="$CXXFLAGS -std=c++11"]
   AC_ARG_ENABLE(stackwalker-rpm,
     [AS_HELP_STRING([--enable-stackwalker-rpm],[Enable the use of rpm-installed stackwalker, default=no])],
     [CXXFLAGS="$CXXFLAGS -I/usr/include/dyninst"

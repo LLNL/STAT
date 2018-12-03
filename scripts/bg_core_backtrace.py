@@ -38,6 +38,7 @@ class CoreType(Enum):
     LCF = 3
     FUNCTION_SOURCE_LINE = 4
     HEXADDR = 5
+    FUNCTION_SOURCE = 6
 
 addr2line_exe = '/usr/bin/addr2line'
 addr2line_map = {}
@@ -87,6 +88,7 @@ class BgCoreTrace(StatTrace):
         patterns[CoreType.DYSECT] = r"([^\+]+)\+([^\+]+)"
         patterns[CoreType.LCF] = r"([^:]+):(.*)"
         patterns[CoreType.FUNCTION_SOURCE_LINE] = r"([^@]+)@([^:]+):([0-9\?]+)"
+        patterns[CoreType.FUNCTION_SOURCE] = r"([^@]+)@([^@]+)"
         patterns[CoreType.UNKNOWN] = r"[.]*"
         any_lcf = False
         for line in f:
@@ -107,7 +109,8 @@ class BgCoreTrace(StatTrace):
                 function_only_trace = []
                 continue
             elif line.find('---STACK') != -1 or line.find('End of stack') != -1:
-                if (core_type == CoreType.DYSECT or core_type == CoreType.FUNCTION_SOURCE_LINE) and any_lcf == False:
+                #if (core_type == CoreType.DYSECT or core_type == CoreType.FUNCTION_SOURCE_LINE) and any_lcf == False:
+                if core_type == CoreType.DYSECT:
                     # module offset frames are coming from callpath and need to be
                     # flipped such that the TOS is at the end of the trace
                     line_number_trace.reverse()
@@ -178,6 +181,12 @@ class BgCoreTrace(StatTrace):
                 module = self.options["exe"]
                 addr = match.group(1)
                 line_info = ''
+            match = re.match(patterns[CoreType.FUNCTION_SOURCE], line)
+            if line_info is None and match:
+                core_type = CoreType.FUNCTION_SOURCE
+                function = match.group(1)
+                source = match.group(2)
+                line_info = '%s@%s:-1' %(function, source)
             if line_info is None:
                 if line != '***FAULT':
                     sys.stderr.write('\nWarning: format of stack frame "%s" not recognized for core type %s\n\n' %(line, core_type))
