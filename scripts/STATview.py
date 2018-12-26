@@ -1948,13 +1948,52 @@ class STATGraph(xdot_ui_elements.Graph):
 
     ## \param self - the instance
     #  \param filename - the output file name
+    #
+    #  \n
+    def save_folded_trace(self, filename):
+        """Save the current graph as a folded trace.
+        The folded trace can then be used to generate a
+        flame graph (https://github.com/brendangregg/FlameGraph)"""
+
+        try:
+            with open(filename, 'w') as f:
+                for node in self.nodes:
+                    if node.hide:
+                        continue
+                    #if node.is_leaf:
+                    if self.node_is_visual_leaf(node):
+                        temp_node = node
+                        count = node.get_num_visual_leaf_tasks()
+                        #count = node.get_num_leaf_tasks()
+                        trace = node.attrs["label"]
+                        x = 0
+                        while 1:
+                            if temp_node.in_edge == None:
+                                break
+                            temp_node = temp_node.in_edge.src
+                            if temp_node == None:
+                                break
+                            trace = temp_node.attrs["label"] + ";" + trace
+                        f.write(trace + " " + str(count) + "\n")
+        except IOError as e:
+            show_error_dialog('%s\nFailed to open file "%s" for writing' % (repr(e), filename), exception=e)
+            return False
+        except Exception as e:
+            show_error_dialog('%s\nFailed to process file "%s" for writing' % (repr(e), filename), exception=e)
+            return False
+        return True
+
+    ## \param self - the instance
+    #  \param filename - the output file name
     #  \param full_edge_label - [optional] whether to save full edge labels, defaults to True
     #  \param full_node_label - [optional] whether to save full node labels, defaults to True
+    #  \param translate_module_offset - [optional] whether to translate module offset traces to source + line, defaults to False
     #
     #  \n
     def save_dot(self, filename, full_edge_label=True, full_node_label=True, translate_module_offset=False):
         """Save the current graph as a dot file."""
         try:
+            f2 = open("test.perf-folded", "w")
             with open(filename, 'w') as f:
                 f.write('digraph G {\n')
                 f.write('\tgraph [type="stat_%d_%d"];\n' %(__version_major__, __version_minor__))
@@ -1968,6 +2007,7 @@ class STATGraph(xdot_ui_elements.Graph):
                             node_text = shape.t
                         else:
                             fill_color = shape.pen.fillcolor
+
                     if translate_module_offset is True and node.attrs["module"] != "(null)":
                         eq_collapsed_label = ''
                         for i, label in enumerate(node.attrs["label"].split('\\n')):
@@ -2033,6 +2073,8 @@ class STATGraph(xdot_ui_elements.Graph):
         """Save the current graph into a dot file or image file."""
         if os.path.splitext(filename)[1] == '.dot':
             ret = self.save_dot(filename)
+        elif os.path.splitext(filename)[1] == '.perf-folded':
+            ret = self.save_folded_trace(filename)
         else:
             temp_dot_filename = os.path.splitext(filename)[0] + '_tmp.dot'
             ret = self.save_dot(temp_dot_filename, False, False)
@@ -3675,7 +3717,7 @@ entered as a regular expression"""
         """Callback to generate save dialog."""
         if self.get_current_graph().cur_filename == '':
             return False
-        file_extensions = ['dot graph file', 'gif image file', 'pdf document file', 'png image file', 'jpg image file', 'fig figure file', 'ps image file']
+        file_extensions = ['dot graph file', 'gif image file', 'pdf document file', 'png image file', 'jpg image file', 'fig figure file', 'ps image file', 'perf-folded trace file']
         short_file_extensions = []
         for file_extension in file_extensions:
             short_file_extensions.append('.' + file_extension.split()[0])

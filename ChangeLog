@@ -1,3 +1,6 @@
+2018-12-26 Gregory L. Lee <lee218@llnl.gov>
+	* STATview.py : Added ability to generate folded trace file for flamegraph
+
 2018-11-20 Gregory L. Lee <lee218@llnl.gov>
 	* : Added dyninst 10.0 support
 
