@@ -186,7 +186,9 @@ class CoreFile:
                          'rank': CoreFile._next_rank,
                          'rankSize': None,
                          'traces': []}
-        CoreFile._next_rank += 1
+        if coreFile not in CoreFile._files:
+            CoreFile._next_rank += 1
+            CoreFile._files.append(coreFile)
 
     def add_functions(self, functions):
         """If the functions array isn't empty, reverse it to get a proper trace, and
