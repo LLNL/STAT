@@ -372,8 +372,11 @@ class CoreFile:
             logging.info("Reconnecting gdb to the core file (%s) AND the executable (%s)"%(self.coreData['coreFile'],executable))
         lines = gdb.open(self.coreData['coreFile'], executable)
         # at some point we needed to gobble up an extra command prompt:
-        #lines2 = gdb.readlines()
-        #lines += lines2
+        # as of 01/30/19 this appears to be necessary on PPC64 LE w/ vanilla GDB
+        # as of 01/30/19 this appears to be unnecessary on PPC64 LE w/ vanilla GDB
+        if CoreFile.__options['cuda'] != 1:
+            lines2 = gdb.readlines()
+            lines += lines2
 
         #Check for gdb errors
         logging.debug("Checking for gdb errors")
@@ -586,6 +589,15 @@ def STATmerge_main(arg_list):
     core_file_type = 'full'
     sys.argv = sys.argv[1:]
     try:
+        files = arg_list[arg_list.index("-c") + 1:]
+        empty_files = []
+        for file in files:
+            if os.stat(file).st_size == 0:
+                empty_files.append(file)
+        if empty_files != []:
+            sys.stderr.write("Warning: ignoring empty files %s" %repr(empty_files))
+            for file in empty_files:
+                arg_list.remove(file)
         file_path = arg_list[arg_list.index("-c") + 1]
         if os.path.isdir(file_path):
             file_dir = file_path

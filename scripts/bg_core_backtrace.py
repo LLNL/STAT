@@ -218,7 +218,12 @@ class BgCoreMerger(StatMerger):
         for filename in trace_files:
             if filename.rfind('.') != -1:
                 rank = filename[filename.rfind('.')+1:]
-                rank = int(rank)
+                try:
+                    rank = int(rank)
+                except Exception as e:
+                    print("error determining rank of %s", filename)
+                    print(e)
+                    continue
                 if rank > high_rank:
                     high_rank = rank
         return high_rank
@@ -236,6 +241,9 @@ class BgCoreMergerArgs(StatMergerArgs):
 
         # add an agrument type to take the application executable path
         self.arg_map["addr2line"] = StatMergerArgs.StatMergerArgElement("a", True, str, "NULL", "the path to addr2line")
+        self.arg_map["loglevel"] = StatMergerArgs.StatMergerArgElement("L", True, str, "error", "the verbosity level (critical|error|warning|info|verbose|debug|insane)")
+        self.arg_map["logfile"] = StatMergerArgs.StatMergerArgElement("F", True, str, "stdout", "the log file name (defaults to stdout)")
+        self.arg_map["force"] = StatMergerArgs.StatMergerArgElement("r", False, int, 0, "whether to force parsing on warnings and errors")
 
         # override the usage messages:
         self.usage_msg_synopsis = '\nThis tool will merge the stack traces from the user-specified lightweight core files and output 2 .dot files, one with just function names, the other with function names + line number information\n'
