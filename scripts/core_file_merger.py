@@ -178,6 +178,7 @@ class CoreFile:
     __reFrame = re.compile(r"#(\d+)\s+(?:0x\S+\s+in\s+)?(\S+)\s+\(.*\)(?:\s+at\s+(\S+:\d+))?")
     __options = None
     _next_rank = 0
+    _files = []
 
     def __init__ (self, coreFile, options):
         if CoreFile.__options is None and not options is None:
@@ -373,12 +374,6 @@ class CoreFile:
             #Reconnect to gdb using executable
             logging.info("Reconnecting gdb to the core file (%s) AND the executable (%s)"%(self.coreData['coreFile'],executable))
         lines = gdb.open(self.coreData['coreFile'], executable)
-        # at some point we needed to gobble up an extra command prompt:
-        # as of 01/30/19 this appears to be necessary on PPC64 LE w/ vanilla GDB
-        # as of 01/30/19 this appears to be unnecessary on PPC64 LE w/ vanilla GDB
-        if CoreFile.__options['cuda'] != 1:
-            lines2 = gdb.readlines()
-            lines += lines2
 
         #Check for gdb errors
         logging.debug("Checking for gdb errors")
@@ -398,13 +393,21 @@ class CoreFile:
                 if not force:
                     sys.exit(2)
             elif 'warning: core file may not match specified executable file.' in line:
+                logging.critical("GDB: The executable (%s/%s) may not match the core file (%s/%s).\nThis may result in incorrect traces or hangs in this utility" %(exedir, executable, coredir, self.coreData['coreFile']))
                 if not force:
-                    logging.critical("GDB: The executable (%s/%s) may not match the core file (%s/%s). Use -r to run anyway\n" %(exedir,executable, coredir,self.coreData['coreFile']))
+                    logging.critical("Use -r to run anyway\n")
                     sys.exit(2)
             elif "%s: No such file or directory."%(executable) in line:
                 logging.critical("GDB: The executable (%s/%s) doesn't exist." %(exedir,executable))
                 if not force:
                     sys.exit(2)
+
+        # at some point we needed to gobble up an extra command prompt:
+        # as of 01/30/19 this appears to be necessary on PPC64 LE w/ vanilla GDB
+        # as of 01/30/19 this appears to be unnecessary on PPC64 LE w/ vanilla GDB
+        if CoreFile.__options['cuda'] != 1:
+            lines2 = gdb.readlines()
+            lines += lines2
 
         if symbols_loaded:
             #Find the value for the returned size from MPI_Comm_size()
@@ -591,29 +594,46 @@ def STATmerge_main(arg_list):
     core_file_type = 'full'
     sys.argv = sys.argv[1:]
     try:
+        is_dir = False
         files = arg_list[arg_list.index("-c") + 1:]
+        first_file = files[0]
+        if os.path.isdir(first_file):
+            is_dir = True
+            filenames = os.listdir(first_file)
+            files = []
+            for filename in filenames:
+                if filename.find('core') != -1 and not os.path.isdir(filename):
+                    files.append(first_file + '/' + filename)
         empty_files = []
-        for file in files:
-            if os.stat(file).st_size == 0:
-                empty_files.append(file)
+        file_types = {}
+        file_types['full'] = False
+        file_types['lw'] = False
+        for filename in files:
+            if os.stat(filename).st_size == 0:
+                empty_files.append(filename)
+            else:
+                p = subprocess.Popen(['file', filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                output, error = p.communicate()
+                if output.find('core file') != -1:
+                    file_types['full'] = True
+                elif output.find('ASCII text') != -1:
+                    f = open(filename, "r")
+                    line = f.readline()
+                    f.close()
+                    if line.find("LIGHTWEIGHT COREFILE") != -1 or line.find("Summary") != -1:
+                        file_types['lw'] = True
+                        core_file_type = 'lightweight'
+        if file_types['full'] == True and file_types['lw'] == True:
+            sys.stderr.write('Detected both full and lightweight core files. Please only specify files of one type\n')
+            sys.exit(2)
         if empty_files != []:
-            sys.stderr.write("Warning: ignoring empty files %s" %repr(empty_files))
-            for file in empty_files:
-                arg_list.remove(file)
-        file_path = arg_list[arg_list.index("-c") + 1]
-        if os.path.isdir(file_path):
-            file_dir = file_path
-            for file_path in os.listdir(file_path):
-                full_path = os.path.join(file_dir, file_path)
-                if full_path.find('core') != -1 and not os.path.isdir(full_path):
-                    file_path = full_path
-                    break
-        f = open(file_path, "r")
-        line = f.readline()
-        if line.find("LIGHTWEIGHT COREFILE") != -1 or line.find("Summary") != -1:
-            core_file_type = 'lightweight'
-        else:
-            core_file_type = 'full'
+            sys.stderr.write("Warning: ignoring empty files %s\n" %repr(empty_files))
+            for filename in empty_files:
+                files.remove(filename)
+        arg_list = arg_list[:arg_list.index("-c") + 1]
+        sys.argv = sys.argv[:sys.argv.index("-c") + 1]
+        arg_list += files
+        sys.argv += files
     except Exception as e:
         sys.stderr.write('failed to determine core file type: %s\n' %e)
 
