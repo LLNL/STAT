@@ -29,16 +29,17 @@ import subprocess
 import sys
 import argparse
 
-rms = {"alps":"aprun", "slurm":"srun"}
+rms = {"alps":"aprun", "slurm":"srun", "lsf":"jsrun"}
 
 def jobid_to_hostname_pid(rm, jobid, remoteshell):
     pids = []
+    remotehosts = []
     remotehost = None
 
     if rm == None or rm.lower() == 'auto':
         rm = auto_detect_rm()
     if rm == None:
-        return remotehost, None, pids
+        return None, None, pids
 
     rm = rm.lower()
     if rm == 'slurm':
@@ -49,29 +50,40 @@ def jobid_to_hostname_pid(rm, jobid, remoteshell):
             return None, None, []
         if lines[1][-1] == '"':
             lines[1] = lines[1][:len(lines[1]) - 1]
-        remotehost = lines[1]
+        remotehosts = [lines[1]]
+    if rm == 'lsf':
+        proc = subprocess.Popen(["bjobs", "-noheader", "-X", "-o", "exec_host", jobid], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        ret = proc.stdout.read()
+        lines = ret.splitlines()
+        if not lines or lines[0].find("not found") != -1:
+            return None, None, []
+        tokens = lines[0].split('*')
+        remotehosts = [tokens[1][:tokens[1].find(':')], tokens[2][:tokens[1].find(':')]]
     if rm == 'alps':
         proc = subprocess.Popen(["qstat", "-f", jobid], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         ret = proc.stdout.read()
         lines = ret.splitlines()
         for line in lines:
             if line.find("login_node_id") != -1:
-                remotehost = line.split(' = ')[1]
+                remotehosts = [line.split(' = ')[1]]
                 break
-    if remotehost != None:
-        if remotehost.find('.localdomain') != -1:
-            import socket
-            domain_name =  socket.getfqdn().strip(socket.gethostname())
-            remotehost = remotehost[:remotehost.find('.localdomain')]
-        proc = subprocess.Popen([remoteshell, remotehost, "ps", "x"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        ret = proc.stdout.read()
-        lines = ret.splitlines()
-        fmt = lines[0].split()
-        pid_index = fmt.index('PID')
-        for line in lines[1:]:
-            if line.find(rms[rm]) != -1:
-                pids.append(int(line.split()[pid_index]))
-    return remotehost, rms[rm], pids
+    for remotehost in remotehosts:
+        if remotehost != None:
+            if remotehost.find('.localdomain') != -1:
+                import socket
+                domain_name =  socket.getfqdn().strip(socket.gethostname())
+                remotehost = remotehost[:remotehost.find('.localdomain')]
+            proc = subprocess.Popen([remoteshell, remotehost, "ps", "x"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ret = proc.stdout.read()
+            lines = ret.splitlines()
+            fmt = lines[0].split()
+            pid_index = fmt.index('PID')
+            for line in lines[1:]:
+                if line.find(rms[rm]) != -1:
+                    pids.append(int(line.split()[pid_index]))
+    if pids != []:
+        return remotehost, rms[rm], pids
+    return None, None, []
 
 def auto_detect_rm():
     for rm_key in rms:
