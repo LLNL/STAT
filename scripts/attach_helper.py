@@ -75,6 +75,8 @@ def jobid_to_hostname_pid(rm, jobid, remoteshell):
                 remotehost = remotehost[:remotehost.find('.localdomain')]
             proc = subprocess.Popen([remoteshell, remotehost, "ps", "x"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             ret = proc.stdout.read()
+            if lines == []:
+                continue
             lines = ret.splitlines()
             fmt = lines[0].split()
             pid_index = fmt.index('PID')
