@@ -55,7 +55,7 @@ def jobid_to_hostname_pid(rm, jobid, remoteshell):
         proc = subprocess.Popen(["bjobs", "-noheader", "-X", "-o", "exec_host", jobid], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         ret = proc.stdout.read()
         lines = ret.splitlines()
-        if not lines or lines[0].find("not found") != -1:
+        if not lines or lines[0].find("not found") != -1 or lines[0].find("-") != -1:
             return None, None, []
         tokens = lines[0].split('*')
         remotehosts = [tokens[1][:tokens[1].find(':')], tokens[2][:tokens[1].find(':')]]
