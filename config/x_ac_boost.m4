@@ -29,7 +29,7 @@ AC_DEFUN([X_AC_BOOST], [
       AC_SUBST(LIBBOOSTDIR, [$with_boost_path/lib])
       AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system -lboost_system-mt -lboost_wave-mt"])
       AC_DEFINE(HAVE_BOOST_TO,1,[Define 1 if a compatible boost package is found])	
-      boost_found="yes  $LIBBOOSTDIR"
+      boost_found="yes $LIBBOOSTDIR"
     else
       boost_found="no"
     fi
@@ -48,6 +48,9 @@ AC_DEFUN([X_AC_BOOST], [
     else
       boost_found="no"
     fi
+  fi
+  if test "$boost_found" = no; then
+    AC_MSG_ERROR([boost is required. Specify boost prefix with --with-boost])
   fi
   CXXFLAGS="$CXXFLAGS $BOOST_INCLUDE"
   LDFLAGS="$LDFLAGS -L$LIBBOOSTDIR -Wl,-rpath=$LIBBOOSTDIR $LIBBOOST"
