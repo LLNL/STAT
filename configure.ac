@@ -25,8 +25,8 @@ X_AC_GDB
 
 # Checks for libraries.
 X_AC_TEMPORALORDERINGAPI
-AM_PATH_PYTHON
 X_AC_PYTHON
+AM_PATH_PYTHON
 X_AC_GUI
 X_AC_BOOST
 X_AC_ARCH
@@ -129,8 +129,6 @@ then
   AM_PROG_LEX
   AC_PROG_YACC
 fi
-
-AM_PATH_PYTHON
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile
