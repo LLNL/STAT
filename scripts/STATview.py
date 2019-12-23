@@ -3655,7 +3655,7 @@ entered as a regular expression"""
                 stat_wait_dialog.show_wait_dialog_and_run(self.set_dotcode, (f.read(), filename, self.notebook.get_current_page()), ['Opening DOT File'], self)
         except IOError as e:
             show_error_dialog('%s\nFailed to open file:\n\n%s\n\nPlease be sure the file exists and is a valid STAT outputted dot file.' % (repr(e), filename), exception=e)
-        except IOError as e:
+        except Exception as e:
             show_error_dialog('%s\nFailed to process file:\n\n%s\n\nPlease be sure the file exists and is a valid STAT outputted dot file.' % (repr(e), filename), exception=e)
         self.show_all()
         self.update_history()
