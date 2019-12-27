@@ -15,19 +15,22 @@ components=all
 #https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz \
 #https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.3.tar.gz \
 # NOTE: openmpi and dyninst both take a long time to build and will likely cause travis to timeout after 50 minutes, so they should be built in two passes
-downloads="\
-https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.3.tar.gz \
-https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz \
+downloads="https://www.gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.36.tar.bz2 \
+https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.8.5.tar.bz2 \
 https://github.com/dyninst/mrnet/archive/v5.0.1.tar.gz \
+https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz \
 https://www.prevanders.net/libdwarf-20161124.tar.gz \
-https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz \
-https://github.com/dyninst/dyninst/archive/v9.3.2.tar.gz"
+https://github.com/dyninst/dyninst/archive/v9.3.2.tar.gz \
+https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz \
+https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz"
+#https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.3.tar.gz \
 
-checkouts="\
-https://github.com/llnl/launchmon.git"
+checkouts=""
+#checkouts="\
+#https://github.com/llnl/launchmon.git"
 
 declare -A checkout_sha1=(\
-["launchmon"]="a7799a90e8e0a7eaa335135569e0762cc0f0c99d"
+["launchmon"]="2691773256a1b80c7fd554642e54d4de56751e0c"
 )
 
 declare -A extra_configure_opts=(\
@@ -35,6 +38,7 @@ declare -A extra_configure_opts=(\
 ["launchmon"]="--with-test-rm=orte --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
 ["v5.0.1"]="--enable-shared" \
 ["openmpi-3.1.3"]="--enable-orterun-prefix-by-default" \
+["openmpi-4.0.2"]="--enable-orterun-prefix-by-default" \
 ["libdwarf-20161124"]="--enable-shared --disable-nonshared" \
 )
 
@@ -128,13 +132,20 @@ env
 
 for pkg in $downloads; do
     name=$(basename ${pkg} .tar.gz)
+    name=$(basename ${name} .tar.bz2)
     if test "$components" = "dyninst" -a "$name" != "v9.3.2"; then
       continue
     fi
-    if test "$components" = "ompi" -a "$name" != "openmpi-3.1.3"; then
+    if test "$components" = "ompi" -a "$name" != "openmpi-4.0.2"; then
       continue
     fi
+#    if test "$components" = "ompi" -a "$name" != "openmpi-3.1.3"; then
+#      continue
+#    fi
     if test "$components" = "other" -a "$name" = "openmpi-3.1.3"; then
+      continue
+    fi
+    if test "$components" = "other" -a "$name" = "openmpi-4.0.2"; then
       continue
     fi
     if test "$components" = "other" -a "$name" = "v9.3.2"; then
@@ -143,15 +154,22 @@ for pkg in $downloads; do
     cmake_opts="${extra_cmake_opts[$name]}"
     configure_opts="${extra_configure_opts[$name]}"
     cache_name="$name:$sha1:$make_opts:$configure_opts:$cmake_opts"
-    if check_cache "$name"; then
-       say "Using cached version of ${name}"
-       continue
-    fi
+#    if check_cache "$name"; then
+#       say "Using cached version of ${name}"
+#       continue
+#    fi
     export CC=gcc
     export CXX=g++
+    export ACLOCAL_PATH=${prefix}/share/aclocal
+    export PATH=${prefix}/bin:$PATH
     if test "$name" = "v9.3.2"; then
       export VERBOSE=1
       rm -f ${prefix}/lib/libiberty.a
+      export CC=gcc-4.8
+      export CXX=g++-4.8
+    fi
+    if test "$name" = "v5.0.1"; then
+      export VERBOSE=1
       export CC=gcc-4.8
       export CXX=g++-4.8
     fi
@@ -159,11 +177,15 @@ for pkg in $downloads; do
       export CC=gcc-4.8
       export CXX=g++-4.8
     fi
+    if test "$name" = "openmpi-4.0.2"; then
+      export CC=gcc-4.8
+      export CXX=g++-4.8
+    fi
     mkdir -p ${name}  || die "Failed to mkdir ${name}"
     (
       cd ${name} &&
       curl -L -O --insecure ${pkg} || die "Failed to download ${pkg}"
-      tar --strip-components=1 -xf *.tar.gz || die "Failed to un-tar ${name}"
+      tar --strip-components=1 -xf *.tar.gz || tar --strip-components=1 -xf *.tar.bz2 || die "Failed to un-tar ${name}"
       if test -x configure; then
         ./configure --prefix=${prefix} \
                     $configure_opts  || head config.log
@@ -190,8 +212,12 @@ for pkg in $downloads; do
         # No output has been received in the last 10m0s, this potentially indicates a stalled build or something wrong with the build itself.
         make PREFIX=${prefix}
         make PREFIX=${prefix} install
+      elif test "$name" = "v5.0.1"; then
+        # parallel build of mrnet fails to find libxplat
+        make PREFIX=${prefix}
+        make PREFIX=${prefix} install
       else
-        make -j 32 PREFIX=${prefix} 
+        make -j 32 PREFIX=${prefix}
         make -j 32 PREFIX=${prefix} install
       fi
       if test "$name" = "launchmon-v1.0.2"; then
@@ -245,10 +271,10 @@ for url in $checkouts; do
     cmake_opts="${extra_cmake_opts[$name]}"
     configure_opts="${extra_configure_opts[$name]}"
     cache_name="$name:$sha1:$make_opts:$configure_opts:$cmake_opts"
-    if check_cache "$cache_name"; then
-       say "Using cached version of ${name}"
-       continue
-    fi
+#    if check_cache "$cache_name"; then
+#       say "Using cached version of ${name}"
+#       continue
+#    fi
     git clone ${url} ${name} || die "Failed to clone ${url}"
     (
       cd ${name} || die "cd failed"

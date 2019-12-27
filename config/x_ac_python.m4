@@ -8,9 +8,15 @@ AC_DEFUN([X_AC_PYTHON], [
     [PYTHON=${withval}],
     [PYTHON=$PYTHON]
   )
-  AC_MSG_RESULT($PYTHON)
   if test -z "$PYTHON"; then
-    AC_MSG_ERROR([Failed to find python in your path])
+    AC_CHECK_PROGS(PYTHON, python python3, "no")
+    if test "$PYTHON" = "no"; then
+      AC_MSG_ERROR([Failed to find python or python3 in your path])
+    else
+      AC_MSG_RESULT($PYTHON)
+    fi
+  else  
+    AC_MSG_RESULT($PYTHON)
   fi
   STATPYTHON=$PYTHON
   AC_MSG_CHECKING([Python include dir])
