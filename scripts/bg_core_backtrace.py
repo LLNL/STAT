@@ -92,7 +92,8 @@ class BgCoreTrace(StatTrace):
         patterns[CoreType.UNKNOWN] = r"[.]*"
         any_lcf = False
         for line in f:
-            if line == '\n':
+            if line == '\n' or line[0] == '#':
+                print(line)
                 continue
             line = line.strip('"')
             if line.find('Job ID') != -1:
