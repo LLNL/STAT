@@ -324,6 +324,9 @@ def create_temp(dot_filename, truncate, max_node_name):
                 attrs["label"] = node_attr_to_label(attrs, False)
                 output_line = '\t%s [' % id
                 for key in attrs.keys():
+                    if key == 'function' or key == 'label':
+                        if attrs[key].find('{') != -1:
+                            attrs[key] = attrs[key].replace('{', '\{').replace('}', '\}')
                     if key == 'label':
                         label = escaped_label(attrs[key])
                         original_label = label
