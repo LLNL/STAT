@@ -55,9 +55,9 @@ before_install:
   - eval $(./scripts/travis-dep-builder.sh --printenv)
   # travis has a 50 minute timeout for any single command, so we break up the build so it will partially cache as needed. ompi+other can be done in one session, dyninst requires its own.
 #  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=ompi
-#  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=impi
-#  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=other
-#  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
+  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=impi
+  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=other
+  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
 
 script:
   - source $HOME/local/bin/mpivars.sh

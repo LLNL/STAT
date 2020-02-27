@@ -159,10 +159,10 @@ for pkg in $downloads; do
     cmake_opts="${extra_cmake_opts[$name]}"
     configure_opts="${extra_configure_opts[$name]}"
     cache_name="$name:$sha1:$make_opts:$configure_opts:$cmake_opts"
-    if check_cache "$name"; then
-       say "Using cached version of ${name}"
-       continue
-    fi
+#    if check_cache "$name"; then
+#       say "Using cached version of ${name}"
+#       continue
+#    fi
     export CC=gcc
     export CXX=g++
     gcc --version
@@ -195,7 +195,7 @@ EOF
     fi
     if test "$name" = "v9.3.2"; then
       export VERBOSE=1
-      rm -f ${prefix}/lib/libiberty.a
+#      rm -f ${prefix}/lib/libiberty.a
     fi
     mkdir -p ${name}  || die "Failed to mkdir ${name}"
     (
@@ -223,19 +223,19 @@ EOF
         wget https://github.com/open-mpi/ompi/pull/3709.patch
         patch -p1 < 3709.patch
       fi
-#      if test "$name" = "v9.3.2"; then
-#        # parallel build of dyninst was causing travis error:
-#        # No output has been received in the last 10m0s, this potentially indicates a stalled build or something wrong with the build itself.
-#        make PREFIX=${prefix}
-#        make PREFIX=${prefix} install
+      if test "$name" = "v9.3.2"; then
+        # parallel build of dyninst was causing travis error:
+        # No output has been received in the last 10m0s, this potentially indicates a stalled build or something wrong with the build itself.
+        make PREFIX=${prefix}
+        make PREFIX=${prefix} install
 #      elif test "$name" = "v5.0.1"; then
 #        # parallel build of mrnet fails to find libxplat
 #        make PREFIX=${prefix}
 #        make PREFIX=${prefix} install
-#      else
+      else
         make -j 32 PREFIX=${prefix}
         make -j 32 PREFIX=${prefix} install
-#      fi
+      fi
       if test "$name" = "launchmon-v1.0.2"; then
         pushd test/src
         echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
@@ -288,10 +288,10 @@ for url in $checkouts; do
     cmake_opts="${extra_cmake_opts[$name]}"
     configure_opts="${extra_configure_opts[$name]}"
     cache_name="$name:$sha1:$make_opts:$configure_opts:$cmake_opts"
-    if check_cache "$cache_name"; then
-       say "Using cached version of ${name}"
-       continue
-    fi
+#    if check_cache "$cache_name"; then
+#       say "Using cached version of ${name}"
+#       continue
+#    fi
     git clone ${url} ${name} || die "Failed to clone ${url}"
     (
       cd ${name} || die "cd failed"
