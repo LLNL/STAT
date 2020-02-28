@@ -1,3 +1,6 @@
+2020-02-28 Gregory L. Lee <lee218@llnl.gov>
+	* : tag version 4.0.2
+
 2018-12-26 Gregory L. Lee <lee218@llnl.gov>
 	* STATview.py : Added ability to generate folded trace file for flamegraph
 
