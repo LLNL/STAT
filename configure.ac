@@ -27,7 +27,6 @@ X_AC_TEMPORALORDERINGAPI
 X_AC_PYTHON
 AM_PATH_PYTHON
 X_AC_GUI
-X_AC_BOOST
 X_AC_ARCH
 X_AC_DEBUGLIBS
 X_AC_GRAPHLIB
@@ -37,6 +36,12 @@ X_AC_RM_COMM
 X_AC_MRNET
 X_AC_FGFS
 X_AC_CALLPATH
+
+
+PKG_PROG_PKG_CONFIG
+PKG_CHECK_MODULES([CRAY_CTI_FE],[common_tools_fe],[],[AC_MSG_ERROR([libcommontools_fe.so not found.])])
+PKG_CHECK_MODULES([CRAY_CTI_BE],[common_tools_be],[],[AC_MSG_ERROR([libcommontools_be.so not found.])])
+
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -68,6 +73,46 @@ AC_ARG_ENABLE(statbench,
 )
 
 AM_CONDITIONAL([ENABLE_STATBENCH], [test "$WITH_STATBENCH" = yes])
+
+
+AM_CONDITIONAL([CRAY], [test "x$with_cray" != xno])
+dnl Check for --with-cray
+AC_ARG_WITH([cray],
+        [AS_HELP_STRING([--with-cray],
+            [Enable Cray APRUN support.]
+            )
+        ],
+        [with_cray=yes],
+        [with_cray=no]
+        )
+
+dnl check for --with-cray sub-arguments
+if test "x$with_cray" != xno; then
+dnl Check for --with-craytool-inc
+AC_ARG_WITH([craytool-inc],
+        [AS_HELP_STRING([--with-craytool-inc],
+            [Location of the craytool header files.]
+            )
+        ],
+        [CPPFLAGS="$CPPFLAGS -I$withval"],
+        [AC_MSG_WARN([Using default path to the craytool headers.])]
+        )
+dnl Check for --with-craytool-lib
+AC_ARG_WITH([craytool-lib],
+         [AS_HELP_STRING([--with-craytool-lib],
+              [Location of the craytool libraries.]
+               )
+         ],
+         [LDFLAGS="$LDFLAGS -L$withval"
+         AC_SUBST([craytool_path], ["$withval"])
+         libcraytool_path="$withval"
+         ],
+         [AC_MSG_WARN([Using default path to craytool libraries.])]
+         )
+fi
+
+
+
 
 AC_ARG_WITH(procspernode,
   [AS_HELP_STRING([--with-procspernode=num],[Set the maximum number of communication processes per node equal to num, defaults to 1 if not specified])],

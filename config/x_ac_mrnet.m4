@@ -35,19 +35,20 @@ AC_DEFUN([X_AC_MRNET], [
       DataElement pkt;
       pkt.get_array(&type, &bufLength);
     }])],
-    [AC_DEFINE([MRNET40], [], [MRNet 4.0])
-      mrnet_vers=4.0
+    [AC_DEFINE([MRNET50], [], [MRNet 5.0])
+      AC_DEFINE([MRNET40], [], [MRNet 4.0])
+      mrnet_vers=5.0
     ]
   )
   if test $mrnet_vers = -1; then
-    AC_MSG_ERROR([STAT requires MRNet 4.0 or greater. Specify MRNet prefix with --with-mrnet])
+    AC_MSG_ERROR([STAT requires MRNet 5.0 or greater. Specify MRNet prefix with --with-mrnet])
   fi
   AC_MSG_RESULT([$mrnet_vers])
   AC_MSG_CHECKING(for libmrnet)
   TMP_LDFLAGS=$LDFLAGS
-  AC_ARG_WITH(cray-xt,
+  AC_ARG_WITH(cray-cti,
     [],
-    [mrnet_libs="-lmrnet -lxplat -lpthread -ldl -lalps -lalpsutil"],
+    [mrnet_libs="-lmrnet -lxplat -lpthread -ldl -lcommontools_fe -lcommontools_be"],
     [mrnet_libs="-lmrnet -lxplat -lpthread -ldl"]
   )  
   LDFLAGS="$LDFLAGS $mrnet_libs"
