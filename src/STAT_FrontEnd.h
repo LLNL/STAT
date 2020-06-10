@@ -51,6 +51,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #include <fcntl.h>
 #endif
 
+#ifdef CRAYXT
+  #include "common_tools_fe.h"
+#endif
+
 #define STAT_MAX_FILENAME_ID 8192
 #define STAT_MAX_FANOUT 64
 
@@ -747,6 +751,15 @@ class STAT_FrontEnd
         */
         StatError_t receiveStackTraces(bool blocking = true);
 
+
+        //! validate the apid with CTI
+        /*!
+         return STAT_OK on success
+         Performs validate of apid/launcherPid_ with CTI
+         */
+        StatError_t validateApidWithCTI();
+
+
         //! Launch the STAT daemons
         /*!
             \return STAT_OK on success
@@ -934,6 +947,9 @@ class STAT_FrontEnd
         unsigned int logging_;                              /*!< the logging level */
         unsigned int nDaemonsPerNode_;                      /*!< the number of daemons per node */
         int jobId_;                                         /*!< the batch job ID */
+#ifdef CRAYXT
+        cti_app_id_t CTIAppId_;                             /*!< the CTI application ID */
+#endif
         int lmonSession_;                                   /*!< the LaunchMON session ID */
         int mrnetOutputLevel_;                              /*!< the MRNet output level */
         char **launcherArgv_;                               /*!< the job launch arguments */

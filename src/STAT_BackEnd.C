@@ -1,4 +1,4 @@
-/*
+/**
 Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
@@ -519,6 +519,15 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
 
 StatError_t STAT_BackEnd::init()
 {
+
+    char *pHangTime = getenv("STAT_BE_HANG_SECONDS");
+    if (pHangTime) {
+        int hangTime = atoi(pHangTime);
+        while (hangTime--) {
+            sleep(1);
+        }
+    }
+
     int intRet;
     char abuf[INET_ADDRSTRLEN], fileName[BUFSIZE], *envValue;
     FILE *file;

@@ -45,5 +45,5 @@ AC_DEFUN([X_AC_PYTHON], [
     AM_CONDITIONAL([ENABLE_PYTHON2], true)
   fi
   AC_MSG_RESULT($python_version)
-  AM_COND_IF([ENABLE_GDB], [BELIBS="-lpython$python_version $BELIBS"], [])
+  BELIBS="-lpython$python_version $BELIBS"
 ])
