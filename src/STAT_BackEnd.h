@@ -498,10 +498,10 @@ class STAT_BackEnd
             \param type - the struct type
             \return the vector of the struct's components on success
         */
-#if DYNINST_MAJOR_VERSION >= 10
+#if DYNINST_MAJOR_VERSION == 10 && DYNINST_MINOR_VERSION <= 1
         tbb::concurrent_vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
 #else
-        std::vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
+        Dyninst::dyn_c_vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
 #endif
 
         //! Get Python script level frame info
