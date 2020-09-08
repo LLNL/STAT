@@ -181,7 +181,7 @@ class GdbDriver(object):
         if check_lines(lines) == False:
             return tids
         for line in lines:
-            if line[0] == '*':
+            if line and line[0] == '*':
                 line = line[1:]
             line = line.split()
             try:
