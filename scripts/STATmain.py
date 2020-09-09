@@ -28,6 +28,11 @@ __version__ = "%d.%d.%d" % (__version_major__, __version_minor__, __version_revi
 import sys
 import os
 import argparse
+HAVE_GDB_SUPPORT = True
+try:
+    from STAT import STAT_SAMPLE_CUDA_QUICK
+except:
+    HAVE_GDB_SUPPORT = False
 HAVE_STATVIEW = True
 import_exception = None
 try:
@@ -41,11 +46,6 @@ try:
 except Exception as e:
     HAVE_STATGUI = False
     import_exception = e
-HAVE_GDB_SUPPORT = True
-try:
-    from STAT import STAT_SAMPLE_CUDA_QUICK
-except:
-    HAVE_GDB_SUPPORT = False
 from STAThelper import exec_and_exit
 from core_file_merger import STATmerge_main
 

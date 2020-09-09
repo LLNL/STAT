@@ -1,3 +1,10 @@
+2020-09-09 Gregory L. Lee <lee218@llnl.gov>
+	scripts/STATmain.py : modified import order to fix Spack installed STAT
+	seg faulting due to wrong libgpg-error being loaded
+
+2020-09-08 Gregory L. Lee <lee218@llnl.gov>
+	* : updated version string to 4.0.3
+
 2020-08-28 Gregory L. Lee <lee218@llnl.gov>
 	STAT_BackEnd.[C,h] : Add Dyninst 10.2 support, remove Dyninst < 10 support
 	config/x_ac_boost.m4 : remove dependence on -mt version of boost libs
