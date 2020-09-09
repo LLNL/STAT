@@ -26,8 +26,14 @@ __version_revision__ = 3
 __version__ = "%d.%d.%d" % (__version_major__, __version_minor__, __version_revision__)
 
 import sys
+import ctypes
 import os
 import argparse
+
+dlflags = sys.getdlopenflags()
+flags = ctypes.RTLD_GLOBAL | dlflags
+sys.setdlopenflags(flags)
+
 HAVE_GDB_SUPPORT = True
 try:
     from STAT import STAT_SAMPLE_CUDA_QUICK
