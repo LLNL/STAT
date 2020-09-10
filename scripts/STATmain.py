@@ -30,9 +30,11 @@ import ctypes
 import os
 import argparse
 
-dlflags = sys.getdlopenflags()
-flags = ctypes.RTLD_GLOBAL | dlflags
-sys.setdlopenflags(flags)
+HAVE_DLOPEN = hasattr(sys, 'getdlopenflags')
+if HAVE_DLOPEN is True:
+    dlflags = sys.getdlopenflags()
+    new_dlflags = ctypes.RTLD_GLOBAL | dlflags
+    sys.setdlopenflags(new_dlflags)
 
 HAVE_GDB_SUPPORT = True
 try:
