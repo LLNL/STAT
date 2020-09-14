@@ -37,15 +37,11 @@ import shelve
 from collections import defaultdict
 import copy
 
-dlopenflags_set = False
-try:
-    import DLFCN
-    sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-    dlopenflags_set = True
-except:
-    pass
-if dlopenflags_set == False:
-    sys.setdlopenflags(os.RTLD_NOW | os.RTLD_GLOBAL)
+HAVE_DLOPEN = hasattr(sys, 'getdlopenflags')
+if HAVE_DLOPEN is True:
+    dlflags = sys.getdlopenflags()
+    new_dlflags = ctypes.RTLD_GLOBAL | dlflags
+    sys.setdlopenflags(new_dlflags)
 
 (MODEL_INDEX_HIDE, MODEL_INDEX_NAME, MODEL_INDEX_CASESENSITIVE, MODEL_INDEX_REGEX, MODEL_INDEX_EDITABLE, MODEL_INDEX_NOTEDITABLE, MODEL_INDEX_CALLBACK, MODEL_INDEX_ICON, MODEL_INDEX_BUTTONNAME) = range(9)
 

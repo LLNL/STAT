@@ -39,15 +39,12 @@ from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_
 
 import sys
 import os
-dlopenflags_set = False
-try:
-    import DLFCN
-    sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-    dlopenflags_set = True
-except:
-    pass
-if dlopenflags_set == False:
-    sys.setdlopenflags(os.RTLD_NOW | os.RTLD_GLOBAL)
+
+HAVE_DLOPEN = hasattr(sys, 'getdlopenflags')
+if HAVE_DLOPEN is True:
+    dlflags = sys.getdlopenflags()
+    new_dlflags = ctypes.RTLD_GLOBAL | dlflags
+    sys.setdlopenflags(new_dlflags)
 
 from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_GDB_ATTACH, STAT_SERIAL_GDB_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
 HAVE_OPENMP_SUPPORT = True
