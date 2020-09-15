@@ -1,4 +1,18 @@
 <section>
+  <title>stat version 4.0.3</title>
+  <para>
+    <itemizedlist>
+      <listitem><para>
+        DynInst 10.2 support
+      </para></listitem>
+      <listitem><para>
+        as always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
+      </para></listitem>
+    </itemizedlist>
+  </para>
+</section>
+
+<section>
   <title>stat version 4.0.2</title>
   <para>
     <itemizedlist>
@@ -14,6 +28,7 @@
     </itemizedlist>
   </para>
 </section>
+
 <section>
   <title>stat version 4.0.1</title>
   <para>

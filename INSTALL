@@ -55,14 +55,17 @@ Installation
 
    STAT and its dependencies can also be built via the Spack
    package management tool, available at
-   https://github.com/LLNL/spack. Running spack install stat
+   https://github.com/spack/spack. Running spack install stat
    should build STAT and all of its dependencies, including those
-   require for the STAT GUI. Note that two Spack variants exist.
+   require for the STAT GUI. Note that three Spack variants exist.
    The first is +examples, to enable building example MPI code
    that STAT can be tested against. This is disabled by default to
    avoid requiring an MPI library, but enabling it will trigger a
    build of MPI. The second is +dysect to enable building of the
-   DySectAPI.
+   DySectAPI. The third is +fgfs to build with
+   FastGlobalFileStatus and target binary broadcast support. FGFS
+   is crucial to scalability, particularly when debugging
+   applications that load several large dynamic libraries.
 
    For STAT 4.0.1 and beyond, the spack build of STAT requires
    Python 3 and will require the activation of the py-xdot package
@@ -142,6 +145,8 @@ make install
    to point to the directories containing the dependent libraries.
 
    STAT can also be configured to use GDB as a backend instead of
-   DynInst. To specify the path to gdb, use the --with-gdb flag.
-   Note that STAT currently still requires DynInst as a dependence
-   even when using the GDB backend.
+   Dyninst. To specify the path to gdb, use the --with-gdb flag.
+   If CUDA kernal traces are desired, the path should point to a
+   working cuda-gdb executable. Note that STAT currently still
+   requires Dyninst as a dependence even when using the GDB
+   backend.

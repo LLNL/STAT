@@ -1,5 +1,5 @@
 <para>
-STAT and its dependencies can also be built via the Spack package management tool, available at <ulink url="https://github.com/LLNL/spack"></ulink>. Running <command>spack install stat</command> should build STAT and all of its dependencies, including those require for the STAT GUI. Note that two Spack variants exist. The first is <command>+examples</command>, to enable building example MPI code that STAT can be tested against. This is disabled by default to avoid requiring an MPI library, but enabling it will trigger a build of MPI. The second is <command>+dysect</command> to enable building of the DySectAPI.
+STAT and its dependencies can also be built via the Spack package management tool, available at <ulink url="https://github.com/spack/spack"></ulink>. Running <command>spack install stat</command> should build STAT and all of its dependencies, including those require for the STAT GUI. Note that three Spack variants exist. The first is <command>+examples</command>, to enable building example MPI code that STAT can be tested against. This is disabled by default to avoid requiring an MPI library, but enabling it will trigger a build of MPI. The second is <command>+dysect</command> to enable building of the DySectAPI. The third is <command>+fgfs</command> to build with FastGlobalFileStatus and target binary broadcast support. FGFS is crucial to scalability, particularly when debugging applications that load several large dynamic libraries.
 </para>
 <para>
 For STAT 4.0.1 and beyond, the spack build of STAT requires Python 3 and will require the activation of the py-xdot package <command>./bin/spack activate py-xdot</command>. For versions up to and including STAT 4.0.0, the spack build of STAT requires Python 2 and requires the activation of the py-pygtk and py-enum34 packages <command>./bin/spack activate py-pygtk</command> and <command>./bin/spack activate py-enum34</command>.
@@ -49,5 +49,5 @@ STAT will also, by default, add rpaths to dependent libraries.  This behavior ca
 </para>
 
 <para>
-STAT can also be configured to use GDB as a backend instead of DynInst. To specify the path to gdb, use the <option>--with-gdb</option> flag. Note that STAT currently still requires DynInst as a dependence even when using the GDB backend.
+STAT can also be configured to use GDB as a backend instead of Dyninst. To specify the path to gdb, use the <option>--with-gdb</option> flag. If CUDA kernal traces are desired, the path should point to a working cuda-gdb executable. Note that STAT currently still requires Dyninst as a dependence even when using the GDB backend.
 </para>
