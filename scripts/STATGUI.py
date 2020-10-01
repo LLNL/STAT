@@ -39,6 +39,7 @@ from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_
 
 import sys
 import os
+import ctypes
 
 HAVE_DLOPEN = hasattr(sys, 'getdlopenflags')
 if HAVE_DLOPEN is True:

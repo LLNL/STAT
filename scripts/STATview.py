@@ -36,6 +36,7 @@ import traceback
 import shelve
 from collections import defaultdict
 import copy
+import ctypes
 
 HAVE_DLOPEN = hasattr(sys, 'getdlopenflags')
 if HAVE_DLOPEN is True:
