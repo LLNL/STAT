@@ -34,6 +34,7 @@ addons:
       - gfortran
       - gdb
       - python3
+      - g++-8
 
 env:
   global:
@@ -55,6 +56,7 @@ before_install:
   - eval $(./scripts/travis-dep-builder.sh --printenv)
   # travis has a 50 minute timeout for any single command, so we break up the build so it will partially cache as needed. ompi+other can be done in one session, dyninst requires its own.
 #  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=ompi
+#  - rm -rf $HOME/local/.cache
   - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=impi
   - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=other
   - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
@@ -69,7 +71,7 @@ script:
   - export LDFLAGS=-Wl,-no-as-needed
 #  - if test "$COVERAGE" = "On" ; then export CFLAGS="-coverage" ; export CXXFLAGS="-coverage" ; fi
   - echo $PATH
-  - ./configure --prefix=$HOME/stat --with-stackwalker=$HOME/local/dyninst --with-mrnet=$HOME/local --with-graphlib=$HOME/local --with-launchmon=$HOME/local --enable-debug --enable-code-coverage --disable-examples || cat config.log
+  - ./configure --prefix=$HOME/stat --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-graphlib=$HOME/local --with-launchmon=$HOME/local --enable-debug --enable-code-coverage --disable-examples || cat config.log
   - cat config.log
   - make && make install
   - mkdir -p $HOME/stat/bin
@@ -110,7 +112,6 @@ after_script:
   - which mpirun
   - mpirun --version
   - export LMON_FE_ENGINE_TIMEOUT=20
-  - sleep 40
   - ping -c 1 localhost
   - rsh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no `hostname` hostname  & export RSHPID=$! ; sleep 5; kill -9 $RSHPID
   - ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no `hostname` hostname  & export RSHPID=$! ; sleep 5; kill -9 $RSHPID
