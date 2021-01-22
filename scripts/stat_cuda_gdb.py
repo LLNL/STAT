@@ -33,6 +33,7 @@ import pwd
 try:
     from gdb import GdbDriver
     from cuda_gdb import CudaGdbDriver
+    from roc_gdb import RocGdbDriver
 except Exception as e:
     print(e)
 gdb_instances = {}
@@ -52,6 +53,8 @@ def new_gdb_instance(pid, gdb_type='gdb'):
     try:
         if 'cuda-gdb' in os.environ['STAT_GDB']:
             gdb = CudaGdbDriver(pid, 'error', 'stderr')
+        if 'rocgdb' in os.environ['STAT_GDB']:
+            gdb = RocGdbDriver(pid, 'error', 'stderr')
         else:
             gdb = GdbDriver(pid, 'error', 'stderr')
     except:
