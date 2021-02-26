@@ -108,7 +108,7 @@ int main(int argc, char **argv)
     string invocationString;
     StatArgs_t *statArgs;
 
-    statFrontEnd = new STAT_FrontEnd();
+    statFrontEnd = STAT_FrontEnd::make();
 
 
     /* Parse arguments and fill in class variables */

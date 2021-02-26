@@ -43,7 +43,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "STAT_GraphRoutines.h"
 #include "STAT_timer.h"
 #include "graphlib.h"
-#include "lmon_api/lmon_fe.h"
 #ifdef STAT_FGFS
   #include "Comm/MRNetCommFabric.h"
   #include "AsyncFastGlobalFileStat.h"
@@ -125,15 +124,6 @@ typedef struct _remap_node
 */
 int statPack(void *data, void *buf, int bufMax, int *bufLen);
 
-//! A callback function to detect daemon and application exit
-/*!
-    \param status - the input status vector
-    \return 0 on success, -1 on error
-
-    Determine if STAT is still connected to the resource manager
-    and if the application is still running.
-*/
-int lmonStatusCb(int *status);
 
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
 //! Increase nofile and nproc limits to maximum
@@ -167,7 +157,6 @@ void nodeRemovedCb(MRN::Event *event, void *statObject);
 */
 void topologyChangeCb(MRN::Event *event, void *statObject);
 
-
 bool checkAppExit();
 bool checkDaemonExit();
 
@@ -179,11 +168,8 @@ class STAT_FrontEnd
 #endif
 
     public:
-        //! Default constructor
-        /*!
-            Sets trace values to defaults and required variables to unset values
-        */
-        STAT_FrontEnd();
+        //! Factory method.
+        static STAT_FrontEnd* make();
 
         //! Default destructor.
         /*!
@@ -218,7 +204,7 @@ class STAT_FrontEnd
         /*!
             \return STAT_OK on success
         */
-        StatError_t setupForSerialAttach();
+        virtual StatError_t setupForSerialAttach() = 0;
 
         //! Launch the MRNet tree
         /*!
@@ -263,7 +249,7 @@ class STAT_FrontEnd
 
             Broadcast a message to the daemons to attach and await all acks
         */
-        StatError_t attachApplication(bool blocking = true);
+        virtual StatError_t attachApplication(bool blocking = true) = 0;
 
         //! Pause the application
         /*!
@@ -336,7 +322,7 @@ class STAT_FrontEnd
         /*!
             Shuts down the MRNet tree and closes the LaunchMON session
         */
-        void shutDown();
+        virtual void shutDown() = 0;
 
         //! Detach from the application
         /*!
@@ -592,7 +578,7 @@ class STAT_FrontEnd
             \param pidString - the [exe@][host:]PID of the serial process
             \return STAT_OK on success
         */
-        StatError_t addSerialProcess(const char *pidString);
+        virtual StatError_t addSerialProcess(const char *pidString) = 0;
 
         //! Gets the argument list for the job launcher
         /*!
@@ -671,7 +657,14 @@ class STAT_FrontEnd
         StatError_t dysectStop();
 #endif
 
-    private:
+    protected:
+
+        //! Default constructor
+        /*!
+            Sets trace values to defaults and required variables to unset values
+        */
+        STAT_FrontEnd();
+
         //! Perform operations required after attach acknowledgement
         /*!
             \return STAT_OK on success
@@ -726,7 +719,7 @@ class STAT_FrontEnd
         /*!
             \return STAT_OK on success
         */
-        StatError_t dumpProctab();
+        virtual StatError_t dumpProctab() = 0;
 
         //! The actual gather implementation
         /*!
@@ -770,7 +763,7 @@ class STAT_FrontEnd
             generating the application node list for MRNet to topology file
             creation.
         */
-        StatError_t launchDaemons();
+        virtual StatError_t launchDaemons() = 0;
 
         //! Send MRNet LeafInfo to the master daemon
         /*!
@@ -779,7 +772,7 @@ class STAT_FrontEnd
             Calls LaunchMON's send routine, which uses STAT's registered pack
             function to create a buffer out of the connection information.
         */
-        StatError_t sendDaemonInfo();
+        virtual StatError_t sendDaemonInfo() = 0;
 
         //! Create the MRNet topology file
         /*!
@@ -811,7 +804,7 @@ class STAT_FrontEnd
 
             Also prepares the ranks map required to reorder the bit vectors
         */
-        StatError_t setAppNodeList();
+        virtual StatError_t setAppNodeList() = 0;
 
         //! Set the ranks list for each daemon and place into the ranks map
         /*!
@@ -820,7 +813,7 @@ class STAT_FrontEnd
             This map of lists will be used to translate the bit vectors into
             MPI rank order
         */
-        StatError_t createDaemonRankMap();
+        virtual StatError_t createDaemonRankMap() = 0;
 
         //! Set the list of communication process nodes from the nodeList specification
         /*!
@@ -856,7 +849,9 @@ class STAT_FrontEnd
             This only differs from setAppNodeList in that it assigns one BE per
             core, not per node
         */
-        StatError_t STATBench_setAppNodeList();
+        virtual StatError_t STATBench_setAppNodeList() = 0;
+
+        virtual StatError_t STATBench_resetProctab(unsigned int nTasks) = 0;
 
         //! Read the configuration file to get a list of potential nodes
         /*!
@@ -898,6 +893,13 @@ class STAT_FrontEnd
         */
         bool checkNodeAccess(char *node);
 
+        //! Add daemon serial process arguments
+        virtual StatError_t addDaemonSerialProcArgs(int& deamonArgc, char ** &deamonArgv) = 0;
+
+        virtual int getNumProcs() = 0;
+        virtual const char* getHostnameForProc(int procIdx) = 0;
+        virtual int getMpiRankForProc(int procIdx) = 0;
+
         //! Add daemon logging args to daemon arg list
         /*!
             \param[in,out] daemonArgc - the number of daemon args
@@ -905,6 +907,13 @@ class STAT_FrontEnd
             \return STAT_OK on success
         */
         StatError_t addDaemonLogArgs(int &daemonArgc, char ** &daemonArgv);
+
+        virtual bool daemonsHaveExited() = 0;
+
+        virtual bool isKilled() = 0;
+
+        // lower level detach call - print errMsg if the detach fails
+        virtual void detachFromLauncher(const char* errMsg) = 0;
 
 #ifdef STAT_FGFS
         //! Send the file request stream to the BEs
@@ -939,7 +948,6 @@ class STAT_FrontEnd
 
         unsigned int launcherPid_;                          /*!< the PID of the job launcher */
         unsigned int nApplNodes_;                           /*!< the number of application nodes */
-        unsigned int proctabSize_;                          /*!< the size of the process table */
         unsigned int nApplProcs_;                           /*!< the number of application processes */
         unsigned int procsPerNode_;                         /*!< the number of CPs to launcher per node*/
         unsigned int launcherArgc_;                         /*!< the number of job launch arguments*/
@@ -950,7 +958,6 @@ class STAT_FrontEnd
 #ifdef CRAYXT
         cti_app_id_t CTIAppId_;                             /*!< the CTI application ID */
 #endif
-        int lmonSession_;                                   /*!< the LaunchMON session ID */
         int mrnetOutputLevel_;                              /*!< the MRNet output level */
         char **launcherArgv_;                               /*!< the job launch arguments */
         char *toolDaemonExe_;                               /*!< the path to the STATD daemon executable */
@@ -979,13 +986,11 @@ class STAT_FrontEnd
         std::map<int, IntList_t *> mrnetRankToMpiRanksMap_; /*!< a map of MRNet ranks to ranks list used for bit vector reordering */
         std::set<int> missingRanks_;                        /*!< a set of MPI ranks whose daemon is not connected */
         std::vector<std::pair<std::string, double> > performanceData_;     /*!< the accumulated performance data to be dumped upon completion */
-        lmon_rm_info_t lmonRmInfo_;                         /*!< the resource manager information from LMON */
         LeafInfo_t leafInfo_;                               /*!< the MRNet leaf info */
         StatProt_t pendingAckTag_;                          /*!< the expected tag of the pending acknowledgement */
         StatError_t (STAT_FrontEnd::*pendingAckCb_)();      /*!< the function to call after acknowledgement received from daemons */
         StatVerbose_t verbose_;                             /*!< the verbosity level */
         StatLaunch_t applicationOption_;                    /*!< the mode in which STAT was given control of the application */
-        MPIR_PROCDESC_EXT *proctab_;                        /*!< the process table */
         MRN::Network *network_;                             /*!< the MRNet Network object */
         MRN::Communicator *broadcastCommunicator_;          /*!< the broadcast communicator*/
         MRN::Stream *broadcastStream_;                      /*!< the broadcast stream for sending commands and receiving ack */
