@@ -175,7 +175,7 @@ class STAT_FrontEnd
         /*!
             First dumps any performance data then frees up allocated variables.
         */
-        ~STAT_FrontEnd();
+        virtual ~STAT_FrontEnd();
 
 
         /***************************/
