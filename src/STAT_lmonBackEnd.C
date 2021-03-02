@@ -99,7 +99,9 @@ StatError_t STAT_lmonBackEnd::initLmon()
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error allocating process table\n", strerror(errno));
         return STAT_ALLOCATE_ERROR;
     }
-    
+
+    proctabSize_ = size;
+
     for (int i=0; i<size; ++i) {
         proctab_[i].executable_name = lmonProcTab[i].pd.executable_name;
         proctab_[i].host_name = lmonProcTab[i].pd.host_name;
