@@ -250,9 +250,6 @@ STAT_FrontEnd::STAT_FrontEnd()
     topologySize_ = 0;
     logging_ = 0;
     jobId_ = 0;
-#ifdef CRAYXT
-    CTIAppId_ = 0;
-#endif    
     launcherArgv_ = NULL;
     applExe_ = NULL;
     remoteNode_ = NULL;
@@ -294,14 +291,6 @@ STAT_FrontEnd::~STAT_FrontEnd()
     map<int, IntList_t *>::iterator mrnetRankToMpiRanksMapIter;
     StatError_t statError;
     graphlib_error_t graphlibError;
-
-#ifdef CRAYXT
-    if (CTIAppId_ != 0 && cti_appIsValid(CTIAppId_))
-    {
-        cti_deregisterApp(CTIAppId_);
-    }
-    CTIAppId_ = 0;
-#endif /* ifdef CRAYXT */
 
     if (strcmp(outDir_, "NULL") != 0)
     {
@@ -475,85 +464,6 @@ StatError_t STAT_FrontEnd::launchAndSpawnDaemons(char *remoteNode, bool isStatBe
     return STAT_OK;
 }
 
-
-#ifdef CRAYXT
-StatError_t STAT_FrontEnd::validateApidWithCTI()
-{
-    // register the app with CTI
-    switch (cti_current_wlm())
-    {
-      case CTI_WLM_SLURM:
-      {
-            cti_slurm_ops_t *ops;
-            if(cti_open_ops((void **)&ops) != CTI_WLM_SLURM) {
-                printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "CTI Error: %s\n", "cti_open_ops returned invalid wlm.\n");
-                return STAT_SYSTEM_ERROR;
-            }
-            cti_srunProc_t *srunInfo;
-            srunInfo = ops->getJobInfo(launcherPid_);
-            if (srunInfo == NULL)
-            {
-                printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "CTI Error: %s\n", cti_error_str());
-                return STAT_SYSTEM_ERROR;
-            }
-            CTIAppId_ = ops->registerJobStep(srunInfo->jobid, srunInfo->stepid);
-            if (CTIAppId_ == 0)
-            {
-                printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "CTI Error: %s\n", cti_error_str());
-                return STAT_SYSTEM_ERROR;
-                free(srunInfo);
-            }
-            free(srunInfo);
-            break;
-      }
-      case CTI_WLM_SSH:
-      {
-          cti_ssh_ops_t *ops;
-          if(cti_open_ops((void **)&ops) != CTI_WLM_SSH) {
-              printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "CTI Error: %s\n", "cti_open_ops returned invalid wlm.\n");
-              return STAT_SYSTEM_ERROR;
-          }
-          CTIAppId_ = ops->registerJob((pid_t)launcherPid_);
-          if (CTIAppId_ == 0)
-          {
-              printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "CTI Error: %s\n", cti_error_str());
-              return STAT_SYSTEM_ERROR;
-          }
-          break;
-      }
-      case CTI_WLM_ALPS:
-      {
-          cti_alps_ops_t *ops;
-          if(cti_open_ops((void **)&ops) != CTI_WLM_ALPS) {
-              printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "CTI Error: %s\n", "cti_open_ops returned invalid wlm.\n");
-              return STAT_SYSTEM_ERROR;
-          }
-          uint64_t apid = ops->getApid((pid_t)launcherPid_);
-          if (apid == 0) {
-              printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "CTI Error: %s\n", cti_error_str());
-              return STAT_SYSTEM_ERROR;
-          }
-          CTIAppId_ = ops->registerApid(apid);
-          if (CTIAppId_ == 0)
-          {
-              printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "CTI Error: %s\n", cti_error_str());
-              return STAT_SYSTEM_ERROR;
-          }
-          break;
-      }
-      default:
-          printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Unsupported Cray WLM!\n");
-          return STAT_SYSTEM_ERROR;
-    }
-    return STAT_OK;
-}
-#endif /* ifdef CRAYXT */
-
-
-
-
-
-
 void beConnectCb(Event *event, void *dummy)
 {
     if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_ADD_BE))
@@ -718,51 +628,12 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     } /* if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH) */
     else
     {
+        statError = createMRNetNetwork(topologyFileName);
+        if (statError != STAT_OK)
+        {
+            return statError;
+        }
 
-#ifdef CRAYXT
-    cti_session_id_t sess_id;
-    cti_manifest_id_t manif_id;
-    map<string, string> attrs;
-    char cti_appid[BUFSIZE];
-    char cti_manifid[BUFSIZE];
-
-    /* Ensure the application was registered with CTI earlier */
-    if (!cti_appIsValid(CTIAppId_))
-    {
-        printMsg(statError, __FILE__, __LINE__, "CTI app is no longer valid.\n");
-        return statError;
-    }
-
-    sess_id = cti_createSession(CTIAppId_);
-    if (sess_id == 0)
-    {
-        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__,  "CTI Error: %s\n", cti_error_str());
-        return STAT_SYSTEM_ERROR;
-    }
-
-    manif_id = cti_createManifest(sess_id);
-    if (manif_id == 0)
-    {
-        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__,  "CTI Error: %s\n", cti_error_str());
-        return STAT_SYSTEM_ERROR;
-
-    }
-
-    if (cti_addManifestLibrary(manif_id, filterPath_))
-    {
-        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__,  "CTI Error: %s\n", cti_error_str());
-        return STAT_SYSTEM_ERROR;
-    }
-
-    snprintf(cti_appid, BUFSIZE, "%d", (int)CTIAppId_);
-    attrs["CRAY_CTI_APPID"] = cti_appid;
-    snprintf(cti_manifid, BUFSIZE, "%d", (int)manif_id);
-    attrs["CRAY_CTI_MID"] = cti_manifid;
-
-    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
-#else /* ifdef CRAYXT */
-    network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
-#endif /* ifdef CRAYXT */
 
     } /* else branch of if (applicationOption_ == STAT_SERIAL_ATTAC || applicationOption_ == STAT_SERIAL_GDB_ATTACHH) */
 

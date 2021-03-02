@@ -744,15 +744,6 @@ class STAT_FrontEnd
         */
         StatError_t receiveStackTraces(bool blocking = true);
 
-
-        //! validate the apid with CTI
-        /*!
-         return STAT_OK on success
-         Performs validate of apid/launcherPid_ with CTI
-         */
-        StatError_t validateApidWithCTI();
-
-
         //! Launch the STAT daemons
         /*!
             \return STAT_OK on success
@@ -915,6 +906,8 @@ class STAT_FrontEnd
         // lower level detach call - print errMsg if the detach fails
         virtual void detachFromLauncher(const char* errMsg) = 0;
 
+        virtual StatError_t createMRNetNetwork(const char* topologyFileName) = 0;
+
 #ifdef STAT_FGFS
         //! Send the file request stream to the BEs
         /*!
@@ -955,9 +948,6 @@ class STAT_FrontEnd
         unsigned int logging_;                              /*!< the logging level */
         unsigned int nDaemonsPerNode_;                      /*!< the number of daemons per node */
         int jobId_;                                         /*!< the batch job ID */
-#ifdef CRAYXT
-        cti_app_id_t CTIAppId_;                             /*!< the CTI application ID */
-#endif
         int mrnetOutputLevel_;                              /*!< the MRNet output level */
         char **launcherArgv_;                               /*!< the job launch arguments */
         char *toolDaemonExe_;                               /*!< the path to the STATD daemon executable */
