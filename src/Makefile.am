@@ -21,7 +21,7 @@ SWIGFLAGS += -DSTAT_GDB_BE
 endif
 AM_LDFLAGS = $(CODE_COVERAGE_LIBS)
 
-include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h STAT_lmonFrontEnd.h
+include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h 
 if ENABLE_DYSECTAPI
 stat_cppflags_add_dysectapi = -I$(abs_top_srcdir)/src -I$(abs_top_srcdir)/src/dysect -I$(abs_top_srcdir)/src/dysect/libDysectAPI/include
 stat_fe_ldadd_add_dysectapi = @LIBDYSECTAPIFE@ @LIBDYSECTFE@
@@ -70,7 +70,7 @@ STATD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
 STATD_LDADD = libstatbe.la $(stat_be_ldadd_add_dysectapi) @BELIBS@
 
 stat_be_la_sources_base = STAT_BackEnd.C STAT_BackEnd.h STAT_lmonBackEnd.C STAT_lmonBackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
-stat_fe_la_sources_base = STAT_FrontEnd.C STAT_lmonFrontEnd.C STAT_FrontEnd.h STAT_lmonFrontEnd.h STAT.h STAT_timer.h STAT_timer.C
+stat_fe_la_sources_base = STAT_FrontEnd.C STAT_lmonFrontEnd.C STAT_FrontEnd.h STAT_lmonFrontEnd.h STAT_ctiFrontEnd.h STAT_ctiFrontEnd.C STAT.h STAT_timer.h STAT_timer.C
 
 libstatbe_la_SOURCES = $(stat_be_la_sources_base) $(stat_graphlib_sources) $(stat_be_la_source_add_dysectapi) $(stat_be_la_sources_fgfs)
 libstatfe_la_SOURCES = $(stat_fe_la_sources_base) $(stat_graphlib_sources) $(stat_fe_la_source_add_dysectapi)

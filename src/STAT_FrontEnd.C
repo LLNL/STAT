@@ -1490,6 +1490,138 @@ StatError_t STAT_FrontEnd::setDaemonNodes()
     return STAT_OK;
 }
 
+StatError_t STAT_FrontEnd::createDaemonRankMap()
+{
+    unsigned int i, j, mrnetRank, rank;
+    int k, l;
+    const char *currentNode;
+    IntList_t *daemonRanks, *newDaemonRanks;
+    map<string, vector<int> > tempMap;
+    map<string, vector<int> >::iterator tempMapIter;
+    map<string, int> hostToMrnetRankMap;
+    set<NetworkTopology::Node *> backEndNodes;
+    set<NetworkTopology::Node *>::iterator backEndNodesIter;
+    NetworkTopology::Node *node;
+    string::size_type dotPos;
+    string tempString;
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating daemon rank map\n");
+
+    /* First, create a map containing all daemons, with the MPI ranks that each daemon debugs */
+    for (i = 0; i < nApplProcs_; i++)
+    {
+        currentNode = getHostnameForProc(i);
+        tempMap[currentNode].push_back(getMpiRankForProc(i));
+    }
+
+    /* Next populate the hostToMrnetRankMap */
+    leafInfo_.networkTopology->get_BackEndNodes(backEndNodes);
+    if (isStatBench_ == true)
+    {
+        for (backEndNodesIter = backEndNodes.begin(), tempMapIter = tempMap.begin(); backEndNodesIter != backEndNodes.end() && tempMapIter != tempMap.end(); backEndNodesIter++, tempMapIter++)
+        {
+            node = *backEndNodesIter;
+            hostToMrnetRankMap[tempMapIter->first] = node->get_Rank();
+        }
+    }
+    else
+    {
+        for (backEndNodesIter = backEndNodes.begin(); backEndNodesIter != backEndNodes.end(); backEndNodesIter++)
+        {
+            node = *backEndNodesIter;
+            tempString = node->get_HostName();
+            dotPos = tempString.find_first_of(".");
+            if (dotPos != string::npos)
+                tempString = tempString.substr(0, dotPos);
+
+#ifdef STAT_ALIAS_SUFFIX
+            // TODO: this is an ugly way of dealing with aliased hostnames
+            size_t pub;
+            pub = tempString.find(STAT_ALIAS_SUFFIX);
+            if (pub != string::npos)
+                tempString = tempString.substr(0, pub);
+#endif
+
+            /* TODO: this won't work if we move to multiple daemons per node */
+            hostToMrnetRankMap[tempString.c_str()] = node->get_Rank();
+        }
+    }
+
+    /* Next sort each daemon's rank list and store it in the IntList_t ranks map */
+    for (tempMapIter = tempMap.begin(), i = 0; tempMapIter != tempMap.end(); tempMapIter++, i++)
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemon %s, %d ranks:", tempMapIter->first.c_str(), (tempMapIter->second).size());
+        sort((tempMapIter->second).begin(), (tempMapIter->second).end());
+        daemonRanks = (IntList_t *)malloc(sizeof(IntList_t));
+        if (daemonRanks == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for daemonRanks\n", strerror(errno));
+            return STAT_ALLOCATE_ERROR;
+        }
+        daemonRanks->count = (tempMapIter->second).size();
+        daemonRanks->list = (int *)malloc(daemonRanks->count * sizeof(int));
+        if (daemonRanks->list == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for daemonRanks->list\n", strerror(errno));
+            return STAT_ALLOCATE_ERROR;
+        }
+        for (j = 0; j < (tempMapIter->second).size(); j++)
+        {
+            printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%d, ", (tempMapIter->second)[j]);
+            daemonRanks->list[j] = (tempMapIter->second)[j];
+        }
+        if (hostToMrnetRankMap.size() == 0) /* MRNet BEs not connected */
+        {
+            if (nDaemonsPerNode_ > 1)
+            {
+                l = -1;
+                for (j = 0; j < nDaemonsPerNode_; j++)
+                {
+                    mrnetRank = topologySize_ + i + nApplNodes_ * j;
+                    newDaemonRanks = (IntList_t *)malloc(sizeof(IntList_t));
+                    if (newDaemonRanks == NULL)
+                    {
+                        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for newDaemonRanks\n", strerror(errno));
+                        return STAT_ALLOCATE_ERROR;
+                    }
+                    newDaemonRanks->count = daemonRanks->count / nDaemonsPerNode_;
+                    if (daemonRanks->count % nDaemonsPerNode_ > j)
+                        newDaemonRanks->count = newDaemonRanks->count + 1;
+                    newDaemonRanks->list = (int *)malloc(newDaemonRanks->count * sizeof(int));
+                    if (newDaemonRanks->list == NULL)
+                    {
+                        printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: malloc failed to allocate for newDaemonRanks->list\n", strerror(errno));
+                        return STAT_ALLOCATE_ERROR;
+                    }
+                    for (k = 0; k < newDaemonRanks->count; k++)
+                    {
+                        l++;
+                        rank = daemonRanks->list[l];
+                        printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "%d, ", rank);
+                        newDaemonRanks->list[k] = rank;
+                    }
+                    printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "; ");
+                    mrnetRankToMpiRanksMap_[mrnetRank] = newDaemonRanks;
+                }
+            }
+            else
+                mrnetRankToMpiRanksMap_[topologySize_ + i] = daemonRanks;
+        }
+        else /* MRNet BEs connected */
+        {
+            if (hostToMrnetRankMap.find(tempMapIter->first) != hostToMrnetRankMap.end())
+                mrnetRankToMpiRanksMap_[hostToMrnetRankMap[tempMapIter->first]] = daemonRanks;
+            else
+                for (k = 0; k < daemonRanks->count; k++)
+                    missingRanks_.insert(daemonRanks->list[k]);
+        }
+        printMsg(STAT_LOG_MESSAGE, __FILE__, -1, "\n");
+    }
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Daemon rank map created\n");
+    return STAT_OK;
+}
+
 StatError_t STAT_FrontEnd::setCommNodeList(const char *nodeList, bool checkAccess = true)
 {
     char numString[BUFSIZE], nodeName[BUFSIZE], *nodeRange;
@@ -2119,7 +2251,67 @@ void checkPendingActions(STAT_FrontEnd *statFE)
 #endif
 }
 
+StatError_t STAT_FrontEnd::attachApplication(bool blocking)
+{
+    StatError_t statError;
+    PacketPtr packet;
 
+    if (isAttached_ == true)
+    {
+        printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT already attached to the application... ignoring request to attach\n");
+        return STAT_OK;
+    }
+    if (isConnected_ == false)
+    {
+        printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
+        return STAT_NOT_CONNECTED_ERROR;
+    }
+    if (isKilled())
+    {
+        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
+        return STAT_APPLICATION_EXITED;
+    }
+    if (daemonsHaveExited())
+    {
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
+        return STAT_DAEMON_ERROR;
+    }
+
+    statError = receiveAck(true);
+    if (statError != STAT_OK)
+    {
+        printMsg(statError, __FILE__, __LINE__, "Failed to receive pending ack, attach canceled\n");
+        return statError;
+    }
+
+    gStartTime.setTime();
+    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Attaching to application...\n");
+
+    if (broadcastStream_->send(PROT_ATTACH_APPLICATION, "%s %s", outDir_, filePrefix_) == -1)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send attach request\n");
+        return STAT_MRNET_ERROR;
+    }
+    if (broadcastStream_->flush() != 0)
+    {
+        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to flush message\n");
+        return STAT_MRNET_ERROR;
+    }
+
+    pendingAckTag_ = PROT_ATTACH_APPLICATION_RESP;
+    isPendingAck_ = true;
+    pendingAckCb_ = &STAT_FrontEnd::postAttachApplication;
+    if (blocking == true)
+    {
+        statError = receiveAck(true);
+        if (statError != STAT_OK)
+        {
+            printMsg(statError, __FILE__, __LINE__, "Failed to receive attach ack\n");
+            return statError;
+        }
+    }
+    return STAT_OK;
+}
 
 StatError_t STAT_FrontEnd::postAttachApplication()
 {

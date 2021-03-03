@@ -795,67 +795,6 @@ int lmonStatusCb(int *status)
     return 0;
 }
 
-StatError_t STAT_lmonFrontEnd::attachApplication(bool blocking)
-{
-    StatError_t statError;
-    PacketPtr packet;
-
-    if (isAttached_ == true)
-    {
-        printMsg(STAT_STDOUT, __FILE__, __LINE__, "STAT already attached to the application... ignoring request to attach\n");
-        return STAT_OK;
-    }
-    if (isConnected_ == false)
-    {
-        printMsg(STAT_NOT_CONNECTED_ERROR, __FILE__, __LINE__, "STAT daemons have not been launched\n");
-        return STAT_NOT_CONNECTED_ERROR;
-    }
-    if (WIFKILLED(gsLmonState))
-    {
-        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "LMON detected the application has exited\n");
-        return STAT_APPLICATION_EXITED;
-    }
-    if (!WIFBESPAWNED(gsLmonState))
-    {
-        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "LMON detected the daemons have exited\n");
-        return STAT_DAEMON_ERROR;
-    }
-
-    statError = receiveAck(true);
-    if (statError != STAT_OK)
-    {
-        printMsg(statError, __FILE__, __LINE__, "Failed to receive pending ack, attach canceled\n");
-        return statError;
-    }
-
-    gStartTime.setTime();
-    printMsg(STAT_STDOUT, __FILE__, __LINE__, "Attaching to application...\n");
-
-    if (broadcastStream_->send(PROT_ATTACH_APPLICATION, "%s %s", outDir_, filePrefix_) == -1)
-    {
-        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to send attach request\n");
-        return STAT_MRNET_ERROR;
-    }
-    if (broadcastStream_->flush() != 0)
-    {
-        printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "Failed to flush message\n");
-        return STAT_MRNET_ERROR;
-    }
-
-    pendingAckTag_ = PROT_ATTACH_APPLICATION_RESP;
-    isPendingAck_ = true;
-    pendingAckCb_ = &STAT_lmonFrontEnd::postAttachApplication;
-    if (blocking == true)
-    {
-        statError = receiveAck(true);
-        if (statError != STAT_OK)
-        {
-            printMsg(statError, __FILE__, __LINE__, "Failed to receive attach ack\n");
-            return statError;
-        }
-    }
-    return STAT_OK;
-}
 
 StatError_t STAT_lmonFrontEnd::createMRNetNetwork(const char* topologyFileName)
 {

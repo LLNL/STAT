@@ -249,7 +249,7 @@ class STAT_FrontEnd
 
             Broadcast a message to the daemons to attach and await all acks
         */
-        virtual StatError_t attachApplication(bool blocking = true) = 0;
+        StatError_t attachApplication(bool blocking = true);
 
         //! Pause the application
         /*!
@@ -804,7 +804,7 @@ class STAT_FrontEnd
             This map of lists will be used to translate the bit vectors into
             MPI rank order
         */
-        virtual StatError_t createDaemonRankMap() = 0;
+        StatError_t createDaemonRankMap();
 
         //! Set the list of communication process nodes from the nodeList specification
         /*!

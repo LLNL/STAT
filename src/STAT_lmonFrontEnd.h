@@ -30,7 +30,6 @@ public:
     virtual void detachFromLauncher(const char* errMsg);
     virtual void shutDown();
 
-    virtual StatError_t attachApplication(bool blocking);
     virtual StatError_t createMRNetNetwork(const char* topologyFileName);
 
     virtual bool daemonsHaveExited();
