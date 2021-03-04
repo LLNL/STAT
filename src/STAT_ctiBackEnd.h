@@ -1,15 +1,13 @@
-#ifndef __STAT_LMONBACKEND_H
-#define __STAT_LMONBACKEND_H
+#ifndef __STAT_CTIBACKEND_H
+#define __STAT_CTIBACKEND_H
 
 #include "STAT_BackEnd.h"
 
-#include "lmon_api/lmon_be.h"
-
-class STAT_lmonBackEnd : public STAT_BackEnd
+class STAT_ctiBackEnd : public STAT_BackEnd
 {
-    public:
+public:
 
-    STAT_lmonBackEnd(StatDaemonLaunch_t launchType);
+    STAT_ctiBackEnd(StatDaemonLaunch_t launchType);
 
     virtual StatError_t init(int *argc, char ***argv);
     virtual StatError_t finalize();

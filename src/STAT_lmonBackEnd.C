@@ -458,7 +458,9 @@ StatError_t STAT_lmonBackEnd::statBenchConnectInfoDump()
     return STAT_OK;
 }
 
+/*
 STAT_BackEnd* STAT_BackEnd::make(StatDaemonLaunch_t launchType)
 {
     return new STAT_lmonBackEnd(launchType);
 }
+*/
