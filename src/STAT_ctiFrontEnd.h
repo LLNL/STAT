@@ -17,6 +17,7 @@ public:
 
     virtual StatError_t launchDaemons();
     virtual StatError_t sendDaemonInfo();
+    virtual StatError_t createMRNetNetwork(const char* topologyFileName);
     virtual void detachFromLauncher(const char* errMsg);
     virtual void shutDown();
 

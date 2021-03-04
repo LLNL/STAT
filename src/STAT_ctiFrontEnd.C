@@ -147,6 +147,9 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     if (cti_addManifestBinary(manifest, toolDaemonExe_))
         return ctiError();
 
+    if (cti_addManifestLibrary(manifest, filterPath_))
+        return ctiError();
+
     if (cti_sendManifest(manifest))
         return ctiError();
 
@@ -195,6 +198,14 @@ StatError_t STAT_ctiFrontEnd::sendDaemonInfo()
     return STAT_OK;
 }
 
+StatError_t STAT_ctiFrontEnd::createMRNetNetwork(const char* topologyFileName)
+{
+    // the filter should have already been sent in the manifest
+    network_ = MRN::Network::CreateNetworkFE(topologyFileName, NULL, NULL);
+    return STAT_OK;
+}
+
+
 void STAT_ctiFrontEnd::detachFromLauncher(const char* errMsg)
 {
     if (session_) {
@@ -202,6 +213,8 @@ void STAT_ctiFrontEnd::detachFromLauncher(const char* errMsg)
             printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Detach failed %s\n", errMsg);
     }
 }
+
+
 
 void STAT_ctiFrontEnd::shutDown() { unimplemented("shutDown"); }
 
@@ -325,4 +338,9 @@ StatError_t STAT_ctiFrontEnd::STATBench_resetProctab(unsigned int nTasks) {
     tasksPerPE_ = nTasks;
     nApplProcs_ = nApplNodes_ * nTasks;
     return STAT_OK;
+}
+
+STAT_FrontEnd* STAT_FrontEnd::make()
+{
+    return new STAT_ctiFrontEnd();
 }

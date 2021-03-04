@@ -968,8 +968,9 @@ int STAT_lmonFrontEnd::getMpiRankForProc(int procIdx)
     return proctab_[procIdx].mpirank;
 }
 
-
+/*
 STAT_FrontEnd* STAT_FrontEnd::make()
 {
     return new STAT_lmonFrontEnd();
 }
+*/
