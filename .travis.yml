@@ -154,7 +154,7 @@ after_script:
   - cat stat_results/mpi_ringtopo.0001/03_mpi_ringtopo.0001.2D.dot
   - cat stat_results/mpi_ringtopo.0001/04_mpi_ringtopo.0001.3D.dot
 #  The script test may also hang with openmpi-2.0.3. This appears to be a race condition when deleting the stat_fe object
-  - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py -l $HOME/local/bin/mpiexec.hydra || echo "failed with $?"
+#  - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py -l $HOME/local/bin/mpiexec.hydra || echo "failed with $?"
   - ls -lt stat_results
   - bash <(curl -s https://codecov.io/bash)
   - coveralls --exclude lib --exclude tests -i ./src --gcov-options '\-lp'

@@ -17,15 +17,16 @@ components=all
 downloads="\
 https://www.gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.36.tar.bz2 \
 https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.8.5.tar.bz2 \
-https://github.com/dyninst/mrnet/archive/v5.0.1.tar.gz \
 https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz \
 http://registrationcenter-download.intel.com/akdlm/irc_nas/tec/16120/l_mpi_2019.6.166.tgz \
 https://github.com/dyninst/dyninst/archive/v10.2.1.tar.gz \
 https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz \
 "
 #https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz\
+#https://github.com/dyninst/mrnet/archive/v5.0.1.tar.gz \
 
 checkouts="\
+https://github.com/dyninst/mrnet.git \
 https://github.com/llnl/launchmon.git
 "
 
@@ -37,6 +38,7 @@ declare -A extra_configure_opts=(\
 ["launchmon-v1.0.2"]="--with-test-rm=mpiexec_hydra --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
 ["launchmon"]="--with-test-rm=mpiexec_hydra --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
 ["v5.0.1"]="--enable-shared" \
+["mrnet"]="--enable-shared" \
 ["openmpi-4.0.2"]="--enable-orterun-prefix-by-default" \
 )
 
@@ -242,20 +244,17 @@ for url in $checkouts; do
         git checkout $sha1
       fi
 
-      # Do we need to create a Makefile?
-      if ! test -f Makefile; then
-        if ! test -f configure; then
-          export ACLOCAL_PATH=${prefix}/share/aclocal
-          ./bootstrap
-        fi
-        if test -x configure; then
-          ./configure --prefix=${prefix} \
-                      --sysconfdir=${prefix}/etc \
-                      $configure_opts || cat config.log
-        elif test -f CMakeLists.txt; then
-            mkdir build && cd build
-            cmake -DCMAKE_INSTALL_PREFIX=${prefix} $cmake_opts ..
-        fi
+      if ! test -f configure; then
+        export ACLOCAL_PATH=${prefix}/share/aclocal
+        ./bootstrap
+      fi
+      if test -x configure; then
+        ./configure --prefix=${prefix} \
+                    $configure_opts || cat config.log
+                    #--sysconfdir=${prefix}/etc \
+      elif test -f CMakeLists.txt; then
+          mkdir build && cd build
+          cmake -DCMAKE_INSTALL_PREFIX=${prefix} $cmake_opts ..
       fi
 # The hack below is only needed in the dist:trusty travis env
 # This will work around a ptrace Input/Output error when removing breakpoints
@@ -264,7 +263,7 @@ for url in $checkouts; do
       fi
       make -j 16 PREFIX=${prefix} $make_opts || make PREFIX=${prefix} $make_opts
       make -j 16 PREFIX=${prefix} $make_opts install || make PREFIX=${prefix} $make_opts install
-      make -j 16 check PREFIX=${prefix} $make_opts || make check PREFIX=${prefix} $make_opts
+      #make -j 16 check PREFIX=${prefix} $make_opts || make check PREFIX=${prefix} $make_opts
 #      if test "$name" = "launchmon"; then
 #        pushd test/src
 #        echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope

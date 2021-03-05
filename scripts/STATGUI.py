@@ -203,8 +203,8 @@ class STATGUI(STATDotWindow):
         except:
             gdb_path = 'gdb'
         options = {'Remote Host':                      "localhost",
-                   'Remote Host Shell':                "rsh",
-                   'Serial Remote Host Shell':                "rsh",
+                   'Remote Host Shell':                "ssh",
+                   'Serial Remote Host Shell':         "ssh",
                    'Resource Manager':                 "Auto",
                    'PID':                              None,
                    'Launcher Exe':                     '',
@@ -765,9 +765,9 @@ host[1-10,12,15-20];otherhost[30]
                 output = commands.getoutput('ps xww')
             else:
                 if pid_list != '':
-                    output = commands.getoutput('%s %s ps ww -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
+                    output = commands.getoutput('%s %s ps ww -p %s' % (my_rsh, self.options['Remote Host'], pid_list))
                 else:
-                    output = commands.getoutput('%s %s ps xww' % (self.options['Remote Host Shell'], self.options['Remote Host']))
+                    output = commands.getoutput('%s %s ps xww' % (my_rsh, self.options['Remote Host']))
                 if output.find('Hostname not found') != -1 or output.find('PID') == -1:
                     show_error_dialog('Failed to get process listing for %s:\n\t %s' % (self.options['Remote Host'], output), attach_dialog)
                     return False
