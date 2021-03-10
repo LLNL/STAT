@@ -38,7 +38,7 @@ declare -A extra_configure_opts=(\
 ["launchmon-v1.0.2"]="--with-test-rm=mpiexec_hydra --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
 ["launchmon"]="--with-test-rm=mpiexec_hydra --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
 ["v5.0.1"]="--enable-shared" \
-["mrnet"]="--enable-shared" \
+["mrnet"]="--enable-verbosebuild --disable-ltwt-threadsafe --enable-shared" \
 ["openmpi-4.0.2"]="--enable-orterun-prefix-by-default" \
 )
 
@@ -155,10 +155,10 @@ for pkg in $downloads; do
     cmake_opts="${extra_cmake_opts[$name]}"
     configure_opts="${extra_configure_opts[$name]}"
     cache_name="$name:$sha1:$make_opts:$configure_opts:$cmake_opts"
-    if check_cache "$name"; then
-       say "Using cached version of ${name}"
-       continue
-    fi
+#    if check_cache "$name"; then
+#       say "Using cached version of ${name}"
+#       continue
+#    fi
     export CC=gcc-8
     export CXX=g++-8
     export ACLOCAL_PATH=${prefix}/share/aclocal
@@ -233,10 +233,10 @@ for url in $checkouts; do
     cmake_opts="${extra_cmake_opts[$name]}"
     configure_opts="${extra_configure_opts[$name]}"
     cache_name="$name:$sha1:$make_opts:$configure_opts:$cmake_opts"
-    if check_cache "$cache_name"; then
-       say "Using cached version of ${name}"
-       continue
-    fi
+#    if check_cache "$cache_name"; then
+#       say "Using cached version of ${name}"
+#       continue
+#    fi
     git clone ${url} ${name} || die "Failed to clone ${url}"
     (
       cd ${name} || die "cd failed"
@@ -279,7 +279,7 @@ for url in $checkouts; do
 #        popd
 #      fi
     ) || die "Failed to build and install $name"
-    ls -l ${prefix}/etc/
+    ls -l ${prefix}/etc/ || echo failed
     cat ${prefix}/etc/rm_mpiexec_hydra.conf || echo "not found"
     add_cache "$cache_name"
 done

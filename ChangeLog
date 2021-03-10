@@ -1,3 +1,10 @@
+2021-03-05 Gregory L. Lee <lee218@llnl.gov>
+	* : updated version string to 4.0.3
+
+2021-03-04 Gregory L. Lee <lee218@llnl.gov>
+	* : added initial rocgdb support for AMD GPUs
+	* STATGUI.py : use ssh for remote shell by default
+
 2020-09-09 Gregory L. Lee <lee218@llnl.gov>
 	scripts/STATmain.py : modified import order to fix Spack installed STAT
 	seg faulting due to wrong libgpg-error being loaded
