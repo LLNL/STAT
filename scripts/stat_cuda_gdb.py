@@ -53,7 +53,7 @@ def new_gdb_instance(pid, gdb_type='gdb'):
     try:
         if 'cuda-gdb' in os.environ['STAT_GDB']:
             gdb = CudaGdbDriver(pid, 'error', 'stderr')
-        if 'rocgdb' in os.environ['STAT_GDB']:
+        elif 'rocgdb' in os.environ['STAT_GDB']:
             gdb = RocGdbDriver(pid, 'error', 'stderr')
         else:
             gdb = GdbDriver(pid, 'error', 'stderr')
