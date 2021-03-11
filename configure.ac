@@ -31,7 +31,6 @@ X_AC_BOOST
 X_AC_ARCH
 X_AC_DEBUGLIBS
 X_AC_GRAPHLIB
-X_AC_DYSECTAPI
 X_AC_LAUNCHMON
 X_AC_RM_COMM
 X_AC_MRNET
@@ -123,24 +122,11 @@ AC_SUBST(STACKWALKERPREFIX)
 AC_SUBST(DEPCOREPREFIX)
 AC_SUBST(STATPYTHON)
 
-if test "$ENABLE_DYSECT" = "yes"
-then
-  AM_PROG_LEX
-  AC_PROG_YACC
-fi
-
 AC_CONFIG_FILES([Makefile
                  src/Makefile
-                 src/dysect/Makefile
-                 src/dysect/DysectAPI/Makefile
-                 src/dysect/libDysectAPI/Makefile
-                 src/dysect/libDysectAPI/include/Makefile
-                 src/dysect/libDysectAPI/src/Makefile
-                 src/analyticslib/Makefile
                  examples/Makefile
                  examples/src/Makefile
                  examples/scripts/Makefile
-                 examples/sessions/Makefile
                  doc/Makefile
                  doc/userguide/Makefile
                  doc/quickstart/Makefile
@@ -163,15 +149,6 @@ if test "$WITH_STATBENCH" = "yes"
 then
   AC_CONFIG_FILES([scripts/STATBench
                    scripts/stat-bench])
-fi
-
-if test "$ENABLE_DYSECT" = "yes"
-then
-  AC_CONFIG_FILES([scripts/dysectc])
-  if test "$WITH_GUI" = "yes"
-  then
-    AC_CONFIG_FILES([scripts/dysect-view])
-  fi
 fi
 
 AC_CONFIG_FILES([scripts/stat-core-merger])
