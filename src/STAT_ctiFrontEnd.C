@@ -3,8 +3,6 @@
 
 #define ctiError()   (printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "CTI Error: %s\n", cti_error_str()),STAT_SYSTEM_ERROR)
 
-static void unimplemented(const char* str) { fprintf(stderr, "unimplemented: %s\n", str); }
-
 STAT_ctiFrontEnd::STAT_ctiFrontEnd() : appId_(0), session_(0), hosts_(nullptr),
                                        tasksPerPE_(1)
 {
@@ -95,6 +93,9 @@ StatError_t STAT_ctiFrontEnd::attach()
     return STAT_OK;
 }
 
+// Launch a back-end process on every node where the application is running. We don't
+// yet have an MRNet network, so the one link we'll have available is the back-end nodes
+// can access files the front end ships in the CTI manifest.
 StatError_t STAT_ctiFrontEnd::launchDaemons()
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launching daemons with CTI\n");
@@ -117,7 +118,7 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
         return statError;
     }
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attachedn to job\n");
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attached to job\n");
 
     /* Increase the max proc and max fd limits for MRNet threads */
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
@@ -213,6 +214,8 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     return STAT_OK;
 }
 
+// Assemble the back-end process information which will include the rank to node mapping and
+// and a the label based on the name of the executable(s).
 StatError_t STAT_ctiFrontEnd::getProcInfo()
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting proc info and applExe from CTI.\n");
@@ -230,6 +233,10 @@ StatError_t STAT_ctiFrontEnd::getProcInfo()
     nApplNodes_ = hosts_->numHosts;
     procToHost_.reserve(nApplNodes_);
 
+    // Note: the CTI implementation is not currently trying to track the real MPI rank.  It's just
+    // assigning a rank value based based on the order of the backend nodes.   We could add a little
+    // protocol to fix up the bookkeeping after the backends are connected to MRNet, but I'm not
+    // sure it's really worth it.
     int totNumPEs = 0;
     for (int i=0, totNumPEs=0; i<nApplNodes_; ++i) {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "host %s has %d pes\n",
@@ -255,6 +262,7 @@ StatError_t STAT_ctiFrontEnd::getProcInfo()
 
     if (applName.empty()) {
         printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "did not get application name\n");
+        applName = "unknown";
     }
 
     applExe_ = strdup(applName.c_str());
@@ -353,14 +361,21 @@ StatError_t STAT_ctiFrontEnd::createMRNetNetwork(const char* topologyFileName)
 void STAT_ctiFrontEnd::detachFromLauncher(const char* errMsg)
 {
     if (session_) {
-        if (cti_destroySession(session_))
+        if (cti_destroySession(session_)) {
             printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Detach failed %s\n", errMsg);
+        } else { 
+            session_ = 0;
+        }
     }
 }
 
 void STAT_ctiFrontEnd::shutDown() {
+    
+    if (network_ != NULL && isConnected_ == true)
+        shutdownMrnetTree();
+
+    detachFromLauncher("CTI failed to detach from launcher...\n");
     isLaunched_ = false;
-    unimplemented("shutDown");
 }
 
 bool STAT_ctiFrontEnd::daemonsHaveExited() {
@@ -396,8 +411,9 @@ const char* STAT_ctiFrontEnd::getHostnameForProc(int procIdx) {
 int STAT_ctiFrontEnd::getMpiRankForProc(int procIdx)
 {
     static int cnt = 0;
-    if (!cnt++)
-        unimplemented("getMpiRankForProc");
+    if (!cnt++) {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using pseudo mpi rank for CTI\n");
+    }
     return procIdx;
 }
 

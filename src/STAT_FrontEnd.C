@@ -685,13 +685,6 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     }
     topologySize_ = leafInfo_.networkTopology->get_NumNodes();
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Topology size is %d nodes\n", topologySize_);
-    {
-        set<MRN::NetworkTopology::Node *> nodes;
-        leafInfo_.networkTopology->get_BackEndNodes(nodes);
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "MRNet has %d back end nodes\n", nodes.size());
-    }
-
     if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH)
         topologySize_ -= nApplNodes_; /* We need topologySize_ to not include BEs */
 
