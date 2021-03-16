@@ -684,6 +684,14 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
         return STAT_MRNET_ERROR;
     }
     topologySize_ = leafInfo_.networkTopology->get_NumNodes();
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Topology size is %d nodes\n", topologySize_);
+    {
+        set<MRN::NetworkTopology::Node *> nodes;
+        leafInfo_.networkTopology->get_BackEndNodes(nodes);
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "MRNet has %d back end nodes\n", nodes.size());
+    }
+
     if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH)
         topologySize_ -= nApplNodes_; /* We need topologySize_ to not include BEs */
 
@@ -1454,7 +1462,7 @@ StatError_t STAT_FrontEnd::setDaemonNodes()
     string prettyHost;
     int intRet;
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating daemon node list: ");
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating daemon node list: \n");
     leafInfo_.networkTopology->get_BackEndNodes(nodes);
     if (nodes.size() <= 0)
     {
@@ -1858,7 +1866,9 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     string::size_type dashPos, lastPos;
     StatError_t statError;
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Creating MRNet topology file\n");
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__,
+             "Creating MRNet topology file for %d processes on %d nodes\n",
+             nApplProcs_, nApplNodes_);
 
     envValue = getenv("STAT_CHECK_NODE_ACCESS");
     if (envValue != NULL)

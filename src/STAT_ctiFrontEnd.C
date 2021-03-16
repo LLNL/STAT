@@ -1,10 +1,11 @@
 #include "STAT_ctiFrontEnd.h"
+#include <fstream>
 
 #define ctiError()   (printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "CTI Error: %s\n", cti_error_str()),STAT_SYSTEM_ERROR)
 
 static void unimplemented(const char* str) { fprintf(stderr, "unimplemented: %s\n", str); }
 
-STAT_ctiFrontEnd::STAT_ctiFrontEnd() : appId_(0), session_(0), numPEs_(0), hosts_(nullptr),
+STAT_ctiFrontEnd::STAT_ctiFrontEnd() : appId_(0), session_(0), hosts_(nullptr),
                                        tasksPerPE_(1)
 {
 }
@@ -96,6 +97,8 @@ StatError_t STAT_ctiFrontEnd::attach()
 
 StatError_t STAT_ctiFrontEnd::launchDaemons()
 {
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launching daemons with CTI\n");
+    
     if (!toolDaemonExe_) {
         printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Tool daemon path not set\n");
         return STAT_ARG_ERROR;
@@ -107,10 +110,14 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     }
 
     // initialize cti app id
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to job\n");
+
     StatError_t statError = attach();
     if (statError != STAT_OK) {
         return statError;
     }
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attachedn to job\n");
 
     /* Increase the max proc and max fd limits for MRNet threads */
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
@@ -119,22 +126,45 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
         printMsg(statError, __FILE__, __LINE__, "Failed to increase limits... attempting to run with current configuration\n");
 #endif
 
-    const char* defaultArgv[] = { nullptr }, **argv = defaultArgv;;
+    int daemonArgc = 1;
+    char **daemonArgv = nullptr;
 
-    const char* pythonPath = getenv("PYTHONPATH");
-    if (!pythonPath)
-        pythonPath = ":";
+    if (applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH) {
+        const char* pythonPath = getenv("PYTHONPATH");
+        if (!pythonPath)
+            pythonPath = ":";
 
-    const char* gdbCommand = getenv("STAT_GDB");
-    if (!gdbCommand)
-        gdbCommand = "gdb";
+        const char* gdbCommand = getenv("STAT_GDB");
+        if (!gdbCommand)
+            gdbCommand = "gdb";
 
-    const char* gdbArgv[] = { "-P", pythonPath, "-G", gdbCommand, nullptr };
-
-    if (applicationOption_ == STAT_GDB_ATTACH) {
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using STAT GDB attach %s and PYTHONPATH %s\n", gdbCommand, pythonPath);
-        argv = gdbArgv;
+        daemonArgc += 4;
+        daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+        daemonArgv[daemonArgc - 5] = strdup("-P");
+        daemonArgv[daemonArgc - 4] = strdup(pythonPath);
+        daemonArgv[daemonArgc - 3] = strdup("-G");
+        daemonArgv[daemonArgc - 2] = strdup(gdbCommand);
+        daemonArgv[daemonArgc - 1] = NULL;
     }
+
+    daemonArgc += 2;
+    daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+    daemonArgv[daemonArgc - 3] = strdup("-d");
+    char tempString[BUFSIZE];
+    snprintf(tempString, BUFSIZE, "%d", nDaemonsPerNode_);
+    daemonArgv[daemonArgc - 2] = strdup(tempString);
+    daemonArgv[daemonArgc - 1] = NULL;
+
+    statError = addDaemonLogArgs(daemonArgc, daemonArgv);
+    if (statError != STAT_OK) {
+        printMsg(statError, __FILE__, __LINE__, "Failed to add daemon logging args\n");
+        return statError;
+    }
+
+    for (int i = 0; i < daemonArgc; i++)
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "daemonArgv[%d] = %s\n", i, daemonArgv[i]);
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Create CTI session\n");
 
     session_ = cti_createSession(appId_);
     if (!session_)
@@ -144,64 +174,178 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     if (!manifest)
         return ctiError();
 
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Adding binary %s to manifest\n", toolDaemonExe_);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "LD_LIBRARY_PATH=%s\n", getenv("LD_LIBRARY_PATH"));
+    
     if (cti_addManifestBinary(manifest, toolDaemonExe_))
         return ctiError();
 
     if (cti_addManifestLibrary(manifest, filterPath_))
         return ctiError();
 
-    if (cti_sendManifest(manifest))
-        return ctiError();
-
     char* cpExe = strdup(toolDaemonExe_);
     char* toolExe = basename(cpExe);
 
-    if (cti_execToolDaemon(manifest, toolExe, argv, nullptr)) {
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launching tool %s.\n", toolExe);
+
+    if (cti_execToolDaemon(manifest, toolExe, daemonArgv, nullptr)) {
         free(cpExe);
         return ctiError();
     }
-    
+
     free(cpExe);
+
+    isLaunched_ = true;
 
     statError = getProcInfo();
     if (statError != STAT_OK) {
         return statError;
     }
-    
+
+    if (strcmp(outDir_, "NULL") == 0 || strcmp(filePrefix_, "NULL") == 0) {
+        statError = createOutputDir();
+        if (statError != STAT_OK) {
+            printMsg(statError, __FILE__, __LINE__, "Failed to create output directory\n");
+            return statError;
+        }
+    }
+
     return STAT_OK;
 }
 
 StatError_t STAT_ctiFrontEnd::getProcInfo()
 {
-    numPEs_ = cti_getNumAppPEs(appId_);
-    if (!numPEs_)
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting proc info and applExe from CTI.\n");
+
+    nApplProcs_ = cti_getNumAppPEs(appId_);
+    if (!nApplProcs_)
         return ctiError();
 
     hosts_ = cti_getAppHostsPlacement(appId_);
     if (!hosts_)
         return ctiError();
 
-    int numHosts = hosts_->numHosts;
-    procToHost_.reserve(numHosts);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Done.\n");
+
+    nApplNodes_ = hosts_->numHosts;
+    procToHost_.reserve(nApplNodes_);
 
     int totNumPEs = 0;
-    for (int i=0, totNumPEs=0; i<numHosts; ++i) {
+    for (int i=0, totNumPEs=0; i<nApplNodes_; ++i) {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "host %s has %d pes\n",
+                 hosts_->hosts[i].hostname, hosts_->hosts[i].numPes);
+                 
         totNumPEs += hosts_->hosts[i].numPes;
         procToHost_.push_back(totNumPEs);
     }
+
+    std::string applName;
+    if (cti_binaryList_t* binList = cti_getAppBinaryList(appId_)) {
+        for (char** binIt = binList->binaries; *binIt; ++binIt) {
+            char* bin = *binIt;
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "binary = %s\n", bin);
+
+            if (!applName.empty())
+                applName += "_";
+            applName += basename(bin);
+        }
+        
+        cti_destroyBinaryList(binList);
+    }
+
+    if (applName.empty()) {
+        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "did not get application name\n");
+    }
+
+    applExe_ = strdup(applName.c_str());
+
     return STAT_OK;
 }
 
 StatError_t STAT_ctiFrontEnd::sendDaemonInfo()
 {
-    unimplemented("STAT_ctiFrontEnd::sendDaemonInfo");
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "sending daemon info\n");
+    
+    // the backend processes can't connect to mrnet without the parent information, so
+    // we need to ship enough information via the cti manifest to infer the connectivity
+    if (leafInfo_.leafCps.empty()) {
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "MRNet tree was not created\n");
+        return STAT_SYSTEM_ERROR;
+    }
+
+    std::string connectFileDir = std::string(outDir_) + "/" + filePrefix_ + ".daemons";
+    if (mkdir(connectFileDir.c_str(), S_IRWXU)) {
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "could not create directory %s\n",
+                 connectFileDir.c_str());
+        return STAT_SYSTEM_ERROR;
+    }
+
+    std::string connectFile = connectFileDir + "/daemoninfo.txt";
+    std::ofstream str(connectFile.c_str());
+    if (!str) {
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "could not create file %s\n",
+                 connectFile.c_str());
+        return STAT_SYSTEM_ERROR;
+    }
+
+
+    int numParents = leafInfo_.leafCps.size();
+    int numHosts = hosts_->numHosts;
+
+    // print out the hosts to parent index info
+    str << numHosts << "\n";
+    for (int i=0; i<numHosts; ++i) {
+        auto host = hosts_->hosts[i];
+        int rank = i + topologySize_;
+        int parentIdx = (numParents * i) / numHosts;
+        str << host.hostname << " " << rank << " " << parentIdx << "\n";
+    }
+
+
+    // mrnet parent nodes
+    str << leafInfo_.leafCps.size() << "\n";
+
+    for ( auto node : leafInfo_.leafCps) {
+        str << node->get_HostName() << " " << node->get_Port() << " " << node->get_Rank() << "\n";
+    }
+
+    if (!str) {
+        printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "writing daemon info file %s failed\n",
+                 connectFile.c_str());
+        return STAT_SYSTEM_ERROR;
+    }
+    str.close();
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "sending manifest with file %s\n",
+             connectFile.c_str());
+    
+    // and ship the file.
+    cti_manifest_id_t manifest = cti_createManifest(session_);
+    if (!manifest) {
+        return ctiError();
+    }
+
+    if (cti_addManifestFile(manifest, connectFile.c_str())) {
+        return ctiError();
+    }
+
+    if (cti_sendManifest(manifest)) {
+        return ctiError();
+    }
+
     return STAT_OK;
 }
 
 StatError_t STAT_ctiFrontEnd::createMRNetNetwork(const char* topologyFileName)
 {
+    cti_manifest_id_t manifest = cti_createManifest(session_);
+
+    std::map<std::string, std::string> attrs;
+    attrs["CRAY_CTI_APPID"] = std::to_string(appId_);
+    attrs["CRAY_CTI_MID"] = std::to_string(manifest);
+    
     // the filter should have already been sent in the manifest
-    network_ = MRN::Network::CreateNetworkFE(topologyFileName, NULL, NULL);
+    network_ = MRN::Network::CreateNetworkFE(topologyFileName, NULL, NULL, &attrs);
     return STAT_OK;
 }
 
@@ -214,9 +358,10 @@ void STAT_ctiFrontEnd::detachFromLauncher(const char* errMsg)
     }
 }
 
-
-
-void STAT_ctiFrontEnd::shutDown() { unimplemented("shutDown"); }
+void STAT_ctiFrontEnd::shutDown() {
+    isLaunched_ = false;
+    unimplemented("shutDown");
+}
 
 bool STAT_ctiFrontEnd::daemonsHaveExited() {
     return !cti_appIsValid(appId_);
@@ -226,7 +371,7 @@ bool STAT_ctiFrontEnd::isKilled() {
 }
 
 int STAT_ctiFrontEnd::getNumProcs() {
-    return numPEs_;
+    return nApplProcs_;
 }
 const char* STAT_ctiFrontEnd::getHostnameForProc(int procIdx) {
     if (!hosts_) {
@@ -237,7 +382,7 @@ const char* STAT_ctiFrontEnd::getHostnameForProc(int procIdx) {
     // for STATBench, 
     procIdx /= tasksPerPE_;     
 
-    if (procIdx < 0 || procIdx >= numPEs_) {
+    if (procIdx < 0 || procIdx >= nApplProcs_) {
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "invalid procIdx in getHostnameForProc\n");
         return "invalid process";
     }

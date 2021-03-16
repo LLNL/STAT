@@ -46,7 +46,6 @@ public:
     virtual StatError_t setAppNodeList();
     virtual StatError_t STATBench_setAppNodeList();
     virtual StatError_t STATBench_resetProctab(unsigned int nTasks);
-    virtual StatError_t createDaemonRankMap();
 
 private:
     //! validate the apid with CTI

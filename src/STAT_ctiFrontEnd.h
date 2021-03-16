@@ -44,7 +44,6 @@ private:
     cti_app_id_t appId_;        /*!< the CTI application ID */
     cti_session_id_t session_;  /*!< the CTI session for the daemons */
 
-    int numPEs_;
     cti_hostsList_t* hosts_;
     std::vector<int> procToHost_;
     int tasksPerPE_;

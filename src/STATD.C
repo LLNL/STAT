@@ -39,6 +39,12 @@ int main(int argc, char **argv)
     StatError_t statError;
     STAT_BackEnd *statBackEnd;
 
+    if (FILE* f = fopen("/home/users/jvogt/tests/stat/log/bex", "a")) {
+        fprintf(f, "starting STATD\n");
+        fclose(f);
+    }
+
+
     struct option longOptions[] =
     {
         {"mrnetprintf",         no_argument,        0, 'm'},

@@ -1997,6 +1997,8 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
 #endif
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Preparing to sample %d traces each %d us with %d retries every %d us with max threads %d with variables %s and type %d\n", nTraces, traceFrequency, nRetries, retryFrequency, threadBvLength_, variableSpecification, sampleType_);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "X: isRunning = %s, proctabSize_ = %d\n",
+              isRunning_ ? "true" : "false", proctabSize_);
 
     wasRunning = isRunning_;
     if (sampleType_ & STAT_SAMPLE_CLEAR_ON_SAMPLE)
@@ -2058,6 +2060,9 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
             k = 1;
             clear2dNodesAndEdges();
             isLastTrace = (i == nTraces - 1);
+
+            printMesg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "isRunning = %s, proctabSize_ = %d\n",
+                      isRunning_ ? "true" : "false", proctabSize_);
 
             /* Pause process as necessary */
             if (isRunning_)
