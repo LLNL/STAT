@@ -671,7 +671,7 @@ class STAT_FrontEnd
 
             Update state and timing information
         */
-        StatError_t postAttachApplication();
+        virtual StatError_t postAttachApplication();
 
         //! Perform operations required after pause acknowledgement
         /*!

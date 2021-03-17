@@ -93,6 +93,38 @@ StatError_t STAT_ctiFrontEnd::attach()
     return STAT_OK;
 }
 
+StatError_t STAT_ctiFrontEnd::launch()
+{
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launching application with CTI\n");
+
+    // launcherArgv_ is null terminated.   But the stat documentation tells you to include
+    // the launcher in the argument list, so I'll ignore the first one.
+    if (launcherArgc_ < 3) {
+        printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "No application given for launch\n");
+        return STAT_ARG_ERROR;
+    }
+
+    const char* env[] = { nullptr };
+    appId_ = cti_launchAppBarrier(launcherArgv_+1, -1, -1, nullptr, nullptr, env);
+    if (!appId_) {
+        return ctiError();
+    }
+
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Application launched successfully\n");
+    return STAT_OK;
+}
+
+StatError_t STAT_ctiFrontEnd::postAttachApplication()
+{
+    if (applicationOption_ == STAT_LAUNCH && appId_) {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Releasing app barrier\n");
+        if (cti_releaseAppBarrier(appId_))
+            return ctiError();
+    }
+    return STAT_FrontEnd::postAttachApplication();
+}
+
+
 // Launch a back-end process on every node where the application is running. We don't
 // yet have an MRNet network, so the one link we'll have available is the back-end nodes
 // can access files the front end ships in the CTI manifest.
@@ -113,14 +145,31 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     // initialize cti app id
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to job\n");
 
-    StatError_t statError = attach();
-    if (statError != STAT_OK) {
-        return statError;
-    }
+    StatError_t statError = STAT_OK;
+    if (applicationOption_ == STAT_ATTACH) {
+        statError = attach();
+        if (statError != STAT_OK) {
+            return statError;
+        }
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attached to job\n");
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attached to job\n");
+
+    } else if (applicationOption_ == STAT_LAUNCH) {
+        statError = launch();
+        if (statError != STAT_OK) {
+            return statError;
+        }
+
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launched the job\n");
+    } else {
+        printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Launch option %d it not supported by CTI\n",
+                 applicationOption_);
+        return STAT_ARG_ERROR;
+    }
+    
 
     /* Increase the max proc and max fd limits for MRNet threads */
+
 #if (defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT))
     statError = increaseSysLimits();
     if (statError != STAT_OK)

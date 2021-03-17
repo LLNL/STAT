@@ -23,6 +23,7 @@ public:
 
     virtual bool daemonsHaveExited();
     virtual bool isKilled();
+    virtual StatError_t postAttachApplication();
 
     virtual int getNumProcs();
     virtual const char* getHostnameForProc(int procIdx);
@@ -36,8 +37,10 @@ public:
     virtual StatError_t STATBench_setAppNodeList();
     virtual StatError_t STATBench_resetProctab(unsigned int nTasks);
 
+
 private:
     StatError_t attach();
+    StatError_t launch();
     StatError_t getProcInfo();
 
 private:
