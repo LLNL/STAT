@@ -18,8 +18,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "STAT_BackEnd.h"
 
-#include <fstream>
-
 using namespace std;
 using namespace MRN;
 using namespace Dyninst;
@@ -565,37 +563,6 @@ StatError_t STAT_BackEnd::init(int *argc, char ***argv)
 #endif
     return STAT_OK;
 }
-
-#ifdef STAT_GDB_BE
-StatError_t STAT_BackEnd::initGdb()
-{
-    PyObject *pName;
-    const char *moduleName = "stat_cuda_gdb";
-    Py_Initialize();
-#if PY_MAJOR_VERSION >= 3
-    pName = PyUnicode_FromString(moduleName);
-#else
-    pName = PyString_FromString(moduleName);
-#endif
-    if (pName == NULL)
-    {
-        fprintf(errOutFp_, "Cannot convert argument\n");
-        return STAT_SYSTEM_ERROR;
-    }
-
-    gdbModule_ = PyImport_Import(pName);
-    Py_DECREF(pName);
-    if (gdbModule_ == NULL)
-    {
-        fprintf(errOutFp_, "Failed to import Python module %s\n", moduleName);
-        PyErr_Print();
-        return STAT_SYSTEM_ERROR;
-    }
-    usingGdb_ = true;
-        
-    return STAT_OK;
-}
-#endif
 
 static void onCrashWrap(int sig, siginfo_t *info, void *context)
 {
@@ -1365,7 +1332,7 @@ StatError_t STAT_BackEnd::attach()
         {
             if (PyErr_Occurred())
                 PyErr_Print();
-            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module %s\n", newFunctionName.c_str(), newFunc ? "not callable" : "null");
+            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", newFunctionName.c_str());
             return STAT_ATTACH_ERROR;
         }
 
@@ -1605,9 +1572,6 @@ StatError_t STAT_BackEnd::pause()
 
         for (i = 0; i < proctabSize_; i++)
         {
-            auto pid = proctab_[i].pid;
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "pausing %d\n", pid);
-            
             pArgs = Py_BuildValue("(i)", proctab_[i].pid);
             if (!pArgs)
             {
@@ -1624,7 +1588,6 @@ StatError_t STAT_BackEnd::pause()
                 Py_DECREF(pArgs);
                 continue;
             }
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "pause call came back\n");
 #if PY_MAJOR_VERSION >= 3
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", pauseFunctionName.c_str(), PyLong_AsLong(pValue));
 #else
@@ -1634,8 +1597,6 @@ StatError_t STAT_BackEnd::pause()
             Py_DECREF(pValue);
         }
         Py_DECREF(pauseFunc);
-
-        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "returning OK\n");
 
         isRunning_ = false;
         return STAT_OK;

@@ -98,22 +98,19 @@ class GdbDriver(object):
             logging.error('Failed to launch "%s %s": %s' %(self.gdb_command, repr(self.gdb_args), repr(e)))
             return False
 
-        logging.debug('setting up read queue')
-        self.readQueue = Queue()
-
-        tlog = open('/home/users/jvogt/tests/stat/log/tlog', 'w')
-
+        # use an intermediate thread to enable non-blocking access to the gdb output
+        # see readlines and flushInput
         logging.debug('starting queuing thread')
-        self.readThread = Thread(target=GdbDriver.enqueueProcessOutput, args=(self,tlog))
+        self.readQueue = Queue()
+        self.readThread = Thread(target=GdbDriver.enqueueProcessOutput, args=(self,))
         self.readThread.daemon = True
         self.readThread.start()
 
         logging.debug('reading launch output')
         lines = self.readlines()
 
-        logging.debug('got launch output %s', lines)
+        logging.debug('done reading launch output')
         
-        logging.debug('%s' %repr(lines))
         return check_lines(lines)
 
     def close(self):
@@ -129,9 +126,9 @@ class GdbDriver(object):
         self.close()
 
     @staticmethod
-    def enqueueProcessOutput(gdb,tlog):
-        tlog.write('in enqueueProcessOutput\n');
-        tlog.flush()
+    def enqueueProcessOutput(gdb):
+        """Thread routine to takes data from subprocess.stdout as it becomes avialable
+           and puts into a queue; enables non-blocking read access on the main thread"""
         while True:
             c = gdb.subprocess.stdout.read(1)
             if c == '':
@@ -157,7 +154,6 @@ class GdbDriver(object):
                     lines.append(line)
                     break
             if ch == '\n':
-                logging.debug('got line: %s' % line)
                 lines.append(line)
                 ch = ''
                 line = ''
@@ -172,15 +168,7 @@ class GdbDriver(object):
         """Sends the command to gdb, and returns a list of outputted lines
            \param command the command to send to gdb
            \returns a list of lines from a merged stdout/stderr stream"""
-
-        # slurp up any left-over output from the last call
-        extraJunk = ''
-        try:
-            while True:
-                extraJunk = extraJunk + self.readQueue.get_nowait()
-        except Empty:
-            if extraJunk != '':
-                logging.debug('got junk at end of last command: %s\n' % extraJunk)
+        self.flushInput()
 
         if not command.endswith('\n'):
             command += '\n'
@@ -189,6 +177,17 @@ class GdbDriver(object):
         self.subprocess.stdin.write(command)
         self.subprocess.stdin.flush()
         return self.readlines()
+
+    def flushInput(self):
+        """ Reads and discards any data on the gdb pipe left unprocessed by the 
+            previous command"""
+        extraJunk = ''
+        try:
+            while True:
+                extraJunk = extraJunk + self.readQueue.get_nowait()
+        except Empty:
+            if extraJunk != '':
+                logging.debug('got junk at end of last command: %s\n' % extraJunk)
 
     def attach(self):
         """Attaches to the target process"""
@@ -229,8 +228,6 @@ class GdbDriver(object):
             except Exception as e:
                 logging.warning('Failed to get thread list from "%s": %s' %(line, repr(e)))
                 pass
-        logging.debug('got %d threads' % len(tids))
-        logging.debug('got threads: ' + ' '.join([str(e) for e in tids]))
         return tids
 
     def thread_focus(self, thread_id):
@@ -243,7 +240,7 @@ class GdbDriver(object):
     def bt(self, thread_id):
         """Gets a backtrace from the requested thread id.
            returns list of frames, where each frame is a map of attributes"""
-        logging.debug('GDB thread bt ID %d' %(thread_id))
+        logging.info('GDB thread bt ID %d' %(thread_id))
         ret = []
         lines = self.communicate("thread apply %d bt" %thread_id)
         logging.debug('%s' %(repr(lines)))
@@ -297,20 +294,18 @@ class GdbDriver(object):
         logging.info('GDB resume PID %d' %(self.pid))
         command = "continue\n"
         ret = self.subprocess.stdin.write(command)
+        return True
+        # Checking for a specific "continuing" message is brittle, so the next line
+        # hangs - treating this asynchronous
         #lines = self.readlines('Continuing')
-        #logging.debug('%s' %(repr(lines)))
-        #return check_lines(lines)
 
     def pause(self):
         """Pauses the debug target process"""
         logging.info('GDB pause PID %d' %(self.pid))
         ret = os.kill(self.pid, signal.SIGINT)
         return True
-        #logging.info('readlines')
+        # waiting for output hangs
         #lines = self.readlines()
-        #logging.debug('%s' %(repr(lines)))
-        #return check_lines(lines)
-
 
 if __name__ == "__main__":
     gdb = GdbDriver(int(sys.argv[1]), 'debug', 'log.txt')

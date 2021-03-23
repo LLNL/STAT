@@ -22,6 +22,11 @@ class STAT_lmonBackEnd : public STAT_BackEnd
 
     virtual StatError_t connect(int argc = 0, char **argv = NULL);
     virtual StatError_t statBenchConnectInfoDump();
+
+#ifdef STAT_GDB_BE
+    virtual StatError_t initGdb();
+#endif
+
 };
 
 

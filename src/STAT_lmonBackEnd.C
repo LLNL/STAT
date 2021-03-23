@@ -458,6 +458,38 @@ StatError_t STAT_lmonBackEnd::statBenchConnectInfoDump()
     return STAT_OK;
 }
 
+#ifdef STAT_GDB_BE
+StatError_t STAT_lmonBackEnd::initGdb()
+{
+    PyObject *pName;
+    const char *moduleName = "stat_cuda_gdb";
+    Py_Initialize();
+#if PY_MAJOR_VERSION >= 3
+    pName = PyUnicode_FromString(moduleName);
+#else
+    pName = PyString_FromString(moduleName);
+#endif
+    if (pName == NULL)
+    {
+        fprintf(errOutFp_, "Cannot convert argument\n");
+        return STAT_SYSTEM_ERROR;
+    }
+
+    gdbModule_ = PyImport_Import(pName);
+    Py_DECREF(pName);
+    if (gdbModule_ == NULL)
+    {
+        fprintf(errOutFp_, "Failed to import Python module %s\n", moduleName);
+        PyErr_Print();
+        return STAT_SYSTEM_ERROR;
+    }
+    usingGdb_ = true;
+
+    return STAT_OK;
+}
+#endif
+
+
 /*
 STAT_BackEnd* STAT_BackEnd::make(StatDaemonLaunch_t launchType)
 {
