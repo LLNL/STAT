@@ -18,6 +18,10 @@ public:
     */
     virtual StatError_t initLmon();
 
+#ifdef STAT_GDB_BE
+    virtual StatError_t initGdb();
+#endif
+
     virtual StatError_t connect(int argc = 0, char **argv = NULL);
     virtual StatError_t statBenchConnectInfoDump();
 };

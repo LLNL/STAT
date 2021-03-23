@@ -18,6 +18,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "STAT_BackEnd.h"
 
+#include <fstream>
+
 using namespace std;
 using namespace MRN;
 using namespace Dyninst;
@@ -590,7 +592,7 @@ StatError_t STAT_BackEnd::initGdb()
         return STAT_SYSTEM_ERROR;
     }
     usingGdb_ = true;
-
+        
     return STAT_OK;
 }
 #endif
@@ -1363,7 +1365,7 @@ StatError_t STAT_BackEnd::attach()
         {
             if (PyErr_Occurred())
                 PyErr_Print();
-            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", newFunctionName.c_str());
+            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module %s\n", newFunctionName.c_str(), newFunc ? "not callable" : "null");
             return STAT_ATTACH_ERROR;
         }
 
@@ -1379,18 +1381,18 @@ StatError_t STAT_BackEnd::attach()
 
         for (i = 0; i < proctabSize_; i++)
         {
-            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].pd.executable_name, proctab_[i].pd.pid, proctab_[i].mpirank);
-            pArgs = Py_BuildValue("(i)", proctab_[i].pd.pid);
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].executable_name, proctab_[i].pid, proctab_[i].mpirank);
+            pArgs = Py_BuildValue("(i)", proctab_[i].pid);
             if (!pArgs)
             {
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pd.pid);
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[i].pid);
                 continue;
             }
 
             pValue = PyObject_CallObject(newFunc, pArgs);
             if (pValue == NULL)
             {
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", newFunctionName.c_str(), proctab_[i].pd.pid);
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", newFunctionName.c_str(), proctab_[i].pid);
                 PyErr_Print();
                 Py_DECREF(pArgs);
                 continue;
@@ -1403,7 +1405,7 @@ StatError_t STAT_BackEnd::attach()
             if (PyInt_AsLong(pValue) == -1)
 #endif
             {
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "attach failed for pid %d\n", proctab_[i].pd.pid);
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "attach failed for pid %d\n", proctab_[i].pid);
                 Py_DECREF(pArgs);
                 Py_DECREF(pValue);
                 continue;
@@ -1413,7 +1415,7 @@ StatError_t STAT_BackEnd::attach()
             pValue = PyObject_CallObject(attachFunc, pArgs);
             if (pValue == NULL)
             {
-                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", attachFunctionName.c_str(), proctab_[i].pd.pid);
+                printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", attachFunctionName.c_str(), proctab_[i].pid);
                 PyErr_Print();
                 Py_DECREF(pArgs);
                 continue;
@@ -1603,6 +1605,9 @@ StatError_t STAT_BackEnd::pause()
 
         for (i = 0; i < proctabSize_; i++)
         {
+            auto pid = proctab_[i].pid;
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "pausing %d\n", pid);
+            
             pArgs = Py_BuildValue("(i)", proctab_[i].pid);
             if (!pArgs)
             {
@@ -1610,6 +1615,7 @@ StatError_t STAT_BackEnd::pause()
                 continue;
             }
 
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "calling pause\n");
             pValue = PyObject_CallObject(pauseFunc, pArgs);
             if (pValue == NULL)
             {
@@ -1618,6 +1624,7 @@ StatError_t STAT_BackEnd::pause()
                 Py_DECREF(pArgs);
                 continue;
             }
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "pause call came back\n");
 #if PY_MAJOR_VERSION >= 3
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %ld\n", pauseFunctionName.c_str(), PyLong_AsLong(pValue));
 #else
@@ -1627,6 +1634,8 @@ StatError_t STAT_BackEnd::pause()
             Py_DECREF(pValue);
         }
         Py_DECREF(pauseFunc);
+
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "returning OK\n");
 
         isRunning_ = false;
         return STAT_OK;

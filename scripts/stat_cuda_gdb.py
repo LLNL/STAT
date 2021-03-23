@@ -53,7 +53,7 @@ def new_gdb_instance(pid, gdb_type='gdb'):
         if 'cuda-gdb' in os.environ['STAT_GDB']:
             gdb = CudaGdbDriver(pid, 'error', 'stderr')
         else:
-            gdb = GdbDriver(pid, 'error', 'stderr')
+            gdb = GdbDriver(pid, 'debug', '/home/users/jvogt/tests/stat/log/debpy')
     except:
         gdb = GdbDriver(pid, 'error', 'stderr')
     if gdb.launch() is False:
@@ -81,8 +81,11 @@ def get_all_host_traces(pid, retries=5, retry_frequency=1000, cuda_quick=0):
     ret = ''
     tids = gdb_instances[pid].get_thread_list()
     tids.sort()
+    logging.debug('in get_all_host_trace:s %d %d threads' % (pid,len(tids)))
     for thread_id in tids:
+        logging.debug('spot 1 %d:' % thread_id)
         bt = gdb_instances[pid].bt(thread_id)
+        logging.debug('got %d frames' % len(bt))
         bt.reverse()
         for frame in bt:
             ret += '%s@%s:%d\n' %(frame['function'], frame['source'], frame['linenum'])

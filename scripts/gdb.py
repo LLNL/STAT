@@ -32,6 +32,8 @@ import os
 import logging
 import time
 from datetime import datetime
+from threading import Thread
+from queue import Queue, Empty
 
 def init_logging(input_loglevel, input_logfile):
     """Initialize the logging module"""
@@ -74,7 +76,7 @@ def check_lines(lines):
 class GdbDriver(object):
     """A class to drive GDB"""
     input_prompt = '(gdb)'
-    gdb_command = 'gdb'
+    gdb_command = '/usr/bin/gdb'
     gdb_args = []
 
     def __init__(self, pid, log_level='error', log_file='stderr'):
@@ -95,7 +97,22 @@ class GdbDriver(object):
         except Exception as e:
             logging.error('Failed to launch "%s %s": %s' %(self.gdb_command, repr(self.gdb_args), repr(e)))
             return False
+
+        logging.debug('setting up read queue')
+        self.readQueue = Queue()
+
+        tlog = open('/home/users/jvogt/tests/stat/log/tlog', 'w')
+
+        logging.debug('starting queuing thread')
+        self.readThread = Thread(target=GdbDriver.enqueueProcessOutput, args=(self,tlog))
+        self.readThread.daemon = True
+        self.readThread.start()
+
+        logging.debug('reading launch output')
         lines = self.readlines()
+
+        logging.debug('got launch output %s', lines)
+        
         logging.debug('%s' %repr(lines))
         return check_lines(lines)
 
@@ -111,6 +128,16 @@ class GdbDriver(object):
         """Destructor"""
         self.close()
 
+    @staticmethod
+    def enqueueProcessOutput(gdb,tlog):
+        tlog.write('in enqueueProcessOutput\n');
+        tlog.flush()
+        while True:
+            c = gdb.subprocess.stdout.read(1)
+            if c == '':
+                break
+            gdb.readQueue.put(c)
+
     def readlines(self, breakstring=None):
         """Simply reads the lines, until we get to the '(gdb)' prompt
            prevents blocking from a lack of EOF with a stdout.readline() loop"""
@@ -124,12 +151,13 @@ class GdbDriver(object):
                 logging.error(error_msg)
                 lines.append(error_msg)
                 return lines
-            ch = self.subprocess.stdout.read(1)
+            ch = self.readQueue.get()
             if breakstring:
                 if breakstring in line:
                     lines.append(line)
                     break
             if ch == '\n':
+                logging.debug('got line: %s' % line)
                 lines.append(line)
                 ch = ''
                 line = ''
@@ -144,8 +172,19 @@ class GdbDriver(object):
         """Sends the command to gdb, and returns a list of outputted lines
            \param command the command to send to gdb
            \returns a list of lines from a merged stdout/stderr stream"""
+
+        # slurp up any left-over output from the last call
+        extraJunk = ''
+        try:
+            while True:
+                extraJunk = extraJunk + self.readQueue.get_nowait()
+        except Empty:
+            if extraJunk != '':
+                logging.debug('got junk at end of last command: %s\n' % extraJunk)
+
         if not command.endswith('\n'):
             command += '\n'
+
         logging.debug('sending command %s\n' %(command))
         self.subprocess.stdin.write(command)
         self.subprocess.stdin.flush()
@@ -190,6 +229,8 @@ class GdbDriver(object):
             except Exception as e:
                 logging.warning('Failed to get thread list from "%s": %s' %(line, repr(e)))
                 pass
+        logging.debug('got %d threads' % len(tids))
+        logging.debug('got threads: ' + ' '.join([str(e) for e in tids]))
         return tids
 
     def thread_focus(self, thread_id):
@@ -202,7 +243,7 @@ class GdbDriver(object):
     def bt(self, thread_id):
         """Gets a backtrace from the requested thread id.
            returns list of frames, where each frame is a map of attributes"""
-        logging.info('GDB thread bt ID %d' %(thread_id))
+        logging.debug('GDB thread bt ID %d' %(thread_id))
         ret = []
         lines = self.communicate("thread apply %d bt" %thread_id)
         logging.debug('%s' %(repr(lines)))
@@ -256,17 +297,19 @@ class GdbDriver(object):
         logging.info('GDB resume PID %d' %(self.pid))
         command = "continue\n"
         ret = self.subprocess.stdin.write(command)
-        lines = self.readlines('Continuing')
-        logging.debug('%s' %(repr(lines)))
-        return check_lines(lines)
+        #lines = self.readlines('Continuing')
+        #logging.debug('%s' %(repr(lines)))
+        #return check_lines(lines)
 
     def pause(self):
         """Pauses the debug target process"""
         logging.info('GDB pause PID %d' %(self.pid))
         ret = os.kill(self.pid, signal.SIGINT)
-        lines = self.readlines()
-        logging.debug('%s' %(repr(lines)))
-        return check_lines(lines)
+        return True
+        #logging.info('readlines')
+        #lines = self.readlines()
+        #logging.debug('%s' %(repr(lines)))
+        #return check_lines(lines)
 
 
 if __name__ == "__main__":

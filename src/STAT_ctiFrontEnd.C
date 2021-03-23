@@ -106,6 +106,7 @@ StatError_t STAT_ctiFrontEnd::launch()
 
     const char* env[] = { nullptr };
     appId_ = cti_launchAppBarrier(launcherArgv_+1, -1, -1, nullptr, nullptr, env);
+    //appId_ = cti_launchApp(launcherArgv_+1, -1, -1, nullptr, nullptr, env);
     if (!appId_) {
         return ctiError();
     }
@@ -120,6 +121,7 @@ StatError_t STAT_ctiFrontEnd::postAttachApplication()
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Releasing app barrier\n");
         if (cti_releaseAppBarrier(appId_))
             return ctiError();
+        //printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "No Releasing app barrier\n");
     }
     return STAT_FrontEnd::postAttachApplication();
 }
@@ -146,7 +148,7 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to job\n");
 
     StatError_t statError = STAT_OK;
-    if (applicationOption_ == STAT_ATTACH) {
+    if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_GDB_ATTACH) {
         statError = attach();
         if (statError != STAT_OK) {
             return statError;
@@ -232,6 +234,19 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
 
     if (cti_addManifestLibrary(manifest, filterPath_))
         return ctiError();
+
+    if (applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH) {
+        char* cpFilterPath = strdup(filterPath_);
+        char* libDir = dirname(cpFilterPath);
+        std::string cudaLib = std::string(libDir) + "/python3.6/site-packages/cuda_gdb.py";
+        std::string gdbLib  = std::string(libDir) + "/python3.6/site-packages/gdb.py";
+        free(cpFilterPath);
+
+        if (cti_addManifestFile(manifest, cudaLib.c_str()))
+            return ctiError();
+        if (cti_addManifestFile(manifest, gdbLib.c_str()))
+            return ctiError();
+    }
 
     char* cpExe = strdup(toolDaemonExe_);
     char* toolExe = basename(cpExe);

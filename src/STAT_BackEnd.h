@@ -201,7 +201,7 @@ class STAT_BackEnd
         /*
             \return STAT_OK on success
         */
-        StatError_t initGdb();
+        virtual StatError_t initGdb();
 #endif
 
         //! Initialize and set up LaunchMON
