@@ -565,7 +565,10 @@ StatError_t STAT_ctiFrontEnd::STATBench_resetProctab(unsigned int nTasks) {
     return STAT_OK;
 }
 
+#ifdef CRAYXT
 STAT_FrontEnd* STAT_FrontEnd::make()
 {
     return new STAT_ctiFrontEnd();
 }
+#endif
+

@@ -5,6 +5,7 @@
 
 #include "lmon_api/lmon_be.h"
 
+// Backend implementation using launchmon to start the tool daemons
 class STAT_lmonBackEnd : public STAT_BackEnd
 {
     public:
@@ -18,7 +19,7 @@ class STAT_lmonBackEnd : public STAT_BackEnd
     /*
       \return STAT_OK on success
     */
-    virtual StatError_t initLmon();
+    virtual StatError_t initLauncher();
 
     virtual StatError_t connect(int argc = 0, char **argv = NULL);
     virtual StatError_t statBenchConnectInfoDump();

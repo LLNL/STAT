@@ -19,7 +19,8 @@ StatError_t STAT_ctiBackEnd::finalize()
     return STAT_OK;
 }
 
-StatError_t STAT_ctiBackEnd::initLmon()
+// initialize cti
+StatError_t STAT_ctiBackEnd::initLauncher()
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Getting app processes.\n");
 
@@ -67,9 +68,6 @@ StatError_t STAT_ctiBackEnd::initLmon()
 #ifdef STAT_GDB_BE
 StatError_t STAT_ctiBackEnd::initGdb()
 {
-    std::ofstream f("/home/users/jvogt/tests/stat/log/bex");
-    f << "STAT_ctiBackEnd::in initGdb\n";
-
     PyObject *pName;
     const char *moduleName = "stat_cuda_gdb";
 
@@ -81,7 +79,6 @@ StatError_t STAT_ctiBackEnd::initGdb()
 #endif
     if (pName == NULL)
     {
-        f << "Cannot convert argument\n";
         fprintf(errOutFp_, "Cannot convert argument\n");
         return STAT_SYSTEM_ERROR;
     }
@@ -96,11 +93,7 @@ StatError_t STAT_ctiBackEnd::initGdb()
     os << "import sys\n";
     os << "sys.path.append('" << fileDir << "')\n";
 
-    f << "path command:\n";
-    f << os.str();
-    
     if (PyRun_SimpleString(os.str().c_str())) {
-        f << "Setting python path fails\n";
         fprintf(errOutFp_, "Setting python path fails\n");
     }
     
@@ -108,7 +101,6 @@ StatError_t STAT_ctiBackEnd::initGdb()
     Py_DECREF(pName);
     if (gdbModule_ == NULL)
     {
-        f << "Failed to import python module " << moduleName << "\n";
         fprintf(errOutFp_, "Failed to import Python module %s\n", moduleName);
         PyErr_Print();
         return STAT_SYSTEM_ERROR;
@@ -120,13 +112,8 @@ StatError_t STAT_ctiBackEnd::initGdb()
     if (!newFunc || !PyCallable_Check(newFunc)) {
         if (PyErr_Occurred())
             PyErr_Print();
-        f << "failed to load function " << newFunctionName << "\n";
-    } else {
-        f << "was able to load function " << newFunctionName << "\n";
     }
 
-    f << "initGdb returning success\n";
-        
     return STAT_OK;
 }
 #endif
@@ -293,7 +280,9 @@ StatError_t STAT_ctiBackEnd::statBenchConnectInfoDump()
     return STAT_SYSTEM_ERROR;
 }
 
+#ifdef CRAYXT
 STAT_BackEnd* STAT_BackEnd::make(StatDaemonLaunch_t launchType)
 {
     return new STAT_ctiBackEnd(launchType);
 }
+#endif

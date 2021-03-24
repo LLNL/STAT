@@ -3,6 +3,7 @@
 
 #include "STAT_BackEnd.h"
 
+// backend implementation class that uses cti to launch tool daemons
 class STAT_ctiBackEnd : public STAT_BackEnd
 {
 public:
@@ -12,11 +13,11 @@ public:
     virtual StatError_t init(int *argc, char ***argv);
     virtual StatError_t finalize();
     
-    //! Initialize and set up LaunchMON
+    //! Initialize and set up the cti
     /*
       \return STAT_OK on success
     */
-    virtual StatError_t initLmon();
+    virtual StatError_t initLauncher();
 
 #ifdef STAT_GDB_BE
     virtual StatError_t initGdb();

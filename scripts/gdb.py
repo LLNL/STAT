@@ -31,6 +31,7 @@ import signal
 import os
 import logging
 import time
+import shutil
 from datetime import datetime
 from threading import Thread
 from queue import Queue, Empty
@@ -76,7 +77,7 @@ def check_lines(lines):
 class GdbDriver(object):
     """A class to drive GDB"""
     input_prompt = '(gdb)'
-    gdb_command = '/usr/bin/gdb'
+    gdb_command = 'gdb'
     gdb_args = []
 
     def __init__(self, pid, log_level='error', log_file='stderr'):
@@ -89,6 +90,9 @@ class GdbDriver(object):
         self.gdb_args.append("set filename-display absolute")
         self.pid = pid
 
+        if shutil.which(self.gdb_command) == None:
+            self.gdb_command = '/usr/bin/' + self.gdb_command
+            
     def launch(self):
         """Launch the gdb process"""
         logging.debug('launching "%s %s"' %(self.gdb_command, repr(self.gdb_args)))

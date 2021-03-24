@@ -204,11 +204,11 @@ class STAT_BackEnd
         virtual StatError_t initGdb() = 0;
 #endif
 
-        //! Initialize and set up LaunchMON
+        //! Initialize and set up the job launcher
         /*
             \return STAT_OK on success
         */
-        virtual StatError_t initLmon() = 0;
+        virtual StatError_t initLauncher() = 0;
 
         //! Add a serial process to the process table
         /*

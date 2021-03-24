@@ -836,9 +836,9 @@ int STAT_lmonFrontEnd::getMpiRankForProc(int procIdx)
     return proctab_[procIdx].mpirank;
 }
 
-/*
+#ifndef CRAYXT
 STAT_FrontEnd* STAT_FrontEnd::make()
 {
     return new STAT_lmonFrontEnd();
 }
-*/
+#endif

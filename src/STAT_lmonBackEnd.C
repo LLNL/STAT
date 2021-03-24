@@ -40,7 +40,8 @@ StatError_t STAT_lmonBackEnd::finalize()
     return STAT_OK;
 }
 
-StatError_t STAT_lmonBackEnd::initLmon()
+// initialize launchmon
+StatError_t STAT_lmonBackEnd::initLauncher()
 {
     int size;
     lmon_rc_e lmonRet;
@@ -490,9 +491,9 @@ StatError_t STAT_lmonBackEnd::initGdb()
 #endif
 
 
-/*
+#ifndef CRAYXT
 STAT_BackEnd* STAT_BackEnd::make(StatDaemonLaunch_t launchType)
 {
     return new STAT_lmonBackEnd(launchType);
 }
-*/
+#endif

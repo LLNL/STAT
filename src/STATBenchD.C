@@ -184,7 +184,7 @@ int main(int argc, char **argv)
     else
     {
         /* We're the STATBench helper daemon */
-        statError = statBackEnd->initLmon();
+        statError = statBackEnd->initLauncher();
         if (statError != STAT_OK)
         {
             statBackEnd->printMsg(statError, __FILE__, __LINE__, "Failed to initialize BE\n");
