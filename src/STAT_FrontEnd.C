@@ -79,7 +79,6 @@ extern int gNumEdgeAttrs;
 
 STAT_FrontEnd::STAT_FrontEnd()
 {
-
     char *pHangTime = getenv("STAT_FE_HANG_SECONDS");
     if (pHangTime) {
         int hangTime = atoi(pHangTime);
@@ -216,21 +215,9 @@ STAT_FrontEnd::STAT_FrontEnd()
     statInitializeMergeFunctions();
 
     /* Get the FE hostname */
-#ifdef CRAYXT
-    string temp;
-    intRet = XPlat::NetUtils::GetLocalHostName(temp);
-    snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
-#else
     intRet = gethostname(hostname_, BUFSIZE);
-#endif
-
-    if (intRet == 0)
-        snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
-    else
-    {
-        intRet = gethostname(hostname_, BUFSIZE);
-        if (intRet != 0)
-            printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
+    if (intRet != 0) {
+        printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
     }
 
     /* Initialize variables */
@@ -475,15 +462,24 @@ void beConnectCb(Event *event, void *dummy)
 }
 
 
-void nodeRemovedCb(Event *event, void *statObject)
+void nodeRemovedCb(Event *event, void *statObjectPtr)
 {
+    STAT_FrontEnd* statObject = (STAT_FrontEnd*)statObjectPtr;
     StatError_t statError;
+
+
+    if (!statObject->isAttached())
+    {
+        // No need to generate warnings here if the node removal is just being
+        // reported after the notification for application detaching.
+        return;
+    }
 
     if ((event->get_Class() == Event::TOPOLOGY_EVENT) && (event->get_Type() == TopologyEvent::TOPOL_REMOVE_NODE))
     {
         pthread_mutex_lock(&gMrnetCallbackMutex);
 #ifndef DYSECTAPI
-        ((STAT_FrontEnd *)statObject)->printMsg(STAT_WARNING, __FILE__, __LINE__, "MRNet detected a tool process exit.  Recovering with available resources.\n");
+        statObject->printMsg(STAT_WARNING, __FILE__, __LINE__, "MRNet detected a tool process exit.  Recovering with available resources.\n");
 #endif
         statError = ((STAT_FrontEnd *)statObject)->setRanksList();
 
@@ -493,8 +489,8 @@ void nodeRemovedCb(Event *event, void *statObject)
         if (statError != STAT_OK)
 #endif
         {
-            ((STAT_FrontEnd *)statObject)->printMsg(statError, __FILE__, __LINE__, "An error occurred when trying to recover from node removal\n");
-            ((STAT_FrontEnd *)statObject)->setHasFatalError(true);
+            statObject->printMsg(statError, __FILE__, __LINE__, "An error occurred when trying to recover from node removal\n");
+            statObject->setHasFatalError(true);
         }
         pthread_mutex_unlock(&gMrnetCallbackMutex);
     }
@@ -3287,6 +3283,11 @@ StatError_t STAT_FrontEnd::dumpPerf()
     return STAT_OK;
 }
 
+bool STAT_FrontEnd::isAttached()
+{
+    return isAttached_;
+}
+
 StatError_t STAT_FrontEnd::detachApplication(bool blocking)
 {
     return detachApplication(NULL, 0, blocking);
@@ -4119,67 +4120,6 @@ int statPack(void *data, void *buf, int bufMax, int *bufLen)
     *bufLen = total;
     return 0;
 }
-
-
-
-bool STAT_FrontEnd::checkNodeAccess(char *node)
-{
-
-#ifdef CRAYXT
-    /* MRNet CPs launched through alps */
-    return true;
-#else    
-
-    /* MRNet CPs launched through alps */
-    if (lmonRmInfo_.rm_supported_types != NULL)
-    {
-        if (lmonRmInfo_.rm_supported_types[lmonRmInfo_.index_to_cur_instance] == RC_alps)
-            return true;
-    }
-    char command[BUFSIZE], testOutput[BUFSIZE], runScript[BUFSIZE], checkHost[BUFSIZE], *rsh = NULL, *envValue;
-    FILE *output, *temp;
-
-    /* TODO: this is generally not good... a quick check for clusters where each node has the same hostname prefix */
-    /* A first level filter, compare the first 3 letters */
-    gethostname(checkHost, BUFSIZE);
-    if (strncmp(node, checkHost, 3) != 0 && strcmp(node, "localhost") != 0)
-        return false;
-
-    envValue = getenv("XPLAT_RSH");
-    if (envValue != NULL)
-        rsh = strdup(envValue);
-    if (rsh == NULL)
-    {
-        rsh = strdup("rsh");
-        if (rsh == NULL)
-        {
-             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: failed to set rsh command\n", strerror(errno));
-            return false;
-        }
-    }
-
-    /* Use run_one_sec script if available to tolerate rsh slowness/hangs */
-    snprintf(runScript, BUFSIZE, "%s/bin/run_one_sec", getInstallPrefix());
-    temp = fopen(runScript, "r");
-    if (temp == NULL)
-        snprintf(command, BUFSIZE, "%s %s hostname 2>1", rsh, node);
-    else
-    {
-        snprintf(command, BUFSIZE, "%s %s %s hostname 2>1", runScript, rsh, node);
-        fclose(temp);
-    }
-    output = popen(command, "r");
-    free(rsh);
-    if (output == NULL)
-        return false;
-    fgets(testOutput, sizeof(testOutput), output);
-    pclose(output);
-    if (strcmp(testOutput, "") == 0)
-        return false;
-    return true;
-#endif    
-}
-
 
 StatError_t STAT_FrontEnd::addDaemonLogArgs(int &daemonArgc, char ** &daemonArgv)
 {

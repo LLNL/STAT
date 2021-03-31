@@ -5,8 +5,9 @@
 
 STAT_ctiBackEnd::STAT_ctiBackEnd(StatDaemonLaunch_t launchType)
     : STAT_BackEnd(launchType)
-{}
-
+{
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Create CTI Backend.\n");
+}
 
 StatError_t STAT_ctiBackEnd::init(int *argc, char ***argv)
 {
@@ -280,7 +281,7 @@ StatError_t STAT_ctiBackEnd::statBenchConnectInfoDump()
     return STAT_SYSTEM_ERROR;
 }
 
-#ifdef CRAYXT
+#ifdef USE_CTI
 STAT_BackEnd* STAT_BackEnd::make(StatDaemonLaunch_t launchType)
 {
     return new STAT_ctiBackEnd(launchType);

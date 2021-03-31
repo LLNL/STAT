@@ -7,7 +7,6 @@ STAT_lmonBackEnd::STAT_lmonBackEnd(StatDaemonLaunch_t launchType)
     : STAT_BackEnd(launchType)
 {}
 
-
 StatError_t STAT_lmonBackEnd::init(int *argc, char ***argv)
 {
     if (launchType_ == STATD_LMON_LAUNCH)
@@ -490,8 +489,7 @@ StatError_t STAT_lmonBackEnd::initGdb()
 }
 #endif
 
-
-#ifndef CRAYXT
+#ifndef USE_CTI
 STAT_BackEnd* STAT_BackEnd::make(StatDaemonLaunch_t launchType)
 {
     return new STAT_lmonBackEnd(launchType);

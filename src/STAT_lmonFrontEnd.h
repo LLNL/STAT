@@ -40,6 +40,8 @@ public:
     virtual int getMpiRankForProc(int procIdx);
     virtual StatError_t dumpProctab();
 
+    virtual bool checkNodeAccess(const char *node);
+
     virtual StatError_t addSerialProcess(const char *pidString);
     virtual StatError_t addDaemonSerialProcArgs(int& deamonArgc, char ** &deamonArgv);
 

@@ -6,11 +6,21 @@
 STAT_ctiFrontEnd::STAT_ctiFrontEnd() : appId_(0), session_(0), hosts_(nullptr),
                                        tasksPerPE_(1)
 {
+    std::string temp;
+    if (XPlat::NetUtils::GetLocalHostName(temp) == 0)
+    {
+        snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
+    }
 }
 
 STAT_ctiFrontEnd::~STAT_ctiFrontEnd()
 {
     if (hosts_) cti_destroyHostsList(hosts_);
+
+    if (appId_ != 0 && cti_appIsValid(appId_))
+    {
+        cti_deregisterApp(appId_);
+    }
 }
 
 StatError_t STAT_ctiFrontEnd::setupForSerialAttach()
@@ -507,6 +517,12 @@ StatError_t STAT_ctiFrontEnd::dumpProctab()
     return STAT_OK;
 }
 
+bool STAT_ctiFrontEnd::checkNodeAccess(const char *node)
+{
+    /* MRNet CPs launched through alps */
+    return true;
+}
+
 StatError_t STAT_ctiFrontEnd::addSerialProcess(const char *pidString)
 {
     printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Serial launch is not supported in CTI\n");
@@ -565,9 +581,10 @@ StatError_t STAT_ctiFrontEnd::STATBench_resetProctab(unsigned int nTasks) {
     return STAT_OK;
 }
 
-#ifdef CRAYXT
+#ifdef USE_CTI
 STAT_FrontEnd* STAT_FrontEnd::make()
 {
+    fprintf(stderr, "IN CTI STAT_FrontEnd::make\n");
     return new STAT_ctiFrontEnd();
 }
 #endif

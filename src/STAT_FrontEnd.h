@@ -50,10 +50,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   #include <fcntl.h>
 #endif
 
-#ifdef CRAYXT
-  #include "common_tools_fe.h"
-#endif
-
 #define STAT_MAX_FILENAME_ID 8192
 #define STAT_MAX_FANOUT 64
 
@@ -345,6 +341,9 @@ class STAT_FrontEnd
             Broadcast a message to the daemons to detach and await all acks
         */
         StatError_t detachApplication(int *stopList, int stopListSize, bool blocking = true);
+
+        //! Determine if the application is attached
+        bool isAttached();
 
         //! Terminate the application
         /*!
@@ -882,7 +881,7 @@ class STAT_FrontEnd
             \param node - the hostname to test access
             \return true if node is accessible
         */
-        bool checkNodeAccess(char *node);
+        virtual bool checkNodeAccess(const char *node) = 0;
 
         //! Add daemon serial process arguments
         virtual StatError_t addDaemonSerialProcArgs(int& deamonArgc, char ** &deamonArgv) = 0;
