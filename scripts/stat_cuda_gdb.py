@@ -56,7 +56,7 @@ def new_gdb_instance(pid, gdb_type='gdb'):
         elif 'rocgdb' in os.environ['STAT_GDB']:
             gdb = RocGdbDriver(pid, 'error', 'stderr')
         else:
-            gdb = GdbDriver(pid, 'error', 'stderr')
+            gdb = GdbDriver(pid, 'debug', 'stderr')
     except:
         gdb = GdbDriver(pid, 'error', 'stderr')
     if gdb.launch() is False:
