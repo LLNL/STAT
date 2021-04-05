@@ -4,6 +4,8 @@ endif
 
 SUBDIRS = $(MAYBE_DYSECT)
 
+CRAYTOOL_LIBS  = $(CRAY_CTI_FE_LIBS)
+
 # what flags you want to pass to the C compiler & linker
 AM_CFLAGS = -DSTAT_PREFIX=\"$(prefix)\" $(CODE_COVERAGE_CFLAGS)
 SWIGFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
@@ -64,9 +66,9 @@ endif
 
 STATbin_SOURCES = STAT.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 STATD_SOURCES = STATD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
-STATbin_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
+STATbin_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi) $(CRAYTOOL_LIBS)
 STATbin_LDADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
-STATD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
+STATD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi) $(CRAYTOOL_LIBS)
 STATD_LDADD = libstatbe.la $(stat_be_ldadd_add_dysectapi) @BELIBS@
 
 stat_be_la_sources_base = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
