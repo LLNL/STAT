@@ -5,6 +5,7 @@ endif
 SUBDIRS = $(MAYBE_DYSECT)
 
 CRAYTOOL_LIBS  = $(CRAY_CTI_FE_LIBS)
+CRAYTOOL_FLAGS = $(CRAY_CTI_FE_CFLAGS) 
 
 # what flags you want to pass to the C compiler & linker
 AM_CFLAGS = -DSTAT_PREFIX=\"$(prefix)\" $(CODE_COVERAGE_CFLAGS)
@@ -78,8 +79,8 @@ libstatbe_la_SOURCES = $(stat_be_la_sources_base) $(stat_graphlib_sources) $(sta
 libstatfe_la_SOURCES = $(stat_fe_la_sources_base) $(stat_graphlib_sources) $(stat_fe_la_source_add_dysectapi)
 libstatbe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
 libstatfe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
-STATD_CPPFLAGS = $(stat_cppflags_add_dysectapi)
-STATbin_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
+STATD_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(CRAYTOOL_FLAGS) 
+STATbin_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) $(CRAYTOOL_FLAGS)
 
 pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
 pkglibdir = $(libdir)
