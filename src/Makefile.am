@@ -4,6 +4,9 @@ endif
 
 SUBDIRS = $(MAYBE_DYSECT)
 
+CRAYTOOL_LIBS  = $(CRAY_CTI_FE_LIBS)
+CRAYTOOL_FLAGS = $(CRAY_CTI_FE_CFLAGS) 
+
 # what flags you want to pass to the C compiler & linker
 AM_CFLAGS = -DSTAT_PREFIX=\"$(prefix)\" $(CODE_COVERAGE_CFLAGS)
 SWIGFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
@@ -64,9 +67,9 @@ endif
 
 STATbin_SOURCES = STAT.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
 STATD_SOURCES = STATD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
-STATbin_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
+STATbin_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi) $(CRAYTOOL_LIBS)
 STATbin_LDADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
-STATD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
+STATD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi) $(CRAYTOOL_LIBS)
 STATD_LDADD = libstatbe.la $(stat_be_ldadd_add_dysectapi) @BELIBS@
 
 stat_be_la_sources_base = STAT_BackEnd.C STAT_BackEnd.h STAT_lmonBackEnd.C STAT_lmonBackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
@@ -81,8 +84,8 @@ libstatbe_la_SOURCES = $(stat_be_la_sources_base) $(stat_graphlib_sources) $(sta
 libstatfe_la_SOURCES = $(stat_fe_la_sources_base) $(stat_graphlib_sources) $(stat_fe_la_source_add_dysectapi)
 libstatbe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
 libstatfe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
-STATD_CPPFLAGS = $(stat_cppflags_add_dysectapi)
-STATbin_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
+STATD_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(CRAYTOOL_FLAGS) 
+STATbin_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) $(CRAYTOOL_FLAGS)
 
 pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
 pkglibdir = $(libdir)
