@@ -5,10 +5,10 @@ tar xf v3.0.0.tar.gz
 pushd graphlib-3.0.0
     mkdir build
     pushd build
-        cmake -D CMAKE_INSTALL_PREFIX=/usr/local ..
+        cmake -D CMAKE_INSTALL_PREFIX=$HOME/local ..
         make -j
         make install
     popd
 popd
-ls -l /usr/local/
-ls -l /usr/local/lib
+ls -l $HOME/local/
+ls -l $HOME/local/lib
