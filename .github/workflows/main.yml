@@ -9,4 +9,4 @@ jobs:
       - uses: ./action-a
         with:
           MY_NAME: "Greg"
-        run: ./.github/scripts/builddeps.sh
+      - run: ./.github/scripts/builddeps.sh
