@@ -18,7 +18,7 @@ ls -l $HOME/local/lib
 wget https://github.com/dyninst/mrnet/archive/refs/tags/v5.0.1.tar.gz
 tar xf v5.0.1.tar.gz
 pushd mrnet-5.0.1
-    ./configure --enable-shared --prefix=$HOME/local
+    ./configure --enable-shared --prefix=$HOME/local --disable-ltwt-threadsafe
     make -j
     make install
 popd
