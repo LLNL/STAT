@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export CC="gcc"
+export CXX="g++"
 # download and build graphlib
 wget https://github.com/LLNL/graphlib/archive/refs/tags/v3.0.0.tar.gz
 tar xf v3.0.0.tar.gz
