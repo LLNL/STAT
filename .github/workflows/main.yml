@@ -13,5 +13,6 @@ jobs:
             sudo apt-get update
             sudo apt-get install build-essential
             sudo apt-get install cmake
+            sudo apt-get install libboost-tools-dev libboost-thread1.62-dev magics++
       - shell: bash
         run: ./.github/scripts/builddeps.sh
