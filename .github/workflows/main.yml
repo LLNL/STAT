@@ -9,7 +9,8 @@ jobs:
       - uses: ./action-a
         with:
           MY_NAME: "Greg"
-      - run: sudo apt-get update
-             sudo apt-get install glibc-devel
+      - run: |
+            sudo apt-get update
+            sudo apt-get install glibc-devel
       - shell: bash
         run: ./.github/scripts/builddeps.sh
