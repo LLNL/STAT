@@ -23,6 +23,8 @@ pushd dyninst-11.0.0
     mkdir build
     pushd build
         cmake -D CMAKE_INSTALL_PREFIX=$HOME/local ..
+        cat CMakeFiles/CMakeOutput.log
+        cat CMakeFiles/CMakeError.log
         make -j
         make install
     popd
