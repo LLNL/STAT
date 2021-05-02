@@ -13,7 +13,6 @@ jobs:
             sudo apt-get update
             sudo apt-get install build-essential
             sudo apt-get install cmake
-            sudo apt-get install libboost-tools-dev libboost-thread1.69-dev magics++ libc6-dev
             sudo apt-get install dyninst
       - shell: bash
         run: ./.github/scripts/builddeps.sh
