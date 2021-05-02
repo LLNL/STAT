@@ -11,6 +11,6 @@ jobs:
           MY_NAME: "Greg"
       - run: |
             sudo apt-get update
-            sudo apt-get install glibc-devel
+            sudo apt-get install build-essential
       - shell: bash
         run: ./.github/scripts/builddeps.sh
