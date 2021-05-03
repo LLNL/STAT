@@ -5,7 +5,7 @@ set -x
 git clone https://github.com/llnl/launchmon
 pushd launchmon
     ./bootstrap
-    ./configure --prefix=$HOME/local --with-test-rm=slurm --with-test-rm-launcher=srun
+    ./configure --prefix=$HOME/local --with-test-rm=slurm --with-test-rm-launcher=srun  || cat config.log
     make -j
     make install
 popd
