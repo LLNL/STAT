@@ -17,8 +17,6 @@ popd
 ls -l $HOME/local/
 ls -l $HOME/local/lib
 ls -l /usr/lib
-ls -l /usr/lib64
-exit 0
 
 
 export CC="gcc"
@@ -44,6 +42,17 @@ ls -l $HOME/local/lib
 git clone https://github.com/dyninst/mrnet
 pushd mrnet
     ./configure --enable-shared --prefix=$HOME/local --disable-ltwt-threadsafe
+    make -j
+    make install
+popd
+ls -l $HOME/local/
+ls -l $HOME/local/lib
+
+# download and build launchmon
+git clone https://github.com/llnl/launchmon
+pushd launchmon
+    ./bootstrap
+    ./configure --prefix=$HOME/local --with-test-rm=orte --with-test-rm-launcher=mpirun
     make -j
     make install
 popd

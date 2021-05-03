@@ -3,7 +3,7 @@ on: push
 jobs:
   build:
     name: Hello world action
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v1
       - uses: ./action-a
@@ -12,12 +12,10 @@ jobs:
       - run: |
             sudo apt-get update
             sudo apt-get install build-essential
-            #sudo apt-get install zlib1g-dev
-            #sudo apt-get install libpng-dev
-            #sudo apt-get install libboost-all-dev
             sudo apt-get install texlive
             sudo apt-get install binutils-dev
             sudo apt-get install libiberty-dev
-            #sudo apt-get install libpthread-stubs0-dev 
+            sudo apt-get install openmpi-bin openmpi-dev openmpi-common openmpi-doc libopenmpi-dev
+            sudo apt-get install slurm
       - shell: bash
         run: ./.github/scripts/builddeps.sh
