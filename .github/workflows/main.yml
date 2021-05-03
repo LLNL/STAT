@@ -6,16 +6,24 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v1
+#      - name: Cache Primes
+#        id: cache-primes
+#        uses: actions/cache@v2
+#        with:
+#            path: /home/runner/local
+#            key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
       - uses: ./action-a
         with:
           MY_NAME: "Greg"
-      - run: |
+      - name: Build dependences
+#        if: steps.cache-primes.outputs.cache-hit != 'true'
+        run: |
             sudo apt-get update
             sudo apt-get install build-essential
             sudo apt-get install texlive
             sudo apt-get install binutils-dev
             sudo apt-get install libiberty-dev
-            sudo apt-get install openmpi-bin openmpi-dev openmpi-common openmpi-doc libopenmpi-dev
+            sudo apt-get install openmpi
             sudo apt-get install slurm
       - shell: bash
         run: ./.github/scripts/builddeps.sh

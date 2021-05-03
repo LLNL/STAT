@@ -1,6 +1,18 @@
 #!/bin/bash
 set -x
 
+# download and build launchmon
+git clone https://github.com/llnl/launchmon
+pushd launchmon
+    ./bootstrap
+    ./configure --prefix=$HOME/local --with-test-rm=orte --with-test-rm-launcher=mpirun
+    make -j
+    make install
+popd
+ls -l $HOME/local/
+ls -l $HOME/local/lib
+exit 0
+
 # download and build dyninst
 wget -q https://github.com/dyninst/dyninst/archive/refs/tags/v11.0.0.tar.gz
 tar xf v11.0.0.tar.gz
@@ -48,13 +60,3 @@ popd
 ls -l $HOME/local/
 ls -l $HOME/local/lib
 
-# download and build launchmon
-git clone https://github.com/llnl/launchmon
-pushd launchmon
-    ./bootstrap
-    ./configure --prefix=$HOME/local --with-test-rm=orte --with-test-rm-launcher=mpirun
-    make -j
-    make install
-popd
-ls -l $HOME/local/
-ls -l $HOME/local/lib
