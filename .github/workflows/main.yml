@@ -11,7 +11,8 @@ jobs:
         uses: actions/cache@v2
         with:
             path: /home/runner/local
-            key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+            #key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+            key: ${{ runner.os }}
       - uses: ./action-a
         with:
           MY_NAME: "Greg"
@@ -41,7 +42,7 @@ jobs:
         run: |
           ls -l ./
           ./bootstrap
-          ./configure --prefix=$HOME/local --with-graphlib=$HOME/local --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-launchmon=$HOME/local --disable-examples
+          ./configure --prefix=$HOME/local/stat --with-graphlib=$HOME/local --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-launchmon=$HOME/local --disable-examples
           make -j
           make install
           ls -l $HOME/local/lib
