@@ -18,7 +18,8 @@ jobs:
           MY_NAME: "Greg"
       - name: test cache
         if: steps.cacher.outputs.cache-hit != 'true'
-      - name: test cache
+        run: ls -l $HOME/local/lib
+      - name: test cache2
         if: steps.cacher.outputs.cache-hit == 'true'
         run: ls -l $HOME/local/lib
       - name: Build dependences
