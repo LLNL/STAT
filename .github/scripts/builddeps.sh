@@ -11,7 +11,6 @@ pushd launchmon
 popd
 ls -l $HOME/local/
 ls -l $HOME/local/lib
-exit 0
 
 # download and build dyninst
 wget -q https://github.com/dyninst/dyninst/archive/refs/tags/v11.0.0.tar.gz

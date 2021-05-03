@@ -32,8 +32,16 @@ jobs:
             sudo apt-get install mpich
             sudo apt-get install slurm
             sudo apt-get install pkg-config
+            sudo apt-get install python
       - shell: bash
         if: steps.cache-primes.outputs.cache-hit != 'true'
         run: ./.github/scripts/builddeps.sh
       - shell: bash
-        run: ls -l ./
+        run: |
+          ls -l ./
+          ./bootstrap
+          ./configure --prefix=$HOME/local --with-graphlib=$HOME/local --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-launchmon=$HOME/local --disable-examples
+          make -j
+          make install
+          ls -l $HOME/local/lib
+          ls -l $HOME/local/bin
