@@ -19,7 +19,8 @@ jobs:
 #        if: steps.cache-primes.outputs.cache-hit != 'true'
         run: |
             sudo apt-get update
-            sudo apt-get install elfutils-dev
+            sudo apt-get install elfutils
+            sudo apt-get install libelf-dev
             sudo apt-get install libgcrypt-dev
             sudo apt-get install build-essential
             sudo apt-get install texlive
