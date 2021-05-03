@@ -16,7 +16,8 @@ jobs:
             #sudo apt-get install libpng-dev
             #sudo apt-get install libboost-all-dev
             sudo apt-get install texlive
-            sudo apt-get install binutils-dev gcc-dev
+            sudo apt-get install binutils-dev
+            sudo apt-get install libiberty-dev
             #sudo apt-get install libpthread-stubs0-dev 
       - shell: bash
         run: ./.github/scripts/builddeps.sh
