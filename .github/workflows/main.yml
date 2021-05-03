@@ -6,17 +6,20 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v1
-#      - name: Cache Primes
-#        id: cache-primes
-#        uses: actions/cache@v2
-#        with:
-#            path: /home/runner/local
-#            key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+      - name: Cache Dependences
+        id: cache-deps
+        uses: actions/cache@v2
+        with:
+            path: /home/runner/local
+            key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
       - uses: ./action-a
         with:
           MY_NAME: "Greg"
+      - name: test cache
+        if: steps.cache-deps.outputs.cache-hit == 'true'
+        run: ls -l $HOME/local/lib
       - name: Build dependences
-#        if: steps.cache-primes.outputs.cache-hit != 'true'
+        if: steps.cache-primes.outputs.cache-hit != 'true'
         run: |
             sudo apt-get update
             sudo apt-get install libboost-all-dev
