@@ -25,5 +25,6 @@ jobs:
             sudo apt-get install libiberty-dev
             sudo apt-get install mpich
             sudo apt-get install slurm
+            sudo apt-get install pkg-config
       - shell: bash
         run: ./.github/scripts/builddeps.sh
