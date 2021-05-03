@@ -21,6 +21,7 @@ jobs:
       - name: Build dependences
         run: |
             sudo apt-get update
+            sudo apt-get install graphviz
             sudo apt-get install libboost-all-dev
             sudo apt-get install elfutils
             sudo apt-get install libelf-dev
