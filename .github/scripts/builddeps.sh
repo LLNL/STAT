@@ -53,7 +53,7 @@ ls -l $HOME/local/lib
 git clone https://github.com/dyninst/mrnet
 pushd mrnet
     ./configure --enable-shared --prefix=$HOME/local --disable-ltwt-threadsafe
-    make -j
+    make
     make install
 popd
 ls -l $HOME/local/

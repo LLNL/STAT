@@ -42,7 +42,7 @@ jobs:
         run: |
           ls -l ./
           ./bootstrap
-          ./configure --prefix=$HOME/local/stat --with-graphlib=$HOME/local --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-launchmon=$HOME/local --disable-examples
+          ./configure --prefix=$HOME/local/stat --with-graphlib=$HOME/local --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-launchmon=$HOME/local --disable-examples || cat config.log
           make -j
           make install
           ls -l $HOME/local/lib
