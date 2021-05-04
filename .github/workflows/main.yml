@@ -50,3 +50,5 @@ jobs:
           make install
           ls -l $HOME/install/lib
           ls -l $HOME/install/bin
+          ls -l /usr/bin
+          $HOME/install/bin/stat-cl --help
