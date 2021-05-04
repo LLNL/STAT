@@ -53,6 +53,7 @@ jobs:
           ls -l /usr/bin
           export LD_LIBRARY_PATH=$HOME/local/lib
           $HOME/install/bin/stat-cl --help
+          echo 0 > /proc/sys/kernel/yama/ptrace_scope
           sleep 60 &
           $HOME/install/bin/stat-cl -I $!
           cat stat_results/output.0000/00_output.0000.2D.dot
