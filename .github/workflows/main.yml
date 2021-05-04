@@ -43,17 +43,15 @@ jobs:
         run: ./.github/scripts/builddeps.sh
       - shell: bash
         run: |
+          set -x
           ls -l ./
           ./bootstrap
           ./configure --prefix=$HOME/install --with-graphlib=$HOME/local --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-launchmon=$HOME/local --disable-examples || cat config.log
           make -j
           make install
-          ls -l $HOME/install/lib
-          ls -l $HOME/install/bin
-          ls -l /usr/bin
           export LD_LIBRARY_PATH=$HOME/local/lib
           $HOME/install/bin/stat-cl --help
-          sudo echo 0 > /proc/sys/kernel/yama/ptrace_scope
+          sudo echo 0 > /proc/sys/kernel/yama/ptrace_scope || echo failed
           sleep 60 &
           $HOME/install/bin/stat-cl -I $!
           cat stat_results/output.0000/00_output.0000.2D.dot

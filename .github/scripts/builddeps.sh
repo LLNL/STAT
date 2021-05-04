@@ -9,8 +9,6 @@ pushd launchmon
     make -j
     make install
 popd
-ls -l $HOME/local/
-ls -l $HOME/local/lib
 
 # download and build dyninst
 wget -q https://github.com/dyninst/dyninst/archive/refs/tags/v11.0.0.tar.gz
@@ -25,10 +23,6 @@ pushd dyninst-11.0.0
         make install
     popd
 popd
-ls -l $HOME/local/
-ls -l $HOME/local/lib
-ls -l /usr/lib
-
 
 export CC="gcc"
 export CXX="g++"
@@ -43,8 +37,6 @@ pushd graphlib-3.0.0
         make install
     popd
 popd
-ls -l $HOME/local/
-ls -l $HOME/local/lib
 
 # download and build mrnet
 #wget -q https://github.com/dyninst/mrnet/archive/refs/tags/v5.0.1.tar.gz
@@ -56,6 +48,4 @@ pushd mrnet
     make
     make install
 popd
-ls -l $HOME/local/
-ls -l $HOME/local/lib
 
