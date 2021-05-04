@@ -51,7 +51,7 @@ jobs:
           make install
           export LD_LIBRARY_PATH=$HOME/local/lib
           $HOME/install/bin/stat-cl --help
-          sudo echo 0 > /proc/sys/kernel/yama/ptrace_scope || echo failed
+          echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope || echo failed
           ls -l /proc/sys/kernel/yama/ptrace_scope || echo failed
           cat /proc/sys/kernel/yama/ptrace_scope || echo failed
           cat /etc/sysctl.d/10-ptrace.conf || echo failed
