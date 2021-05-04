@@ -52,6 +52,9 @@ jobs:
           export LD_LIBRARY_PATH=$HOME/local/lib
           $HOME/install/bin/stat-cl --help
           sudo echo 0 > /proc/sys/kernel/yama/ptrace_scope || echo failed
+          ls -l /proc/sys/kernel/yama/ptrace_scope || echo failed
+          cat /proc/sys/kernel/yama/ptrace_scope || echo failed
+          cat /etc/sysctl.d/10-ptrace.conf || echo failed
           sleep 60 &
           $HOME/install/bin/stat-cl -I $!
           cat stat_results/output.0000/00_output.0000.2D.dot
