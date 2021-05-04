@@ -51,4 +51,5 @@ jobs:
           ls -l $HOME/install/lib
           ls -l $HOME/install/bin
           ls -l /usr/bin
+          export LD_LIBRARY_PATH=$HOME/local/lib
           $HOME/install/bin/stat-cl --help
