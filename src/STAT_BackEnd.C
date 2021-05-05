@@ -485,15 +485,6 @@ StatError_t STAT_BackEnd::init(int *argc, char ***argv)
             fprintf(stderr, "warning: failed to set pthread_sigmask: %s\n", strerror(errno));
     }
 
-
-    char *pHangTime = getenv("STAT_BE_HANG_SECONDS");
-    if (pHangTime) {
-        int hangTime = atoi(pHangTime);
-        while (hangTime--) {
-            sleep(1);
-        }
-    }
-
     char abuf[INET_ADDRSTRLEN], fileName[BUFSIZE], *envValue;
     FILE *file;
     struct sockaddr_in *sinp = NULL;

@@ -79,14 +79,6 @@ extern int gNumEdgeAttrs;
 
 STAT_FrontEnd::STAT_FrontEnd()
 {
-    char *pHangTime = getenv("STAT_FE_HANG_SECONDS");
-    if (pHangTime) {
-        int hangTime = atoi(pHangTime);
-        while (hangTime--) {
-            sleep(1);
-        }
-    }
- 
     int intRet;
     char tmp[BUFSIZE], *envValue;
     struct timeval timeStamp;
