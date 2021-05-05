@@ -584,7 +584,6 @@ StatError_t STAT_ctiFrontEnd::STATBench_resetProctab(unsigned int nTasks) {
 #ifdef USE_CTI
 STAT_FrontEnd* STAT_FrontEnd::make()
 {
-    fprintf(stderr, "IN CTI STAT_FrontEnd::make\n");
     return new STAT_ctiFrontEnd();
 }
 #endif
