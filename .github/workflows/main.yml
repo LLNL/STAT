@@ -52,9 +52,6 @@ jobs:
           export LD_LIBRARY_PATH=$HOME/local/lib
           $HOME/install/bin/stat-cl --help
           echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope || echo failed
-          ls -l /proc/sys/kernel/yama/ptrace_scope || echo failed
-          cat /proc/sys/kernel/yama/ptrace_scope || echo failed
-          cat /etc/sysctl.d/10-ptrace.conf || echo failed
           gcc -g examples/src/serial.c -o a.out
           ./a.out &
           $HOME/install/bin/stat-cl -I $!
