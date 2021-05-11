@@ -48,12 +48,16 @@ StatError_t STAT_ctiBackEnd::initLauncher()
         char exe[PATH_MAX+1];
         std::string procpath = "/proc/" + std::to_string(pid) + "/exe";
         ssize_t plen = readlink(procpath.c_str(), exe, PATH_MAX+1);
-        if (plen <= 0 || plen == PATH_MAX+1) {
-            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "could not get application executable");
+        if (plen > 0 && plen <= PATH_MAX) {
+            exe[plen] = '\0';
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "got executable %s from %s\n",
+                     exe, procpath.c_str());
+        } else {
+            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "could not get application executable\n");
             cti_be_destroyPidList(pids);
             return STAT_LMON_ERROR;
         }
-        
+
         proctab_[i].executable_name = strdup(exe);
         proctab_[i].host_name = nullptr;
         proctab_[i].pid = pid;

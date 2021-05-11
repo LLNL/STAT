@@ -219,19 +219,28 @@ class GdbDriver(object):
         logging.info('GDB get thread list')
         tids = []
         lines = self.communicate("info threads")
-        logging.debug('%s' %(repr(lines)))
-        if check_lines(lines) == False:
-            return tids
-        for line in lines:
-            if line[0] == '*':
-                line = line[1:]
-            line = line.split()
-            try:
-                if line[0].isdigit():
-                    tids.append(int(line[0]))
-            except Exception as e:
-                logging.warning('Failed to get thread list from "%s": %s' %(line, repr(e)))
-                pass
+
+        # rocgdb printn extra stop message and potentially warnings
+        # before printing the thread info, so we may need to ignore
+        # the first response
+        while not tids:
+            logging.debug('thread info results: %s' %(repr(lines)))
+            if check_lines(lines) == False:
+                return tids
+            for line in lines:
+                if line and line[0] == '*':
+                    line = line[1:]
+                line = line.split()
+                try:
+                    if line and line[0].isdigit():
+                        tids.append(int(line[0]))
+                except Exception as e:
+                    logging.warning('Failed to get thread list from "%s": %s' %(line, repr(e)))
+                    pass
+            if not tids:
+                lines = self.readlines()
+                
+        logging.debug('got threads: %s' % repr(tids))
         return tids
 
     def thread_focus(self, thread_id):
