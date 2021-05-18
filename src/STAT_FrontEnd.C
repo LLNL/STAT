@@ -79,14 +79,6 @@ extern int gNumEdgeAttrs;
 
 STAT_FrontEnd::STAT_FrontEnd()
 {
-    char *pHangTime = getenv("STAT_FE_HANG_SECONDS");
-    if (pHangTime) {
-        int hangTime = atoi(pHangTime);
-        while (hangTime--) {
-            sleep(1);
-        }
-    }
- 
     int intRet;
     char tmp[BUFSIZE], *envValue;
     struct timeval timeStamp;
@@ -215,9 +207,16 @@ STAT_FrontEnd::STAT_FrontEnd()
     statInitializeMergeFunctions();
 
     /* Get the FE hostname */
-    intRet = gethostname(hostname_, BUFSIZE);
-    if (intRet != 0) {
-        printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
+    string temp;
+    intRet = XPlat::NetUtils::GetLocalHostName(temp);
+    if (intRet == 0)
+        snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
+    else
+    {
+        intRet = gethostname(hostname_, BUFSIZE);
+        if (intRet != 0) {
+            printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
+        }
     }
 
     /* Initialize variables */
