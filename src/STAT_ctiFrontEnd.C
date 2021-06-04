@@ -58,7 +58,7 @@ StatError_t STAT_ctiFrontEnd::attach()
     case CTI_WLM_SSH:
     {
         auto ops = static_cast<cti_ssh_ops_t *>(vops);
-        appId_ = ops->registerJob((pid_t)launcherPid_);
+        appId_ = ops->registerLauncherPid((pid_t)launcherPid_);
         if (!appId_) {
             return ctiError();
         }
