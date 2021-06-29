@@ -48,7 +48,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "STAT_CircularLogs.h"
 #include "STAT_GraphRoutines.h"
 #include "graphlib.h"
-#include "lmon_api/lmon_be.h"
+
 
 #include "Symtab.h"
 #include "walker.h"
@@ -99,6 +99,15 @@ typedef struct
     int parentRank;
 } StatLeafInfo_t;
 
+//! A struct to contain backend processes
+struct StatBackEndProcInfo_t
+{
+    char* executable_name;   // optional
+    char* host_name;     // optional
+    pid_t pid;
+    int mpirank;
+};
+    
 //! A struct to cache Python offsets and characteristics
 typedef struct
 {
@@ -142,24 +151,6 @@ typedef struct
 int unpackStatBeInfo(void *buf, int bufLen, void *data);
 
 
-//! STAT initialization code
-/*!
-    \param[in,out] argc - pointer to the number of arguments
-    \param[in,out] argv - pointer to the argument list
-    \param launchType - the launch type (i.e., LMON or MRNet)
-    \return STAT_OK on success
-*/
-StatError_t statInit(int *argc, char ***argv, StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH);
-
-
-//! STAT finalization code
-/*!
-    \param launchType - the launch type (i.e., LMON or MRNet)
-    \return STAT_OK on success
-*/
-StatError_t statFinalize(StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH);
-
-
 //! Routine to compare the equivalence of two frames
 /*!
     \param frame1 - the first frame
@@ -185,11 +176,11 @@ class STAT_BackEnd
     friend class DysectAPI::BE;
 #endif
     public:
-        //! Default constructor
-        STAT_BackEnd(StatDaemonLaunch_t launchType);
+        //! Factory method
+        static STAT_BackEnd* make(StatDaemonLaunch_t launchType);
 
-        //! Default destructor
-        ~STAT_BackEnd();
+        //! Destructor
+        virtual ~STAT_BackEnd();
 
         /******************************/
         /* Core STAT BE functionality */
@@ -197,23 +188,27 @@ class STAT_BackEnd
 
         //! Initialize and set up this object
         /*
+            \param[in,out] argc - pointer to the number of arguments
+            \param[in,out] argv - pointer to the argument list
             \return STAT_OK on success
         */
-        StatError_t init();
+        virtual StatError_t init(int *argc, char ***argv) = 0;
+
+        virtual StatError_t finalize() = 0;
 
 #ifdef STAT_GDB_BE
         //! Initialize and set up the GDB module
         /*
             \return STAT_OK on success
         */
-        StatError_t initGdb();
+        virtual StatError_t initGdb() = 0;
 #endif
 
-        //! Initialize and set up LaunchMON
+        //! Initialize and set up the job launcher
         /*
             \return STAT_OK on success
         */
-        StatError_t initLmon();
+        virtual StatError_t initLauncher() = 0;
 
         //! Add a serial process to the process table
         /*
@@ -232,7 +227,7 @@ class STAT_BackEnd
             it to all the daemons.  Call the MRNet Network constructor with
             this daemon's MRNet personality.
         */
-        StatError_t connect(int argc = 0, char **argv = NULL);
+        virtual StatError_t connect(int argc = 0, char **argv = NULL) = 0;
 
         //! Receive messages from FE and execute the requests
         /*!
@@ -294,7 +289,7 @@ class STAT_BackEnd
         /*!
             \return the process table
         */
-        MPIR_PROCDESC_EXT *getProctab();
+        StatBackEndProcInfo_t * getProctab();
 
         //! Get the process table size
         /*!
@@ -309,7 +304,7 @@ class STAT_BackEnd
             Called by the helper daemon to write MRNet connection information
             for the STATBench daemon emulators to a fifo.
         */
-        StatError_t statBenchConnectInfoDump();
+        virtual StatError_t statBenchConnectInfoDump() = 0;
 
         //! (STAT Bench) Connect to the MRNet tree
         /*!
@@ -348,7 +343,11 @@ class STAT_BackEnd
         DysectAPI::BE *getDysectBe();
 #endif
 
-    private:
+    protected:
+
+        //! Constructor
+        STAT_BackEnd(StatDaemonLaunch_t launchType);
+
         //! Attach to all application processes
         /*!
             \return STAT_OK on success
@@ -498,7 +497,7 @@ class STAT_BackEnd
             \param type - the struct type
             \return the vector of the struct's components on success
         */
-#if DYNINST_MAJOR_VERSION == 10 && DYNINST_MINOR_VERSION <= 1
+#if DYNINST_MAJOR_VERSION >= 10 && DYNINST_MINOR_VERSION <= 1
         tbb::concurrent_vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
 #else
         Dyninst::dyn_c_vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
@@ -620,7 +619,7 @@ class STAT_BackEnd
         std::map<int, std::string> nodes3d_; /*!< the 3D prefix tree nodes */
         std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges2d_; /*!< the 2D prefix tree edges */
         std::map<int, std::pair<int, StatBitVectorEdge_t *> > edges3d_; /*!< the 3D prefix tree edges */
-        MPIR_PROCDESC_EXT *proctab_;    /*!< the process table */
+        StatBackEndProcInfo_t *proctab_;    /*!< the process table */
         StatDaemonLaunch_t launchType_; /*!< the launch type */
         unsigned int sampleType_;       /*!< type of sample we're currently
                                              collecting */
