@@ -159,11 +159,6 @@ class CudaGdbDriver(GdbDriver):
         logging.debug('%s' %repr((lines)))
         return check_lines(lines)
 
-    def clean_frame(self, frame):
-        """Removes characters from a frame elements that confuse the
-        downstream parsing"""
-        return frame.replace('@','at').replace(':','.')
-
     def cuda_bt(self):
         """Gets a backtrace from the current cuda thread.
            returns list of frames, where each frame is a map of attributes"""
@@ -200,11 +195,11 @@ class CudaGdbDriver(GdbDriver):
                     function_index = split_line.index('in') + 1
                 if ('at' in split_line):
                     source_line_index = len(split_line) - split_line[::-1].index('at')
-                function = self.clean_frame(split_line[function_index]) # do we want to strip off args?
+                function = split_line[function_index] # do we want to strip off args?
                 #function = split_line[function_index].split('(')[0]
                 source_line = split_line[source_line_index].split(':')
                 if len(source_line) == 2:
-                    source = self.clean_frame(source_line[0])
+                    source = source_line[0]
                     linenum = int(source_line[1])
                 else:
                     source = 'unknown'
