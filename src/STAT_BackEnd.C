@@ -2112,7 +2112,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                         currentFrameString = currentFrame;
                         map<string, string> nodeAttrs;
                         startPos = 0;
-                        endPos = currentFrameString.find("@");
+                        endPos = currentFrameString.find_last_of("@");
                         name += currentFrameString.substr(startPos, endPos - startPos);
                         nodeAttrs["function"] = currentFrameString.substr(startPos, endPos - startPos);
                         if (sampleType_ & STAT_SAMPLE_LINE)
@@ -2198,7 +2198,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                         currentFrameString = currentFrame;
                         map<string, string> nodeAttrs;
                         startPos = 0;
-                        endPos = currentFrameString.find("@");
+                        endPos = currentFrameString.find_last_of("@");
                         name += currentFrameString.substr(startPos, endPos - startPos);
                         nodeAttrs["function"] = currentFrameString.substr(startPos, endPos - startPos);
                         if (sampleType_ & STAT_SAMPLE_LINE)
