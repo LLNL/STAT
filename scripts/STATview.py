@@ -56,7 +56,7 @@ if os.name != 'nt':
 try:
     import xdot
 except:
-    raise Exception('STATview requires xdot\nxdot can be downloaded from https://github.com/jrfonseca/xdot.py\n')
+    raise Exception('STATview requires xdot\nxdot can be downloaded from https://github.com/jrfonseca/xdot.py\nWhen installing STAT via Spack, please be sure to `spack activate py-xdot`')
 # old xdot vs new xdot compatibility wrapper
 try:
     xdot_ui_actions = xdot.ui.actions

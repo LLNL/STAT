@@ -191,10 +191,10 @@ namespace DysectAPI {
 }
 #endif
 
+
 class STAT_FrontEnd
 {
     public:
-        STAT_FrontEnd();
         ~STAT_FrontEnd();
 
         StatError_t attachAndSpawnDaemons(unsigned int pid, char *remoteNode = NULL);
@@ -260,6 +260,11 @@ class STAT_FrontEnd
         StatError_t dysectStop();
 #endif
 };
+
+%extend STAT_FrontEnd {
+    STAT_FrontEnd() { return STAT_FrontEnd::make(); }
+};
+
 
 %pythoncode %{
 
