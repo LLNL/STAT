@@ -1,6 +1,6 @@
 name: A workflow for CI testing of a STAT commit
 #author: Gregory L. Lee <lee218@llnl.gov>
-description: build STAT's dependences (or uses cached builds), builds STAT, and then runs STAT on a simple serial application.
+#description: build STAT's dependences (or uses cached builds), builds STAT, and then runs STAT on a simple serial application.
 on: push
 jobs:
   build:
