@@ -3514,7 +3514,7 @@ void STAT_BackEnd::swDebugBufferToFile()
 }
 
 
-#if DYNINST_MAJOR_VERSION >= 10 && DYNINST_MINOR_VERSION <= 1
+#if DYNINST_MAJOR_VERSION == 10 && DYNINST_MINOR_VERSION <= 1
 tbb::concurrent_vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 #else
 dyn_c_vector<Field *> *STAT_BackEnd::getComponents(Type *type)
@@ -3522,7 +3522,7 @@ dyn_c_vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 {
     typeTypedef *tt = NULL;
     typeStruct *ts = NULL;
-#if DYNINST_MAJOR_VERSION >= 10 && DYNINST_MINOR_VERSION <= 1
+#if DYNINST_MAJOR_VERSION == 10 && DYNINST_MINOR_VERSION <= 1
     tbb::concurrent_vector<Field *> *components = NULL;
 #else
     dyn_c_vector<Field *> *components = NULL;
@@ -3570,7 +3570,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
     StatPythonOffsets_t *pythonOffsets = NULL;
     Symtab *symtab = NULL;
     Type *type = NULL;
-#if DYNINST_MAJOR_VERSION >= 10 && DYNINST_MINOR_VERSION <= 1
+#if DYNINST_MAJOR_VERSION == 10 && DYNINST_MINOR_VERSION <= 1
     tbb::concurrent_vector<Field *> *components = NULL;
 #else
     dyn_c_vector<Field *> *components = NULL;
