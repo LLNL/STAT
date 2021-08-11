@@ -3514,7 +3514,7 @@ void STAT_BackEnd::swDebugBufferToFile()
 }
 
 
-#if DYNINST_MAJOR_VERSION == 10 && DYNINST_MINOR_VERSION <= 1
+#if DYNINST_MAJOR_VERSION >= 10 && DYNINST_MINOR_VERSION <= 1
 tbb::concurrent_vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 #else
 dyn_c_vector<Field *> *STAT_BackEnd::getComponents(Type *type)
