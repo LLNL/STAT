@@ -356,7 +356,7 @@ StatError_t STAT_lmonFrontEnd::sendDaemonInfo()
 
 StatError_t STAT_lmonFrontEnd::addDaemonSerialProcArgs(int& daemonArgc, char ** &daemonArgv)
 {
-    int statArgc = 1 + 2 * proctabSize_, currentArg
+    int statArgc = 1 + 2 * proctabSize_, currentArg;
     unsigned int j;
     char temp[BUFSIZE];
     
