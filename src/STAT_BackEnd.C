@@ -715,7 +715,7 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
     if (strcmp(remoteHost.c_str(), "localhost") == 0 || strcmp(remoteHost.c_str(), localHostName_) == 0 || strcmp(remoteHost.c_str(), localIp_) == 0)
     {
         proctabSize_++;
-        proctab_ = (StatBackEndProcInfo_t*)realloc(proctab_, proctabSize_ * sizeof(StatBackEndProcInfo_t));
+        proctab_ = (StatBackEndProcInfo_t *)realloc(proctab_, proctabSize_ * sizeof(StatBackEndProcInfo_t));
         if (proctab_ == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
@@ -4113,7 +4113,7 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, int nTask
     if (init == 0)
     {
         proctabSize_ = nTasks;
-        proctab_ = (StatBackEndProcInfo_t*)malloc(proctabSize_ * sizeof(StatBackEndProcInfo_t));
+        proctab_ = (StatBackEndProcInfo_t *)malloc(proctabSize_ * sizeof(StatBackEndProcInfo_t));
         if (proctab_ == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d bytes for proctab_\n", proctabSize_);

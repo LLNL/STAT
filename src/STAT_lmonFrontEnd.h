@@ -27,16 +27,16 @@ public:
 
     virtual StatError_t launchDaemons();
     virtual StatError_t sendDaemonInfo();
-    virtual void detachFromLauncher(const char* errMsg);
+    virtual void detachFromLauncher(const char *errMsg);
     virtual void shutDown();
 
-    virtual StatError_t createMRNetNetwork(const char* topologyFileName);
+    virtual StatError_t createMRNetNetwork(const char *topologyFileName);
 
     virtual bool daemonsHaveExited();
     virtual bool isKilled();
 
     virtual int getNumProcs();
-    virtual const char* getHostnameForProc(int procIdx);
+    virtual const char *getHostnameForProc(int procIdx);
     virtual int getMpiRankForProc(int procIdx);
     virtual StatError_t dumpProctab();
 
@@ -57,13 +57,13 @@ private:
     */
     StatError_t validateApidWithCTI();
 
-    int lmonSession_;                                   /*!< the LaunchMON session ID */
-    lmon_rm_info_t lmonRmInfo_;                         /*!< the resource manager information from LMON */
-    MPIR_PROCDESC_EXT *proctab_;                        /*!< the process table */
-    unsigned int proctabSize_;                          /*!< the size of the process table */
+    int lmonSession_;               /*!< the LaunchMON session ID */
+    lmon_rm_info_t lmonRmInfo_;     /*!< the resource manager information from LMON */
+    MPIR_PROCDESC_EXT *proctab_;    /*!< the process table */
+    unsigned int proctabSize_;      /*!< the size of the process table */
 
 #ifdef CRAYXT
-        cti_app_id_t CTIAppId_;                             /*!< the CTI application ID */
+    cti_app_id_t CTIAppId_;         /*!< the CTI application ID */
 #endif
 };
 

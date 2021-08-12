@@ -214,9 +214,8 @@ STAT_FrontEnd::STAT_FrontEnd()
     else
     {
         intRet = gethostname(hostname_, BUFSIZE);
-        if (intRet != 0) {
+        if (intRet != 0)
             printMsg(STAT_WARNING, __FILE__, __LINE__, "gethostname failed with error code %d\n", intRet);
-        }
     }
 
     /* Initialize variables */
@@ -463,7 +462,7 @@ void beConnectCb(Event *event, void *dummy)
 
 void nodeRemovedCb(Event *event, void *statObjectPtr)
 {
-    STAT_FrontEnd* statObject = (STAT_FrontEnd*)statObjectPtr;
+    STAT_FrontEnd* statObject = (STAT_FrontEnd *)statObjectPtr;
     StatError_t statError;
 
 
@@ -2642,7 +2641,7 @@ StatError_t STAT_FrontEnd::gatherImpl(StatProt_t type, bool blocking)
 StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 {
     static int sMergeCount = -1;
-    int tag, totalWidth, intRet, dummyRank, offset, nodeId;
+    int tag, totalWidth, intRet, dummyRank, offset, nodeId, numProcs;
     uint64_t byteArrayLen;
     unsigned int sampleType;
     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL;
@@ -2719,7 +2718,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     gEndTime.setTime();
     addPerfData("\tMerge", (gEndTime - gStartTime).getDoubleTime());
 
-    int numProcs = getNumProcs();
+    numProcs = getNumProcs();
     
     if (sampleType & STAT_SAMPLE_COUNT_REP)
     {
@@ -3837,7 +3836,7 @@ StatError_t increaseSysLimits()
 StatError_t STAT_FrontEnd::setRanksList()
 {
     unsigned int i;
-    int intRet;
+    int intRet, numProcs;
     map<int, RemapNode_t*> childOrder;
     map<int, RemapNode_t*>::iterator childOrderIter;
     list<int>::iterator remapRanksListIter;
@@ -3905,7 +3904,7 @@ StatError_t STAT_FrontEnd::setRanksList()
         for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++)
             if (leafInfo_.daemons.find(*applicationNodeMultiSetIter) == leafInfo_.daemons.end() && daemonIpAddrs.find(*applicationNodeMultiSetIter) == daemonIpAddrs.end())
                 daemonSet.insert(*applicationNodeMultiSetIter);
-        int numProcs = getNumProcs();
+        numProcs = getNumProcs();
         for (i = 0; i < numProcs; i++)
             if (daemonSet.find(getHostnameForProc(i)) != daemonSet.end())
                 missingRanks_.insert(getMpiRankForProc(i));

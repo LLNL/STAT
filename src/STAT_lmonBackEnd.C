@@ -42,8 +42,10 @@ StatError_t STAT_lmonBackEnd::finalize()
 // initialize launchmon
 StatError_t STAT_lmonBackEnd::initLauncher()
 {
-    int size;
+    int size, lmonProcTabSize = 0;
+    unsigned int i;
     lmon_rc_e lmonRet;
+    MPIR_PROCDESC_EXT *lmonProcTab;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Registering unpack function with Launchmon\n");
     lmonRet = LMON_be_regUnpackForFeToBe(unpackStatBeInfo);
@@ -77,8 +79,7 @@ StatError_t STAT_lmonBackEnd::initLauncher()
         return STAT_LMON_ERROR;
     }
 
-    MPIR_PROCDESC_EXT* lmonProcTab = (MPIR_PROCDESC_EXT*) malloc(size * sizeof(MPIR_PROCDESC_EXT));
-    int lmonProcTabSize = 0;
+    lmonProcTab = (MPIR_PROCDESC_EXT *) malloc(size * sizeof(MPIR_PROCDESC_EXT));
     if (lmonProcTab == NULL)
     {
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error allocating process table\n", strerror(errno));
@@ -93,7 +94,7 @@ StatError_t STAT_lmonBackEnd::initLauncher()
         return STAT_LMON_ERROR;
     }
 
-    proctab_ = (StatBackEndProcInfo_t*)malloc(size * sizeof(StatBackEndProcInfo_t));
+    proctab_ = (StatBackEndProcInfo_t *)malloc(size * sizeof(StatBackEndProcInfo_t));
     if (proctab_ == NULL)
     {
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error allocating process table\n", strerror(errno));
@@ -101,8 +102,8 @@ StatError_t STAT_lmonBackEnd::initLauncher()
     }
 
     proctabSize_ = size;
-
-    for (int i=0; i<size; ++i) {
+    for (i = 0; i < size; ++i)
+    {
         proctab_[i].executable_name = lmonProcTab[i].pd.executable_name;
         proctab_[i].host_name = lmonProcTab[i].pd.host_name;
         proctab_[i].pid = lmonProcTab[i].pd.pid;

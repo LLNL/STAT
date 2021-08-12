@@ -19,7 +19,7 @@ extern STAT_timer gEndTime;
 STAT_lmonFrontEnd::STAT_lmonFrontEnd()
     : lmonSession_(-1), proctab_(nullptr), proctabSize_(0)
 {
-    char* envValue = getenv("STAT_LMON_REMOTE_LOGIN");
+    char *envValue = getenv("STAT_LMON_REMOTE_LOGIN");
     if (envValue != NULL)
         setenv("LMON_REMOTE_LOGIN", envValue, 1);
 
@@ -42,9 +42,10 @@ STAT_lmonFrontEnd::STAT_lmonFrontEnd()
 
 STAT_lmonFrontEnd::~STAT_lmonFrontEnd()
 {
+    unsigned int i;
     if (proctab_ != NULL)
     {
-        for (int i = 0; i < proctabSize_; i++)
+        for (i = 0; i < proctabSize_; i++)
         {
             if (proctab_[i].pd.executable_name != NULL)
                 free(proctab_[i].pd.executable_name);
@@ -355,10 +356,11 @@ StatError_t STAT_lmonFrontEnd::sendDaemonInfo()
 
 StatError_t STAT_lmonFrontEnd::addDaemonSerialProcArgs(int& daemonArgc, char ** &daemonArgv)
 {
+    int statArgc = 1 + 2 * proctabSize_, currentArg
+    unsigned int j;
     char temp[BUFSIZE];
     
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "\tSetting up daemon args for serial attach and MRNet launch\n");
-    int statArgc = 1 + 2 * proctabSize_;
     daemonArgc += statArgc;
     daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
     if (daemonArgv == NULL)
@@ -373,9 +375,9 @@ StatError_t STAT_lmonFrontEnd::addDaemonSerialProcArgs(int& daemonArgc, char ** 
         free(daemonArgv);
         return STAT_ALLOCATE_ERROR;
     }
-    for (int j = 0; j < proctabSize_; j++)
+    for (j = 0; j < proctabSize_; j++)
     {
-        int currentArg = daemonArgc - statArgc - 1 + 2 * j + 1;
+        currentArg = daemonArgc - statArgc - 1 + 2 * j + 1;
         daemonArgv[currentArg] = strdup("-p");
         if (daemonArgv[currentArg] == NULL)
         {
@@ -409,7 +411,7 @@ bool STAT_lmonFrontEnd::isKilled()
     return WIFKILLED(gsLmonState);
 }
 
-void STAT_lmonFrontEnd::detachFromLauncher(const char* errMsg)
+void STAT_lmonFrontEnd::detachFromLauncher(const char *errMsg)
 {
     lmon_rc_e lmonRet = LMON_fe_detach(lmonSession_);
     if (lmonRet != LMON_OK)
@@ -493,6 +495,7 @@ StatError_t STAT_lmonFrontEnd::STATBench_setAppNodeList()
 
 StatError_t STAT_lmonFrontEnd::STATBench_resetProctab(unsigned int nTasks)
 {
+    unsigned int i, j;
     char name[BUFSIZE];
 
     for (int i = 0; i < proctabSize_; i++)
@@ -514,10 +517,10 @@ StatError_t STAT_lmonFrontEnd::STATBench_resetProctab(unsigned int nTasks)
         return STAT_ALLOCATE_ERROR;
     }
 
-    for (int i = 0; i < nApplNodes_; i++)
+    for (i = 0; i < nApplNodes_; i++)
     {
         snprintf(name, BUFSIZE, "a%d", i);
-        for (int j = 0; j < nTasks; j++)
+        for (j = 0; j < nTasks; j++)
         {
             proctab_[i * nTasks + j].mpirank = i * nTasks + j;
             proctab_[i * nTasks + j].pd.host_name = strdup(name);
@@ -551,7 +554,7 @@ int lmonStatusCb(int *status)
     return 0;
 }
 
-StatError_t STAT_lmonFrontEnd::createMRNetNetwork(const char* topologyFileName)
+StatError_t STAT_lmonFrontEnd::createMRNetNetwork(const char *topologyFileName)
 {
     network_ = Network::CreateNetworkFE(topologyFileName, NULL, NULL);
 
@@ -724,7 +727,7 @@ int STAT_lmonFrontEnd::getNumProcs()
     return proctabSize_;
 }
 
-const char* STAT_lmonFrontEnd::getHostnameForProc(int procIdx)
+const char *STAT_lmonFrontEnd::getHostnameForProc(int procIdx)
 {
     return proctab_[procIdx].pd.host_name;
 }
@@ -734,7 +737,7 @@ int STAT_lmonFrontEnd::getMpiRankForProc(int procIdx)
 }
 
 #ifndef USE_CTI
-STAT_FrontEnd* STAT_FrontEnd::make()
+STAT_FrontEnd *STAT_FrontEnd::make()
 {
     return new STAT_lmonFrontEnd();
 }
