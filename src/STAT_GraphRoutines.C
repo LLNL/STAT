@@ -702,18 +702,24 @@ int bitVectorContains(StatBitVector_t *vec, int val)
 
 void *statMergeEdgeOrdered(void *edge1, const void *edge2)
 {
-    int i, bit, byte;
+    int i, n, bit, byte;
     StatBitVectorEdge_t *e1 = (StatBitVectorEdge_t *)edge1, *e2 = (StatBitVectorEdge_t *)edge2;
 
     if (edge1 == NULL || edge2 == NULL)
         return NULL;
-    for (i = 0; i < gStatGraphRoutinesRanksListLength; i++)
+
+    for (i = 0, n = e2->length * STAT_BITVECTOR_BITS; i < n; ++i)
     {
-        if (bitVectorContains(e2->bitVector, gStatGraphRoutinesCurrentIndex * STAT_BITVECTOR_BITS + i) == 1)
+        if (bitVectorContains(e2->bitVector, i))
         {
+            // gStatGraphRoutineRanksList maps edge2's subset of ranks
+            // to the full set referenced by edge1
             byte = gStatGraphRoutinesRanksList[i] / STAT_BITVECTOR_BITS;
             bit = gStatGraphRoutinesRanksList[i] % STAT_BITVECTOR_BITS;
-            e1->bitVector[byte] |= STAT_GRAPH_BIT(bit);
+            if (byte < e1->length)
+                e1->bitVector[byte] |= STAT_GRAPH_BIT(bit);
+            else
+                fprintf(stderr, "cannot merge edge bit set\n");
         }
     }
     return edge1;
