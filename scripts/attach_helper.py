@@ -78,11 +78,14 @@ def jobid_to_hostname_pid(rm, jobid, remoteshell):
             if lines == []:
                 continue
             lines = ret.splitlines()
-            fmt = lines[0].split()
-            pid_index = fmt.index('PID')
-            for line in lines[1:]:
-                if line.find(rms[rm]) != -1:
-                    pids.append(int(line.split()[pid_index]))
+            try:
+                fmt = lines[0].split()
+                pid_index = fmt.index('PID')
+                for line in lines[1:]:
+                    if line.find(rms[rm]) != -1:
+                        pids.append(int(line.split()[pid_index]))
+            except:
+                pass
     if pids != []:
         return remotehost, rms[rm], pids
     return None, None, []
