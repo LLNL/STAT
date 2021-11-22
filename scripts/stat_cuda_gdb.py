@@ -100,32 +100,24 @@ def get_all_device_traces(pid, retries=5, retry_frequency=1000, cuda_quick=0):
         return ''
     ret = ''
 
-    devices = gdb_instances[pid].get_cuda_devices()
-    logging.info('got devices ' + str(devices))
-
-    for device in devices:
-        if not gdb_instances[pid].cuda_device_focus(device):
-            logging.info('focus on device ' + str(device) + ' failed')
+    kernels = gdb_instances[pid].get_cuda_kernels()
+    for kernel in kernels:
+        if not gdb_instances[pid].cuda_kernel_focus(kernel):
+            logging.info('focus on kernel ' + str(kernel) + ' failed')
             continue
 
-        kernels = gdb_instances[pid].get_cuda_kernels()
-        for kernel in kernels:
-            if not gdb_instances[pid].cuda_kernel_focus(kernel):
-                logging.info('focus on kernel ' + str(kernel) + ' failed')
-                continue
-
-            threads = gdb_instances[pid].get_cuda_threads(retries, retry_frequency)
-            for thread in threads:
-                ret += '#count#%d\n' %(thread['count'])
-                if cuda_quick == 1:
-                    ret += '?@%s:%d\n' %(thread['filename'], thread['linenum'])
-                else:
-                    gdb_instances[pid].cuda_block_thread_focus(thread['start_block'], thread['start_thread'])
-                    bt = gdb_instances[pid].cuda_bt()
-                    bt.reverse()
-                    for frame in bt:
-                        ret += '%s@%s:%d\n' %(frame['function'], frame['source'], frame['linenum'])
-                    ret += '#endtrace\n'
+        threads = gdb_instances[pid].get_cuda_threads(retries, retry_frequency)
+        for thread in threads:
+            ret += '#count#%d\n' %(thread['count'])
+            if cuda_quick == 1:
+                ret += '?@%s:%d\n' %(thread['filename'], thread['linenum'])
+            else:
+                gdb_instances[pid].cuda_block_thread_focus(thread['start_block'], thread['start_thread'])
+                bt = gdb_instances[pid].cuda_bt()
+                bt.reverse()
+                for frame in bt:
+                    ret += '%s@%s:%d\n' %(frame['function'], frame['source'], frame['linenum'])
+            ret += '#endtrace\n'
     return ret
 
 if __name__ == "__main__":
