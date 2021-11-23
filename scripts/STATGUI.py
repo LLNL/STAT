@@ -29,7 +29,10 @@ import STAThelper
 from STAThelper import var_spec_to_string, get_task_list, get_proctab, HAVE_PYGMENTS, exec_and_exit
 if HAVE_PYGMENTS:
     import pygments
-    import pango
+    try:
+        import pango
+    except:
+        pass
     from pygments.lexers import CLexer
     from pygments.lexers import CppLexer
     from pygments.lexers import FortranLexer
