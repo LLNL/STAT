@@ -3514,7 +3514,7 @@ void STAT_BackEnd::swDebugBufferToFile()
 
 
 #if DYNINST_MAJOR_VERSION >= 10
-tbb::concurrent_vector<Field *, std::allocator<Field*> > *STAT_BackEnd::getComponents(Type *type)
+Dyninst::dyn_c_vector<Field*> *STAT_BackEnd::getComponents(Type *type)
 #else
 vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 #endif
