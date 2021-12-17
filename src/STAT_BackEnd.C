@@ -1942,7 +1942,6 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
     return STAT_OK;
 }
 
-
 StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int traceFrequency, unsigned int nRetries, unsigned int retryFrequency, char *variableSpecification)
 {
     int j;
@@ -3515,7 +3514,7 @@ void STAT_BackEnd::swDebugBufferToFile()
 
 
 #if DYNINST_MAJOR_VERSION >= 10
-tbb::concurrent_vector<Field *> *STAT_BackEnd::getComponents(Type *type)
+Dyninst::dyn_c_vector<Field*> *STAT_BackEnd::getComponents(Type *type)
 #else
 vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 #endif
@@ -3523,7 +3522,7 @@ vector<Field *> *STAT_BackEnd::getComponents(Type *type)
     typeTypedef *tt = NULL;
     typeStruct *ts = NULL;
 #if DYNINST_MAJOR_VERSION >= 10
-    tbb::concurrent_vector<Field *> *components = NULL;
+    tbb::concurrent_vector<Field*, std::allocator<Field*> > *components = NULL;
 #else
     vector<Field *> *components = NULL;
 #endif
@@ -3571,7 +3570,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
     Symtab *symtab = NULL;
     Type *type = NULL;
 #if DYNINST_MAJOR_VERSION >= 10
-    tbb::concurrent_vector<Field *> *components = NULL;
+    tbb::concurrent_vector<Field*, std::allocator<Field*> > *components = NULL;
 #else
     vector<Field *> *components = NULL;
 #endif
