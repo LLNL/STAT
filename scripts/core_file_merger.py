@@ -125,7 +125,7 @@ class Gdb(object):
         line = ''
         lines = []
         while True:
-            ch = self.subprocess.stdout.read(1)
+            ch = self.subprocess.stdout.read(1).decode('utf-8')
             if ch == '\n':
                 lines.append(line)
                 ch = ''
@@ -143,7 +143,7 @@ class Gdb(object):
            \returns a list of lines from a merged stdout/stderr stream"""
         if not command.endswith('\n'):
             command += '\n'
-        self.subprocess.stdin.write(command)
+        self.subprocess.stdin.write(command.encode('utf-8'))
         return self.readlines()
 
 
@@ -624,7 +624,7 @@ def STATmerge_main(arg_list):
             if os.stat(filename).st_size == 0:
                 empty_files.append(filename)
             else:
-                p = subprocess.Popen(['file', filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                p = subprocess.Popen(['file', filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf8')
                 output, error = p.communicate()
                 if output.find('core file') != -1:
                     file_types['full'] = True
