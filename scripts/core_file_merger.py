@@ -379,11 +379,9 @@ class CoreFile:
         coretype = 'unknown'
         for line in lines:
             if line.find('ppc64le') != -1:
-                sys.stderr.write('ppc')
                 coretype = 'ppc64le'
                 break
             elif line.find('x86_64') != -1:
-                sys.stderr.write('x86_64')
                 coretype = 'x86_64'
                 break
 
