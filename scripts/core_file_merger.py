@@ -69,15 +69,15 @@ class Gdb(object):
         args = []
         args.append('gdb')
         args.append('-ex')
-        args.append("set pagination 0")
+        args.append("'set pagination 0'")
         args.append('-ex')
-        args.append("cd %s" %(self.directory))
+        args.append("'cd %s'" %(self.directory))
         args.append('-ex')
-        args.append("path %s" %(self.objectpath))
+        args.append("'path %s'" %(self.objectpath))
         args.append('-ex')
-        args.append("directory %s" %(self.sourcepath))
+        args.append("'directory %s'" %(self.sourcepath))
         args.append('-ex')
-        args.append("set filename-display absolute")
+        args.append("'set filename-display absolute'")
         if corefile:
             self.corefile = corefile
             if os.path.isabs(self.corefile):
