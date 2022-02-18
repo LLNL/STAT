@@ -373,7 +373,19 @@ class CoreFile:
 
             #Reconnect to gdb using executable
             logging.info("Reconnecting gdb to the core file (%s) AND the executable (%s)"%(self.coreData['coreFile'],executable))
+
         lines = gdb.open(self.coreData['coreFile'], executable)
+        # check for architecture type
+        coretype = 'unknown'
+        for line in lines:
+            if line.find('ppc64le') != -1:
+                sys.stderr.write('ppc')
+                coretype = 'ppc64le'
+                break
+            elif line.find('x86_64') != -1:
+                sys.stderr.write('x86_64')
+                coretype = 'x86_64'
+                break
 
         #Check for gdb errors
         logging.debug("Checking for gdb errors")
@@ -405,9 +417,9 @@ class CoreFile:
         # at some point we needed to gobble up an extra command prompt:
         # as of 01/30/19 this appears to be necessary on PPC64 LE w/ vanilla GDB
         # as of 01/30/19 this appears to be unnecessary on PPC64 LE w/ vanilla GDB
-        if CoreFile.__options['cuda'] != 1:
-            lines2 = gdb.readlines()
-            lines += lines2
+#        if CoreFile.__options['cuda'] != 1 and coretype == 'ppc64le'
+#            lines2 = gdb.readlines()
+#            lines += lines2
 
         if symbols_loaded:
             #Find the value for the returned size from MPI_Comm_size()
