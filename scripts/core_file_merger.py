@@ -593,7 +593,23 @@ def init_logging(input_loglevel, input_logfile):
         log_stream = None
         log_file = input_logfile
 
-    logging.basicConfig(level=input_loglevel, format=log_format, datefmt=log_date, filename=log_file, stream=log_stream, filemode='w')
+    log_file_enabled = False
+    try:
+        logging.basicConfig(level=input_loglevel, format=log_format, datefmt=log_date, filename=log_file, stream=log_stream, filemode='w')
+        log_file_enabled = True
+    except ValueError:
+        pass
+    if log_file_enabled is False:
+        try:
+            logging.basicConfig(level=input_loglevel, format=log_format, datefmt=log_date, filename=log_file, filemode='w')
+            log_file_enabled = True
+        except ValueError:
+            pass
+        if log_file_enabled is False:
+            try:
+                logging.basicConfig(level=input_loglevel, format=log_format, datefmt=log_date, filemode='w')
+            except Exception as e:
+                sys.stderr.write('unable to config log file %s:\n%s\n' %(log_file, str(e)))
     logging.getLogger().name = "MainThread"
     logging.log(logging.VERBOSE, "Processing started at %s" %(datetime.now()))
     return input_loglevel
