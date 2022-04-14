@@ -94,6 +94,7 @@ StatError_t STAT_ctiFrontEnd::attach()
         if (!appId_) {
             return ctiError();
         }
+        break;
     }
 
     default:
