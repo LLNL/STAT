@@ -169,6 +169,36 @@ class CudaGdb(Gdb):
         self.subprocess = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         return self.readlines()
 
+class GdbOneapi(Gdb):
+
+    def __init__ (self, options):
+        Gdb.__init__(self, options)
+        self.executable = "GPU"
+
+    def open(self, corefile, executable = None):
+        args = []
+        args.append('gdb-oneapi')
+        args.append('-ex')
+        args.append("set pagination 0")
+        args.append('-ex')
+        args.append("cd %s" %(self.directory))
+        args.append('-ex')
+        args.append("path %s" %(self.objectpath))
+        args.append('-ex')
+        args.append("directory %s" %(self.sourcepath))
+        args.append('-ex')
+        args.append("set filename-display absolute")
+        args.append('-ex')
+        target_string = "target core "
+        self.corefile = corefile
+        if os.path.isabs(self.corefile):
+            target_string += " %s" % (self.corefile)
+        else:
+            target_string += " %s/%s" % (self.coredir, self.corefile)
+        args.append(target_string)
+        self.subprocess = subprocess.Popen(args, universal_newlines=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        return self.readlines()
+
 
 ###############################################################################
 class CoreFile:
@@ -353,6 +383,8 @@ class CoreFile:
         logging.info("Connecting gdb to the core file (%s)"%self.coreData['coreFile'])
         if CoreFile.__options['cuda'] == 1:
             gdb = CudaGdb(CoreFile.__options)
+        elif CoreFile.__options['oneapi'] == 1:
+            gdb = GdbOneapi(CoreFile.__options)
         else:
             gdb = Gdb(CoreFile.__options)
         executable = gdb.executable
@@ -468,7 +500,7 @@ class CoreFile:
                 in_thread,functions = True,[]
 
             #In some cases, gdb will quit the stack trace early
-            elif 'Backtrace stopped: ' in line:
+            elif 'Backtrace stopped: ' in line and CoreFile.__options['oneapi'] != 1:
                 logging.critical("GDB: Backtrace stopped")
                 if not force:
                     sys.exit(2)
@@ -513,6 +545,7 @@ class CoreMergerArgs(StatMergerArgs):
         self.arg_map["force"] = StatMergerArgs.StatMergerArgElement("r", False, int, 0, "whether to force parsing on warnings and errors")
         self.arg_map["threads"] = StatMergerArgs.StatMergerArgElement("T", False, int, 1, "max number of threads")
         self.arg_map["cuda"] = StatMergerArgs.StatMergerArgElement("C", False, int, 0, "set if running on cuda cores")
+        self.arg_map["oneapi"] = StatMergerArgs.StatMergerArgElement("n", False, int, 0, "set if using gdb-oneapi")
 
         self.arg_map["jobid"] = self.StatMergerArgElement("j", False, None, None, "[LW] delineate traces based on Job ID in the core file")
         self.arg_map["exe"] = StatMergerArgs.StatMergerArgElement("x", True, str, "NULL", "[LW] the executable path")
