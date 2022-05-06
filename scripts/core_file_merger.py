@@ -11,7 +11,7 @@ TODO: There are still issues with gdb subprocesses remaining after the
       interrupt
 """
 
-__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2022, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Dane Gardner, Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
 LLNL-CODE-750488.
@@ -144,6 +144,7 @@ class Gdb(object):
         if not command.endswith('\n'):
             command += '\n'
         self.subprocess.stdin.write(command.encode('utf-8'))
+        self.subprocess.stdin.flush()
         return self.readlines()
 
 
@@ -638,7 +639,7 @@ def STATmerge_main(arg_list):
             if os.stat(filename).st_size == 0:
                 empty_files.append(filename)
             else:
-                p = subprocess.Popen(['file', filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf8')
+                p = subprocess.Popen(['file', filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf8', universal_newlines=True)
                 output, error = p.communicate()
                 if output.find('core file') != -1:
                     file_types['full'] = True
