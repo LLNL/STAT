@@ -2178,7 +2178,7 @@ host[1-10,12,15-20];otherhost[30]
         eq_dialog.vbox.pack_start(self.separator, False, True, 5)
         box2 = gtk.HButtonBox()
 
-        debuggers = ['TotalView', 'DDT']
+        debuggers = ['TotalView', 'DDT', 'DDT serial']
         for debugger in debuggers:
             button = gtk.Button(" Attach %s \n to Subset " % debugger)
             button.connect("clicked", self.launch_debugger_cb, (debugger, eq_dialog))
@@ -2366,23 +2366,31 @@ host[1-10,12,15-20];otherhost[30]
                 else:
                     exe = exe.split()[0]
                 arg_list.append(exe)
-        elif debugger == 'DDT':
+        elif debugger == 'DDT' or debugger == 'DDT serial':
             filepath = self.options['DDT Path']
             if not filepath or not os.access(filepath, os.X_OK):
                 show_error_dialog('Failed to locate executable ddt\ndefault: %s\n' % filepath, self)
                 return
 
             arg_list.append(filepath)
-            arg_list.append("--attach-mpi")
-            arg_list.append(str(self.proctab.launcher_pid))
-            arg_list.append("--subset")
-            rank_list_arg = ''
-            for rank in subset_list:
-                if rank == subset_list[0]:
-                    rank_list_arg += '%d' % rank
-                else:
-                    rank_list_arg += ',%d' % rank
-            arg_list.append(rank_list_arg)
+            if debugger == 'DDT':
+                arg_list.append("--attach-mpi")
+                arg_list.append(str(self.proctab.launcher_pid))
+                arg_list.append("--subset")
+                rank_list_arg = ''
+                for rank in subset_list:
+                    if rank == subset_list[0]:
+                        rank_list_arg += '%d' % rank
+                    else:
+                        rank_list_arg += ',%d' % rank
+                arg_list.append(rank_list_arg)
+            else:
+                arg_list.append("--attach")
+                hplist = self.proctab.process_list
+                attach_list_arg = ''
+                for rank in subset_list:
+                    attach_list_arg += hplist[rank][1]+':'+'%d' % hplist[rank][2]+','
+                arg_list.append(attach_list_arg[:-1])
             arg_list.append(self.executable_path)
 
         for arg in self.options['Additional Debugger Args'].split():
