@@ -2178,7 +2178,7 @@ host[1-10,12,15-20];otherhost[30]
         eq_dialog.vbox.pack_start(self.separator, False, True, 5)
         box2 = gtk.HButtonBox()
 
-        debuggers = ['TotalView', 'DDT', 'DDT serial']
+        debuggers = ['TotalView', 'DDT bulk attach', 'DDT host:PID attach']
         for debugger in debuggers:
             button = gtk.Button(" Attach %s \n to Subset " % debugger)
             button.connect("clicked", self.launch_debugger_cb, (debugger, eq_dialog))
@@ -2366,14 +2366,14 @@ host[1-10,12,15-20];otherhost[30]
                 else:
                     exe = exe.split()[0]
                 arg_list.append(exe)
-        elif debugger == 'DDT' or debugger == 'DDT serial':
+        elif debugger == 'DDT bulk attach' or debugger == 'DDT host:PID attach':
             filepath = self.options['DDT Path']
             if not filepath or not os.access(filepath, os.X_OK):
                 show_error_dialog('Failed to locate executable ddt\ndefault: %s\n' % filepath, self)
                 return
 
             arg_list.append(filepath)
-            if debugger == 'DDT':
+            if debugger == 'DDT bulk attach':
                 arg_list.append("--attach-mpi")
                 arg_list.append(str(self.proctab.launcher_pid))
                 arg_list.append("--subset")
