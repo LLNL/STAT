@@ -2042,7 +2042,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     }
 
     /* Add the nodes and IDs to the list of hosts */
-    for (i = 0, counter = 0; i < procsPerNode_; i++)
+    for (i = 1, counter = 0; i < procsPerNode_; i++)
     {
         for (communicationNodeSetIter = communicationNodeSet_.begin(); communicationNodeSetIter != communicationNodeSet_.end(); communicationNodeSetIter++, counter++)
         {
