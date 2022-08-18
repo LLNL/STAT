@@ -83,7 +83,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 //! An enum type to determine who launched the daemon
 typedef enum {
-    STATD_LMON_LAUNCH = 0,
+    STATD_CTI_LAUNCH = 0,
     STATD_SERIAL_LAUNCH,
     STATD_MRNET_LAUNCH,
 } StatDaemonLaunch_t;

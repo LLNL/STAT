@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     char logOutDir[BUFSIZE];
     STAT_BackEnd *statBackEnd;
     StatError_t statError;
-    StatDaemonLaunch_t launchType = STATD_LMON_LAUNCH;
+    StatDaemonLaunch_t launchType = STATD_CTI_LAUNCH;
 
     struct option longOptions[] =
     {

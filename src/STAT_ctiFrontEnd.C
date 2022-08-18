@@ -336,7 +336,7 @@ StatError_t STAT_ctiFrontEnd::getProcInfo()
     }
 
     if (applName.empty()) {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "did not get application name\n");
+        printMsg(STAT_CTI_ERROR, __FILE__, __LINE__, "did not get application name\n");
         applName = "unknown";
     }
 

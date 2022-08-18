@@ -4,7 +4,7 @@
 #include "STAT_FrontEnd.h"
 #include "common_tools_fe.h"
 
-// Implementation of the STAT front end that uses launchmon to launch
+// Implementation of the STAT front end to launch
 // the stat daemons
 class STAT_ctiFrontEnd : public STAT_FrontEnd
 {

@@ -72,8 +72,8 @@ STATbin_LDADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
 STATD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi) $(CRAYTOOL_LIBS)
 STATD_LDADD = libstatbe.la $(stat_be_ldadd_add_dysectapi) @BELIBS@
 
-stat_be_la_sources_base = STAT_BackEnd.C STAT_BackEnd.h STAT_lmonBackEnd.C STAT_lmonBackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
-stat_fe_la_sources_base = STAT_FrontEnd.C STAT_lmonFrontEnd.C STAT_FrontEnd.h STAT_lmonFrontEnd.h STAT.h STAT_timer.h STAT_timer.C
+stat_be_la_sources_base = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
+stat_fe_la_sources_base = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C
 
 if WITH_CTI
 stat_be_la_sources_base += STAT_ctiBackEnd.C STAT_ctiBackEnd.h

@@ -29,15 +29,15 @@ StatError_t STAT_ctiBackEnd::initLauncher()
     cti_pidList_t* pids = cti_be_findAppPids();
     if (!pids)
     {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "CTI failed to get processes.\n");
-        return STAT_LMON_ERROR;
+        printMsg(STAT_CTI_ERROR, __FILE__, __LINE__, "CTI failed to get processes.\n");
+        return STAT_CTI_ERROR;
     }
 
     int n = pids->numPids;
     if (n <= 0) {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "CTI found no procesess.\n");
+        printMsg(STAT_CTI_ERROR, __FILE__, __LINE__, "CTI found no procesess.\n");
         cti_be_destroyPidList(pids);
-        return STAT_LMON_ERROR;
+        return STAT_CTI_ERROR;
     }
 
     proctab_ = (StatBackEndProcInfo_t*) malloc(n * sizeof(StatBackEndProcInfo_t));
@@ -53,9 +53,9 @@ StatError_t STAT_ctiBackEnd::initLauncher()
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "got executable %s from %s\n",
                      exe, procpath.c_str());
         } else {
-            printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "could not get application executable\n");
+            printMsg(STAT_CTI_ERROR, __FILE__, __LINE__, "could not get application executable\n");
             cti_be_destroyPidList(pids);
-            return STAT_LMON_ERROR;
+            return STAT_CTI_ERROR;
         }
 
         proctab_[i].executable_name = strdup(exe);
@@ -171,8 +171,8 @@ StatError_t STAT_ctiBackEnd::connect(int argc, char **argv)
     // Get the parent information so that we can connect this back end node to the mrnet tree.
     char* fileDir = cti_be_getFileDir();
     if (!fileDir) {
-        printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "CTI failed to file dir.\n");
-        return STAT_LMON_ERROR;
+        printMsg(STAT_CTI_ERROR, __FILE__, __LINE__, "CTI failed to file dir.\n");
+        return STAT_CTI_ERROR;
     }
 
     std::string connectionFile = std::string(fileDir) + "/daemoninfo.txt";
@@ -281,7 +281,7 @@ StatError_t STAT_ctiBackEnd::connect(int argc, char **argv)
 
 StatError_t STAT_ctiBackEnd::statBenchConnectInfoDump()
 {
-    printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Statbench info dump not supported in CTI implementatioin.\n");
+    printMsg(STAT_CTI_ERROR, __FILE__, __LINE__, "Statbench info dump not supported in CTI implementatioin.\n");
     return STAT_SYSTEM_ERROR;
 }
 
