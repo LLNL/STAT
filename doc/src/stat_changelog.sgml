@@ -1,4 +1,21 @@
 <section>
+  <title>stat version 4.2.0</title>
+  <para>
+    <itemizedlist>
+      <listitem><para>
+        Core file debugging enhancements
+      </para></listitem>
+      <listitem><para>
+        Backend refactoring
+      </para></listitem>
+      <listitem><para>
+        as always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
+      </para></listitem>
+    </itemizedlist>
+  </para>
+</section>
+
+<section>
   <title>stat version 4.1.0</title>
   <para>
     <itemizedlist>
