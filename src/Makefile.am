@@ -47,7 +47,7 @@ STATD_LDADD = libstatbe.la @BELIBS@
 
 
 stat_be_la_sources_base = STAT_BackEnd.C STAT_BackEnd.h STAT_lmonBackEnd.C STAT_lmonBackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
-stat_fe_la_sources_base = STAT_FrontEnd.C STAT_lmonFrontEnd.C STAT_FrontEnd.h  STAT_lmonFrontEnd.hSTAT.h STAT_timer.h STAT_timer.C
+stat_fe_la_sources_base = STAT_FrontEnd.C STAT_lmonFrontEnd.C STAT_FrontEnd.h  STAT_lmonFrontEnd.h STAT.h STAT_timer.h STAT_timer.C
 
 
 libstatbe_la_SOURCES = $(stat_be_la_sources_base) $(stat_graphlib_sources) $(stat_be_la_sources_fgfs)
