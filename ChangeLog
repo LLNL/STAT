@@ -1,3 +1,7 @@
+2022-09-16 Gregory L. Lee <lee218@llnl.gov>
+	* : Add support for dyninst 12+ (remove local variable gathering). This
+	means python frames cannot be gathered.
+
 2022-08-22 Gregory L. Lee <lee218@llnl.gov>
 	* : updated version string to 4.2.0
 

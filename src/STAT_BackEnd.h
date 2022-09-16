@@ -49,14 +49,17 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "STAT_GraphRoutines.h"
 #include "graphlib.h"
 
-
+#include "dyninstversion.h"
 #include "Symtab.h"
 #include "walker.h"
 #include "procstate.h"
 #include "frame.h"
 #include "swk_errors.h"
 #include "Type.h"
-#include "local_var.h"
+
+#if DYNINST_MAJOR_VERSION<12
+  #include "local_var.h"
+#endif
 #include "Variable.h"
 #include "Function.h"
 #ifdef SW_VERSION_8_0_0

@@ -77,11 +77,11 @@ Installation
 
    When building STAT itself, first run configure. You will need
    to use the --with-package options to specify the install prefix
-   for mrnet, graphlib, launchmon, libdwarf, and stackwalker.
-   These options will add the necessary include and library search
-   paths to the compile options. Refer to configure --help for
-   exact options. You may also wish to specify the maximum number
-   of communication processes to launch per node with the option
+   for mrnet, graphlib, launchmon, libdwarf, and dyninst. These
+   options will add the necessary include and library search paths
+   to the compile options. Refer to configure --help for exact
+   options. You may also wish to specify the maximum number of
+   communication processes to launch per node with the option
    --with-procspernode=number, generally set to the number of
    cores per node.
 
