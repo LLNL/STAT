@@ -150,3 +150,11 @@ make install
    working cuda-gdb executable. Note that STAT currently still
    requires Dyninst as a dependence even when using the GDB
    backend.
+
+   Dyninst 12 removed the local_var.h header file that STAT uses
+   to gather python traces. If this feature is needed, you will
+   either need to use Dyninst version 11 or lower, or copy the
+   local_var.h file from
+   https://raw.githubusercontent.com/dyninst/dyninst/5c7e0ee327399
+   cfae50d77f977ff6655c2ca3ae4/stackwalk/h/local_var.h to your
+   Dyninst 12+ installation's include directory

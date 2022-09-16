@@ -1,4 +1,15 @@
 <section>
+  <title>stat version 4.2.1</title>
+  <para>
+    <itemizedlist>
+      <listitem><para>
+        update to support dropping of local_var.h from Dyninst 12
+      </para></listitem>
+    </itemizedlist>
+  </para>
+</section>
+
+<section>
   <title>stat version 4.2.0</title>
   <para>
     <itemizedlist>
