@@ -8,7 +8,7 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=/usr/lib64/dyninst"],
     [CXXFLAGS="$CXXFLAGS"
      STACKWALKERPREFIX="${withval}"]
-  )  
+  )
 
   AC_ARG_WITH(elfutils,
     [AS_HELP_STRING([--with-elfutils=prefix],
@@ -114,33 +114,11 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
   fi
   AC_MSG_RESULT([$dyninst_vers_10])
 
-  AC_MSG_CHECKING([Checking Dyninst Version 12.0 or greater])
-  dyninst_vers_12=no
-  AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "dyninstversion.h"
-    int main()
-    {
-      return 0;
-    }])],
-    [dyninst_vers_12=yes],
-    []
+  AC_CHECK_HEADER(local_var.h,
+    [AC_DEFINE([LOCAL_VAR_H], [], [local_var.h])],
+    [],
+    AC_INCLUDES_DEFAULT
   )
-
-  if test "$dyninst_vers_12" = yes; then
-    AC_COMPILE_IFELSE([AC_LANG_SOURCE([#include "dyninstversion.h"
-      #if DYNINST_MAJOR_VERSION < 12
-        #error
-      #endif
-      int main()
-      {
-        return 0;
-      }])],
-      [CXXFLAGS="$CXXFLAGS -std=c++11"],
-      [dyninst_vers_12=no]
-    )
-  fi
-  AC_MSG_RESULT([$dyninst_vers_12])
-
-
 
   AC_CHECK_HEADER(Symtab.h,
     [],

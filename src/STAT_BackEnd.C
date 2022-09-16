@@ -1889,7 +1889,7 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
     vector<localVar *> vars;
     vector<localVar *>::iterator varsIter;
 
-#if DYNINST_MAJOR_VERSION<12
+#ifdef LOCAL_VAR_H
     frame.getName(frameName);
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for variable %s in frame %s\n", variableName, frameName.c_str());
 
@@ -1939,8 +1939,8 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
         }
     }
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s in frame %s\n", variableName, frameName.c_str());
-#else //#if DYNINST_MAJOR_VERSION<12
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "local variable support not availabile with dyninst 12 and greater\n");
+#else //#ifdef LOCAL_VAR_H
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "local variable header not found\n");
 #endif
     return STAT_OK;
 }

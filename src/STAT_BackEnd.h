@@ -57,7 +57,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "swk_errors.h"
 #include "Type.h"
 
-#if DYNINST_MAJOR_VERSION<12
+#ifdef LOCAL_VAR_H
   #include "local_var.h"
 #endif
 #include "Variable.h"
