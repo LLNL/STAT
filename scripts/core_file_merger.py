@@ -144,6 +144,7 @@ class Gdb(object):
         if not command.endswith('\n'):
             command += '\n'
         self.subprocess.stdin.write(command.encode('utf-8'))
+        self.subprocess.stdin.flush()
         return self.readlines()
 
 
@@ -415,7 +416,7 @@ class CoreFile:
         # at some point we needed to gobble up an extra command prompt:
         # as of 01/30/19 this appears to be necessary on PPC64 LE w/ vanilla GDB
         # as of 01/30/19 this appears to be unnecessary on PPC64 LE w/ vanilla GDB
-#        if CoreFile.__options['cuda'] != 1 and coretype == 'ppc64le'
+#        if CoreFile.__options['cuda'] != 1 and coretype == 'ppc64le':
 #            lines2 = gdb.readlines()
 #            lines += lines2
 
