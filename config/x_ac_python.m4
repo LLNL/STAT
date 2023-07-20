@@ -39,8 +39,12 @@ AC_DEFUN([X_AC_PYTHON], [
   python_version=`$PYTHON -c "import distutils.sysconfig; \
     print(distutils.sysconfig.get_python_version());"`
   if test $python_version '>' 2.99 ; then
-    m="m"
-    python_version=$python_version$m
+    if test $python_version '<' 3.8 ; then
+      m="m"
+      python_version=$python_version$m
+    else
+      python_version=$python_version
+    fi  
   else
     AM_CONDITIONAL([ENABLE_PYTHON2], true)
   fi
