@@ -256,6 +256,7 @@ class GdbDriver(object):
         logging.info('GDB resume PID %d' %(self.pid))
         command = "continue\n"
         ret = self.subprocess.stdin.write(command)
+        self.subprocess.stdin.flush()
         lines = self.readlines('Continuing')
         logging.debug('%s' %(repr(lines)))
         return check_lines(lines)
