@@ -4,6 +4,7 @@ python_PYTHON = STATmain.py stat_merge_base.py STATmerge.py core_file_merger.py 
 if ENABLE_GDB
 python_PYTHON += stat_cuda_gdb.py cuda_gdb.py gdb.py roc_gdb.py oneapi_gdb.py
 endif
+python_PYTHON += stat_py_spy.py
 if ENABLE_GUI
 python_PYTHON += STATGUI.py STATview.py
 if ENABLE_PYTHON2

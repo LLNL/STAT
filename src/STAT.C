@@ -51,6 +51,7 @@ typedef struct
     bool comprehensive;                     /*!< whether to gather a comprehensive set of samples */
     bool countRep;                          /*!< whether to gather just a count and representative */
     bool withPython;                        /*!< whether to gather Python script level traces */
+    bool withPySpy;                         /*!< whether to gather Python script level traces with py-spy*/
     bool withThreads;                       /*!< whether to gather traces from threads */
     bool withOpenMP;                        /*!< whether to translate OpenMP stack walks */
     StatCpPolicy_t cpPolicy;                /*!< whether to use the application nodes to run communication processes */
@@ -153,13 +154,13 @@ int main(int argc, char **argv)
     statFrontEnd->addPerfData(invocationString.c_str(), -1.0);
 
     /* If we're just attaching, sleep here */
-    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH || statArgs->applicationOption == STAT_SERIAL_GDB_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH)
+    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_SERIAL_ATTACH || statArgs->applicationOption == STAT_SERIAL_GDB_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH || statArgs->applicationOption == STAT_PYSPY_ATTACH || statArgs->applicationOption == STAT_SERIAL_PYSPY_ATTACH)
         mySleep(statArgs->sleepTime);
 
     /* Launch the Daemons */
     statFrontEnd->setNDaemonsPerNode(statArgs->nDaemonsPerNode);
     statFrontEnd->setApplicationOption(statArgs->applicationOption);
-    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH)
+    if (statArgs->applicationOption == STAT_ATTACH || statArgs->applicationOption == STAT_GDB_ATTACH || statArgs->applicationOption == STAT_PYSPY_ATTACH)
         statError = statFrontEnd->attachAndSpawnDaemons(statArgs->pid, statArgs->remoteNode);
     else if (statArgs->applicationOption == STAT_LAUNCH)
         statError = statFrontEnd->launchAndSpawnDaemons(statArgs->remoteNode);
@@ -291,6 +292,8 @@ int main(int argc, char **argv)
 #endif
             if (statArgs->withPython == true)
                 statArgs->sampleType |= STAT_SAMPLE_PYTHON;
+            if (statArgs->withPySpy == true)
+                statArgs->sampleType |= STAT_SAMPLE_PYSPY;
             if (statArgs->countRep == true)
                 statArgs->sampleType |= STAT_SAMPLE_COUNT_REP;
 
@@ -429,6 +432,7 @@ void printUsage()
     fprintf(stderr, "  -c, --comprehensive\t\tgather 5 traces: function only; module offset;\n\t\t\t\tfunction + pc; function + line; and 3D function\n\t\t\t\tonly\n");
     fprintf(stderr, "  -U, --countrep\t\tonly gather count and a single representative\n");
     fprintf(stderr, "  -y, --pythontrace\t\tgather Python script level stack traces\n");
+    fprintf(stderr, "  -Y, --pyspy\t\tgather Python script level stack traces with py-spy\n");
     fprintf(stderr, "  -s, --sleep <secs>\t\tsleep time before attaching and gathering traces\n");
     fprintf(stderr, "\nTopology options:\n");
     fprintf(stderr, "  -a, --autotopo\t\tlet STAT automatically create topology\n");
@@ -489,6 +493,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         {"comprehensive",       no_argument,        0, 'c'},
         {"withthreads",         no_argument,        0, 'w'},
         {"pythontrace",         no_argument,        0, 'y'},
+        {"pyspy",               no_argument,        0, 'Y'},
         {"autotopo",            no_argument,        0, 'a'},
         {"create",              no_argument,        0, 'C'},
         {"serial",              no_argument,        0, 'I'},
@@ -542,7 +547,7 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
 #ifdef DYSECTAPI
         opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:H:X:b:Y:N:", longOptions, &optionIndex);
 #else
-        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:H:N:", longOptions, &optionIndex);
+        opt = getopt_long(argc, argv,"hVvqPmiocwyaCIAxSMUGQf:n:p:j:r:R:t:T:d:F:s:l:L:u:D:z:H:N:Y", longOptions, &optionIndex);
 #endif
         if (opt == -1)
             break;
@@ -579,6 +584,11 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
         case 'y':
             statArgs->withPython = true;
             statArgs->sampleType |= STAT_SAMPLE_PYTHON;
+            break;
+        case 'Y':
+            statArgs->withPySpy = true;
+            statArgs->sampleType |= STAT_SAMPLE_PYSPY;
+            statArgs->applicationOption = STAT_PYSPY_ATTACH;
             break;
         case 'P':
             statArgs->sampleType |= STAT_SAMPLE_PC;
@@ -770,10 +780,11 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     if (optind == argc - 1 && (createJob == false && serialJob == false))
     {
 #ifdef STAT_GDB_BE
-        if (statArgs->applicationOption != STAT_GDB_ATTACH && statArgs->applicationOption != STAT_SERIAL_GDB_ATTACH)
+        if (statArgs->applicationOption != STAT_GDB_ATTACH && statArgs->applicationOption != STAT_SERIAL_GDB_ATTACH && statArgs->applicationOption != STAT_PYSPY_ATTACH)
             statArgs->applicationOption = STAT_ATTACH;
 #else
-        statArgs->applicationOption = STAT_ATTACH;
+        if (statArgs->applicationOption != STAT_PYSPY_ATTACH)
+            statArgs->applicationOption = STAT_ATTACH;
 #endif
         remotePid = argv[optind++];
         colonPos = remotePid.find_first_of(":");
@@ -803,6 +814,8 @@ StatError_t parseArgs(StatArgs_t *statArgs, STAT_FrontEnd *statFrontEnd, int arg
     {
         if (statArgs->applicationOption == STAT_GDB_ATTACH)
             statArgs->applicationOption = STAT_SERIAL_GDB_ATTACH;
+        else if (statArgs->applicationOption == STAT_PYSPY_ATTACH)
+            statArgs->applicationOption = STAT_SERIAL_PYSPY_ATTACH;
         else
             statArgs->applicationOption = STAT_SERIAL_ATTACH;
         for (i = optind; i < argc; i++)

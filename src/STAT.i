@@ -97,6 +97,7 @@ enum StatSampleOptions_t {
 #ifdef STAT_GDB_BE
     STAT_SAMPLE_CUDA_QUICK = 0x100,
 #endif
+    STAT_SAMPLE_PYSPY = 0x200,
     STAT_SAMPLE_UNKNOWN=0xff
 } ;
 
@@ -105,7 +106,9 @@ typedef enum {
     STAT_ATTACH,
     STAT_SERIAL_ATTACH,
     STAT_GDB_ATTACH,
-    STAT_SERIAL_GDB_ATTACH
+    STAT_SERIAL_GDB_ATTACH,
+    STAT_PYSPY_ATTACH,
+    STAT_SERIAL_PYSPY_ATTACH
 } StatLaunch_t;
 
 typedef enum {

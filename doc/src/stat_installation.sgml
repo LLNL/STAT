@@ -53,5 +53,9 @@ STAT can also be configured to use GDB as a backend instead of Dyninst. To speci
 </para>
 
 <para>
+STAT has the ability to use py-spy to gather python stack traces. To specify the path to py-spy, use the <option>--with-pyspy</option> flag.
+</para>
+
+<para>
 Dyninst 12 removed the local_var.h header file that STAT uses to gather python traces. If this feature is needed, you will either need to use Dyninst version 11 or lower, or copy the local_var.h file from <ulink url="https://raw.githubusercontent.com/dyninst/dyninst/5c7e0ee327399cfae50d77f977ff6655c2ca3ae4/stackwalk/h/local_var.h"></ulink> to your Dyninst 12+ installation's include directory
 </para>

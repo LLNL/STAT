@@ -144,6 +144,9 @@ Use (cuda-)gdb to drive the daemons. If you are using cuda-gdb and want stack tr
 .TP
 \fB-Q, --cudaquick\fR
 When using cuda-gdb as the BE, gather less comprehensive, but faster cuda traces. Cuda frames will only show the top of the stack, not the full call path. This also defaults to display filename and line number and will not resolve the function name.
+.TP
+\fB-Y, --pyspy\fR
+Use py-spy backend to gather python stack traces.
 .SH "EXAMPLE"
 .PP
 The most typical usage is to invoke STAT on the job launcher's PID:

@@ -295,4 +295,12 @@
         </para>
     </listitem>
 </varlistentry>
+<varlistentry>
+    <term>-Y, --pyspy</term>
+    <listitem>
+        <para>
+        Use py-spy backend to gather python stack traces.
+        </para>
+    </listitem>
+</varlistentry>
 </variablelist>

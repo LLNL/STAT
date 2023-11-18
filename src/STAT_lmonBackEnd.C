@@ -490,6 +490,30 @@ StatError_t STAT_lmonBackEnd::initGdb()
 }
 #endif
 
+StatError_t STAT_lmonBackEnd::initPySpy()
+{
+    PyObject *pName;
+    const char *moduleName = "stat_py_spy";
+    Py_Initialize();
+    pName = PyUnicode_FromString(moduleName);
+    if (pName == NULL)
+    {
+        fprintf(errOutFp_, "Cannot convert argument\n");
+        return STAT_SYSTEM_ERROR;
+    }
+
+    pySpyModule_ = PyImport_Import(pName);
+    Py_DECREF(pName);
+    if (pySpyModule_ == NULL)
+    {
+        fprintf(errOutFp_, "Failed to import Python module %s\n", moduleName);
+        PyErr_Print();
+        return STAT_SYSTEM_ERROR;
+    }
+    usingPySpy_ = true;
+
+    return STAT_OK;
+}
 #ifndef USE_CTI
 STAT_BackEnd* STAT_BackEnd::make(StatDaemonLaunch_t launchType)
 {

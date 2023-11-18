@@ -86,6 +86,7 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
 #endif
     gBePtr = this;
     registerSignalHandlers(true);
+    usingPySpy_ = false;
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -156,6 +157,7 @@ STAT_BackEnd::~STAT_BackEnd()
     registerSignalHandlers(false);
     gBePtr = NULL;
     usingGdb_ = false;
+    usingPySpy_ = false;
 }
 
 void STAT_BackEnd::clear2dNodesAndEdges()
@@ -781,7 +783,7 @@ StatError_t STAT_BackEnd::mainLoop()
     do
     {
 #if defined(GROUP_OPS)
-        if (doGroupOps_ && usingGdb_ == false)
+        if (doGroupOps_ && usingGdb_ == false && usingPySpy_ == false)
         {
   #ifdef DYSECTAPI
             /* Let BPatch handle its events */
@@ -791,7 +793,7 @@ StatError_t STAT_BackEnd::mainLoop()
 #endif
 
         /* Set the stackwalker notification file descriptor */
-        if (processMap_.size() > 0 && processMapNonNull_ > 0 && usingGdb_ == false)
+        if (processMap_.size() > 0 && processMapNonNull_ > 0 && usingGdb_ == false && usingPySpy_ == false)
             swNotificationFd = ProcDebug::getNotificationFD();
         else
             swNotificationFd = -1;
@@ -1311,6 +1313,9 @@ StatError_t STAT_BackEnd::attach()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
+    if (usingPySpy_ == true)
+        return STAT_OK;
+
 #ifdef STAT_GDB_BE
     if (usingGdb_ == true)
     {
@@ -1544,6 +1549,9 @@ StatError_t STAT_BackEnd::pause()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
 
+    if (usingPySpy_ == true)
+        return STAT_OK;
+
 #ifdef STAT_GDB_BE
     if (usingGdb_ == true)
     {
@@ -1628,6 +1636,9 @@ StatError_t STAT_BackEnd::resume()
     map<unsigned int, Walker *>::iterator processMapIter;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
+
+    if (usingPySpy_ == true)
+        return STAT_OK;
 
 #ifdef STAT_GDB_BE
     if (usingGdb_ == true)
@@ -1977,6 +1988,148 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     }
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering and merging %d traces from each task\n", nTraces);
+
+    if (usingPySpy_ == true)
+    {
+        static int threadCountWarning = 0;
+        int nodeId, prevId, k, l, count;
+        char *currentFrame;
+        const char *allTraces;
+        string sampleFunctionName, path, name, currentFrameString;
+        string::size_type startPos, endPos;
+        PyObject *sampleFunc, *pArgs, *pValue;
+        StatBitVectorEdge_t *edge = NULL;
+        map<string, string>::iterator nodeAttrsIter;
+
+        sampleFunctionName = "get_trace";
+        sampleFunc = PyObject_GetAttrString(pySpyModule_, sampleFunctionName.c_str());
+        if (!sampleFunc || !PyCallable_Check(sampleFunc))
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", sampleFunctionName.c_str());
+            return STAT_DAEMON_ERROR;
+        }
+
+        sampleType_ |= STAT_SAMPLE_LINE;
+
+        for (i = 0; i < nTraces; i++)
+        {
+            k = 1;
+            clear2dNodesAndEdges();
+            isLastTrace = (i == nTraces - 1);
+
+            for (j = 0; j < proctabSize_; j++)
+            {
+                /* Set edge label */
+                edge = initializeBitVectorEdge(proctabSize_);
+                if (edge == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
+                    Py_DECREF(sampleFunc);
+                    return STAT_ALLOCATE_ERROR;
+                }
+                edge->bitVector[j / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(j % STAT_BITVECTOR_BITS);
+
+                pArgs = Py_BuildValue("(i)", proctab_[j].pid);
+                if (!pArgs)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to generate pArgs for pid %d\n", proctab_[j].pid);
+                    statFreeEdge(edge);
+                    continue;
+                }
+                pValue = PyObject_CallObject(sampleFunc, pArgs);
+                if (pValue == NULL)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", sampleFunctionName.c_str(), proctab_[j].pid);
+                    statFreeEdge(edge);
+                    PyErr_Print();
+                    Py_DECREF(pArgs);
+                    continue;
+                }
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", sampleFunctionName.c_str(), PyUnicode_AsUTF8(pValue));
+                allTraces = PyUnicode_AsUTF8(pValue);
+                prevId = 0;
+                path = "";
+                if (find(threadIds_.begin(), threadIds_.end(), k) == threadIds_.end())
+                {
+                    threadIds_.push_back(k);
+                    if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
+                    {
+                        printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
+                        threadCountWarning++;
+                    }
+                }
+                currentFrame = strtok((char *)allTraces, "\n");
+                while (currentFrame != NULL)
+                {
+                    if (strcmp(currentFrame, "#endtrace") == 0)
+                    {
+                        path = "";
+                        k++;
+                        prevId = 0;
+                        if (find(threadIds_.begin(), threadIds_.end(), k) == threadIds_.end())
+                        {
+                            threadIds_.push_back(k);
+                            if (threadCountWarning == 0 && threadIds_.size() >= threadBvLength_)
+                            {
+                                printMsg(STAT_WARNING, __FILE__, __LINE__, "Number of threads exceeded %d limit\n", threadBvLength_);
+                                threadCountWarning++;
+                            }
+                        }
+                        if (!(sampleType_ & STAT_SAMPLE_THREADS))
+                            break;
+                    }
+                    else
+                    {
+                        name = "";
+                        currentFrameString = currentFrame;
+                        map<string, string> nodeAttrs;
+                        startPos = 0;
+                        endPos = currentFrameString.find("@");
+                        name += currentFrameString.substr(startPos, endPos - startPos);
+                        nodeAttrs["function"] = currentFrameString.substr(startPos, endPos - startPos);
+                        if (sampleType_ & STAT_SAMPLE_LINE)
+                        {
+                            startPos = endPos + 1;
+                            endPos = currentFrameString.find_last_of(":");
+                            name += "@" + currentFrameString.substr(startPos, endPos - startPos) + ":";
+                            nodeAttrs["source"] = currentFrameString.substr(startPos, endPos - startPos);
+                            startPos = endPos + 1;
+                            endPos = currentFrameString.size();
+                            name += currentFrameString.substr(startPos, endPos - startPos);
+                            nodeAttrs["line"] = currentFrameString.substr(startPos, endPos - startPos);
+                        }
+                        path += name;
+                        nodeId = statStringHash(path.c_str());
+                        nodes2d_[nodeId] = name;
+                        for (nodeAttrsIter = nodeAttrs.begin(); nodeAttrsIter != nodeAttrs.end(); nodeAttrsIter++)
+                            nodeIdToAttrs_[nodeId][nodeAttrsIter->first] = nodeAttrsIter->second;
+                        update2dEdge(prevId, nodeId, edge, k);
+                        prevId = nodeId;
+                    }
+                    currentFrame = strtok(NULL, "\n");
+                }
+                Py_DECREF(pValue);
+                if (!(sampleType_ & STAT_SAMPLE_THREADS))
+                {
+                    statFreeEdge(edge);
+                    Py_DECREF(pArgs);
+                    continue;
+                }
+
+            statError = update3dNodesAndEdges();
+            if (statError != STAT_OK)
+            {
+                printMsg(statError, __FILE__, __LINE__, "Error updating 3d nodes and edges for trace %d of %d\n", i + 1, nTraces);
+                return statError;
+            }
+        } // for (i = 0; i < nTraces; i++)
+        Py_DECREF(sampleFunc);
+
+        return STAT_OK;
+    } // if (usingPySpy_ == true)
+    }
 
 #ifdef STAT_GDB_BE
     if (usingGdb_ == true)
@@ -3167,6 +3320,9 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
     ProcDebug *pDebug = NULL;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
+
+    if (usingPySpy_ == true)
+        return STAT_OK;
 
 #ifdef STAT_GDB_BE
     if (usingGdb_ == true)

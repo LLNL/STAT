@@ -123,8 +123,34 @@ StatError_t STAT_lmonFrontEnd::launchDaemons()
         }
 #endif
 
+        if (applicationOption_ == STAT_PYSPY_ATTACH || applicationOption_ == STAT_SERIAL_PYSPY_ATTACH)
+        {
+            // On PPC64LE systems the FE environment is not passed to the daemons.
+            // We need to send PYTHONPATH for the PySpy BE component.
+            // We also need to send the PySpy path since this variable isn't propagated either.
+            const char *pySpyCommand, *pythonPath;
+            pythonPath = getenv("PYTHONPATH");
+            if (pythonPath == NULL)
+                pythonPath = ":";
+            pySpyCommand = getenv("STAT_PYSPY");
+            if (pySpyCommand == NULL)
+                pySpyCommand = "py-spy";
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using STAT PySpy attach %s and PYTHONPATH %s\n", pySpyCommand, pythonPath);
+            daemonArgc += 4;
+            daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+            if (daemonArgv == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[daemonArgc - 5] = strdup("-P");
+            daemonArgv[daemonArgc - 4] = strdup(pythonPath);
+            daemonArgv[daemonArgc - 3] = strdup("-Y");
+            daemonArgv[daemonArgc - 2] = strdup(pySpyCommand);
+            daemonArgv[daemonArgc - 1] = NULL;
+        }
 
-    if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH)
+    if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH && applicationOption_ != STAT_SERIAL_PYSPY_ATTACH)
     {
         if (iIsFirstRun == true)
         {
@@ -168,6 +194,8 @@ StatError_t STAT_lmonFrontEnd::launchDaemons()
         else
             gsLmonState = gsLmonState | 0x00000002;
 
+        if (applicationOption_ == STAT_PYSPY_ATTACH)
+            daemonArgc += 1;
         if (toolDaemonExe_ == NULL)
         {
             printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Tool daemon path not set\n");
@@ -180,6 +208,8 @@ StatError_t STAT_lmonFrontEnd::launchDaemons()
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
             return STAT_ALLOCATE_ERROR;
         }
+        if (applicationOption_ == STAT_PYSPY_ATTACH)
+            daemonArgv[daemonArgc - 4] = strdup("-Y");
         daemonArgv[daemonArgc - 3] = strdup("-d");
         snprintf(tempString, BUFSIZE, "%d", nDaemonsPerNode_);
         daemonArgv[daemonArgc - 2] = strdup(tempString);
@@ -194,7 +224,7 @@ StatError_t STAT_lmonFrontEnd::launchDaemons()
         for (i = 0; i < daemonArgc; i++)
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "daemonArgv[%d] = %s\n", i, daemonArgv[i]);
 
-        if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_GDB_ATTACH)
+        if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_PYSPY_ATTACH)
         {
             if (launcherPid_ == 0)
             {
@@ -265,7 +295,7 @@ StatError_t STAT_lmonFrontEnd::launchDaemons()
             printMsg(STAT_LMON_ERROR, __FILE__, __LINE__, "Failed to get RM Info\n");
             return STAT_LMON_ERROR;
         }
-    } /* if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH) */
+    } /* if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH && applicationOption_ != STAT_SERIAL_PYSPY_ATTACH) */
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering application information\n");
 

@@ -1,4 +1,18 @@
 <section>
+  <title>stat version 4.2.2</title>
+  <para>
+    <itemizedlist>
+      <listitem><para>
+        Added gdb-oneapi backend support
+      </para></listitem>
+      <listitem><para>
+        Added py-spy backend support
+      </para></listitem>
+    </itemizedlist>
+  </para>
+</section>
+
+<section>
   <title>stat version 4.2.1</title>
   <para>
     <itemizedlist>

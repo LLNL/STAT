@@ -25,6 +25,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #ifdef STAT_GDB_BE
 #include <Python.h>
 #endif
+#define STAT_PYSPY_BE
+#ifdef STAT_PYSPY_BE
+#include <Python.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -206,6 +210,7 @@ class STAT_BackEnd
         */
         virtual StatError_t initGdb() = 0;
 #endif
+        virtual StatError_t initPySpy() = 0;
 
         //! Initialize and set up the job launcher
         /*
@@ -657,7 +662,9 @@ class STAT_BackEnd
 #ifdef STAT_GDB_BE
         PyObject *gdbModule_;   /*!< the Python stat_cuda_gdb module */
 #endif
+        PyObject *pySpyModule_;   /*!< the Python stat_cuda_gdb module */
         bool usingGdb_;     /*!< whether we are using GDB instead of Dyninst */
+        bool usingPySpy_;     /*!< whether we are using py-spy */
 
 };
 

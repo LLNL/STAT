@@ -291,4 +291,20 @@ Here is a list of options:
         </para>
     </listitem>
 </varlistentry>
+<varlistentry>
+    <term>Use PySpy = <replaceable class="parameter">true|false</replaceable></term>
+    <listitem>
+        <para>
+        Controls whether to use py-spy to drive the deamons.
+        </para>
+    </listitem>
+</varlistentry>
+<varlistentry>
+    <term>PySpy Path = <replaceable class="parameter">path</replaceable></term>
+    <listitem>
+        <para>
+        Use the py-spy executable installed in <replaceable class="parameter">path</replaceable> for debugging when Use PySpy is set to true.
+        </para>
+    </listitem>
+</varlistentry>
 </variablelist>

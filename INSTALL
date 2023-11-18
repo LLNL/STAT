@@ -151,6 +151,10 @@ make install
    requires Dyninst as a dependence even when using the GDB
    backend.
 
+   STAT has the ability to use py-spy to gather python stack
+   traces. To specify the path to py-spy, use the --with-pyspy
+   flag.
+
    Dyninst 12 removed the local_var.h header file that STAT uses
    to gather python traces. If this feature is needed, you will
    either need to use Dyninst version 11 or lower, or copy the
