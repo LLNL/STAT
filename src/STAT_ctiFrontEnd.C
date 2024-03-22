@@ -249,8 +249,20 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     if (applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH) {
         char* cpFilterPath = strdup(filterPath_);
         char* libDir = dirname(cpFilterPath);
-        std::string cudaLib = std::string(libDir) + "/python3.6/site-packages/cuda_gdb.py";
-        std::string gdbLib  = std::string(libDir) + "/python3.6/site-packages/gdb.py";
+        std::string cudaLib;
+        std::string gdbLib;
+
+        const char* pythonPath = getenv("PYTHONPATH");
+        if (!pythonPath)
+            return ctiError();
+
+        if (pythonPath.find("python3.6") != std::string::npos) {
+          cudaLib = std::string(libDir) + "/python3.6/site-packages/cuda_gdb.py";
+          gdbLib  = std::string(libDir) + "/python3.6/site-packages/gdb.py";
+        } else if (pythonPath.find("python3.9") != std::string::npos) {
+          cudaLib = std::string(libDir) + "/python3.9/site-packages/cuda_gdb.py";
+          gdbLib  = std::string(libDir) + "/python3.9/site-packages/gdb.py";
+        }
         free(cpFilterPath);
 
         if (cti_addManifestFile(manifest, cudaLib.c_str()))
