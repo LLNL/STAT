@@ -256,6 +256,7 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
         if (!pythonPath)
             return ctiError();
 
+        std::string python_path = pythonPath
         if (pythonPath.find("python3.6") != std::string::npos) {
           cudaLib = std::string(libDir) + "/python3.6/site-packages/cuda_gdb.py";
           gdbLib  = std::string(libDir) + "/python3.6/site-packages/gdb.py";
