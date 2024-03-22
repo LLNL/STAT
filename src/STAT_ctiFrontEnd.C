@@ -257,10 +257,10 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
             return ctiError();
 
         std::string python_path = pythonPath;
-        if (pythonPath.find("python3.6") != std::string::npos) {
+        if (python_path.find("python3.6") != std::string::npos) {
           cudaLib = std::string(libDir) + "/python3.6/site-packages/cuda_gdb.py";
           gdbLib  = std::string(libDir) + "/python3.6/site-packages/gdb.py";
-        } else if (pythonPath.find("python3.9") != std::string::npos) {
+        } else if (python_path.find("python3.9") != std::string::npos) {
           cudaLib = std::string(libDir) + "/python3.9/site-packages/cuda_gdb.py";
           gdbLib  = std::string(libDir) + "/python3.9/site-packages/gdb.py";
         }
