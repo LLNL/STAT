@@ -2687,6 +2687,9 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     isPendingAck_ = false;
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statfe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "recieveStackTraces: unpacking traces\n");
+fclose(lf); }
     if (packet->unpack("%Ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::unpack(PROT_COLLECT_TRACES_RESP, \"%%auc\") failed\n");
@@ -2699,15 +2702,28 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         gStatBitVectorFunctions->edge_checksum = statCountRepEdgeCheckSum;
         gStatReorderFunctions->edge_checksum = statCountRepEdgeCheckSum;
     }
-    if (sampleType & STAT_SAMPLE_COUNT_REP)
+    if (sampleType & STAT_SAMPLE_COUNT_REP) {
         graphlibError = graphlib_deserializeBasicGraph(&stackTraces, gStatCountRepFunctions, byteArray, byteArrayLen);
-    else
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statfe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "recieveStackTraces: gStatcountRepFunctions\n");
+fclose(lf); }
+    } else {
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statfe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "recieveStackTraces: gStatBitVectorFunctions\n");
+fclose(lf); }
         graphlibError = graphlib_deserializeBasicGraph(&stackTraces, gStatBitVectorFunctions, byteArray, byteArrayLen);
+    }
     if (GRL_IS_FATALERROR(graphlibError))
     {
         printMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "deserializeBasicGraph() failed\n");
         return STAT_GRAPHLIB_ERROR;
     }
+
+{ static int i = 0; char outFile[1024];
+snprintf(outFile, BUFSIZE, "/home/users/adangelo/hanging_hetjob/log/graph.fe.in.%d.%d.dot", getpid(), i);
+(void)graphlib_exportGraph(outFile, GRF_DOT, stackTraces);
+i++;
+}
 
     gEndTime.setTime();
     addPerfData("\tMerge", (gEndTime - gStartTime).getDoubleTime());
@@ -2762,7 +2778,9 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             }
 
             /* update offset, round up to the nearest bit vector count*/
+#if 0
             offset += statBitVectorLength(hostRanks->count);
+#endif
         }
 
         gEndTime.setTime();
@@ -3077,6 +3095,9 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
         }
 
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Unpacking traces\n");
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statfe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "getNodeInEdge: unpacking traces\n");
+fclose(lf); }
         if (packet->unpack("%Ac %d %d %ud", &byteArray, &byteArrayLen, &totalWidth, &dummyRank, &sampleType) == -1)
         {
             printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::unpack(PROT_SEND_NODE_IN_EDGE_RESP) failed\n");
@@ -3110,7 +3131,9 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
             gStatGraphRoutinesRanksListLength = hostRanks->count;
             gStatGraphRoutinesCurrentIndex = offset;
             statMergeEdgeOrdered(orderedEdge, unorderedEdge);
+#if 0
             offset += statBitVectorLength(hostRanks->count);
+#endif
         }
         statFreeEdge((void *)unorderedEdge);
     }

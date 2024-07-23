@@ -429,6 +429,9 @@ void statSerializeEdge(char *buf, const void *edge)
     memcpy(ptr, (void *)&(e->length), sizeof(size_t));
     ptr += sizeof(size_t);
     memcpy(ptr, e->bitVector, STAT_BITVECTOR_BYTES * e->length);
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statgraph." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "statSerializeEdge %s\n", statEdgeToText(edge));
+fclose(lf); }
 }
 
 unsigned int statSerializeEdgeLength(const void *edge)
@@ -467,6 +470,9 @@ void statDeserializeEdge(void **edge, const char *buf, unsigned int bufLength)
     }
     memcpy(e->bitVector, ptr, STAT_BITVECTOR_BYTES * e->length);
     *edge = (void *)e;
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statgraph." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "%s %s (%d)\n", __FUNCTION__, statEdgeToText(e), e->length);
+fclose(lf); }
 }
 
 char *statEdgeToText(const void *edge)
@@ -666,11 +672,16 @@ void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLen
     }
 
     offset = 0;
+#if 0
     for (i = 0; i < gStatGraphRoutinesCurrentIndex; i++)
         offset += gStatGraphRoutinesEdgeLabelWidths[i];
+#endif
 
     memcpy((void *)&(e->bitVector[offset]), ptr, STAT_BITVECTOR_BYTES * currentEdgeLength);
     *edge = (void *)e;
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statgraph." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "%s %s (%d) offset %d\n", __FUNCTION__, statEdgeToText(e), e->length, offset);
+fclose(lf); }
 }
 
 void *statCopyEdgeInitializeEmpty(const void *edge)
@@ -708,6 +719,10 @@ void *statMergeEdgeOrdered(void *edge1, const void *edge2)
     if (edge1 == NULL || edge2 == NULL)
         return NULL;
 
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statgraph." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "%s %s (%d), %s (%d)\n", __FUNCTION__, statEdgeToText(edge1), e1->length, statEdgeToText(edge2), e2->length);
+fclose(lf); }
+#if 0
     for (i = 0, n = e2->length * STAT_BITVECTOR_BITS; i < n; ++i)
     {
         if (bitVectorContains(e2->bitVector, i))
@@ -722,6 +737,15 @@ void *statMergeEdgeOrdered(void *edge1, const void *edge2)
                 fprintf(stderr, "cannot merge edge bit set\n");
         }
     }
+#else
+    auto len = std::min(e1->length, e2->length);
+    for (i = 0; i < len; i++) {
+        e1->bitVector[i] |= e2->bitVector[i];
+    }
+#endif
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statgraph." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "    %s\n", statEdgeToText(edge1));
+fclose(lf); }
     return edge1;
 }
 
@@ -875,6 +899,9 @@ void statDeserializeNodeAttr(const char *key, void **node, const char *buf, unsi
 {
   *node = malloc(bufLength);
   strcpy((char *)*node, buf);
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statgraph." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "%s attr %s\n", __FUNCTION__, buf);
+fclose(lf); }
 }
 
 char *statNodeAttrToText(const char *key, const void *node)

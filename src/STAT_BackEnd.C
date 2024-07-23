@@ -18,6 +18,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "STAT_BackEnd.h"
 
+#include "common_tools_be.h"
+
 using namespace std;
 using namespace MRN;
 using namespace Dyninst;
@@ -50,6 +52,7 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
 {
     gStatOutFp = NULL;
     proctabSize_ = 0;
+    maxRank_ = 0;
     processMapNonNull_ = 0;
     logType_ = 0;
     parentHostName_ = NULL;
@@ -86,6 +89,17 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
 #endif
     gBePtr = this;
     registerSignalHandlers(true);
+
+
+    // Find the maximum rank present on the node
+    if (auto appPids = std::unique_ptr<cti_pidList_t, decltype(&cti_be_destroyPidList)>{
+            cti_be_findAppPids(), cti_be_destroyPidList}) {
+        for (int i = 0; i < appPids->numPids; i++) {
+            maxRank_ = std::max(maxRank_, appPids->pids[i].rank);
+        }
+    } else {
+        printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to get PID list from CTI\n");
+    }
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -208,7 +222,7 @@ StatError_t STAT_BackEnd::update3dNodesAndEdges()
     {
         if (edges3d_.find(edgesIter->first) == edges3d_.end())
         {
-            edge = initializeBitVectorEdge(proctabSize_);
+            edge = initializeBitVectorEdge(maxRank_);
             if (edge == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -275,7 +289,7 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
 
     if (edges2d_.find(dst) == edges2d_.end())
     {
-        newEdge = initializeBitVectorEdge(proctabSize_);
+        newEdge = initializeBitVectorEdge(maxRank_);
         if (newEdge == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize newEdge\n");
@@ -455,6 +469,11 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                     continue;
                 }
                 edgeAttr.attr_values[index] = statCopyEdgeAttr(edgeAttrIter->first.c_str(), edgeAttrIter->second);
+
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "generateGraphs copying edge attr %s\n", edgeAttrIter->first.c_str());
+fprintf(lf, "generateGraphs edge %s\n", statEdgeToText(edgeAttrIter->second));
+fclose(lf); }
                 edgeAttrIter++;
             }
 
@@ -599,7 +618,7 @@ void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
             extern int gStatGraphRoutinesTotalWidth;
             char outFile[BUFSIZE];
 
-            gStatGraphRoutinesTotalWidth = statBitVectorLength(proctabSize_);
+            gStatGraphRoutinesTotalWidth = statBitVectorLength(maxRank_);
 
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Exporting 2D graph to dot\n");
             graphlibError = graphlib_colorGraphByLeadingEdgeLabel(prefixTree2d);
@@ -954,7 +973,9 @@ StatError_t STAT_BackEnd::mainLoop()
                     free(byteArray);
                     byteArray = NULL;
                 }
-
+{ static int i = 0; char outFile[1024];
+snprintf(outFile, BUFSIZE, "/home/users/adangelo/hanging_hetjob/log/graph.be.%d.%d.dot", getpid(), i++);
+(void)graphlib_exportGraph(outFile, GRF_DOT, prefixTree2d); }
                 graphlibError = graphlib_serializeBasicGraph(prefixTree2d, &byteArray, &byteArrayLen);
                 if (GRL_IS_FATALERROR(graphlibError))
                 {
@@ -1015,7 +1036,7 @@ StatError_t STAT_BackEnd::mainLoop()
                     edge = edges2d_[nodeId].second;
                 else
                 {
-                    edge = initializeBitVectorEdge(proctabSize_);
+                    edge = initializeBitVectorEdge(maxRank_);
                     if (edge == NULL)
                     {
                         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -1251,8 +1272,8 @@ StatError_t STAT_BackEnd::mainLoop()
         if (ackTag == PROT_SEND_NODE_IN_EDGE_RESP || ackTag == PROT_SEND_LAST_TRACE_RESP || ackTag == PROT_SEND_TRACES_RESP)
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE with tag %d, length %d\n", ackTag, byteArrayLen);
-            bitVectorLength = statBitVectorLength(proctabSize_);
-            if (stream->send(ackTag, "%Ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
+            bitVectorLength = statBitVectorLength(maxRank_);
+            if (stream->send(ackTag, "%Ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, cti_be_getNodeFirstPE(), sampleType_) == -1)
             {
                 printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send(%d) failure\n", ackTag);
                 return STAT_MRNET_ERROR;
@@ -1430,6 +1451,9 @@ StatError_t STAT_BackEnd::attach()
     for (i = 0; i < proctabSize_; i++)
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].executable_name, proctab_[i].pid, proctab_[i].mpirank);
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].executable_name, proctab_[i].pid, proctab_[i].mpirank);
+fclose(lf); }
 
 #if defined(GROUP_OPS)
         if (doGroupOps_)
@@ -1517,9 +1541,34 @@ StatError_t STAT_BackEnd::attach()
         if (proc != NULL)
             processMapNonNull_++;
     }
+
+    auto appPids = std::unique_ptr<cti_pidList_t, decltype(&cti_be_destroyPidList)>{
+        cti_be_findAppPids(), cti_be_destroyPidList};
+    if (appPids == nullptr) {
+        printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to get PID list from CTI\n");
+        return STAT_ATTACH_ERROR;
+    }
+    auto pidRankMap = std::unordered_map<pid_t, int>{};
+    for (int i = 0; i < appPids->numPids; i++) {
+        pidRankMap[appPids->pids[i].pid] = appPids->pids[i].rank;
+    }
     for (i = 0, processMapIter = processMap_.begin(); processMapIter != processMap_.end(); i++, processMapIter++)
     {
+        auto pid = processMapIter->second->getProcessState()->getProcessId();
+        auto pidRankPair = pidRankMap.find(pid);
+        if (pidRankPair == pidRankMap.end()) {
+            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to find rank for PID %d\n", pid);
+            return STAT_ATTACH_ERROR;
+        }
+#if 0
         procsToRanks_.insert(make_pair(processMapIter->second, i));
+#else
+        procsToRanks_.insert(make_pair(processMapIter->second, pidRankPair->second));
+#endif
+
+auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "procsToRanks_.insert map rank %d to pid %d\n", pidRankPair->second, pid);
+fclose(lf);
 
 #if defined(GROUP_OPS)
         int mpirank = processMapIter->first;
@@ -2030,7 +2079,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
             for (j = 0; j < proctabSize_; j++)
             {
                 /* Set edge label */
-                edge = initializeBitVectorEdge(proctabSize_);
+                edge = initializeBitVectorEdge(maxRank_);
                 if (edge == NULL)
                 {
                     printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -2275,7 +2324,24 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
         {
             for (processMapIter = processMap_.begin(), j = 0; processMapIter != processMap_.end(); processMapIter++, j++)
             {
+                auto procsToRanksIter = procsToRanks_.find(processMapIter->second);
+                if (procsToRanksIter == procsToRanks_.end()) {
+auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "failed to find walker\n");
+fclose(lf);
+                    printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed fo find walker in procsToRanks_ map\n");
+                    return STAT_STACKWALKER_ERROR;
+                }
+                auto rank = procsToRanksIter->second;
+
+auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "rank %d pid %d\n", rank, processMapIter->second->getProcessState()->getProcessId());
+fclose(lf);
+#if 0
                 statError = getStackTrace(processMapIter->second, j, nRetries, retryFrequency);
+#else
+                statError = getStackTrace(processMapIter->second, rank, nRetries, retryFrequency);
+#endif
                 if (statError != STAT_OK)
                 {
                     printMsg(statError, __FILE__, __LINE__, "Error getting graph %d of %d\n", i + 1, nTraces);
@@ -2469,10 +2535,13 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
     OpenMPStackWalker *ompWalker = NULL;
 #endif
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d of %d\n", rank, proctabSize_);
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "Gathering trace from task rank %d of %d\n", rank, maxRank_);
+fclose(lf); }
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d of %d\n", rank, maxRank_);
 
     /* Set edge label */
-    edge = initializeBitVectorEdge(proctabSize_);
+    edge = initializeBitVectorEdge(maxRank_);
     if (edge == NULL)
     {
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -2554,7 +2623,13 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                     boolRet = proc->walkStack(currentStackWalk, threads[j]);
                 }
 #else
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "proc %p walkStack thread id %d\n", proc, threads[j]);
+fclose(lf); }
                 boolRet = proc->walkStack(currentStackWalk, threads[j]);
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "walkStack completed\n");
+fclose(lf); }
 #endif
                 if (boolRet == false && currentStackWalk.size() < 1)
                 {
@@ -2634,6 +2709,9 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                 {
                     map<string, string> nodeAttrs;
                     name = getFrameName(nodeAttrs, bestStackWalk[k], bestStackWalk.size() - i + 1);
+auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "getStackTrace rank %d frame: %s\n", rank, name.c_str());
+fclose(lf);
                     if (sampleType_ & STAT_SAMPLE_PYTHON)
                     {
                         if (isPyTrace_ == true && isFirstPythonFrame == true)
@@ -2844,7 +2922,7 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
         {
             for (myRanksIter = myRanks.begin(); myRanksIter != myRanks.end(); myRanksIter++)
             {
-                edge = initializeBitVectorEdge(proctabSize_);
+                edge = initializeBitVectorEdge(maxRank_);
                 if (edge == NULL)
                 {
                     printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -2880,7 +2958,6 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
         if (nodes2d_.find(graphlibNode) != nodes2d_.end())
             nodes2d_.erase(graphlibNode);
     }
-
     return STAT_OK;
 }
 
@@ -3111,7 +3188,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         nodes2d_[newChildId] = msg;
         nodeIdToAttrs_[newChildId]["function"] = msg;
 
-        StatBitVectorEdge_t *edge = initializeBitVectorEdge(proctabSize_);
+        StatBitVectorEdge_t *edge = initializeBitVectorEdge(maxRank_);
         if (edge == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -4166,7 +4243,7 @@ StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned i
     string path;
     StatBitVectorEdge_t *edge = NULL;
 
-    edge = initializeBitVectorEdge(proctabSize_);
+    edge = initializeBitVectorEdge(maxRank_);
     if (edge == NULL)
     {
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
