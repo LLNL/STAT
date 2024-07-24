@@ -18,8 +18,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 #include "STAT_BackEnd.h"
 
-#include "common_tools_be.h"
-
 using namespace std;
 using namespace MRN;
 using namespace Dyninst;
@@ -89,17 +87,6 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
 #endif
     gBePtr = this;
     registerSignalHandlers(true);
-
-
-    // Find the maximum rank present on the node
-    if (auto appPids = std::unique_ptr<cti_pidList_t, decltype(&cti_be_destroyPidList)>{
-            cti_be_findAppPids(), cti_be_destroyPidList}) {
-        for (int i = 0; i < appPids->numPids; i++) {
-            maxRank_ = std::max(maxRank_, appPids->pids[i].rank);
-        }
-    } else {
-        printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to get PID list from CTI\n");
-    }
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -1273,7 +1260,7 @@ snprintf(outFile, BUFSIZE, "/home/users/adangelo/hanging_hetjob/log/graph.be.%d.
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE with tag %d, length %d\n", ackTag, byteArrayLen);
             bitVectorLength = statBitVectorLength(maxRank_);
-            if (stream->send(ackTag, "%Ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, cti_be_getNodeFirstPE(), sampleType_) == -1)
+            if (stream->send(ackTag, "%Ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
             {
                 printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send(%d) failure\n", ackTag);
                 return STAT_MRNET_ERROR;
@@ -1542,32 +1529,12 @@ fclose(lf); }
             processMapNonNull_++;
     }
 
-    auto appPids = std::unique_ptr<cti_pidList_t, decltype(&cti_be_destroyPidList)>{
-        cti_be_findAppPids(), cti_be_destroyPidList};
-    if (appPids == nullptr) {
-        printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to get PID list from CTI\n");
-        return STAT_ATTACH_ERROR;
-    }
-    auto pidRankMap = std::unordered_map<pid_t, int>{};
-    for (int i = 0; i < appPids->numPids; i++) {
-        pidRankMap[appPids->pids[i].pid] = appPids->pids[i].rank;
-    }
     for (i = 0, processMapIter = processMap_.begin(); processMapIter != processMap_.end(); i++, processMapIter++)
     {
-        auto pid = processMapIter->second->getProcessState()->getProcessId();
-        auto pidRankPair = pidRankMap.find(pid);
-        if (pidRankPair == pidRankMap.end()) {
-            printMsg(STAT_ATTACH_ERROR, __FILE__, __LINE__, "Failed to find rank for PID %d\n", pid);
-            return STAT_ATTACH_ERROR;
-        }
-#if 0
-        procsToRanks_.insert(make_pair(processMapIter->second, i));
-#else
-        procsToRanks_.insert(make_pair(processMapIter->second, pidRankPair->second));
-#endif
+        procsToRanks_.insert(make_pair(processMapIter->second, processMapIter->first));
 
 auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "procsToRanks_.insert map rank %d to pid %d\n", pidRankPair->second, pid);
+fprintf(lf, "procsToRanks_.insert map rank %d to pid %d\n", processMapIter->second->getProcessState()->getProcessId(), processMapIter->first);
 fclose(lf);
 
 #if defined(GROUP_OPS)
@@ -2324,24 +2291,17 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
         {
             for (processMapIter = processMap_.begin(), j = 0; processMapIter != processMap_.end(); processMapIter++, j++)
             {
+                // Find rank for process
                 auto procsToRanksIter = procsToRanks_.find(processMapIter->second);
                 if (procsToRanksIter == procsToRanks_.end()) {
-auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "failed to find walker\n");
-fclose(lf);
                     printMsg(STAT_STACKWALKER_ERROR, __FILE__, __LINE__, "Failed fo find walker in procsToRanks_ map\n");
                     return STAT_STACKWALKER_ERROR;
                 }
-                auto rank = procsToRanksIter->second;
 
-auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "rank %d pid %d\n", rank, processMapIter->second->getProcessState()->getProcessId());
-fclose(lf);
-#if 0
-                statError = getStackTrace(processMapIter->second, j, nRetries, retryFrequency);
-#else
-                statError = getStackTrace(processMapIter->second, rank, nRetries, retryFrequency);
-#endif
+                // Get stack trace for process with given rank
+                statError = getStackTrace(processMapIter->second, procsToRanksIter->second,
+                    nRetries, retryFrequency);
+
                 if (statError != STAT_OK)
                 {
                     printMsg(statError, __FILE__, __LINE__, "Error getting graph %d of %d\n", i + 1, nTraces);
@@ -4189,6 +4149,7 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, int nTask
     if (init == 0)
     {
         proctabSize_ = nTasks;
+        maxRank_ = proctabSize_;
         proctab_ = (StatBackEndProcInfo_t*)malloc(proctabSize_ * sizeof(StatBackEndProcInfo_t));
         if (proctab_ == NULL)
         {

@@ -7,11 +7,17 @@ STAT_ctiBackEnd::STAT_ctiBackEnd(StatDaemonLaunch_t launchType)
     : STAT_BackEnd(launchType)
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Create CTI Backend.\n");
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "STAT_ctiBackEnd constructor\n");
+fclose(lf); }
 }
 
 StatError_t STAT_ctiBackEnd::init(int *argc, char ***argv)
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Initializing stat-cti backend\n");
+{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
+fprintf(lf, "STAT_ctiBackEnd init\n");
+fclose(lf); }
     return STAT_BackEnd::init(argc, argv);
 }
 
@@ -40,6 +46,9 @@ StatError_t STAT_ctiBackEnd::initLauncher()
         return STAT_CTI_ERROR;
     }
 
+    // Reset local ranks and fill with mapping from CTI
+    procsToRanks_ = {};
+
     proctab_ = (StatBackEndProcInfo_t*) malloc(n * sizeof(StatBackEndProcInfo_t));
     for (int i=0; i<n; ++i) {
         auto pid = pids->pids[i].pid;
@@ -62,8 +71,12 @@ StatError_t STAT_ctiBackEnd::initLauncher()
         proctab_[i].host_name = nullptr;
         proctab_[i].pid = pid;
         proctab_[i].mpirank = pids->pids[i].rank;
+
+        maxRank_ = std::max(maxRank_, pids->pids[i].rank);
     }
     proctabSize_ = n;
+
+    myRank_ = cti_be_getNodeFirstPE();
 
     cti_be_destroyPidList(pids);
     
