@@ -41,7 +41,7 @@ int gNumEdgeAttrs;
 int gStatGraphRoutinesTotalWidth;
 
 //! the input list of bit vector widths
-int *gStatGraphRoutinesEdgeLabelWidths;
+int *gStatGraphRoutinesEdgeLabelWidths = NULL;
 
 //! the current index into the bit vector
 int gStatGraphRoutinesCurrentIndex;
@@ -666,10 +666,11 @@ void statFilterDeserializeEdge(void **edge, const char *buf, unsigned int bufLen
     }
 
     offset = 0;
-#if 0
-    for (i = 0; i < gStatGraphRoutinesCurrentIndex; i++)
-        offset += gStatGraphRoutinesEdgeLabelWidths[i];
-#endif
+    if (gStatGraphRoutinesEdgeLabelWidths != nullptr) {
+        for (i = 0; i < gStatGraphRoutinesCurrentIndex; i++) {
+            offset += gStatGraphRoutinesEdgeLabelWidths[i];
+        }
+    }
 
     memcpy((void *)&(e->bitVector[offset]), ptr, STAT_BITVECTOR_BYTES * currentEdgeLength);
     *edge = (void *)e;
@@ -710,30 +711,30 @@ void *statMergeEdgeOrdered(void *edge1, const void *edge2)
     if (edge1 == NULL || edge2 == NULL)
         return NULL;
 
-{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statgraph." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "%s %s (%d), %s (%d)\n", __FUNCTION__, statEdgeToText(edge1), e1->length, statEdgeToText(edge2), e2->length);
-fclose(lf); }
-#if 0
-    for (i = 0, n = e2->length * STAT_BITVECTOR_BITS; i < n; ++i)
-    {
-        if (bitVectorContains(e2->bitVector, i))
+    // Use offset rank list if provided
+    if (gStatGraphRoutinesRanksList != nullptr) {
+        for (i = 0, n = e2->length * STAT_BITVECTOR_BITS; i < n; ++i)
         {
-            // gStatGraphRoutineRanksList maps edge2's subset of ranks
-            // to the full set referenced by edge1
-            byte = gStatGraphRoutinesRanksList[i] / STAT_BITVECTOR_BITS;
-            bit = gStatGraphRoutinesRanksList[i] % STAT_BITVECTOR_BITS;
-            if (byte < e1->length)
-                e1->bitVector[byte] |= STAT_GRAPH_BIT(bit);
-            else
-                fprintf(stderr, "cannot merge edge bit set\n");
+            if (bitVectorContains(e2->bitVector, i))
+            {
+                // gStatGraphRoutineRanksList maps edge2's subset of ranks
+                // to the full set referenced by edge1
+                byte = gStatGraphRoutinesRanksList[i] / STAT_BITVECTOR_BITS;
+                bit = gStatGraphRoutinesRanksList[i] % STAT_BITVECTOR_BITS;
+                if (byte < e1->length)
+                    e1->bitVector[byte] |= STAT_GRAPH_BIT(bit);
+                else
+                    fprintf(stderr, "cannot merge edge bit set\n");
+            }
+        }
+
+    // Regular bitset merge
+    } else {
+        auto len = std::min(e1->length, e2->length);
+        for (i = 0; i < len; i++) {
+            e1->bitVector[i] |= e2->bitVector[i];
         }
     }
-#else
-    auto len = std::min(e1->length, e2->length);
-    for (i = 0; i < len; i++) {
-        e1->bitVector[i] |= e2->bitVector[i];
-    }
-#endif
     return edge1;
 }
 

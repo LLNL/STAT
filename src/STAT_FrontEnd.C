@@ -856,7 +856,8 @@ StatError_t STAT_FrontEnd::setupConnectedMrnetTree()
     }
 
     /* Send an initial message using the broadcast stream */
-    if (broadcastStream_->send(PROT_SEND_BROADCAST_STREAM, "%uc %s %d", logging_, logOutDir_, mrnetOutputLevel_) == -1)
+    if (broadcastStream_->send(PROT_SEND_BROADCAST_STREAM, "%uc %s %d %d", logging_, logOutDir_, mrnetOutputLevel_,
+        (haveGlobalRanks()) ? 1 : 0) == -1)
     {
         printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "failed to send on broadcast stream\n");
         return STAT_MRNET_ERROR;
@@ -2750,10 +2751,15 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         for (ranksIter = remapRanksList_.begin(); ranksIter != remapRanksList_.end(); ranksIter++)
         {
             /* Fill edge labels for this daemon */
-            hostRanks = mrnetRankToMpiRanksMap_[*ranksIter];
-            gStatGraphRoutinesRanksList = hostRanks->list;
-            gStatGraphRoutinesRanksListLength = hostRanks->count;
-            gStatGraphRoutinesCurrentIndex = offset;
+            if (!haveGlobalRanks()) {
+                hostRanks = mrnetRankToMpiRanksMap_[*ranksIter];
+                gStatGraphRoutinesRanksList = hostRanks->list;
+                gStatGraphRoutinesRanksListLength = hostRanks->count;
+                gStatGraphRoutinesCurrentIndex = offset;
+            } else {
+                hostRanks = nullptr;
+                gStatGraphRoutinesRanksList = nullptr;
+            }
             graphlibError = graphlib_mergeGraphs(sortedStackTraces, stackTraces);
             if (GRL_IS_FATALERROR(graphlibError))
             {
@@ -2762,9 +2768,9 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
             }
 
             /* update offset, round up to the nearest bit vector count*/
-#if 0
-            offset += statBitVectorLength(hostRanks->count);
-#endif
+            if (hostRanks != nullptr) {
+                offset += statBitVectorLength(hostRanks->count);
+            }
         }
 
         gEndTime.setTime();
@@ -3104,17 +3110,19 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
         /* Fill edge label on a per daemon basis */
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Filling in edges\n");
         offset = 0;
-        for (ranksIter = remapRanksList_.begin(); ranksIter != remapRanksList_.end(); ranksIter++)
-        {
-            /* Fill edge labels for this daemon */
-            hostRanks = mrnetRankToMpiRanksMap_[*ranksIter];
-            gStatGraphRoutinesRanksList = hostRanks->list;
-            gStatGraphRoutinesRanksListLength = hostRanks->count;
-            gStatGraphRoutinesCurrentIndex = offset;
+        if (!haveGlobalRanks()) {
+            for (ranksIter = remapRanksList_.begin(); ranksIter != remapRanksList_.end(); ranksIter++)
+            {
+                /* Fill edge labels for this daemon */
+                hostRanks = mrnetRankToMpiRanksMap_[*ranksIter];
+                gStatGraphRoutinesRanksList = hostRanks->list;
+                gStatGraphRoutinesRanksListLength = hostRanks->count;
+                gStatGraphRoutinesCurrentIndex = offset;
+                statMergeEdgeOrdered(orderedEdge, unorderedEdge);
+                offset += statBitVectorLength(hostRanks->count);
+            }
+        } else {
             statMergeEdgeOrdered(orderedEdge, unorderedEdge);
-#if 0
-            offset += statBitVectorLength(hostRanks->count);
-#endif
         }
         statFreeEdge((void *)unorderedEdge);
     }

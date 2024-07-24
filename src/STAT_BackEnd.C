@@ -2647,7 +2647,6 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
                 {
                     map<string, string> nodeAttrs;
                     name = getFrameName(nodeAttrs, bestStackWalk[k], bestStackWalk.size() - i + 1);
-
                     if (sampleType_ & STAT_SAMPLE_PYTHON)
                     {
                         if (isPyTrace_ == true && isFirstPythonFrame == true)

@@ -933,6 +933,7 @@ class STAT_FrontEnd
         StatError_t serveFileRequest(const char *receiveFileName);
 #endif
 
+        virtual bool haveGlobalRanks() = 0;
 
         /****************/
         /* Private data */
