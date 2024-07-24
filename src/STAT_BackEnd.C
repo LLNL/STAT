@@ -457,10 +457,6 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 }
                 edgeAttr.attr_values[index] = statCopyEdgeAttr(edgeAttrIter->first.c_str(), edgeAttrIter->second);
 
-{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "generateGraphs copying edge attr %s\n", edgeAttrIter->first.c_str());
-fprintf(lf, "generateGraphs edge %s\n", statEdgeToText(edgeAttrIter->second));
-fclose(lf); }
                 edgeAttrIter++;
             }
 
@@ -960,9 +956,7 @@ StatError_t STAT_BackEnd::mainLoop()
                     free(byteArray);
                     byteArray = NULL;
                 }
-{ static int i = 0; char outFile[1024];
-snprintf(outFile, BUFSIZE, "/home/users/adangelo/hanging_hetjob/log/graph.be.%d.%d.dot", getpid(), i++);
-(void)graphlib_exportGraph(outFile, GRF_DOT, prefixTree2d); }
+
                 graphlibError = graphlib_serializeBasicGraph(prefixTree2d, &byteArray, &byteArrayLen);
                 if (GRL_IS_FATALERROR(graphlibError))
                 {
@@ -1438,9 +1432,6 @@ StatError_t STAT_BackEnd::attach()
     for (i = 0; i < proctabSize_; i++)
     {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].executable_name, proctab_[i].pid, proctab_[i].mpirank);
-{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "Attaching to process %s, pid %d, MPI rank %d\n", proctab_[i].executable_name, proctab_[i].pid, proctab_[i].mpirank);
-fclose(lf); }
 
 #if defined(GROUP_OPS)
         if (doGroupOps_)
@@ -1532,10 +1523,6 @@ fclose(lf); }
     for (i = 0, processMapIter = processMap_.begin(); processMapIter != processMap_.end(); i++, processMapIter++)
     {
         procsToRanks_.insert(make_pair(processMapIter->second, processMapIter->first));
-
-auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "procsToRanks_.insert map rank %d to pid %d\n", processMapIter->second->getProcessState()->getProcessId(), processMapIter->first);
-fclose(lf);
 
 #if defined(GROUP_OPS)
         int mpirank = processMapIter->first;
@@ -2495,9 +2482,6 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
     OpenMPStackWalker *ompWalker = NULL;
 #endif
 
-{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "Gathering trace from task rank %d of %d\n", rank, maxRank_);
-fclose(lf); }
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d of %d\n", rank, maxRank_);
 
     /* Set edge label */
@@ -2583,13 +2567,7 @@ fclose(lf); }
                     boolRet = proc->walkStack(currentStackWalk, threads[j]);
                 }
 #else
-{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "proc %p walkStack thread id %d\n", proc, threads[j]);
-fclose(lf); }
                 boolRet = proc->walkStack(currentStackWalk, threads[j]);
-{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "walkStack completed\n");
-fclose(lf); }
 #endif
                 if (boolRet == false && currentStackWalk.size() < 1)
                 {
@@ -2669,9 +2647,7 @@ fclose(lf); }
                 {
                     map<string, string> nodeAttrs;
                     name = getFrameName(nodeAttrs, bestStackWalk[k], bestStackWalk.size() - i + 1);
-auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statbe." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "getStackTrace rank %d frame: %s\n", rank, name.c_str());
-fclose(lf);
+
                     if (sampleType_ & STAT_SAMPLE_PYTHON)
                     {
                         if (isPyTrace_ == true && isFirstPythonFrame == true)

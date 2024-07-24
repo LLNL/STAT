@@ -344,9 +344,6 @@ void statMerge(vector<PacketPtr> &inputPackets,
     {
         currentPacket = inputPackets[i];
         rank = (*currentPacket)[2]->get_int32_t();
-{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statfilt." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "Input packet had order rank %d\n", rank);
-fclose(lf); }
         childrenOrder[rank] = i;
     }
     sampleType = (*inputPackets[0])[3]->get_uint32_t();
@@ -365,9 +362,6 @@ fclose(lf); }
         edgeLabelWidths[i] = (*currentPacket)[1]->get_int32_t();
         totalWidth += edgeLabelWidths[i];
     }
-{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statfilt." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "Return edge width %d\n", totalWidth);
-fclose(lf); }
 
     if (tag == PROT_SEND_NODE_IN_EDGE_RESP)
     {
@@ -450,19 +444,8 @@ fclose(lf); }
                 return;
             }
 
-{ auto lf = fopen(("/home/users/adangelo/hanging_hetjob/log/statfilt." + std::to_string(getpid())).c_str(), "a");
-fprintf(lf, "merging graphs\n");
-fclose(lf); }
             graphlibError = graphlib_mergeGraphs(returnGraph, currentGraph);
-{ static int i = 0; char outFile[1024];
-snprintf(outFile, BUFSIZE, "/home/users/adangelo/hanging_hetjob/log/graph.filt.in.%d.%d.dot", getpid(), i);
-(void)graphlib_exportGraph(outFile, GRF_DOT, currentGraph);
-system(("cat " + std::string{outFile} + " >> /home/users/adangelo/hanging_hetjob/log/statfilt." + std::to_string(getpid())).c_str());
-snprintf(outFile, BUFSIZE, "/home/users/adangelo/hanging_hetjob/log/graph.filt.out.%d.%d.dot", getpid(), i);
-(void)graphlib_exportGraph(outFile, GRF_DOT, returnGraph);
-system(("cat " + std::string{outFile} + " >> /home/users/adangelo/hanging_hetjob/log/statfilt." + std::to_string(getpid())).c_str());
-i++;
-}
+
             if (GRL_IS_FATALERROR(graphlibError))
             {
                 cpPrintMsg(STAT_GRAPHLIB_ERROR, __FILE__, __LINE__, "Failed to merge graph %d\n", rank);
