@@ -39,6 +39,8 @@ public:
     virtual StatError_t STATBench_setAppNodeList();
     virtual StatError_t STATBench_resetProctab(unsigned int nTasks);
 
+    virtual bool haveGlobalRanks() { return true; }
+
 
 private:
     StatError_t attach();

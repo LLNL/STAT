@@ -62,8 +62,12 @@ StatError_t STAT_ctiBackEnd::initLauncher()
         proctab_[i].host_name = nullptr;
         proctab_[i].pid = pid;
         proctab_[i].mpirank = pids->pids[i].rank;
+
+        maxRank_ = std::max(maxRank_, pids->pids[i].rank);
     }
     proctabSize_ = n;
+
+    myRank_ = cti_be_getNodeFirstPE();
 
     cti_be_destroyPidList(pids);
     
