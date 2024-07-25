@@ -209,7 +209,7 @@ StatError_t STAT_BackEnd::update3dNodesAndEdges()
     {
         if (edges3d_.find(edgesIter->first) == edges3d_.end())
         {
-            edge = initializeBitVectorEdge(maxRank_);
+            edge = initializeBitVectorEdge(maxRank_ + 1);
             if (edge == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -276,7 +276,7 @@ StatError_t STAT_BackEnd::update2dEdge(int src, int dst, StatBitVectorEdge_t *ed
 
     if (edges2d_.find(dst) == edges2d_.end())
     {
-        newEdge = initializeBitVectorEdge(maxRank_);
+        newEdge = initializeBitVectorEdge(maxRank_ + 1);
         if (newEdge == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize newEdge\n");
@@ -601,7 +601,7 @@ void STAT_BackEnd::onCrash(int sig, siginfo_t *, void *context)
             extern int gStatGraphRoutinesTotalWidth;
             char outFile[BUFSIZE];
 
-            gStatGraphRoutinesTotalWidth = statBitVectorLength(maxRank_);
+            gStatGraphRoutinesTotalWidth = statBitVectorLength(maxRank_ + 1);
 
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Exporting 2D graph to dot\n");
             graphlibError = graphlib_colorGraphByLeadingEdgeLabel(prefixTree2d);
@@ -1017,7 +1017,7 @@ StatError_t STAT_BackEnd::mainLoop()
                     edge = edges2d_[nodeId].second;
                 else
                 {
-                    edge = initializeBitVectorEdge(maxRank_);
+                    edge = initializeBitVectorEdge(maxRank_ + 1);
                     if (edge == NULL)
                     {
                         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -1253,7 +1253,7 @@ StatError_t STAT_BackEnd::mainLoop()
         if (ackTag == PROT_SEND_NODE_IN_EDGE_RESP || ackTag == PROT_SEND_LAST_TRACE_RESP || ackTag == PROT_SEND_TRACES_RESP)
         {
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Sending serialized contents to FE with tag %d, length %d\n", ackTag, byteArrayLen);
-            bitVectorLength = statBitVectorLength(maxRank_);
+            bitVectorLength = statBitVectorLength(maxRank_ + 1);
             if (stream->send(ackTag, "%Ac %d %d %ud", byteArray, byteArrayLen, bitVectorLength, myRank_, sampleType_) == -1)
             {
                 printMsg(STAT_MRNET_ERROR, __FILE__, __LINE__, "stream::send(%d) failure\n", ackTag);
@@ -2033,7 +2033,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
             for (j = 0; j < proctabSize_; j++)
             {
                 /* Set edge label */
-                edge = initializeBitVectorEdge(maxRank_);
+                edge = initializeBitVectorEdge(maxRank_ + 1);
                 if (edge == NULL)
                 {
                     printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -2485,7 +2485,7 @@ StatError_t STAT_BackEnd::getStackTrace(Walker *proc, int rank, unsigned int nRe
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering trace from task rank %d of %d\n", rank, maxRank_);
 
     /* Set edge label */
-    edge = initializeBitVectorEdge(maxRank_);
+    edge = initializeBitVectorEdge(maxRank_ + 1);
     if (edge == NULL)
     {
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -2857,7 +2857,7 @@ StatError_t STAT_BackEnd::addFrameToGraph(CallTree *stackwalkerGraph, graphlib_n
         {
             for (myRanksIter = myRanks.begin(); myRanksIter != myRanks.end(); myRanksIter++)
             {
-                edge = initializeBitVectorEdge(maxRank_);
+                edge = initializeBitVectorEdge(maxRank_ + 1);
                 if (edge == NULL)
                 {
                     printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -3123,7 +3123,7 @@ StatError_t STAT_BackEnd::getStackTraceFromAll(unsigned int nRetries, unsigned i
         nodes2d_[newChildId] = msg;
         nodeIdToAttrs_[newChildId]["function"] = msg;
 
-        StatBitVectorEdge_t *edge = initializeBitVectorEdge(maxRank_);
+        StatBitVectorEdge_t *edge = initializeBitVectorEdge(maxRank_ + 1);
         if (edge == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
@@ -4124,7 +4124,6 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, int nTask
     if (init == 0)
     {
         proctabSize_ = nTasks;
-        maxRank_ = proctabSize_;
         proctab_ = (StatBackEndProcInfo_t*)malloc(proctabSize_ * sizeof(StatBackEndProcInfo_t));
         if (proctab_ == NULL)
         {
@@ -4137,6 +4136,7 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, int nTask
             proctab_[j].executable_name = NULL;
             proctab_[j].host_name = NULL;
             proctab_[j].mpirank = proctab_[0].mpirank + j;
+            maxRank_ = std::max(maxRank_, proctab_[j].mpirank);
         }
         init++;
     }
@@ -4179,7 +4179,7 @@ StatError_t STAT_BackEnd::statBenchCreateTrace(unsigned int maxDepth, unsigned i
     string path;
     StatBitVectorEdge_t *edge = NULL;
 
-    edge = initializeBitVectorEdge(maxRank_);
+    edge = initializeBitVectorEdge(maxRank_ + 1);
     if (edge == NULL)
     {
         printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to initialize edge\n");
