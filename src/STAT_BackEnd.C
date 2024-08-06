@@ -403,7 +403,7 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 if (!nodeAttrs["source"].empty() && !nodeAttrs["line"].empty()) {
                     nodeLabel = nodeAttrs["source"] + nodeAttrs["line"];
                 } else if (!nodeAttrs["function"].empty()) {
-                    nodeLabel = nodeIdToAttrs_[nodesIter->first]["function"];
+                    nodeLabel = nodeAttrs["function"];
                 } else if (!nodeAttrs["module"].empty() && !nodeAttrs["offset"].empty()) {
                     nodeLabel = nodeAttrs["module"] + nodeAttrs["offset"];
                 } else if (!nodeAttrs["pc"].empty()) {
