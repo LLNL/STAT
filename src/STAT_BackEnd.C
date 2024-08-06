@@ -396,6 +396,26 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
             int index;
             map<string, string>::iterator nodeAttrIter;
             nodeAttr.attr_values = (void **)calloc(1, gNumNodeAttrs * sizeof(void *));
+            std::string nodeLabel;
+
+            // Generate the node label from available frame information
+            { auto nodeAttrs = nodeIdToAttrs_[nodesIter->first];
+                if (!nodeAttrs["source"].empty() && !nodeAttrs["line"].empty()) {
+                    nodeLabel = nodeAttrs["source"] + nodeAttrs["line"];
+                } else if (!nodeAttrs["function"].empty()) {
+                    nodeLabel = nodeAttrs["function"];
+                } else if (!nodeAttrs["module"].empty() && !nodeAttrs["offset"].empty()) {
+                    nodeLabel = nodeAttrs["module"] + nodeAttrs["offset"];
+                } else if (!nodeAttrs["pc"].empty()) {
+                    nodeLabel = nodeAttrs["pc"];
+                }
+            }
+
+            if (!nodeLabel.empty()) {
+                // Copied internally when graphlib_addNode invokes statCopyNode
+                nodeAttr.label = (void*)nodeLabel.c_str();
+            }
+
             if (nodeAttr.attr_values == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error callocing %d nodeAttr.attr_values\n", strerror(errno), gNumNodeAttrs);
@@ -420,11 +440,16 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 return STAT_GRAPHLIB_ERROR;
             }
             statFreeNodeAttrs(nodeAttr.attr_values, *currentGraph);
+            nodeAttr.label = (char*)"";
         }
         for (edgesIter = (*edges).begin(); edgesIter != (*edges).end(); edgesIter++)
         {
             int index;
             edgeAttr.attr_values = (void **)calloc(1, gNumEdgeAttrs * sizeof(void *));
+
+            // Edge label will be generated using statEdgeToText
+            edgeAttr.label = edgesIter->second.second;
+
             if (edgeAttr.attr_values == NULL)
             {
                 printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Error callocing %d edgeAttr.attr_values\n", strerror(errno), gNumEdgeAttrs);
@@ -468,6 +493,7 @@ StatError_t STAT_BackEnd::generateGraphs(graphlib_graph_p *prefixTree2d, graphli
                 return STAT_GRAPHLIB_ERROR;
             }
             statFreeEdgeAttrs(edgeAttr.attr_values, *currentGraph);
+            edgeAttr.label = NULL;
         }
     }
 
