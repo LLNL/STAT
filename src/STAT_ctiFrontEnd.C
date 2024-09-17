@@ -11,6 +11,15 @@ STAT_ctiFrontEnd::STAT_ctiFrontEnd() : appId_(0), session_(0), hosts_(nullptr),
     {
         snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
     }
+
+    // Ensure CTI can initialize
+    if (auto hostname = cti_getHostname()) {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "CTI initialized with hostname %s\n", hostname);
+        free(hostname);
+    } else {
+        ctiError();
+        exit(STAT_SYSTEM_ERROR);
+    }
 }
 
 STAT_ctiFrontEnd::~STAT_ctiFrontEnd()

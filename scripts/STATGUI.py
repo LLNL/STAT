@@ -223,7 +223,7 @@ class STATGUI(STATDotWindow):
                    'Daemons per Node':                 1,
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
-                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun|mpiexec|jsrun',
+                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun|mpiexec|jsrun|flux',
                    'Job ID':                           '',
                    'Filter Ranks':                     '',
                    'Filter Hosts':                     '',
