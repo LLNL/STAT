@@ -97,6 +97,24 @@ StatError_t STAT_ctiFrontEnd::attach()
         break;
     }
 
+    case CTI_WLM_FLUX:
+    {
+        auto ops = static_cast<cti_flux_ops_t*>(vops);
+
+        char* jobid = ops->getJobid((pid_t)launcherPid_);
+        if (!jobid) {
+            return ctiError();
+        }
+
+        appId_ = ops->registerJob(jobid);
+
+        free(jobid);
+        if (!appId_) {
+            return ctiError();
+        }
+        break;
+    }
+
     default:
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Unsupported Cray WLM!\n");
         return STAT_SYSTEM_ERROR;
