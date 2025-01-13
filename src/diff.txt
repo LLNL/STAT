@@ -1,0 +1,3017 @@
+diff --git a/.github/scripts/builddeps.sh b/.github/scripts/builddeps.sh
+new file mode 100755
+index 0000000..8cf3733
+--- /dev/null
++++ b/.github/scripts/builddeps.sh
+@@ -0,0 +1,51 @@
++#!/bin/bash
++set -x
++
++# download and build launchmon
++git clone https://github.com/llnl/launchmon
++pushd launchmon
++    ./bootstrap
++    ./configure --prefix=$HOME/local --with-test-rm=slurm --with-test-rm-launcher=srun  || cat config.log
++    make -j
++    make install
++popd
++
++# download and build dyninst
++wget -q https://github.com/dyninst/dyninst/archive/refs/tags/v11.0.0.tar.gz
++tar xf v11.0.0.tar.gz
++pushd dyninst-11.0.0
++    mkdir build
++    pushd build
++        cmake -D CMAKE_INSTALL_PREFIX=$HOME/local ..
++        cat CMakeFiles/CMakeOutput.log
++        cat CMakeFiles/CMakeError.log
++        make -j
++        make install
++    popd
++popd
++
++export CC="gcc"
++export CXX="g++"
++# download and build graphlib
++wget -q https://github.com/LLNL/graphlib/archive/refs/tags/v3.0.0.tar.gz
++tar xf v3.0.0.tar.gz
++pushd graphlib-3.0.0
++    mkdir build
++    pushd build
++        cmake -D CMAKE_INSTALL_PREFIX=$HOME/local ..
++        make -j
++        make install
++    popd
++popd
++
++# download and build mrnet
++#wget -q https://github.com/dyninst/mrnet/archive/refs/tags/v5.0.1.tar.gz
++#tar xf v5.0.1.tar.gz
++#pushd mrnet-5.0.1
++git clone https://github.com/dyninst/mrnet
++pushd mrnet
++    ./configure --enable-shared --prefix=$HOME/local --disable-ltwt-threadsafe
++    make
++    make install
++popd
++
+diff --git a/.github/workflows/main.yml b/.github/workflows/main.yml
+new file mode 100644
+index 0000000..5b0eb44
+--- /dev/null
++++ b/.github/workflows/main.yml
+@@ -0,0 +1,58 @@
++name: A workflow for CI testing of a STAT commit
++#author: Gregory L. Lee <lee218@llnl.gov>
++#description: build STAT's dependences (or uses cached builds), builds STAT, and then runs STAT on a simple serial application.
++on: push
++jobs:
++  build:
++    name: Hello world action
++    runs-on: ubuntu-20.04
++    steps:
++      - uses: actions/checkout@v2
++      - name: Cache Dependences
++        id: cacher
++        uses: actions/cache@v2
++        with:
++            path: /home/runner/local
++            #key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
++            key: ${{ runner.os }}
++      - uses: ./action-a
++        with:
++          MY_NAME: "Greg"
++      - name: test cache
++        if: steps.cacher.outputs.cache-hit == 'true'
++        run: ls -l $HOME/local/lib
++      - name: Build dependences
++        run: |
++            sudo apt-get update
++            sudo apt-get install graphviz
++            sudo apt-get install libboost-all-dev
++            sudo apt-get install elfutils
++            sudo apt-get install libelf-dev
++            sudo apt-get install libgcrypt-dev
++            sudo apt-get install build-essential
++            sudo apt-get install texlive
++            sudo apt-get install binutils-dev
++            sudo apt-get install libiberty-dev
++            sudo apt-get install mpich
++            sudo apt-get install slurm
++            sudo apt-get install pkg-config
++            sudo apt-get install python python-dev
++      - shell: bash
++        if: steps.cacher.outputs.cache-hit != 'true'
++        run: ./.github/scripts/builddeps.sh
++      - shell: bash
++        run: |
++          set -x
++          ls -l ./
++          ./bootstrap
++          ./configure --prefix=$HOME/install --with-graphlib=$HOME/local --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-launchmon=$HOME/local --disable-examples || cat config.log
++          make -j
++          make install
++          export LD_LIBRARY_PATH=$HOME/local/lib
++          $HOME/install/bin/stat-cl --help
++          echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope || echo failed
++          gcc -g examples/src/serial.c -o a.out
++          ./a.out &
++          $HOME/install/bin/stat-cl -I $!
++          cat stat_results/output.0000/00_output.0000.2D.dot
++          cat stat_results/output.0000/*.dot
+diff --git a/.travis.yml b/.travis.yml
+index 6b65af4..bb44de1 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -34,6 +34,7 @@ addons:
+       - gfortran
+       - gdb
+       - python3
++      - g++-8
+ 
+ env:
+   global:
+@@ -55,6 +56,7 @@ before_install:
+   - eval $(./scripts/travis-dep-builder.sh --printenv)
+   # travis has a 50 minute timeout for any single command, so we break up the build so it will partially cache as needed. ompi+other can be done in one session, dyninst requires its own.
+ #  - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=ompi
++#  - rm -rf $HOME/local/.cache
+   - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=impi
+   - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=other
+   - ./scripts/travis-dep-builder.sh --cachedir=$HOME/local/.cache --components=dyninst
+@@ -69,7 +71,7 @@ script:
+   - export LDFLAGS=-Wl,-no-as-needed
+ #  - if test "$COVERAGE" = "On" ; then export CFLAGS="-coverage" ; export CXXFLAGS="-coverage" ; fi
+   - echo $PATH
+-  - ./configure --prefix=$HOME/stat --with-stackwalker=$HOME/local/dyninst --with-mrnet=$HOME/local --with-graphlib=$HOME/local --with-launchmon=$HOME/local --enable-debug --enable-code-coverage --disable-examples || cat config.log
++  - ./configure --prefix=$HOME/stat --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-graphlib=$HOME/local --with-launchmon=$HOME/local --enable-debug --enable-code-coverage --disable-examples || cat config.log
+   - cat config.log
+   - make && make install
+   - mkdir -p $HOME/stat/bin
+@@ -110,7 +112,6 @@ after_script:
+   - which mpirun
+   - mpirun --version
+   - export LMON_FE_ENGINE_TIMEOUT=20
+-  - sleep 40
+   - ping -c 1 localhost
+   - rsh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no `hostname` hostname  & export RSHPID=$! ; sleep 5; kill -9 $RSHPID
+   - ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no `hostname` hostname  & export RSHPID=$! ; sleep 5; kill -9 $RSHPID
+@@ -153,7 +154,7 @@ after_script:
+   - cat stat_results/mpi_ringtopo.0001/03_mpi_ringtopo.0001.2D.dot
+   - cat stat_results/mpi_ringtopo.0001/04_mpi_ringtopo.0001.3D.dot
+ #  The script test may also hang with openmpi-2.0.3. This appears to be a race condition when deleting the stat_fe object
+-  - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py -l $HOME/local/bin/mpiexec.hydra || echo "failed with $?"
++#  - $HOME/stat/bin/stat-script $HOME/stat/share/stat/examples/bin/script_test.py -l $HOME/local/bin/mpiexec.hydra || echo "failed with $?"
+   - ls -lt stat_results
+   - bash <(curl -s https://codecov.io/bash)
+   - coveralls --exclude lib --exclude tests -i ./src --gcov-options '\-lp'
+diff --git a/ChangeLog b/ChangeLog
+index 6f1860b..ea05fd7 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,28 @@
++2022-09-16 Gregory L. Lee <lee218@llnl.gov>
++	* : Add check for local_var.h (removed in dyninst 12)
++	can copy local_var.h from older dyninst if needed (python debugging)
++
++2022-08-22 Gregory L. Lee <lee218@llnl.gov>
++	* : updated version string to 4.2.0
++
++2021-03-05 Gregory L. Lee <lee218@llnl.gov>
++	* : updated version string to 4.0.3
++
++2021-03-04 Gregory L. Lee <lee218@llnl.gov>
++	* : added initial rocgdb support for AMD GPUs
++	* STATGUI.py : use ssh for remote shell by default
++
++2020-09-09 Gregory L. Lee <lee218@llnl.gov>
++	scripts/STATmain.py : modified import order to fix Spack installed STAT
++	seg faulting due to wrong libgpg-error being loaded
++
++2020-09-08 Gregory L. Lee <lee218@llnl.gov>
++	* : updated version string to 4.0.3
++
++2020-08-28 Gregory L. Lee <lee218@llnl.gov>
++	STAT_BackEnd.[C,h] : Add Dyninst 10.2 support, remove Dyninst < 10 support
++	config/x_ac_boost.m4 : remove dependence on -mt version of boost libs
++
+ 2020-02-28 Gregory L. Lee <lee218@llnl.gov>
+ 	* : tag version 4.0.2
+ 
+diff --git a/INSTALL b/INSTALL
+index 3fe3d9c..c0af677 100644
+--- a/INSTALL
++++ b/INSTALL
+@@ -55,14 +55,17 @@ Installation
+ 
+    STAT and its dependencies can also be built via the Spack
+    package management tool, available at
+-   https://github.com/LLNL/spack. Running spack install stat
++   https://github.com/spack/spack. Running spack install stat
+    should build STAT and all of its dependencies, including those
+-   require for the STAT GUI. Note that two Spack variants exist.
++   require for the STAT GUI. Note that three Spack variants exist.
+    The first is +examples, to enable building example MPI code
+    that STAT can be tested against. This is disabled by default to
+    avoid requiring an MPI library, but enabling it will trigger a
+    build of MPI. The second is +dysect to enable building of the
+-   DySectAPI.
++   DySectAPI. The third is +fgfs to build with
++   FastGlobalFileStatus and target binary broadcast support. FGFS
++   is crucial to scalability, particularly when debugging
++   applications that load several large dynamic libraries.
+ 
+    For STAT 4.0.1 and beyond, the spack build of STAT requires
+    Python 3 and will require the activation of the py-xdot package
+@@ -74,11 +77,11 @@ Installation
+ 
+    When building STAT itself, first run configure. You will need
+    to use the --with-package options to specify the install prefix
+-   for mrnet, graphlib, launchmon, libdwarf, and stackwalker.
+-   These options will add the necessary include and library search
+-   paths to the compile options. Refer to configure --help for
+-   exact options. You may also wish to specify the maximum number
+-   of communication processes to launch per node with the option
++   for mrnet, graphlib, launchmon, libdwarf, and dyninst. These
++   options will add the necessary include and library search paths
++   to the compile options. Refer to configure --help for exact
++   options. You may also wish to specify the maximum number of
++   communication processes to launch per node with the option
+    --with-procspernode=number, generally set to the number of
+    cores per node.
+ 
+@@ -142,6 +145,16 @@ make install
+    to point to the directories containing the dependent libraries.
+ 
+    STAT can also be configured to use GDB as a backend instead of
+-   DynInst. To specify the path to gdb, use the --with-gdb flag.
+-   Note that STAT currently still requires DynInst as a dependence
+-   even when using the GDB backend.
++   Dyninst. To specify the path to gdb, use the --with-gdb flag.
++   If CUDA kernal traces are desired, the path should point to a
++   working cuda-gdb executable. Note that STAT currently still
++   requires Dyninst as a dependence even when using the GDB
++   backend.
++
++   Dyninst 12 removed the local_var.h header file that STAT uses
++   to gather python traces. If this feature is needed, you will
++   either need to use Dyninst version 11 or lower, or copy the
++   local_var.h file from
++   https://raw.githubusercontent.com/dyninst/dyninst/5c7e0ee327399
++   cfae50d77f977ff6655c2ca3ae4/stackwalk/h/local_var.h to your
++   Dyninst 12+ installation's include directory
+diff --git a/LICENSE b/LICENSE
+index 62ca366..02ff3b6 100644
+--- a/LICENSE
++++ b/LICENSE
+@@ -7,7 +7,7 @@ License
+ 
+ License
+ 
+-   Copyright (c) 2007-2018, Lawrence Livermore National Security,
++   Copyright (c) 2007-2020, Lawrence Livermore National Security,
+    LLC.
+ 
+    Produced at the Lawrence Livermore National Laboratory
+diff --git a/action-a/Dockerfile b/action-a/Dockerfile
+new file mode 100644
+index 0000000..44e85cb
+--- /dev/null
++++ b/action-a/Dockerfile
+@@ -0,0 +1,5 @@
++FROM debian:9.5-slim
++
++ADD entrypoint.sh /entrypoint.sh
++RUN chmod +x /entrypoint.sh
++ENTRYPOINT ["/entrypoint.sh"]
+diff --git a/action-a/action.yml b/action-a/action.yml
+new file mode 100644
+index 0000000..3762aec
+--- /dev/null
++++ b/action-a/action.yml
+@@ -0,0 +1,17 @@
++name: "Build test"
++description: "Ensure a push doesn't break the build"
++author: "lee218@llnl.gov"
++
++inputs:
++  MY_NAME:
++    description: "Who to greet"
++    required: true
++    default: "World"
++
++runs:
++  using: "docker"
++  image: "Dockerfile"
++
++branding:
++  icon: "mic"
++  color: "purple"
+diff --git a/action-a/entrypoint.sh b/action-a/entrypoint.sh
+new file mode 100644
+index 0000000..7d3abef
+--- /dev/null
++++ b/action-a/entrypoint.sh
+@@ -0,0 +1,3 @@
++#!/bin/sh -l
++
++sh -c "echo Hello world my name is $INPUT_MY_NAME"
+diff --git a/config/x_ac_boost.m4 b/config/x_ac_boost.m4
+index f5ee534..50ec534 100644
+--- a/config/x_ac_boost.m4
++++ b/config/x_ac_boost.m4
+@@ -27,7 +27,7 @@ AC_DEFUN([X_AC_BOOST], [
+     elif test -f "$with_boost_path"/include/boost-1_37/boost/algorithm/string.hpp ; then 
+       AC_SUBST(BOOST_INCLUDE, -I$with_boost_path/include/boost-1_37)
+       AC_SUBST(LIBBOOSTDIR, [$with_boost_path/lib])
+-      AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system -lboost_system-mt -lboost_wave-mt"])
++      AC_SUBST(LIBBOOST,["-lboost_date_time -lboost_thread -lboost_filesystem -lboost_program_options -lboost_regex -lboost_system -lboost_system -lboost_wave"])
+       AC_DEFINE(HAVE_BOOST_TO,1,[Define 1 if a compatible boost package is found])	
+       boost_found="yes $LIBBOOSTDIR"
+     else
+@@ -43,7 +43,7 @@ AC_DEFUN([X_AC_BOOST], [
+       else
+         AC_SUBST(LIBBOOSTDIR, [$boost_dflt_dir/lib])
+       fi
+-      AC_SUBST(LIBBOOST,["-lboost_date_time-mt -lboost_thread-mt -lboost_filesystem-mt -lboost_program_options-mt -lboost_regex-mt -lboost_system -lboost_system-mt -lboost_wave-mt"])
++      AC_SUBST(LIBBOOST,["-lboost_date_time -lboost_thread -lboost_filesystem -lboost_program_options -lboost_regex -lboost_system -lboost_system -lboost_wave"])
+       boost_found="yes $LIBBOOSTDIR"
+     else
+       boost_found="no"
+diff --git a/config/x_ac_debuglibs.m4 b/config/x_ac_debuglibs.m4
+index 06ba6b1..2f8cc5d 100644
+--- a/config/x_ac_debuglibs.m4
++++ b/config/x_ac_debuglibs.m4
+@@ -8,7 +8,7 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
+      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=/usr/lib64/dyninst"],
+     [CXXFLAGS="$CXXFLAGS"
+      STACKWALKERPREFIX="${withval}"]
+-  )  
++  )
+ 
+   AC_ARG_WITH(elfutils,
+     [AS_HELP_STRING([--with-elfutils=prefix],
+@@ -114,6 +114,12 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
+   fi
+   AC_MSG_RESULT([$dyninst_vers_10])
+ 
++  AC_CHECK_HEADER(local_var.h,
++    [AC_DEFINE([LOCAL_VAR_H], [], [local_var.h])],
++    [],
++    AC_INCLUDES_DEFAULT
++  )
++
+   AC_CHECK_HEADER(Symtab.h,
+     [],
+     [AC_MSG_ERROR([Symtab.h is required.  Specify prefix with --with-stackwalker])],
+diff --git a/config/x_ac_rsh.m4 b/config/x_ac_rsh.m4
+index c641532..f0de09b 100644
+--- a/config/x_ac_rsh.m4
++++ b/config/x_ac_rsh.m4
+@@ -4,7 +4,7 @@ AC_DEFUN([X_AC_RSH], [
+       [Use cmd as the default remote shell]
+     )],
+     [withrsh="$withval"],
+-    [withrsh=rsh]
++    [withrsh="rsh ssh"]
+   )
+   AC_PATH_PROGS(rshcmd,$withrsh,[/usr/bin/$withrsh],/usr/local/bin:/usr/bin:/bin)
+ ])
+diff --git a/configure.ac b/configure.ac
+index e7ed830..2861722 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -2,8 +2,8 @@
+ # Process this file with autoconf to produce a configure script.
+ 
+ AC_PREREQ(2.59)
+-AC_COPYRIGHT([Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.])
+-AC_INIT([STAT], [4.0.2])
++AC_COPYRIGHT([Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.])
++AC_INIT([STAT], [4.2.1])
+ AC_CONFIG_AUX_DIR([config])
+ AC_CONFIG_SRCDIR([configure.ac])
+ AC_CONFIG_HEADER([config.h])
+@@ -31,7 +31,6 @@ X_AC_ARCH
+ X_AC_BOOST
+ X_AC_DEBUGLIBS
+ X_AC_GRAPHLIB
+-X_AC_DYSECTAPI
+ X_AC_FGFS
+ X_AC_CALLPATH
+ 
+@@ -143,24 +142,11 @@ AC_SUBST(STACKWALKERPREFIX)
+ AC_SUBST(DEPCOREPREFIX)
+ AC_SUBST(STATPYTHON)
+ 
+-if test "$ENABLE_DYSECT" = "yes"
+-then
+-  AM_PROG_LEX
+-  AC_PROG_YACC
+-fi
+-
+ AC_CONFIG_FILES([Makefile
+                  src/Makefile
+-                 src/dysect/Makefile
+-                 src/dysect/DysectAPI/Makefile
+-                 src/dysect/libDysectAPI/Makefile
+-                 src/dysect/libDysectAPI/include/Makefile
+-                 src/dysect/libDysectAPI/src/Makefile
+-                 src/analyticslib/Makefile
+                  examples/Makefile
+                  examples/src/Makefile
+                  examples/scripts/Makefile
+-                 examples/sessions/Makefile
+                  doc/Makefile
+                  doc/userguide/Makefile
+                  doc/quickstart/Makefile
+@@ -185,15 +171,6 @@ then
+                    scripts/stat-bench])
+ fi
+ 
+-if test "$ENABLE_DYSECT" = "yes"
+-then
+-  AC_CONFIG_FILES([scripts/dysectc])
+-  if test "$WITH_GUI" = "yes"
+-  then
+-    AC_CONFIG_FILES([scripts/dysect-view])
+-  fi
+-fi
+-
+ AC_CONFIG_FILES([scripts/stat-core-merger])
+ AC_CONFIG_FILES([scripts/attach-helper])
+ 
+diff --git a/doc/quickstart/stat_quickstart.pdf b/doc/quickstart/stat_quickstart.pdf
+index 5bcf379..ca3995a 100644
+Binary files a/doc/quickstart/stat_quickstart.pdf and b/doc/quickstart/stat_quickstart.pdf differ
+diff --git a/doc/src/figs/statgui_eq_classes.png b/doc/src/figs/statgui_eq_classes.png
+index b3ad59c..5d60fcd 100644
+Binary files a/doc/src/figs/statgui_eq_classes.png and b/doc/src/figs/statgui_eq_classes.png differ
+diff --git a/doc/src/stat_changelog.sgml b/doc/src/stat_changelog.sgml
+index 3367581..52f4949 100644
+--- a/doc/src/stat_changelog.sgml
++++ b/doc/src/stat_changelog.sgml
+@@ -1,3 +1,48 @@
++<section>
++  <title>stat version 4.2.1</title>
++  <para>
++    <itemizedlist>
++      <listitem><para>
++        update to support dropping of local_var.h from Dyninst 12
++      </para></listitem>
++    </itemizedlist>
++  </para>
++</section>
++
++<section>
++  <title>stat version 4.2.0</title>
++  <para>
++    <itemizedlist>
++      <listitem><para>
++        Core file debugging enhancements
++      </para></listitem>
++      <listitem><para>
++        Backend refactoring
++      </para></listitem>
++      <listitem><para>
++        as always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
++      </para></listitem>
++    </itemizedlist>
++  </para>
++</section>
++
++<section>
++  <title>stat version 4.1.0</title>
++  <para>
++    <itemizedlist>
++      <listitem><para>
++        DynInst 10.2 support
++      </para></listitem>
++      <listitem><para>
++        Initial rocgdb support
++      </para></listitem>
++      <listitem><para>
++        as always, numerous other bug fixes and minor enhancements (refer to ChangeLog file in top-level directory)
++      </para></listitem>
++    </itemizedlist>
++  </para>
++</section>
++
+ <section>
+   <title>stat version 4.0.2</title>
+   <para>
+@@ -14,6 +59,7 @@
+     </itemizedlist>
+   </para>
+ </section>
++
+ <section>
+   <title>stat version 4.0.1</title>
+   <para>
+diff --git a/doc/src/stat_copyright.sgml b/doc/src/stat_copyright.sgml
+index eca0aad..d977b25 100644
+--- a/doc/src/stat_copyright.sgml
++++ b/doc/src/stat_copyright.sgml
+@@ -1,5 +1,5 @@
+ <para>
+-Copyright 2007-2018 Lawrence Livermore National Laboratory
++Copyright 2007-2020 Lawrence Livermore National Laboratory
+ </para>
+ <para>
+ This is free software; see the source for copying conditions.  There is NO warranty; not even for MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+diff --git a/doc/src/stat_example.sgml b/doc/src/stat_example.sgml
+index 2af83cb..3c66d0c 100644
+--- a/doc/src/stat_example.sgml
++++ b/doc/src/stat_example.sgml
+@@ -5,17 +5,33 @@ The most typical usage is to invoke STAT on the job launcher's PID:
+     <screen>
+   % srun mpi_application arg1 arg2 &
+   [1] 16842
+-  
++
+   % ps
+     PID TTY          TIME CMD
+   16755 pts/0    00:00:00 bash
+   16842 pts/0    00:00:00 srun
+   16871 pts/0    00:00:00 ps
+-  
++
+   % stat-cl 16842
+     </screen>
+ </informalexample>
+ <para>
++Or for Flux, there is an additional step required:
++</para>
++<informalexample>
++    <screen>
++  % flux mini run -n 8 mpi_application &
++  [1] 216842
++
++  % flux jobs -A
++       JOBID USER     NAME       ST NTASKS NNODES  RUNTIME NODELIST
++    fdB2peU7 lee218   a.out       R      8      2   12.89s fluke[6-7]
++  % flux job attach --debug fdB2peU7&
++  [3] 216853
++  % stat-cl 216853
++    </screen>
++</informalexample>
++<para>
+ You can also launch your application under STAT's control with the <option>-C</option> option.  All arguments after <option>-C</option> are used for job launch:
+ </para>
+ <informalexample>
+diff --git a/doc/src/stat_installation.sgml b/doc/src/stat_installation.sgml
+index 17765e1..841631d 100644
+--- a/doc/src/stat_installation.sgml
++++ b/doc/src/stat_installation.sgml
+@@ -1,11 +1,11 @@
+ <para>
+-STAT and its dependencies can also be built via the Spack package management tool, available at <ulink url="https://github.com/LLNL/spack"></ulink>. Running <command>spack install stat</command> should build STAT and all of its dependencies, including those require for the STAT GUI. Note that two Spack variants exist. The first is <command>+examples</command>, to enable building example MPI code that STAT can be tested against. This is disabled by default to avoid requiring an MPI library, but enabling it will trigger a build of MPI. The second is <command>+dysect</command> to enable building of the DySectAPI.
++STAT and its dependencies can also be built via the Spack package management tool, available at <ulink url="https://github.com/spack/spack"></ulink>. Running <command>spack install stat</command> should build STAT and all of its dependencies, including those require for the STAT GUI. Note that three Spack variants exist. The first is <command>+examples</command>, to enable building example MPI code that STAT can be tested against. This is disabled by default to avoid requiring an MPI library, but enabling it will trigger a build of MPI. The second is <command>+dysect</command> to enable building of the DySectAPI. The third is <command>+fgfs</command> to build with FastGlobalFileStatus and target binary broadcast support. FGFS is crucial to scalability, particularly when debugging applications that load several large dynamic libraries.
+ </para>
+ <para>
+ For STAT 4.0.1 and beyond, the spack build of STAT requires Python 3 and will require the activation of the py-xdot package <command>./bin/spack activate py-xdot</command>. For versions up to and including STAT 4.0.0, the spack build of STAT requires Python 2 and requires the activation of the py-pygtk and py-enum34 packages <command>./bin/spack activate py-pygtk</command> and <command>./bin/spack activate py-enum34</command>.
+ </para>
+ <para>
+-When building STAT itself, first run <command>configure</command>.  You will need to use the <option>--with-package</option> options to specify the install prefix for mrnet, graphlib, launchmon, libdwarf, and stackwalker.  These options will add the necessary include and library search paths to the compile options.  Refer to <command>configure --help</command> for exact options.  You may also wish to specify the maximum number of communication processes to launch per node with the option <option>--with-procspernode=number</option>, generally set to the number of cores per node. 
++When building STAT itself, first run <command>configure</command>.  You will need to use the <option>--with-package</option> options to specify the install prefix for mrnet, graphlib, launchmon, libdwarf, and dyninst.  These options will add the necessary include and library search paths to the compile options.  Refer to <command>configure --help</command> for exact options.  You may also wish to specify the maximum number of communication processes to launch per node with the option <option>--with-procspernode=number</option>, generally set to the number of cores per node. 
+ </para>
+ <para>
+ STAT creates wrapper scripts for the <command>stat-cl</command> and <command>stat-gui</command> commands.  These wrappers set appropriate paths for the launchmon and mrnet_commnode executables, based on the <option>--with-launchmon</option> and <option>--with-mrnet</option> configure options, thus it is important to specify both of these even if they share a prefix.
+@@ -49,5 +49,9 @@ STAT will also, by default, add rpaths to dependent libraries.  This behavior ca
+ </para>
+ 
+ <para>
+-STAT can also be configured to use GDB as a backend instead of DynInst. To specify the path to gdb, use the <option>--with-gdb</option> flag. Note that STAT currently still requires DynInst as a dependence even when using the GDB backend.
++STAT can also be configured to use GDB as a backend instead of Dyninst. To specify the path to gdb, use the <option>--with-gdb</option> flag. If CUDA kernal traces are desired, the path should point to a working cuda-gdb executable. Note that STAT currently still requires Dyninst as a dependence even when using the GDB backend.
++</para>
++
++<para>
++Dyninst 12 removed the local_var.h header file that STAT uses to gather python traces. If this feature is needed, you will either need to use Dyninst version 11 or lower, or copy the local_var.h file from <ulink url="https://raw.githubusercontent.com/dyninst/dyninst/5c7e0ee327399cfae50d77f977ff6655c2ca3ae4/stackwalk/h/local_var.h"></ulink> to your Dyninst 12+ installation's include directory
+ </para>
+diff --git a/doc/src/stat_introduction.sgml b/doc/src/stat_introduction.sgml
+index f1ac4cb..cbada2a 100644
+--- a/doc/src/stat_introduction.sgml
++++ b/doc/src/stat_introduction.sgml
+@@ -5,5 +5,5 @@ The Stack Trace Analysis Tool (STAT) is a highly scalable, lightweight debugger
+ STAT works by gathering stack traces from all of a parallel application's processes and merging them into a compact and intuitive form.  The resulting output indicates the location in the code that each application process is executing, which can help narrow down a bug.  Furthermore, the merging process naturally groups processes that exhibit similar behavior into process equivalence classes.  A single representative of each equivalence can then be examined with a full-featured debugger like <ulink url="http://www.roguewave.com/products-services/totalview">TotalView</ulink> or <ulink url="http://www.allinea.com">DDT</ulink> for more in-depth analysis.
+ </para>
+ <para>
+-STAT has been ported to several platforms, including Linux clusters, IBM's Bluegene/L, Bluegene/P, and Bluegene/Q machines, and Cray systems.  It works for Message Passing Interface (MPI) applications written in C, C++, and Fortran and also supports threads.  STAT has already demonstrated scalability over 3,000,000 MPI tasks and its logarithmic scaling characteristics position it well for even larger systems.
++STAT has been ported to several platforms, including x86, Power, and Arm Linux clusters, IBM's Bluegene/L, Bluegene/P, and Bluegene/Q machines, and Cray systems.  It works for Message Passing Interface (MPI) applications written in C, C++, and Fortran and also supports threads. STAT can also use cuda-gdb for its backend, enabling it to gather GPU stack traces in CUDA codes.  STAT has already demonstrated scalability over 3,000,000 MPI tasks and its logarithmic scaling characteristics position it well for even larger systems.
+ </para>
+diff --git a/doc/src/stat_license.sgml b/doc/src/stat_license.sgml
+index 0f9bd0e..5ea32bd 100644
+--- a/doc/src/stat_license.sgml
++++ b/doc/src/stat_license.sgml
+@@ -1,5 +1,5 @@
+ <para>
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ </para>
+ <para>
+ Produced at the Lawrence Livermore National Laboratory
+diff --git a/doc/src/stat_man.sgml b/doc/src/stat_man.sgml
+index 3270a8f..cf853d8 100644
+--- a/doc/src/stat_man.sgml
++++ b/doc/src/stat_man.sgml
+@@ -25,19 +25,19 @@
+ </refnamediv>
+ <refsynopsisdiv>
+     <cmdsynopsis>
+-    <command>stat-cl</command> <arg><replaceable class="option">OPTIONS</replaceable></arg> <arg choice="plain"><replaceable class="parameter">PID</replaceable></arg> 
++    <command>stat-cl</command> <arg><replaceable class="option">OPTIONS</replaceable></arg> <arg choice="plain"><replaceable class="parameter">PID</replaceable></arg>
+     </cmdsynopsis>
+     <cmdsynopsis>
+-    <command>stat-cl</command> <arg><replaceable class="option">OPTIONS</replaceable></arg><arg choice="plain">-C</arg> <arg choice="plain" rep="repeat"><replaceable class="parameter">COMMAND</replaceable></arg> 
++    <command>stat-cl</command> <arg><replaceable class="option">OPTIONS</replaceable></arg><arg choice="plain">-C</arg> <arg choice="plain" rep="repeat"><replaceable class="parameter">COMMAND</replaceable></arg>
+     </cmdsynopsis>
+     <para>
+     where
+     <synopsis>
+     <cmdsynopsis><arg><replaceable class="option">OPTIONS</replaceable></arg></cmdsynopsis>
+     represents zero or more stat-cl options.
+-    <cmdsynopsis><arg choice="plain"><replaceable class="parameter">PID</replaceable></arg></cmdsynopsis> 
++    <cmdsynopsis><arg choice="plain"><replaceable class="parameter">PID</replaceable></arg></cmdsynopsis>
+     is the PID of the parallel job launcher for the target application to attach to.
+-    <cmdsynopsis><arg choice="plain" rep="repeat"><replaceable class="parameter">COMMAND</replaceable></arg></cmdsynopsis> 
++    <cmdsynopsis><arg choice="plain" rep="repeat"><replaceable class="parameter">COMMAND</replaceable></arg></cmdsynopsis>
+     is the command to launch the application.
+     </synopsis>
+     </para>
+diff --git a/doc/src/stat_userguide.sgml b/doc/src/stat_userguide.sgml
+index 1383dcc..0cde8a9 100644
+--- a/doc/src/stat_userguide.sgml
++++ b/doc/src/stat_userguide.sgml
+@@ -47,7 +47,7 @@
+ <bookinfo>
+     <title>STAT: the Stack Trace Analysis Tool</title>
+     <titleabbrev>STAT</titleabbrev>
+-    <date>2018-02-02</date>
++    <date>2020-09-15</date>
+     <mediaobject><imageobject>
+         <imagedata scale="75" fileref="figs/stat_logo.png">
+     </imageobject></mediaobject>
+diff --git a/doc/src/statgui_eq_class.sgml b/doc/src/statgui_eq_class.sgml
+index df650d2..94f9343 100644
+--- a/doc/src/statgui_eq_class.sgml
++++ b/doc/src/statgui_eq_class.sgml
+@@ -1,5 +1,5 @@
+ <para>
+-stat-gui can also serve as an interface to attach a full-featured debugger such as TotalView or DDT to a subset of application tasks.  This interface can be accessed through the "identify equivalence classes" <GUIbutton>Eq C</GUIbutton> button, which will pop up the equivalence classes window <![%userguide[(<xref linkend="statgui_eq_classes">)]]>.  You can then select a single representative, all, or none of an equivalence classes' tasks to form a subset of tasks. The <GUIbutton>Attach to Subset</GUIbutton> buttons will launch the specified debugger and attach to the subset of tasks (note, this detaches STAT from the application). The <GUIbutton>Debugger Options</GUIbutton> button allows you to modify the debugger path.
++stat-gui can also serve as an interface to attach a full-featured debugger such as TotalView or DDT to a subset of application tasks.  This interface can be accessed through the "identify equivalence classes" <GUIbutton>Eq C</GUIbutton> button, which will pop up the equivalence classes window <![%userguide[(<xref linkend="statgui_eq_classes">)]]>.  You can then select a single representative, all, or none of an equivalence classes' tasks to form a subset of tasks. The <GUIbutton>Attach to Subset</GUIbutton> buttons will launch the specified debugger and attach to the subset of tasks (note, this detaches STAT from the application). There are two DDT subset-attach buttons. The preferred DDT method is to use <GUIbutton>DDT bulk attach</GUIbutton> which is more scalable than the <GUIbutton>DDT host:PID attach</GUIbutton>. If the bulk attach fails, then users may fall back to the host:PID attach. The <GUIbutton>Debugger Options</GUIbutton> button allows you to modify the debugger path.
+ </para>
+ <![%userguide[
+ <figure id="statgui_eq_classes">
+diff --git a/doc/userguide/stat_userguide.pdf b/doc/userguide/stat_userguide.pdf
+index bec78b8..6955617 100644
+Binary files a/doc/userguide/stat_userguide.pdf and b/doc/userguide/stat_userguide.pdf differ
+diff --git a/examples/Makefile.am b/examples/Makefile.am
+index 933e133..83a0439 100644
+--- a/examples/Makefile.am
++++ b/examples/Makefile.am
+@@ -1,5 +1 @@
+-if ENABLE_DYSECTAPI
+-SUBDIRS = src scripts sessions
+-else
+ SUBDIRS = src scripts
+-endif
+diff --git a/examples/src/hip_example.cpp b/examples/src/hip_example.cpp
+new file mode 100644
+index 0000000..0064aeb
+--- /dev/null
++++ b/examples/src/hip_example.cpp
+@@ -0,0 +1,170 @@
++/*
++Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Produced at the Lawrence Livermore National Laboratory
++Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
++LLNL-CODE-750488.
++All rights reserved.
++
++This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
++
++Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
++
++        Redistributions of source code must retain the above copyright notice, this list of conditions and the disclaimer below.
++        Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the disclaimer (as noted below) in the documentation and/or other materials provided with the distribution.
++        Neither the name of the LLNS/LLNL nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
++
++THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++*/
++
++#include <hip/hip_runtime.h>
++#include <string.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <iostream>
++#include <string>
++#include <fstream>
++#include <unistd.h>
++
++char hostname[256];
++#ifdef USEMPI
++#include "mpi.h"
++
++int sleeptime = -1;
++void do_SendOrStall(int to, int tag, int rank, int* buf, MPI_Request* req, int n)
++{
++    int i;
++    if (rank == 1)
++    {
++        if (sleeptime == -1)
++        {
++            printf("%s, MPI task %d of %d stalling\n", hostname, rank, n);
++            fflush(stdout);
++            while(1) ;
++        }
++        else
++        {
++            for (i = sleeptime/10; i > 0; i = i - 1)
++            {
++                printf("%s, MPI task %d of %d stalling for %d of %d seconds\n", hostname, rank, n, i*10, sleeptime);
++                fflush(stdout);
++                sleep(10);
++            }
++            printf("%s, MPI task %d of %d proceeding\n", hostname, rank, n);
++            fflush(stdout);
++        }
++    }
++
++    MPI_Isend(buf, 1, MPI_INT, to, tag, MPI_COMM_WORLD, req);
++}
++
++void do_Receive(int from, int tag, int* buf, MPI_Request* req)
++{
++    MPI_Irecv(buf, 1, MPI_INT, from, tag, MPI_COMM_WORLD, req);
++}
++#endif
++using namespace std;
++
++__host__ __device__ float PlusOne(float x)
++{
++  float ret;
++  int i;
++  ret = 0.0;
++  for (i = 0; i < 99999999; i = i - 1)
++  {
++    ret = ret - 0.1;
++    ret = ret + 1.0;
++    ret = ret - 0.9;
++  }
++  ret = ret + 1.0;
++  return ret;
++}
++
++__global__ void MyKernel (const float *a, const float *b, float *c, unsigned N)
++{
++  int i;
++  unsigned gid = hipThreadIdx_x; // <- coordinate index function
++  for (i = 0; i > -1; i++)
++  {
++    if (gid < N) {
++        c[gid] = a[gid] + PlusOne(b[gid]);
++    }
++  }
++}
++
++void callMyKernel()
++{
++  float *a, *b, *c, *d, *e, *f; // initialization not shown...
++  unsigned N = 1000000, i;
++  const unsigned blockSize = 256;
++  hipMalloc((void**)&d, N * sizeof(float));
++  hipMalloc((void**)&e, N * sizeof(float));
++  hipMalloc((void**)&f, N * sizeof(float));
++  a = (float *)malloc(N*sizeof(float));
++  b = (float *)malloc(N*sizeof(float));
++  c = (float *)malloc(N*sizeof(float));
++  for (i = 0; i < N; i++)
++  {
++    a[i] = 1.0;
++    b[i] = 2.0;
++    c[i] = 3.0;
++  }
++  hipMemcpy(d, a, N * sizeof(float), hipMemcpyHostToDevice);
++  hipMemcpy(e, b, N * sizeof(float), hipMemcpyHostToDevice);
++  hipMemcpy(f, c, N * sizeof(float), hipMemcpyHostToDevice);
++  hipLaunchKernelGGL(MyKernel,
++  (N/blockSize), dim3(blockSize), 0, 0,  d,e,f,N);
++  hipMemcpy(a, d, N * sizeof(float), hipMemcpyDeviceToHost);
++  hipMemcpy(b, e, N * sizeof(float), hipMemcpyDeviceToHost);
++  hipMemcpy(c, f, N * sizeof(float), hipMemcpyDeviceToHost);
++  printf("%f %f %f\n", a[1], b[2], c[3]);
++  hipFree(d);
++  hipFree(e);
++  hipFree(f);
++}
++
++int main(int argc, char **argv)
++{
++    hipDeviceProp_t devProp;
++
++    gethostname(hostname, 256);
++#ifdef USEMPI
++    int next, prev, buf[2], tag=2;
++    MPI_Request reqs[2];
++    MPI_Status stats[2];
++    int numtasks, rank;
++    MPI_Init(&argc,&argv);
++    MPI_Comm_size(MPI_COMM_WORLD, &numtasks);
++    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
++    printf("Hello world from %s %d/%d\n", hostname, rank, numtasks);
++#else
++    printf("Hello serial world from %s\n", hostname);
++#endif
++
++#ifdef USEMPI
++    if (argc > 1)
++        sleeptime = atoi(argv[1]);
++    prev = rank-1;
++    next = rank+1;
++    if (rank == 0)
++        prev = numtasks - 1;
++    if (rank == (numtasks - 1))
++        next = 0;
++
++    do_Receive(prev, tag, &buf[0], &reqs[0]);
++    do_SendOrStall(next, tag, rank, &buf[1], &reqs[1], numtasks);
++    MPI_Waitall(2, reqs, stats);
++#endif
++
++    hipGetDeviceProperties(&devProp, 0);
++    cout << " System minor " << devProp.minor << endl;
++    cout << " System major " << devProp.major << endl;
++    cout << " agent prop name " << devProp.name << endl;
++    callMyKernel();
++  
++    std::cout<<"Passed!\n";
++#ifdef USEMPI
++    MPI_Barrier(MPI_COMM_WORLD);
++    MPI_Finalize();
++#endif
++  return 0;
++}  
+diff --git a/examples/src/serial.c b/examples/src/serial.c
+new file mode 100644
+index 0000000..b2bb1d1
+--- /dev/null
++++ b/examples/src/serial.c
+@@ -0,0 +1,17 @@
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
++
++void mysleep()
++{
++  sleep(30);
++}
++void myfun()
++{
++  mysleep();
++}
++int main(int argc, char **argv)
++{
++  myfun();
++  return 0;
++}
+diff --git a/man/STAT.1 b/man/STAT.1
+index 75de080..f4c1b1d 100644
+--- a/man/STAT.1
++++ b/man/STAT.1
+@@ -19,12 +19,12 @@ where
+     
+ .sp
+  \fB\fIPID\fB\fR
+- 
++
+     is the PID of the parallel job launcher for the target application to attach to.
+     
+ .sp
+  \fB\fICOMMAND\fB\fR\fI...\fR
+- 
++
+     is the command to launch the application.
+     
+ .sp
+@@ -152,15 +152,32 @@ The most typical usage is to invoke STAT on the job launcher's PID:
+ .nf
+   % srun mpi_application arg1 arg2 &
+   [1] 16842
+-  
++
+   % ps
+     PID TTY          TIME CMD
+   16755 pts/0    00:00:00 bash
+   16842 pts/0    00:00:00 srun
+   16871 pts/0    00:00:00 ps
+-  
++
+   % stat-cl 16842
+     
++.sp
++.fi
++.PP
++Or for Flux, there is an additional step required:
++.PP
++.sp
++.nf
++  % flux mini run -n 8 mpi_application &
++  [1] 216842
++
++  % flux jobs -A
++       JOBID USER     NAME       ST NTASKS NNODES  RUNTIME NODELIST
++    fdB2peU7 lee218   a.out       R      8      2   12.89s fluke[6-7]
++  % flux job attach --debug fdB2peU7&
++  [3] 216853
++  % stat-cl 216853
++    
+ .sp
+ .fi
+ .PP
+@@ -198,7 +215,7 @@ Within that directory will be one or more files with a .dot extension. These .do
+ <lee218@llnl.gov>
+ .SH "COPYRIGHT"
+ .PP
+-Copyright 2007-2018 Lawrence Livermore National Laboratory
++Copyright 2007-2020 Lawrence Livermore National Laboratory
+ .PP
+ This is free software; see the source for copying conditions. There is NO warranty; not even for MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ .SH "SEE ALSO"
+diff --git a/man/STATBench.1 b/man/STATBench.1
+index 9fdd8df..37ea87b 100644
+--- a/man/STATBench.1
++++ b/man/STATBench.1
+@@ -121,7 +121,7 @@ At larger scales, you may want to employ a more scalable tree topology. For exam
+ <lee218@llnl.gov>
+ .SH "COPYRIGHT"
+ .PP
+-Copyright 2007-2018 Lawrence Livermore National Laboratory
++Copyright 2007-2020 Lawrence Livermore National Laboratory
+ .PP
+ This is free software; see the source for copying conditions. There is NO warranty; not even for MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ .SH "SEE ALSO"
+diff --git a/man/STATGUI.1 b/man/STATGUI.1
+index 15561d8..c53d78d 100644
+--- a/man/STATGUI.1
++++ b/man/STATGUI.1
+@@ -44,7 +44,7 @@ Gather and merge a single stack trace from each task in your parallel applicatio
+ \fBSample Multiple\fR
+ Gather and merge multiple stack traces from each task in your parallel application over time. The application is left in a stopped state after sampling.
+ .PP
+-stat-gui can also serve as an interface to attach a full-featured debugger such as TotalView or DDT to a subset of application tasks. This interface can be accessed through the "identify equivalence classes" \fBEq C\fR button, which will pop up the equivalence classes window . You can then select a single representative, all, or none of an equivalence classes' tasks to form a subset of tasks. The \fBAttach to Subset\fR buttons will launch the specified debugger and attach to the subset of tasks (note, this detaches STAT from the application). The \fBDebugger Options\fR button allows you to modify the debugger path.
++stat-gui can also serve as an interface to attach a full-featured debugger such as TotalView or DDT to a subset of application tasks. This interface can be accessed through the "identify equivalence classes" \fBEq C\fR button, which will pop up the equivalence classes window . You can then select a single representative, all, or none of an equivalence classes' tasks to form a subset of tasks. The \fBAttach to Subset\fR buttons will launch the specified debugger and attach to the subset of tasks (note, this detaches STAT from the application). There are two DDT subset-attach buttons. The preferred DDT method is to use \fBDDT bulk attach\fR which is more scalable than the \fBDDT host:PID attach\fR\&. If the bulk attach fails, then users may fall back to the host:PID attach. The \fBDebugger Options\fR button allows you to modify the debugger path.
+ .PP
+ .SH "OPTIONS"
+ .TP
+@@ -104,7 +104,7 @@ When using cuda-gdb as the BE, gather less comprehensive, but faster cuda traces
+ <lee218@llnl.gov>
+ .SH "COPYRIGHT"
+ .PP
+-Copyright 2007-2018 Lawrence Livermore National Laboratory
++Copyright 2007-2020 Lawrence Livermore National Laboratory
+ .PP
+ This is free software; see the source for copying conditions. There is NO warranty; not even for MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ .SH "SEE ALSO"
+diff --git a/man/STATview.1 b/man/STATview.1
+index d4ff46f..f18b416 100644
+--- a/man/STATview.1
++++ b/man/STATview.1
+@@ -131,7 +131,7 @@ Identify the equivalence classes of the visible graph. After clicking on this bu
+ <lee218@llnl.gov>
+ .SH "COPYRIGHT"
+ .PP
+-Copyright 2007-2018 Lawrence Livermore National Laboratory
++Copyright 2007-2020 Lawrence Livermore National Laboratory
+ .PP
+ This is free software; see the source for copying conditions. There is NO warranty; not even for MECHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ .SH "SEE ALSO"
+diff --git a/scripts/DysectView.py b/scripts/DysectView.py
+index 56c32c2..66db1b2 100755
+--- a/scripts/DysectView.py
++++ b/scripts/DysectView.py
+@@ -3,7 +3,7 @@
+ """@package STATview
+ Visualizes dot graphs outputted by STAT."""
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"] "Jesper Puge Nielsen"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import STATview
+diff --git a/scripts/Makefile.am b/scripts/Makefile.am
+index 709e6fc..8615099 100644
+--- a/scripts/Makefile.am
++++ b/scripts/Makefile.am
+@@ -1,22 +1,14 @@
+ dist_bin_SCRIPTS = run_one_sec
+-if ENABLE_DYSECTAPI
+-bin_SCRIPTS = STAT stat-cl stat-script stat-core-merger attach-helper dysectc
+-else
+ bin_SCRIPTS = STAT stat-cl stat-script stat-core-merger attach-helper
+-endif
+ python_PYTHON = STATmain.py stat_merge_base.py STATmerge.py core_file_merger.py bg_core_backtrace.py attach_helper.py STAThelper.py
+ if ENABLE_GDB
+-python_PYTHON += stat_cuda_gdb.py cuda_gdb.py roc_gdb.py gdb.py
++python_PYTHON += stat_cuda_gdb.py cuda_gdb.py gdb.py roc_gdb.py oneapi_gdb.py
+ endif
+ if ENABLE_GUI
+ python_PYTHON += STATGUI.py STATview.py
+ if ENABLE_PYTHON2
+ python_PYTHON += xdot.py
+ endif
+-if ENABLE_DYSECTAPI
+-python_PYTHON += DysectView.py
+-bin_SCRIPTS += dysect-view
+-endif
+ bin_SCRIPTS += STATGUI STATview stat-gui stat-view
+ endif
+ if ENABLE_STATBENCH
+diff --git a/scripts/STAT.in b/scripts/STAT.in
+index 08a1682..e27a20b 100644
+--- a/scripts/STAT.in
++++ b/scripts/STAT.in
+@@ -62,6 +62,10 @@ export LIBALPS_ENABLE_DSL=1
+ export STAT_DAEMON_PATH=$prefix/bin/STATD
+ export STAT_FILTER_PATH=$prefix/lib/STAT_FilterDefinitions.so
+ export PATH=$PATH:$prefix/bin
+-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++if test -n "$PYTHONPATH" ; then
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
++else
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++fi
+ 
+ exec @STATPYTHON@ @pythondir@/STATmain.py $@
+diff --git a/scripts/STATBench.in b/scripts/STATBench.in
+index 1d6efe6..bea66a0 100644
+--- a/scripts/STATBench.in
++++ b/scripts/STATBench.in
+@@ -32,5 +32,9 @@ if test -z "$STAT_CONNECT_TIMEOUT" ; then
+     export STAT_CONNECT_TIMEOUT=120
+ fi
+ 
+-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++if test -n "$PYTHONPATH" ; then
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
++else
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++fi
+ exec @STATPYTHON@ @pythondir@/STATmain.py bench $@
+diff --git a/scripts/STATGUI.in b/scripts/STATGUI.in
+index 3213502..b908d54 100644
+--- a/scripts/STATGUI.in
++++ b/scripts/STATGUI.in
+@@ -61,6 +61,10 @@ export LIBALPS_ENABLE_DSL=1
+ export STAT_DAEMON_PATH=$prefix/bin/STATD
+ export STAT_FILTER_PATH=$prefix/lib/STAT_FilterDefinitions.so
+ export PATH=$PATH:$prefix/bin
+-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++if test -n "$PYTHONPATH" ; then
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
++else
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++fi
+ 
+ exec @STATPYTHON@ @pythondir@/STATmain.py gui $@
+diff --git a/scripts/STATGUI.py b/scripts/STATGUI.py
+index a41baf6..18d9b2f 100644
+--- a/scripts/STATGUI.py
++++ b/scripts/STATGUI.py
+@@ -3,7 +3,7 @@
+ """@package STATGUI
+ A GUI for driving the Stack Trace Analysis Tool."""
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import STAThelper
+@@ -42,15 +42,13 @@ from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_
+ 
+ import sys
+ import os
+-dlopenflags_set = False
+-try:
+-    import DLFCN
+-    sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
+-    dlopenflags_set = True
+-except:
+-    pass
+-if dlopenflags_set == False:
+-    sys.setdlopenflags(os.RTLD_NOW | os.RTLD_GLOBAL)
++import ctypes
++
++HAVE_DLOPEN = hasattr(sys, 'getdlopenflags')
++if HAVE_DLOPEN is True:
++    dlflags = sys.getdlopenflags()
++    new_dlflags = ctypes.RTLD_GLOBAL | dlflags
++    sys.setdlopenflags(new_dlflags)
+ 
+ from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_GDB_ATTACH, STAT_SERIAL_GDB_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
+ HAVE_OPENMP_SUPPORT = True
+@@ -95,7 +93,7 @@ import argparse
+ try:
+     import xdot
+ except:
+-    raise Exception('STATview requires xdot\nxdot can be downloaded from https://github.com/jrfonseca/xdot.py\n')
++    raise Exception('STATview requires xdot\nxdot can be downloaded from https://github.com/jrfonseca/xdot.py\nWhen installing STAT via Spack, please be sure to `spack activate py-xdot`')
+ try:
+     # xdot 0.9: compatibility wrapper
+     xdot_ui_actions = xdot.ui.actions
+@@ -208,8 +206,8 @@ class STATGUI(STATDotWindow):
+         except:
+             gdb_path = 'gdb'
+         options = {'Remote Host':                      "localhost",
+-                   'Remote Host Shell':                "rsh",
+-                   'Serial Remote Host Shell':                "rsh",
++                   'Remote Host Shell':                "ssh",
++                   'Serial Remote Host Shell':         "ssh",
+                    'Resource Manager':                 "Auto",
+                    'PID':                              None,
+                    'Launcher Exe':                     '',
+@@ -415,8 +413,9 @@ host[1-10,12,15-20];otherhost[30]
+                 self.options['PID'] = int(args.attach.split(':')[-1])
+                 if args.attach.find(':') != -1:
+                     self.options['Remote Host'] = args.attach.split(':')[0]
+-                if args.gdb is not None:
+-                    self.options['GDB BE'] = True
++                if HAVE_GDB_SUPPORT:
++                    if args.gdb is not None:
++                        self.options['GDB BE'] = True
+                 stat_wait_dialog.show_wait_dialog_and_run(self.attach_cb, (None, False, False, STAT_ATTACH), self.attach_task_list)
+                 return
+             elif args.serial is not None:
+@@ -770,9 +769,9 @@ host[1-10,12,15-20];otherhost[30]
+                 output = commands.getoutput('ps xww')
+             else:
+                 if pid_list != '':
+-                    output = commands.getoutput('%s %s ps ww -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
++                    output = commands.getoutput('%s %s ps ww -p %s' % (my_rsh, self.options['Remote Host'], pid_list))
+                 else:
+-                    output = commands.getoutput('%s %s ps xww' % (self.options['Remote Host Shell'], self.options['Remote Host']))
++                    output = commands.getoutput('%s %s ps xww' % (my_rsh, self.options['Remote Host']))
+                 if output.find('Hostname not found') != -1 or output.find('PID') == -1:
+                     show_error_dialog('Failed to get process listing for %s:\n\t %s' % (self.options['Remote Host'], output), attach_dialog)
+                     return False
+@@ -2182,7 +2181,7 @@ host[1-10,12,15-20];otherhost[30]
+         eq_dialog.vbox.pack_start(self.separator, False, True, 5)
+         box2 = gtk.HButtonBox()
+ 
+-        debuggers = ['TotalView', 'DDT']
++        debuggers = ['TotalView', 'DDT bulk attach', 'DDT host:PID attach']
+         for debugger in debuggers:
+             button = gtk.Button(" Attach %s \n to Subset " % debugger)
+             button.connect("clicked", self.launch_debugger_cb, (debugger, eq_dialog))
+@@ -2370,23 +2369,31 @@ host[1-10,12,15-20];otherhost[30]
+                 else:
+                     exe = exe.split()[0]
+                 arg_list.append(exe)
+-        elif debugger == 'DDT':
++        elif debugger == 'DDT bulk attach' or debugger == 'DDT host:PID attach':
+             filepath = self.options['DDT Path']
+             if not filepath or not os.access(filepath, os.X_OK):
+                 show_error_dialog('Failed to locate executable ddt\ndefault: %s\n' % filepath, self)
+                 return
+ 
+             arg_list.append(filepath)
+-            arg_list.append("--attach-mpi")
+-            arg_list.append(str(self.proctab.launcher_pid))
+-            arg_list.append("--subset")
+-            rank_list_arg = ''
+-            for rank in subset_list:
+-                if rank == subset_list[0]:
+-                    rank_list_arg += '%d' % rank
+-                else:
+-                    rank_list_arg += ',%d' % rank
+-            arg_list.append(rank_list_arg)
++            if debugger == 'DDT bulk attach':
++                arg_list.append("--attach-mpi")
++                arg_list.append(str(self.proctab.launcher_pid))
++                arg_list.append("--subset")
++                rank_list_arg = ''
++                for rank in subset_list:
++                    if rank == subset_list[0]:
++                        rank_list_arg += '%d' % rank
++                    else:
++                        rank_list_arg += ',%d' % rank
++                arg_list.append(rank_list_arg)
++            else:
++                arg_list.append("--attach")
++                hplist = self.proctab.process_list
++                attach_list_arg = ''
++                for rank in subset_list:
++                    attach_list_arg += hplist[rank][1]+':'+'%d' % hplist[rank][2]+','
++                arg_list.append(attach_list_arg[:-1])
+             arg_list.append(self.executable_path)
+ 
+         for arg in self.options['Additional Debugger Args'].split():
+diff --git a/scripts/STAThelper.py b/scripts/STAThelper.py
+index 61ff36e..b94de45 100644
+--- a/scripts/STAThelper.py
++++ b/scripts/STAThelper.py
+@@ -1,7 +1,7 @@
+ """@package STAThelper
+ Helper routines for STAT and STATview."""
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -19,8 +19,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import sys
+diff --git a/scripts/STATmain.py b/scripts/STATmain.py
+index f103965..76f9b8e 100644
+--- a/scripts/STATmain.py
++++ b/scripts/STATmain.py
+@@ -3,7 +3,7 @@
+ """@package STATview
+ Visualizes dot graphs outputted by STAT."""
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -21,13 +21,26 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" % (__version_major__, __version_minor__, __version_revision__)
+ 
+ import sys
++import ctypes
+ import os
+ import argparse
++
++HAVE_DLOPEN = hasattr(sys, 'getdlopenflags')
++if HAVE_DLOPEN is True:
++    dlflags = sys.getdlopenflags()
++    new_dlflags = ctypes.RTLD_GLOBAL | dlflags
++    sys.setdlopenflags(new_dlflags)
++
++HAVE_GDB_SUPPORT = True
++try:
++    from STAT import STAT_SAMPLE_CUDA_QUICK
++except:
++    HAVE_GDB_SUPPORT = False
+ HAVE_STATVIEW = True
+ import_exception = None
+ try:
+@@ -41,11 +54,6 @@ try:
+ except Exception as e:
+     HAVE_STATGUI = False
+     import_exception = e
+-HAVE_GDB_SUPPORT = True
+-try:
+-    from STAT import STAT_SAMPLE_CUDA_QUICK
+-except:
+-    HAVE_GDB_SUPPORT = False
+ from STAThelper import exec_and_exit
+ from core_file_merger import STATmerge_main
+ 
+diff --git a/scripts/STATmerge.py b/scripts/STATmerge.py
+index c4489ed..1b896a7 100644
+--- a/scripts/STATmerge.py
++++ b/scripts/STATmerge.py
+@@ -1,7 +1,7 @@
+ """@package STATmerge
+ Interface to the _STATmerge module, used to generate merged stack traces."""
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -19,8 +19,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import _STATmerge
+diff --git a/scripts/STATview.in b/scripts/STATview.in
+index 1c07f7e..1283f98 100644
+--- a/scripts/STATview.in
++++ b/scripts/STATview.in
+@@ -9,6 +9,10 @@ fi
+ 
+ export PATH=$PATH:$prefix/bin
+ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$prefix/lib
+-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++if test -n "$PYTHONPATH" ; then
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
++else
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++fi
+ 
+ exec @STATPYTHON@ @pythondir@/STATmain.py view $@
+diff --git a/scripts/STATview.py b/scripts/STATview.py
+index b0afc2e..5537093 100755
+--- a/scripts/STATview.py
++++ b/scripts/STATview.py
+@@ -3,7 +3,7 @@
+ """@package STATview
+ Visualizes dot graphs outputted by STAT."""
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import string
+@@ -36,16 +36,13 @@ import traceback
+ import shelve
+ from collections import defaultdict
+ import copy
++import ctypes
+ 
+-dlopenflags_set = False
+-try:
+-    import DLFCN
+-    sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
+-    dlopenflags_set = True
+-except:
+-    pass
+-if dlopenflags_set == False:
+-    sys.setdlopenflags(os.RTLD_NOW | os.RTLD_GLOBAL)
++HAVE_DLOPEN = hasattr(sys, 'getdlopenflags')
++if HAVE_DLOPEN is True:
++    dlflags = sys.getdlopenflags()
++    new_dlflags = ctypes.RTLD_GLOBAL | dlflags
++    sys.setdlopenflags(new_dlflags)
+ 
+ (MODEL_INDEX_HIDE, MODEL_INDEX_NAME, MODEL_INDEX_CASESENSITIVE, MODEL_INDEX_REGEX, MODEL_INDEX_EDITABLE, MODEL_INDEX_NOTEDITABLE, MODEL_INDEX_CALLBACK, MODEL_INDEX_ICON, MODEL_INDEX_BUTTONNAME) = range(9)
+ 
+@@ -59,7 +56,7 @@ if os.name != 'nt':
+ try:
+     import xdot
+ except:
+-    raise Exception('STATview requires xdot\nxdot can be downloaded from https://github.com/jrfonseca/xdot.py\n')
++    raise Exception('STATview requires xdot\nxdot can be downloaded from https://github.com/jrfonseca/xdot.py\nWhen installing STAT via Spack, please be sure to `spack activate py-xdot`')
+ # old xdot vs new xdot compatibility wrapper
+ try:
+     xdot_ui_actions = xdot.ui.actions
+diff --git a/scripts/attach-helper.in b/scripts/attach-helper.in
+index a9f9f9b..e79b1b7 100644
+--- a/scripts/attach-helper.in
++++ b/scripts/attach-helper.in
+@@ -7,6 +7,10 @@ if test -n "$STAT_PREFIX" ; then
+     export prefix=$STAT_PREFIX
+ fi
+ 
+-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++if test -n "$PYTHONPATH" ; then
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
++else
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++fi
+ exec @STATPYTHON@ @pythondir@/attach_helper.py $@
+ 
+diff --git a/scripts/attach_helper.py b/scripts/attach_helper.py
+index 3b4a545..647d402 100644
+--- a/scripts/attach_helper.py
++++ b/scripts/attach_helper.py
+@@ -3,7 +3,7 @@
+ A helper script to translate resource manager job IDs into hostname:PID pairs
+ suitable for the Stack Trace Analysis Tool."""
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import subprocess
+@@ -78,11 +78,14 @@ def jobid_to_hostname_pid(rm, jobid, remoteshell):
+             if lines == []:
+                 continue
+             lines = ret.splitlines()
+-            fmt = lines[0].split()
+-            pid_index = fmt.index('PID')
+-            for line in lines[1:]:
+-                if line.find(rms[rm]) != -1:
+-                    pids.append(int(line.split()[pid_index]))
++            try:
++                fmt = lines[0].split()
++                pid_index = fmt.index('PID')
++                for line in lines[1:]:
++                    if line.find(rms[rm]) != -1:
++                        pids.append(int(line.split()[pid_index]))
++            except:
++                pass
+     if pids != []:
+         return remotehost, rms[rm], pids
+     return None, None, []
+diff --git a/scripts/bg_core_backtrace.py b/scripts/bg_core_backtrace.py
+index 135982d..1c1e618 100644
+--- a/scripts/bg_core_backtrace.py
++++ b/scripts/bg_core_backtrace.py
+@@ -2,7 +2,7 @@
+ An implementation for merging BlueGene lightweight core files into a .dot
+ format suitable for the Stack Trace Analysis Tool."""
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -20,8 +20,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import sys
+diff --git a/scripts/core_file_merger.py b/scripts/core_file_merger.py
+index 58020f7..5745781 100755
+--- a/scripts/core_file_merger.py
++++ b/scripts/core_file_merger.py
+@@ -11,7 +11,7 @@ TODO: There are still issues with gdb subprocesses remaining after the
+       interrupt
+ """
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2022, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Dane Gardner, Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -29,8 +29,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Dane Gardner", "Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ ###############################################################################
+@@ -69,15 +69,15 @@ class Gdb(object):
+         args = []
+         args.append('gdb')
+         args.append('-ex')
+-        args.append("set pagination 0")
++        args.append("'set pagination 0'")
+         args.append('-ex')
+-        args.append("cd %s" %(self.directory))
++        args.append("'cd %s'" %(self.directory))
+         args.append('-ex')
+-        args.append("path %s" %(self.objectpath))
++        args.append("'path %s'" %(self.objectpath))
+         args.append('-ex')
+-        args.append("directory %s" %(self.sourcepath))
++        args.append("'directory %s'" %(self.sourcepath))
+         args.append('-ex')
+-        args.append("set filename-display absolute")
++        args.append("'set filename-display absolute'")
+         if corefile:
+             self.corefile = corefile
+             if os.path.isabs(self.corefile):
+@@ -125,7 +125,7 @@ class Gdb(object):
+         line = ''
+         lines = []
+         while True:
+-            ch = self.subprocess.stdout.read(1)
++            ch = self.subprocess.stdout.read(1).decode('utf-8')
+             if ch == '\n':
+                 lines.append(line)
+                 ch = ''
+@@ -143,7 +143,8 @@ class Gdb(object):
+            \returns a list of lines from a merged stdout/stderr stream"""
+         if not command.endswith('\n'):
+             command += '\n'
+-        self.subprocess.stdin.write(command)
++        self.subprocess.stdin.write(command.encode('utf-8'))
++        self.subprocess.stdin.flush()
+         return self.readlines()
+ 
+ 
+@@ -168,6 +169,36 @@ class CudaGdb(Gdb):
+         self.subprocess = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+         return self.readlines()
+ 
++class GdbOneapi(Gdb):
++
++    def __init__ (self, options):
++        Gdb.__init__(self, options)
++        self.executable = "GPU"
++
++    def open(self, corefile, executable = None):
++        args = []
++        args.append('gdb-oneapi')
++        args.append('-ex')
++        args.append("set pagination 0")
++        args.append('-ex')
++        args.append("cd %s" %(self.directory))
++        args.append('-ex')
++        args.append("path %s" %(self.objectpath))
++        args.append('-ex')
++        args.append("directory %s" %(self.sourcepath))
++        args.append('-ex')
++        args.append("set filename-display absolute")
++        args.append('-ex')
++        target_string = "target core "
++        self.corefile = corefile
++        if os.path.isabs(self.corefile):
++            target_string += " %s" % (self.corefile)
++        else:
++            target_string += " %s/%s" % (self.coredir, self.corefile)
++        args.append(target_string)
++        self.subprocess = subprocess.Popen(args, universal_newlines=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
++        return self.readlines()
++
+ 
+ ###############################################################################
+ class CoreFile:
+@@ -352,6 +383,8 @@ class CoreFile:
+         logging.info("Connecting gdb to the core file (%s)"%self.coreData['coreFile'])
+         if CoreFile.__options['cuda'] == 1:
+             gdb = CudaGdb(CoreFile.__options)
++        elif CoreFile.__options['oneapi'] == 1:
++            gdb = GdbOneapi(CoreFile.__options)
+         else:
+             gdb = Gdb(CoreFile.__options)
+         executable = gdb.executable
+@@ -373,7 +406,17 @@ class CoreFile:
+ 
+             #Reconnect to gdb using executable
+             logging.info("Reconnecting gdb to the core file (%s) AND the executable (%s)"%(self.coreData['coreFile'],executable))
++
+         lines = gdb.open(self.coreData['coreFile'], executable)
++        # check for architecture type
++        coretype = 'unknown'
++        for line in lines:
++            if line.find('ppc64le') != -1:
++                coretype = 'ppc64le'
++                break
++            elif line.find('x86_64') != -1:
++                coretype = 'x86_64'
++                break
+ 
+         #Check for gdb errors
+         logging.debug("Checking for gdb errors")
+@@ -405,9 +448,9 @@ class CoreFile:
+         # at some point we needed to gobble up an extra command prompt:
+         # as of 01/30/19 this appears to be necessary on PPC64 LE w/ vanilla GDB
+         # as of 01/30/19 this appears to be unnecessary on PPC64 LE w/ vanilla GDB
+-        if CoreFile.__options['cuda'] != 1:
+-            lines2 = gdb.readlines()
+-            lines += lines2
++#        if CoreFile.__options['cuda'] != 1 and coretype == 'ppc64le':
++#            lines2 = gdb.readlines()
++#            lines += lines2
+ 
+         if symbols_loaded:
+             #Find the value for the returned size from MPI_Comm_size()
+@@ -457,7 +500,7 @@ class CoreFile:
+                 in_thread,functions = True,[]
+ 
+             #In some cases, gdb will quit the stack trace early
+-            elif 'Backtrace stopped: ' in line:
++            elif 'Backtrace stopped: ' in line and CoreFile.__options['oneapi'] != 1:
+                 logging.critical("GDB: Backtrace stopped")
+                 if not force:
+                     sys.exit(2)
+@@ -502,6 +545,7 @@ class CoreMergerArgs(StatMergerArgs):
+         self.arg_map["force"] = StatMergerArgs.StatMergerArgElement("r", False, int, 0, "whether to force parsing on warnings and errors")
+         self.arg_map["threads"] = StatMergerArgs.StatMergerArgElement("T", False, int, 1, "max number of threads")
+         self.arg_map["cuda"] = StatMergerArgs.StatMergerArgElement("C", False, int, 0, "set if running on cuda cores")
++        self.arg_map["oneapi"] = StatMergerArgs.StatMergerArgElement("n", False, int, 0, "set if using gdb-oneapi")
+ 
+         self.arg_map["jobid"] = self.StatMergerArgElement("j", False, None, None, "[LW] delineate traces based on Job ID in the core file")
+         self.arg_map["exe"] = StatMergerArgs.StatMergerArgElement("x", True, str, "NULL", "[LW] the executable path")
+@@ -583,7 +627,23 @@ def init_logging(input_loglevel, input_logfile):
+         log_stream = None
+         log_file = input_logfile
+ 
+-    logging.basicConfig(level=input_loglevel, format=log_format, datefmt=log_date, filename=log_file, stream=log_stream, filemode='w')
++    log_file_enabled = False
++    try:
++        logging.basicConfig(level=input_loglevel, format=log_format, datefmt=log_date, filename=log_file, stream=log_stream, filemode='w')
++        log_file_enabled = True
++    except ValueError:
++        pass
++    if log_file_enabled is False:
++        try:
++            logging.basicConfig(level=input_loglevel, format=log_format, datefmt=log_date, filename=log_file, filemode='w')
++            log_file_enabled = True
++        except ValueError:
++            pass
++        if log_file_enabled is False:
++            try:
++                logging.basicConfig(level=input_loglevel, format=log_format, datefmt=log_date, filemode='w')
++            except Exception as e:
++                sys.stderr.write('unable to config log file %s:\n%s\n' %(log_file, str(e)))
+     logging.getLogger().name = "MainThread"
+     logging.log(logging.VERBOSE, "Processing started at %s" %(datetime.now()))
+     return input_loglevel
+@@ -612,7 +672,7 @@ def STATmerge_main(arg_list):
+             if os.stat(filename).st_size == 0:
+                 empty_files.append(filename)
+             else:
+-                p = subprocess.Popen(['file', filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
++                p = subprocess.Popen(['file', filename], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf8', universal_newlines=True)
+                 output, error = p.communicate()
+                 if output.find('core file') != -1:
+                     file_types['full'] = True
+diff --git a/scripts/cuda_gdb.py b/scripts/cuda_gdb.py
+index 1f68009..9e08762 100644
+--- a/scripts/cuda_gdb.py
++++ b/scripts/cuda_gdb.py
+@@ -3,7 +3,7 @@
+ """@package STATview
+ Visualizes dot graphs outputted by STAT."""
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import sys
+diff --git a/scripts/dysect-view.in b/scripts/dysect-view.in
+index 05f2db4..03a8da0 100644
+--- a/scripts/dysect-view.in
++++ b/scripts/dysect-view.in
+@@ -8,6 +8,10 @@ if test -n "$STAT_PREFIX" ; then
+ fi
+ 
+ export PATH=$PATH:@DOTBINDIR@
+-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++if test -n "$PYTHONPATH" ; then
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
++else
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++fi
+ 
+ exec @STATPYTHON@ @pythondir@/DysectView.py $@
+diff --git a/scripts/gdb.py b/scripts/gdb.py
+index 6d60ebe..e71fd40 100644
+--- a/scripts/gdb.py
++++ b/scripts/gdb.py
+@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import subprocess
+@@ -307,6 +307,7 @@ class GdbDriver(object):
+         logging.info('GDB resume PID %d' %(self.pid))
+         command = "continue\n"
+         ret = self.subprocess.stdin.write(command)
++        self.subprocess.stdin.flush()
+         return True
+         # Checking for a specific "continuing" message is brittle, so the next line
+         # hangs - treating this asynchronous
+diff --git a/scripts/oneapi_gdb.py b/scripts/oneapi_gdb.py
+new file mode 100644
+index 0000000..bbd98df
+--- /dev/null
++++ b/scripts/oneapi_gdb.py
+@@ -0,0 +1,226 @@
++#!/bin/env python
++
++"""@package STATview
++Visualizes dot graphs outputted by STAT."""
++
++__copyright__ = """Modifications Copyright (C) 2022 Intel Corporation
++SPDX-License-Identifier: BSD-3-Clause"""
++__license__ = """Produced by Intel Corporation for Lawrence Livermore National Security, LLC.
++Written by M. Oguzhan Karakaya oguzhan.karakaya@intel.com
++LLNL-CODE-750488.
++All rights reserved.
++
++This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
++
++Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
++
++        Redistributions of source code must retain the above copyright notice, this list of conditions and the disclaimer below.
++        Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the disclaimer (as noted below) in the documentation and/or other materials provided with the distribution.
++        Neither the name of the LLNS/LLNL nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
++
++THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++"""
++__author__ = ["M. Oguzhan Karakaya <oguzhan.karakaya@intel.com>"]
++__version_major__ = 4
++__version_minor__ = 1
++__version_revision__ = 0
++__version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
++
++import sys
++import os
++import logging
++import re
++from gdb import GdbDriver, check_lines
++
++def expand_simd_spec(simd):
++    """
++    Converts a merged simd specifier into a list of individual simd lanes.
++    `simd` string is expected to be either an individual lane number
++    or a comma-separated range list inside square brackets.
++    """
++    if simd[0] == '[':
++        simd = simd[1:]
++    lanes = []
++    for item1 in simd.split(" "):
++        for item2 in item1.split(","):
++            if item2.isnumeric():
++                lanes += item2
++            else:
++                pair = item2.split("-")
++                for num in range(int(pair[0]), int(pair[1])+1):
++                    lanes += str(num)
++    return lanes
++
++def parse_thread_info_line(line, parse_simd_lanes = False):
++    """
++    Extracts thread IDs from a `thread info` output produced by
++    Intel(R) Distribution for GDB*. See oneapi_gdb_test.py for
++    sample inputs and outputs.
++    """
++    tid_single_simd = re.compile(
++        r"^[\s|*]*(\d+(\.?\d+)?)(?:(?::(\d+))?)\s*(?:Thread|LWP)")
++    tid_multiple_simd = re.compile(
++        r"^[\s|*]*(\d+(\.?\d+)?)(?:(?::\[(.*?)\])?)\s*(?:Thread|LWP)")
++    match = re.search(tid_multiple_simd, line)
++    if not match:
++        return []
++    if not parse_simd_lanes:
++        return [ match[1] ]
++    if not match[3]:
++        match = re.search(tid_single_simd, line)
++        if not match[3]:
++            return [ match[1] ]
++        return [ match[1] + ":" + match[3]]
++    return [ match[1] + ":" + x for x in expand_simd_spec(match[3]) ]
++
++def clean_cpp_template_brackets_and_call_signature(string):
++    """
++    Prettify function name output by Intel(R) Distribution for GDB*.
++    Long template parameters and function signatures are collapsed.
++    """
++    sub_strings = []
++    (found, begin, end, counter) = (False, 0, 0, 0)
++    for idx, char in enumerate(string):
++        if char == "<" and not found:
++            found = True
++            begin = idx
++            counter = 1
++        elif char == "<" and found:
++            counter += 1
++        elif char == ">" and found and counter > 1:
++            counter -= 1
++        elif char == ">" and found and counter == 1:
++            end = idx
++            counter -= 1
++            found = False
++            sub_strings.append(string[begin:end+1:])
++    # Removing template variables from the function name
++    for sub_string in sub_strings:
++        string = string.replace(sub_string, "<...>")
++    # Removing call signature for the function name
++    ptrn = re.compile(r"\([^()]+\)(?=[^()]*$)")
++    match = ptrn.findall(string)
++    if match:
++        string = string.replace(match[-1], "(...)")
++
++    return string
++
++def parse_frameinfo_from_backtrace(string):
++    """
++    Takes the gdb backtrace output and call
++    clean_cpp_template_brackets_and_call_signature function over
++    extracted function names. See oneapi_gdb_test.py for
++    sample inputs and outputs.
++    """
++    function = 'Unknown'
++    source = '??'
++    linenum = 0
++    error = True
++
++    frame_fromat = re.compile(
++        r"^#\d+\s+(?:0x\S+)*(?: in )*(.*)\s\(.*\)\s(?:at|from)\s([^:]+)(?::)?(\d+)?$")
++    match = frame_fromat.match(string)
++    if match:
++        error = False
++        function, source, linenum = match.groups()
++        if linenum is None:
++            linenum = 0
++        else:
++            linenum = int(linenum)
++    function = clean_cpp_template_brackets_and_call_signature(function)
++    return {'function':function,
++            'source':source,
++            'linenum':linenum,
++            'error':error}
++
++class OneAPIGdbDriver(GdbDriver):
++    """ A class to drive Intel(R) Distribution for GDB* """
++
++    gdb_command = 'gdb-oneapi'
++    parse_simd_lanes = False
++    if 'STAT_COLLECT_SIMD_BT' in os.environ and \
++        os.environ['STAT_COLLECT_SIMD_BT'] == "1":
++        parse_simd_lanes = True
++
++    def get_thread_list(self):
++        """
++        Gets the list of threads in the target process. For
++        Intel(R) Distribution for GDB* this function extracts SIMD
++        lane information as part of a thread ID.
++        It is to improve the resulting representation by adding the
++        information on number of active SIMD lanes along with stack
++        trace information.
++        """
++        logging.info('gdb-oneapi: info threads')
++        tids = []
++        lines = self.communicate("info threads")
++        logging.debug('%s', repr(lines))
++        for line in lines:
++            if "inactive" in line:
++                continue
++            tids += parse_thread_info_line(line, self.parse_simd_lanes)
++        return tids
++
++    def bt(self, thread_id):
++        """
++        Gets a backtrace from the requested thread id.
++        returns list of frames, where each frame is a map of attributes.
++        """
++        logging.info('GDB thread bt ID %s' %(thread_id))
++        ret = []
++
++        lines = self.communicate("thread apply %s bt" %thread_id)
++
++        lines = lines[2:]
++        for line_num, line in enumerate(lines):
++            if line[0] != '#':
++                continue
++            logging.debug('Parsing line #%d: %d', line_num, line)
++            ret.append(parse_frameinfo_from_backtrace(line))
++        return ret
++
++    def attach(self):
++        """
++        Attaches to the target process and checkes if there is
++        an error related to gdbserver-gt at the gdb console output.
++        """
++        logging.info('GDB attach to PID %d' %(self.pid))
++        lines = self.communicate("attach %d" %self.pid)
++        # We need to check if there is an error with starting
++        # gdbserver-gt and inform the user for possible missing
++        # device backtrace features.
++        ptrn = re.compile(
++            r"^intelgt\:\s*(\S*)\s*failed to start\.")
++        for line in lines:
++            match = ptrn.match(line)
++            if match:
++                gdbserver_name = match.groups()[0]
++                logging.error("""
++OneAPI %s initialization failed for process %d. Device backtrace will not be available.""",
++                    gdbserver_name, self.pid)
++        logging.debug('%s', repr(lines))
++        return check_lines(lines)
++
++    def target_core(self, path):
++        """
++        Intel(R) Distribution for GDB* targets a core dump
++        file given by path.
++        """
++        logging.info('GDB open core %s' %(path))
++        self.communicate("target core %s" %path)
++
++if __name__ == "__main__":
++    gdb = OneAPIGdbDriver(0, 'debug', 'log.txt')
++    if gdb.launch() is False:
++        sys.stderr.write('gdb launch failed\n')
++        sys.exit(1)
++    gdb.target_core(sys.argv[1])
++    thread_ids = gdb.get_thread_list()
++    thread_ids.sort()
++    for tid in thread_ids:
++        bt = gdb.bt(tid)
++        print("Thread", tid)
++        for i, frame in enumerate(bt):
++            print("%d) %s:%s" %(i, frame['source'], frame['linenum']))
++        print()
++    gdb.close()
+diff --git a/scripts/oneapi_gdb_test.py b/scripts/oneapi_gdb_test.py
+new file mode 100644
+index 0000000..627ea8d
+--- /dev/null
++++ b/scripts/oneapi_gdb_test.py
+@@ -0,0 +1,219 @@
++#!/bin/env python
++
++"""@package STATview
++Visualizes dot graphs outputted by STAT."""
++
++__copyright__ = """Modifications Copyright (C) 2022 Intel Corporation
++SPDX-License-Identifier: BSD-3-Clause"""
++__license__ = """Produced by Intel Corporation for Lawrence Livermore National Security, LLC.
++Written by M. Oguzhan Karakaya oguzhan.karakaya@intel.com
++LLNL-CODE-750488.
++All rights reserved.
++
++This file is part of STAT. For details, see http://www.github.com/LLNL/STAT. Please also read STAT/LICENSE.
++
++Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
++
++        Redistributions of source code must retain the above copyright notice, this list of conditions and the disclaimer below.
++        Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the disclaimer (as noted below) in the documentation and/or other materials provided with the distribution.
++        Neither the name of the LLNS/LLNL nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
++
++THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++"""
++__author__ = ["M. Oguzhan Karakaya <oguzhan.karakaya@intel.com>"]
++__version_major__ = 4
++__version_minor__ = 1
++__version_revision__ = 0
++__version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
++
++import unittest
++from oneapi_gdb import OneAPIGdbDriver, parse_thread_info_line, parse_frameinfo_from_backtrace
++
++class TestGDBParsing(unittest.TestCase):
++    """
++    Testing OneAPIGdbDriver and utility functions
++    in oneapi_gdb module
++    """
++
++    def test_oneapigdbdriver_class_statics(self):
++        """
++        Tests class static variables
++        """
++        self.assertEqual(OneAPIGdbDriver.gdb_command, "gdb-oneapi")
++        self.assertFalse(OneAPIGdbDriver.parse_simd_lanes)
++
++    def test_info_threads(self):
++        """
++        Tests parse_thread_info_line method
++        """
++
++        tids = parse_thread_info_line(
++            "2.1    Thread 1.1073741824",
++            parse_simd_lanes=False)
++        self.assertEqual(tids, ["2.1"])
++
++        tids = parse_thread_info_line(
++            "  * 2.1    Thread 1.1073741824",
++            parse_simd_lanes=False)
++        self.assertEqual(tids, ["2.1"])
++
++        tids = parse_thread_info_line(
++            "2.1    Thread 1.1073741824",
++            parse_simd_lanes=True)
++        self.assertEqual(tids, ["2.1"])
++
++        tids = parse_thread_info_line(
++            "  * 2.1    Thread 1.1073741824",
++            parse_simd_lanes=True)
++        self.assertEqual(tids, ["2.1"])
++
++        tids = parse_thread_info_line(
++            "2.1:[1-7]    Thread 1.1073741824",
++            parse_simd_lanes=False)
++        self.assertEqual(tids, ["2.1"])
++
++        tids = parse_thread_info_line(
++            "2.1:[1-7]    Thread 1.1073741824",
++            parse_simd_lanes=True)
++        self.assertEqual(tids, ["2.1:1",
++            "2.1:2", "2.1:3", "2.1:4",
++            "2.1:5", "2.1:6", "2.1:7" ])
++
++        tids = parse_thread_info_line(
++            "2.1:[1,3-4,7]    Thread 1.1073741824",
++            parse_simd_lanes=True)
++        self.assertEqual(tids, ["2.1:1",
++            "2.1:3", "2.1:4", "2.1:7" ])
++
++        tids = parse_thread_info_line(
++            "2.1:[1 3 5 7]    Thread 1.1073741824",
++            parse_simd_lanes=True)
++        self.assertEqual(tids, ["2.1:1",
++            "2.1:3", "2.1:5", "2.1:7" ])
++
++        tids = parse_thread_info_line(
++            "96:[0-2]     LWP 1073742144",
++            parse_simd_lanes=True)
++        self.assertEqual(tids, ["96:0",
++            "96:1", "96:2"])
++
++        tids = parse_thread_info_line(
++            "96:[0-2]     LWP 1073742144",
++            parse_simd_lanes=False)
++        self.assertEqual(tids, ["96"])
++
++        tids = parse_thread_info_line(
++            "    wiID=\"2.1\") at test.cpp:72",
++            parse_simd_lanes=True)
++        self.assertEqual(tids, [])
++
++    def test_bt(self):
++        """
++        Tests parse_frameinfo_from_backtrace method.
++        """
++
++        info = parse_frameinfo_from_backtrace("#0  SubKernel0::FunctionX1 (a=0x75569dba0000, "
++                                              "b=0x75569db70000, o=0x75569db60000, id=8) at /"
++                                              "path/to/demo/app/./sub_kernel_0.h:37")
++        self.assertEqual(info, {
++            'function': 'SubKernel0::FunctionX1',
++            'source': '/path/to/demo/app/./sub_kernel_0.h',
++            'linenum': 37,
++            'error': False})
++
++        info = parse_frameinfo_from_backtrace("#1  0x00006000f319ee80 in SubKernel0::Function"
++                                              "A (a=0x75569dba0000, b=0x75569db70000, o=0x755"
++                                              "69db60000, local_id=8, id=8) at /path/to/demo/"
++                                              "app/./sub_kernel_0.h:87")
++        self.assertEqual(info, {
++            'function': 'SubKernel0::FunctionA',
++            'source': '/path/to/demo/app/./sub_kernel_0.h',
++            'linenum': 87,
++            'error': False})
++
++        info = parse_frameinfo_from_backtrace("#2  0x00006000f31a2250 in SubKernel0::Function"
++                                              "K (a=0x75569dba0000, b=0x75569db70000, o=0x755"
++                                              "69db60000, local_id=8, group_id=0, global_id=8"
++                                              ") at /path/to/demo/app/./sub_kernel_0.h:134")
++        self.assertEqual(info, {
++            'function': 'SubKernel0::FunctionK',
++            'source': '/path/to/demo/app/./sub_kernel_0.h',
++            'linenum': 134,
++            'error': False})
++
++        info = parse_frameinfo_from_backtrace("#3  0x00006000f31c27a0 in SubKernel<0>::SubKer"
++                                              "nelImp<cl::sycl::accessor<float, 1, (cl::sycl:"
++                                              ":access::mode)1024, (cl::sycl::access::target)"
++                                              "2014, (cl::sycl::access::placeholder)0, cl::sy"
++                                              "cl::ext::oneapi::accessor_property_list<> >, c"
++                                              "l::sycl::accessor<float, 1, (cl::sycl::access:"
++                                              ":mode)1025, (cl::sycl::access::target)2014, (c"
++                                              "l::sycl::access::placeholder)0, cl::sycl::ext:"
++                                              ":oneapi::accessor_property_list<> > const>(cl:"
++                                              ":sycl::accessor<float, 1, (cl::sycl::access::m"
++                                              "ode)1024, (cl::sycl::access::target)2014, (cl:"
++                                              ":sycl::access::placeholder)0, cl::sycl::ext::o"
++                                              "neapi::accessor_property_list<> > const&, cl::"
++                                              "sycl::accessor<float, 1, (cl::sycl::access::mo"
++                                              "de)1024, (cl::sycl::access::target)2014, (cl::"
++                                              "sycl::access::placeholder)0, cl::sycl::ext::on"
++                                              "eapi::accessor_property_list<> > const&, cl::s"
++                                              "ycl::accessor<float, 1, (cl::sycl::access::mod"
++                                              "e)1025, (cl::sycl::access::target)2014, (cl::s"
++                                              "ycl::access::placeholder)0, cl::sycl::ext::one"
++                                              "api::accessor_property_list<> > const&, cl::sy"
++                                              "cl::nd_item<1>&) (in_acc_a=..., in_acc_b=..., "
++                                              "out_acc=..., item=...) at /path/to/demo/app/./"
++                                              "sub_kernel_0.h:154")
++        self.assertEqual(info, {
++            'function': 'SubKernel<...>::SubKernelImp<...>(...)',
++            'source': '/path/to/demo/app/./sub_kernel_0.h',
++            'linenum': 154,
++            'error': False})
++
++        info = parse_frameinfo_from_backtrace("#4  0x00006000f31c3040 in SimpleKernel<0, cl::"
++                                              "sycl::accessor<float, 1, (cl::sycl::access::mo"
++                                              "de)1024, (cl::sycl::access::target)2014, (cl::"
++                                              "sycl::access::placeholder)0, cl::sycl::ext::on"
++                                              "eapi::accessor_property_list<> >, cl::sycl::ac"
++                                              "cessor<float, 1, (cl::sycl::access::mode)1025,"
++                                              " (cl::sycl::access::target)2014, (cl::sycl::ac"
++                                              "cess::placeholder)0, cl::sycl::ext::oneapi::ac"
++                                              "cessor_property_list<> > >::operator()(cl::syc"
++                                              "l::nd_item<1>) const (this=0x75569de02990, ite"
++                                              "m=<>) at main.cpp:24")
++        self.assertEqual(info, {
++            'function': 'SimpleKernel<...>::operator()(...) const',
++            'source': 'main.cpp',
++            'linenum': 24,
++            'error': False})
++
++        info = parse_frameinfo_from_backtrace("#5  0x00006000f3197120 in typeinfo name for Si"
++                                              "mpleKernel<0, cl::sycl::accessor<float, 1, (cl"
++                                              "::sycl::access::mode)1024, (cl::sycl::access::"
++                                              "target)2014, (cl::sycl::access::placeholder)0,"
++                                              " cl::sycl::ext::oneapi::accessor_property_list"
++                                              "<> >, cl::sycl::accessor<float, 1, (cl::sycl::"
++                                              "access::mode)1025, (cl::sycl::access::target)2"
++                                              "014, (cl::sycl::access::placeholder)0, cl::syc"
++                                              "l::ext::oneapi::accessor_property_list<> > > ("
++                                              "_arg_in_acc_a=cl::sycl::id<1> = {...}, _arg_in"
++                                              "_acc_a=cl::sycl::id<1> = {...}, _arg_in_acc_a="
++                                              "cl::sycl::id<1> = {...}, _arg_in_acc_a=cl::syc"
++                                              "l::id<1> = {...}, _arg_in_acc_b=cl::sycl::id<1"
++                                              "> = {...}, _arg_in_acc_b=cl::sycl::id<1> = {.."
++                                              ".}, _arg_in_acc_b=cl::sycl::id<1> = {...}, _ar"
++                                              "g_in_acc_b=cl::sycl::id<1> = {...}, _arg_out_a"
++                                              "cc=cl::sycl::id<1> = {...}, _arg_out_acc=cl::s"
++                                              "ycl::id<1> = {...}, _arg_out_acc=cl::sycl::id<"
++                                              "1> = {...}, _arg_out_acc=cl::sycl::id<1> = {.."
++                                              ".}) at //path/to/oneapi/compiler/../include/sy"
++                                              "cl/CL/sycl/handler.hpp:939")
++        self.assertEqual(info, {
++            'function': 'typeinfo name for SimpleKernel<...>',
++            'source': '//path/to/oneapi/compiler/../include/sycl/CL/sycl/handler.hpp',
++            'linenum': 939,
++            'error': False})
++
++if __name__ == '__main__':
++    unittest.main()
+diff --git a/scripts/roc_gdb.py b/scripts/roc_gdb.py
+index f0d2f4a..3ec4b1c 100644
+--- a/scripts/roc_gdb.py
++++ b/scripts/roc_gdb.py
+@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 1
+-__version_revision__ = 0
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import sys
+diff --git a/scripts/stat-cl.in b/scripts/stat-cl.in
+index 8571640..d7e441b 100644
+--- a/scripts/stat-cl.in
++++ b/scripts/stat-cl.in
+@@ -61,5 +61,9 @@ export LIBALPS_ENABLE_DSL=1
+ export STAT_DAEMON_PATH=$prefix/bin/STATD
+ export STAT_FILTER_PATH=$prefix/lib/STAT_FilterDefinitions.so
+ export PATH=$PATH:$prefix/bin
+-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++if test -n "$PYTHONPATH" ; then
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
++else
++    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
++fi
+ exec @STATPYTHON@ @pythondir@/STATmain.py cl $@
+diff --git a/scripts/stat_cuda_gdb.py b/scripts/stat_cuda_gdb.py
+index c8f8103..b50f9be 100644
+--- a/scripts/stat_cuda_gdb.py
++++ b/scripts/stat_cuda_gdb.py
+@@ -3,7 +3,7 @@
+ """@package STATview
+ Visualizes dot graphs outputted by STAT."""
+ 
+-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
++__copyright__ = """Copyright (c) 2007-2022, Lawrence Livermore National Security, LLC."""
+ __license__ = """Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+ __version_major__ = 4
+-__version_minor__ = 0
+-__version_revision__ = 2
++__version_minor__ = 2
++__version_revision__ = 1
+ __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
+ 
+ import sys
+@@ -34,6 +34,7 @@ try:
+     from gdb import GdbDriver
+     from cuda_gdb import CudaGdbDriver
+     from roc_gdb import RocGdbDriver
++    from oneapi_gdb import OneAPIGdbDriver
+ except Exception as e:
+     print(e)
+ gdb_instances = {}
+@@ -58,6 +59,8 @@ def new_gdb_instance(pid, gdb_type='gdb'):
+                 os.environ['TMPDIR'] = os.environ['CTI_OLD_TMPDIR']
+         elif 'rocgdb' in os.environ['STAT_GDB']:
+             gdb = RocGdbDriver(pid, 'error', 'stderr')
++        elif 'gdb-oneapi' in os.environ['STAT_GDB']:
++            gdb = OneAPIGdbDriver(pid, 'error', 'stderr')
+         else:
+             gdb = GdbDriver(pid, 'error', 'stderr')
+     except:
+diff --git a/scripts/stat_merge_base.py b/scripts/stat_merge_base.py
+index cac610f..c07ab1d 100644
+--- a/scripts/stat_merge_base.py
++++ b/scripts/stat_merge_base.py
+@@ -19,7 +19,10 @@ Redistribution and use in source and binary forms, with or without modification,
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LAWRENCE LIVERMORE NATIONAL SECURITY, LLC, THE U.S. DEPARTMENT OF ENERGY OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ """
+ __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
+-__version__ = "4.0.2"
++__version_major__ = 4
++__version_minor__ = 2
++__version_revision__ = 1
++__version__ = "%d.%d.%d" % (__version_major__, __version_minor__, __version_revision__)
+ 
+ import sys
+ import os
+diff --git a/scripts/travis-dep-builder.sh b/scripts/travis-dep-builder.sh
+index ca1e174..2e88740 100755
+--- a/scripts/travis-dep-builder.sh
++++ b/scripts/travis-dep-builder.sh
+@@ -17,35 +17,34 @@ components=all
+ downloads="\
+ https://www.gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.36.tar.bz2 \
+ https://www.gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.8.5.tar.bz2 \
+-https://github.com/dyninst/mrnet/archive/v5.0.1.tar.gz \
+ https://github.com/LLNL/graphlib/archive/v3.0.0.tar.gz \
+-https://www.prevanders.net/libdwarf-20161124.tar.gz \
+ http://registrationcenter-download.intel.com/akdlm/irc_nas/tec/16120/l_mpi_2019.6.166.tgz \
+-https://github.com/dyninst/dyninst/archive/v9.3.2.tar.gz \
++https://github.com/dyninst/dyninst/archive/v10.2.1.tar.gz \
+ https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz \
+ "
+ #https://github.com/LLNL/LaunchMON/releases/download/v1.0.2/launchmon-v1.0.2.tar.gz\
++#https://github.com/dyninst/mrnet/archive/v5.0.1.tar.gz \
+ 
+ checkouts="\
++https://github.com/dyninst/mrnet.git \
+ https://github.com/llnl/launchmon.git
+ "
+ 
+ declare -A checkout_sha1=(\
+-["launchmon"]="2691773256a1b80c7fd554642e54d4de56751e0c"
++["launchmon"]="63e254697808c9376a3638ed2166b795104d51aa"
+ )
+ 
+ declare -A extra_configure_opts=(\
+ ["launchmon-v1.0.2"]="--with-test-rm=mpiexec_hydra --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
+ ["launchmon"]="--with-test-rm=mpiexec_hydra --with-test-ncore-per-CN=2 --with-test-nnodes=1 --with-test-rm-launcher=${prefix}/bin/mpirun --with-test-installed" \
+ ["v5.0.1"]="--enable-shared" \
+-["openmpi-3.1.3"]="--enable-orterun-prefix-by-default" \
++["mrnet"]="--enable-verbosebuild --disable-ltwt-threadsafe --enable-shared" \
+ ["openmpi-4.0.2"]="--enable-orterun-prefix-by-default" \
+-["libdwarf-20161124"]="--enable-shared --disable-nonshared" \
+ )
+ 
+ # we install dyninst in a separate prefix b/c otherwise it will break on previously installed headers
+ declare -A extra_cmake_opts=(\
+-["v9.3.2"]="-D CMAKE_INSTALL_PREFIX=${prefix}/dyninst -D LIBDWARF_INCLUDE_DIR=${prefix}/include -D LIBDWARF_LIBRARIES=${prefix}/lib/libdwarf.so -DCMAKE_BUILD_TYPE=Debug"
++["v10.2.1"]="-DCMAKE_BUILD_TYPE=Debug"
+ )
+ 
+ declare -r prog=${0##*/}
+@@ -135,7 +134,7 @@ for pkg in $downloads; do
+     name=$(basename ${pkg} .tar.gz)
+     name=$(basename ${name} .tar.bz2)
+     name=$(basename ${name} .tgz)
+-    if test "$components" = "dyninst" -a "$name" != "v9.3.2"; then
++    if test "$components" = "dyninst" -a "$name" != "v10.2.1"; then
+       continue
+     fi
+     if test "$components" = "impi" -a "$name" != "l_mpi_2019.6.166"; then
+@@ -147,13 +146,10 @@ for pkg in $downloads; do
+     if test "$components" = "other" -a "$name" = "l_mpi_2019.6.166"; then
+       continue
+     fi
+-    if test "$components" = "other" -a "$name" = "openmpi-3.1.3"; then
+-      continue
+-    fi
+     if test "$components" = "other" -a "$name" = "openmpi-4.0.2"; then
+       continue
+     fi
+-    if test "$components" = "other" -a "$name" = "v9.3.2"; then
++    if test "$components" = "other" -a "$name" = "v10.2.1"; then
+       continue
+     fi
+     cmake_opts="${extra_cmake_opts[$name]}"
+@@ -163,14 +159,11 @@ for pkg in $downloads; do
+        say "Using cached version of ${name}"
+        continue
+     fi
+-    export CC=gcc
+-    export CXX=g++
+-    gcc --version
+-    which gcc
+-    gfortran --version
+-    which gfortran
++    export CC=gcc-8
++    export CXX=g++-8
+     export ACLOCAL_PATH=${prefix}/share/aclocal
+     export PATH=${prefix}/bin:$PATH
++    export VERBOSE=1
+     if test "$name" = "l_mpi_2019.6.166"; then
+       curl -L -O --insecure ${pkg} || die "Failed to download ${pkg}"
+       tar xf l_mpi_2019.6.166.tgz
+@@ -193,10 +186,6 @@ EOF
+       add_cache "$name"
+       continue
+     fi
+-    if test "$name" = "v9.3.2"; then
+-      export VERBOSE=1
+-#      rm -f ${prefix}/lib/libiberty.a
+-    fi
+     mkdir -p ${name}  || die "Failed to mkdir ${name}"
+     (
+       cd ${name} &&
+@@ -206,36 +195,13 @@ EOF
+         ./configure --prefix=${prefix} \
+                     $configure_opts  || head config.log
+       elif test -f CMakeLists.txt; then
+-        if test "$name" = "v9.3.2"; then
+-          # travis boost 1.46.1 has a bug with shared_ptr, so force dyninst to build download/boost
+-          sed -i cmake/packages.cmake -e '125 s|#set (BOOST_MIN_VERSION 1.41.0)|set (BOOST_MIN_VERSION 1.50.0)|'
+-          grep BOOST_MIN cmake/packages.cmake
+-        fi
+         mkdir build && cd build
+         which cmake
+         cmake -DCMAKE_INSTALL_PREFIX=${prefix} $cmake_opts ..
+       fi
+-      if test "$name" = "openmpi-2.0.2"; then
+-        wget https://raw.githubusercontent.com/LLNL/STAT/develop/dyninst_patches/openmpi-2.0.2_reattach.patch
+-        patch -p1 < openmpi-2.0.2_reattach.patch
+-      fi
+-      if test "$name" = "openmpi-2.1.1"; then
+-        wget https://github.com/open-mpi/ompi/pull/3709.patch
+-        patch -p1 < 3709.patch
+-      fi
+-      if test "$name" = "v9.3.2"; then
+-        # parallel build of dyninst was causing travis error:
+-        # No output has been received in the last 10m0s, this potentially indicates a stalled build or something wrong with the build itself.
+-        make PREFIX=${prefix}
+-        make PREFIX=${prefix} install
+-#      elif test "$name" = "v5.0.1"; then
+-#        # parallel build of mrnet fails to find libxplat
+-#        make PREFIX=${prefix}
+-#        make PREFIX=${prefix} install
+-      else
+-        make -j 32 PREFIX=${prefix}
+-        make -j 32 PREFIX=${prefix} install
+-      fi
++
++      make -j 16 PREFIX=${prefix} || make PREFIX=${prefix}
++      make -j 16 PREFIX=${prefix} install || make PREFIX=${prefix} install
+       if test "$name" = "launchmon-v1.0.2"; then
+         pushd test/src
+         echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+@@ -251,27 +217,6 @@ EOF
+         echo 'LMON test done'
+         popd
+       fi
+-      if test "$name" = "libdwarf-20161124"; then
+-        pushd libdwarf
+-        mkdir -p ${prefix}/lib
+-        cp libdwarf.so ${prefix}/lib/libdwarf.so
+-        cp libdwarf.so.1 ${prefix}/lib/libdwarf.so.1
+-        mkdir -p ${prefix}/include
+-        cp libdwarf.h  ${prefix}/include/libdwarf.h
+-        cp dwarf.h ${prefix}/include/dwarf.h
+-        popd
+-      fi
+-      if test "$name" = "v9.3.2"; then
+-        pushd boost/src/boost
+-          # we will force dyninst to install its own boost b/c travis 1.46.1 has buggy shared_ptr
+-          ./b2 install
+-        popd
+-        ls
+-        if test -x libiberty/libiberty.a; then
+-          mkdir -p ${prefix}/lib
+-          cp libiberty/libiberty.a ${prefix}/lib/libiberty.a
+-        fi
+-      fi
+     ) || die "Failed to build and install $name"
+     add_cache "$name"
+ done
+@@ -299,29 +244,26 @@ for url in $checkouts; do
+         git checkout $sha1
+       fi
+ 
+-      # Do we need to create a Makefile?
+-      if ! test -f Makefile; then
+-        if ! test -f configure; then
+-          export ACLOCAL_PATH=${prefix}/share/aclocal
+-          ./bootstrap
+-        fi
+-        if test -x configure; then
+-          ./configure --prefix=${prefix} \
+-                      --sysconfdir=${prefix}/etc \
+-                      $configure_opts || cat config.log
+-        elif test -f CMakeLists.txt; then
+-            mkdir build && cd build
+-            cmake -DCMAKE_INSTALL_PREFIX=${prefix} $cmake_opts ..
+-        fi
++      if ! test -f configure; then
++        export ACLOCAL_PATH=${prefix}/share/aclocal
++        ./bootstrap
++      fi
++      if test -x configure; then
++        ./configure --prefix=${prefix} \
++                    $configure_opts || cat config.log
++                    #--sysconfdir=${prefix}/etc \
++      elif test -f CMakeLists.txt; then
++          mkdir build && cd build
++          cmake -DCMAKE_INSTALL_PREFIX=${prefix} $cmake_opts ..
+       fi
+ # The hack below is only needed in the dist:trusty travis env
+ # This will work around a ptrace Input/Output error when removing breakpoints
+       if test "$name" = "launchmon"; then
+         sed -i launchmon/src/linux/sdbg_linux_launchmon.cxx -e '2975 s|disable|//disable|'
+       fi
+-      make -j 32 PREFIX=${prefix} $make_opts || make PREFIX=${prefix} $make_opts
+-      make -j 32 PREFIX=${prefix} $make_opts install || make PREFIX=${prefix} $make_opts install
+-      make -j 32 check PREFIX=${prefix} $make_opts || make check PREFIX=${prefix} $make_opts
++      make -j 16 PREFIX=${prefix} $make_opts || make PREFIX=${prefix} $make_opts
++      make -j 16 PREFIX=${prefix} $make_opts install || make PREFIX=${prefix} $make_opts install
++      #make -j 16 check PREFIX=${prefix} $make_opts || make check PREFIX=${prefix} $make_opts
+ #      if test "$name" = "launchmon"; then
+ #        pushd test/src
+ #        echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+@@ -337,7 +279,7 @@ for url in $checkouts; do
+ #        popd
+ #      fi
+     ) || die "Failed to build and install $name"
+-    ls -l ${prefix}/etc/
++    ls -l ${prefix}/etc/ || echo failed
+     cat ${prefix}/etc/rm_mpiexec_hydra.conf || echo "not found"
+     add_cache "$cache_name"
+ done
+diff --git a/src/MRNetSymbolReader.C b/src/MRNetSymbolReader.C
+index aca7c4a..97cf9bc 100644
+--- a/src/MRNetSymbolReader.C
++++ b/src/MRNetSymbolReader.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/MRNetSymbolReader.h b/src/MRNetSymbolReader.h
+index 8311b11..2b6ec29 100644
+--- a/src/MRNetSymbolReader.h
++++ b/src/MRNetSymbolReader.h
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 89a980a..f559f21 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -1,19 +1,7 @@
+-if ENABLE_DYSECTAPI
+-  MAYBE_DYSECT = dysect analyticslib
+-endif
+-
+-SUBDIRS = $(MAYBE_DYSECT)
+-
+-CRAYTOOL_LIBS  = $(CRAY_CTI_FE_LIBS)
+-CRAYTOOL_FLAGS = $(CRAY_CTI_FE_CFLAGS) 
+-
+ # what flags you want to pass to the C compiler & linker
+ AM_CFLAGS = -DSTAT_PREFIX=\"$(prefix)\" $(CODE_COVERAGE_CFLAGS)
+ SWIGFLAGS = -DSTAT_PREFIX=\"$(prefix)\"
+ AM_CXXFLAGS = -DSTAT_PREFIX=\"$(prefix)\" $(CODE_COVERAGE_CXXFLAGS)
+-if ENABLE_DYSECTAPI
+-AM_CXXFLAGS += -DDYSECTAPI
+-endif
+ if ENABLE_OPENMP
+ AM_CXXFLAGS += -DOMP_STACKWALKER
+ SWIGFLAGS += -DOMP_STACKWALKER
+@@ -24,27 +12,14 @@ SWIGFLAGS += -DSTAT_GDB_BE
+ endif
+ AM_LDFLAGS = $(CODE_COVERAGE_LIBS)
+ 
+-include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h 
+-if ENABLE_DYSECTAPI
+-stat_cppflags_add_dysectapi = -I$(abs_top_srcdir)/src -I$(abs_top_srcdir)/src/dysect -I$(abs_top_srcdir)/src/dysect/libDysectAPI/include
+-stat_fe_ldadd_add_dysectapi = @LIBDYSECTAPIFE@ @LIBDYSECTFE@
+-stat_fe_cppflags_add_dysectapi = -D__DYSECT_IS_FRONTEND
+-stat_be_ldadd_add_dysectapi = @LIBDYSECTAPIBE@ @LIBDYSECTBE@
+-stat_fd_ldadd_add_dysectapi = @LIBDYSECTAPIFD@
+-stat_ldflags_add_dysectapi = -L@LIBDYSECTAPILOC@ -L@LIBDYSECTLOC@
+-##-L/collab/usr/global/tools/dyninst/stackwalker/chaos_5_x86_64_ib/sw8.2-1/lib
+-endif
++include_HEADERS = STAT.h STAT_FrontEnd.h STAT_BackEnd.h STAT_timer.h STAT_GraphRoutines.h STAT_IncMRNet.h MRNetSymbolReader.h STAT_CircularLogs.h
+ 
+ if ENABLE_STATBENCH
+ stat_bin_programs_statbench = STATBenchbin STATBenchD
+ STATBenchbin_SOURCES = STATBench.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
+ STATBenchD_SOURCES = STATBenchD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
+-STATBenchbin_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
+-STATBenchD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi)
+-STATBenchbin_LDADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
+-STATBenchD_LDADD = libstatbe.la $(stat_be_ldadd_add_dysectapi) @BELIBS@
+-STATBenchD_CPPFLAGS = $(stat_cppflags_add_dysectapi)
+-STATBenchbin_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
++STATBenchbin_LDADD = libstatfe.la @FELIBS@
++STATBenchD_LDADD = libstatbe.la @BELIBS@
+ endif
+ 
+ if ENABLE_GRAPHLIB20
+@@ -67,10 +42,8 @@ endif
+ 
+ STATbin_SOURCES = STAT.C STAT.h STAT_FrontEnd.h STAT_GraphRoutines.h
+ STATD_SOURCES = STATD.C STAT.h STAT_BackEnd.h STAT_GraphRoutines.h
+-STATbin_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi) $(CRAYTOOL_LIBS)
+-STATbin_LDADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@
+-STATD_LDFLAGS = -Wl,-E $(stat_ldflags_add_dysectapi) $(CRAYTOOL_LIBS)
+-STATD_LDADD = libstatbe.la $(stat_be_ldadd_add_dysectapi) @BELIBS@
++STATbin_LDADD = libstatfe.la @FELIBS@
++STATD_LDADD = libstatbe.la @BELIBS@
+ 
+ stat_be_la_sources_base = STAT_BackEnd.C STAT_BackEnd.h STAT.h STAT_timer.h STAT_timer.C STAT_CircularLogs.C
+ stat_fe_la_sources_base = STAT_FrontEnd.C STAT_FrontEnd.h STAT.h STAT_timer.h STAT_timer.C
+@@ -80,20 +53,15 @@ stat_be_la_sources_base += STAT_ctiBackEnd.C STAT_ctiBackEnd.h
+ stat_fe_la_sources_base += STAT_ctiFrontEnd.h STAT_ctiFrontEnd.C
+ endif
+ 
+-libstatbe_la_SOURCES = $(stat_be_la_sources_base) $(stat_graphlib_sources) $(stat_be_la_source_add_dysectapi) $(stat_be_la_sources_fgfs)
+-libstatfe_la_SOURCES = $(stat_fe_la_sources_base) $(stat_graphlib_sources) $(stat_fe_la_source_add_dysectapi)
+-libstatbe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
+-libstatfe_la_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
+-STATD_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(CRAYTOOL_FLAGS) 
+-STATbin_CPPFLAGS = $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) $(CRAYTOOL_FLAGS)
++libstatbe_la_SOURCES = $(stat_be_la_sources_base) $(stat_graphlib_sources) $(stat_be_la_sources_fgfs)
++libstatfe_la_SOURCES = $(stat_fe_la_sources_base) $(stat_graphlib_sources) 
+ 
+ pkglib_LTLIBRARIES = STAT_FilterDefinitions.la
+ pkglibdir = $(libdir)
+ 
+-STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C $(stat_graphlib_sources) $(stat_fd_la_sources_add_dysectapi)
+-STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi) $(CODE_COVERAGE_LIBS)
+-STAT_FilterDefinitions_la_LIBADD = @MWLIBS@ $(stat_fd_ldadd_add_dysectapi)
+-STAT_FilterDefinitions_la_CPPFLAGS = $(stat_cppflags_add_dysectapi)
++STAT_FilterDefinitions_la_SOURCES = STAT_FilterDefinitions.C $(stat_graphlib_sources)
++STAT_FilterDefinitions_la_LDFLAGS = -module -avoid-version $(CODE_COVERAGE_LIBS)
++STAT_FilterDefinitions_la_LIBADD = @MWLIBS@
+ 
+ pyexec_LTLIBRARIES = _STATmerge.la
+ _STATmerge_la_SOURCES = STAT_merge.C STAT_GraphRoutines.C
+@@ -107,12 +75,11 @@ GUI_SWIG_SOURCES = STAT.i
+ pyexec_LTLIBRARIES += _STAT.la
+ python_PYTHON += STAT.py
+ _STAT_la_SOURCES = STAT_wrap.C $(GUI_SWIG_SOURCES)
+-_STAT_la_CPPFLAGS = -I./ $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi)
+-_STAT_la_LDFLAGS = -module -avoid-version $(stat_ldflags_add_dysectapi)
+-_STAT_la_LIBADD = libstatfe.la $(stat_fe_ldadd_add_dysectapi) @FELIBS@ $(CODE_COVERAGE_LIBS)
++_STAT_la_LDFLAGS = -module -avoid-version
++_STAT_la_LIBADD = libstatfe.la @FELIBS@ $(CODE_COVERAGE_LIBS)
+ 
+ STAT_wrap.C:$(GUI_SWIG_SOURCES) Makefile
+-	$(SWIG) -c++ -python $(stat_cppflags_add_dysectapi) $(stat_fe_cppflags_add_dysectapi) $(SWIGFLAGS) -o $@ $<
++	$(SWIG) -c++ -python $(SWIGFLAGS) -o $@ $<
+ 
+ STAT.py:$(GUI_SWIG_SOURCES) Makefile
+ 	$(MAKE) $(AM_MAKEFLAGS) STAT_wrap.C
+diff --git a/src/STAT.C b/src/STAT.C
+index 588d654..fc8e134 100644
+--- a/src/STAT.C
++++ b/src/STAT.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STAT.h b/src/STAT.h
+index 6d05abe..36a869c 100644
+--- a/src/STAT.h
++++ b/src/STAT.h
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -22,8 +22,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ #define BUFSIZE 8192
+ #define STAT_UNKNOWN -1
+ #define STAT_MAJOR_VERSION 4
+-#define STAT_MINOR_VERSION 0
+-#define STAT_REVISION_VERSION 2
++#define STAT_MINOR_VERSION 2
++#define STAT_REVISION_VERSION 1
+ 
+ #include "STAT_IncMRNet.h"
+ 
+diff --git a/src/STATBench.C b/src/STATBench.C
+index 0fcdda0..f560095 100644
+--- a/src/STATBench.C
++++ b/src/STATBench.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STATBenchD.C b/src/STATBenchD.C
+index daae675..53fad17 100644
+--- a/src/STATBenchD.C
++++ b/src/STATBenchD.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STATD.C b/src/STATD.C
+index 07b8c77..250cbce 100644
+--- a/src/STATD.C
++++ b/src/STATD.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STAT_BackEnd.C b/src/STAT_BackEnd.C
+index 0960a0f..b2ee5f9 100644
+--- a/src/STAT_BackEnd.C
++++ b/src/STAT_BackEnd.C
+@@ -1,5 +1,5 @@
+ /**
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -743,7 +743,7 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
+     if (strcmp(remoteHost.c_str(), "localhost") == 0 || strcmp(remoteHost.c_str(), localHostName_) == 0 || strcmp(remoteHost.c_str(), localIp_) == 0)
+     {
+         proctabSize_++;
+-        proctab_ = (StatBackEndProcInfo_t*)realloc(proctab_, proctabSize_ * sizeof(StatBackEndProcInfo_t));
++        proctab_ = (StatBackEndProcInfo_t *)realloc(proctab_, proctabSize_ * sizeof(StatBackEndProcInfo_t));
+         if (proctab_ == NULL)
+         {
+             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
+@@ -1918,6 +1918,7 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
+     vector<localVar *> vars;
+     vector<localVar *>::iterator varsIter;
+ 
++#ifdef LOCAL_VAR_H
+     frame.getName(frameName);
+     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for variable %s in frame %s\n", variableName, frameName.c_str());
+ 
+@@ -1966,8 +1967,10 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
+             }
+         }
+     }
+-
+     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s in frame %s\n", variableName, frameName.c_str());
++#else //#ifdef LOCAL_VAR_H
++    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "local variable header not found\n");
++#endif
+     return STAT_OK;
+ }
+ 
+@@ -3554,7 +3557,7 @@ void STAT_BackEnd::swDebugBufferToFile()
+ #if DYNINST_MAJOR_VERSION >= 10
+ Dyninst::dyn_c_vector<Field*> *STAT_BackEnd::getComponents(Type *type)
+ #else
+-vector<Field *> *STAT_BackEnd::getComponents(Type *type)
++dyn_c_vector<Field *> *STAT_BackEnd::getComponents(Type *type)
+ #endif
+ {
+     typeTypedef *tt = NULL;
+@@ -3562,7 +3565,7 @@ vector<Field *> *STAT_BackEnd::getComponents(Type *type)
+ #if DYNINST_MAJOR_VERSION >= 10
+     tbb::concurrent_vector<Field*, std::allocator<Field*> > *components = NULL;
+ #else
+-    vector<Field *> *components = NULL;
++    dyn_c_vector<Field *> *components = NULL;
+ #endif
+ 
+     tt = type->getTypedefType();
+@@ -3610,7 +3613,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
+ #if DYNINST_MAJOR_VERSION >= 10
+     tbb::concurrent_vector<Field*, std::allocator<Field*> > *components = NULL;
+ #else
+-    vector<Field *> *components = NULL;
++    dyn_c_vector<Field *> *components = NULL;
+ #endif
+     Field *field = NULL;
+ #ifdef SW_VERSION_8_0_0
+@@ -4150,7 +4153,7 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, int nTask
+     if (init == 0)
+     {
+         proctabSize_ = nTasks;
+-        proctab_ = (StatBackEndProcInfo_t*)malloc(proctabSize_ * sizeof(StatBackEndProcInfo_t));
++        proctab_ = (StatBackEndProcInfo_t *)malloc(proctabSize_ * sizeof(StatBackEndProcInfo_t));
+         if (proctab_ == NULL)
+         {
+             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d bytes for proctab_\n", proctabSize_);
+diff --git a/src/STAT_BackEnd.h b/src/STAT_BackEnd.h
+index d9ece3e..7c7b77d 100644
+--- a/src/STAT_BackEnd.h
++++ b/src/STAT_BackEnd.h
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -49,14 +49,17 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ #include "STAT_GraphRoutines.h"
+ #include "graphlib.h"
+ 
+-
++#include "dyninstversion.h"
+ #include "Symtab.h"
+ #include "walker.h"
+ #include "procstate.h"
+ #include "frame.h"
+ #include "swk_errors.h"
+ #include "Type.h"
+-#include "local_var.h"
++
++#ifdef LOCAL_VAR_H
++  #include "local_var.h"
++#endif
+ #include "Variable.h"
+ #include "Function.h"
+ #ifdef SW_VERSION_8_0_0
+@@ -500,7 +503,7 @@ class STAT_BackEnd
+ #if DYNINST_MAJOR_VERSION >= 10
+         tbb::concurrent_vector<Dyninst::SymtabAPI::Field *, std::allocator<Dyninst::SymtabAPI::Field*> > *getComponents(Dyninst::SymtabAPI::Type *type);
+ #else
+-        std::vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
++        Dyninst::dyn_c_vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
+ #endif
+ 
+         //! Get Python script level frame info
+diff --git a/src/STAT_CircularLogs.C b/src/STAT_CircularLogs.C
+index 0e1e2bf..5a6e03f 100644
+--- a/src/STAT_CircularLogs.C
++++ b/src/STAT_CircularLogs.C
+@@ -1,5 +1,5 @@
+ /*
+-  Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++  Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+   Produced at the Lawrence Livermore National Laboratory
+   Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+   LLNL-CODE-750488.
+diff --git a/src/STAT_CircularLogs.h b/src/STAT_CircularLogs.h
+index a989eb0..9076744 100644
+--- a/src/STAT_CircularLogs.h
++++ b/src/STAT_CircularLogs.h
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STAT_FilterDefinitions.C b/src/STAT_FilterDefinitions.C
+index 06c659c..a427b6d 100644
+--- a/src/STAT_FilterDefinitions.C
++++ b/src/STAT_FilterDefinitions.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STAT_FrontEnd.C b/src/STAT_FrontEnd.C
+index bd3f3ff..e291d34 100644
+--- a/src/STAT_FrontEnd.C
++++ b/src/STAT_FrontEnd.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+@@ -456,7 +456,7 @@ void beConnectCb(Event *event, void *dummy)
+ 
+ void nodeRemovedCb(Event *event, void *statObjectPtr)
+ {
+-    STAT_FrontEnd* statObject = (STAT_FrontEnd*)statObjectPtr;
++    STAT_FrontEnd* statObject = (STAT_FrontEnd *)statObjectPtr;
+     StatError_t statError;
+ 
+ 
+@@ -2037,7 +2037,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
+     }
+ 
+     /* Add the nodes and IDs to the list of hosts */
+-    for (i = 0, counter = 0; i < procsPerNode_; i++)
++    for (i = 1, counter = 0; i < procsPerNode_; i++)
+     {
+         for (communicationNodeSetIter = communicationNodeSet_.begin(); communicationNodeSetIter != communicationNodeSet_.end(); communicationNodeSetIter++, counter++)
+         {
+@@ -2636,7 +2636,7 @@ StatError_t STAT_FrontEnd::gatherImpl(StatProt_t type, bool blocking)
+ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
+ {
+     static int sMergeCount = -1;
+-    int tag, totalWidth, intRet, dummyRank, offset, nodeId;
++    int tag, totalWidth, intRet, dummyRank, offset, nodeId, numProcs;
+     uint64_t byteArrayLen;
+     unsigned int sampleType;
+     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL;
+@@ -2713,7 +2713,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
+     gEndTime.setTime();
+     addPerfData("\tMerge", (gEndTime - gStartTime).getDoubleTime());
+ 
+-    int numProcs = getNumProcs();
++    numProcs = getNumProcs();
+     
+     if (sampleType & STAT_SAMPLE_COUNT_REP)
+     {
+@@ -3842,7 +3842,7 @@ StatError_t increaseSysLimits()
+ StatError_t STAT_FrontEnd::setRanksList()
+ {
+     unsigned int i;
+-    int intRet;
++    int intRet, numProcs;
+     map<int, RemapNode_t*> childOrder;
+     map<int, RemapNode_t*>::iterator childOrderIter;
+     list<int>::iterator remapRanksListIter;
+@@ -3910,7 +3910,7 @@ StatError_t STAT_FrontEnd::setRanksList()
+         for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++)
+             if (leafInfo_.daemons.find(*applicationNodeMultiSetIter) == leafInfo_.daemons.end() && daemonIpAddrs.find(*applicationNodeMultiSetIter) == daemonIpAddrs.end())
+                 daemonSet.insert(*applicationNodeMultiSetIter);
+-        int numProcs = getNumProcs();
++        numProcs = getNumProcs();
+         for (i = 0; i < numProcs; i++)
+             if (daemonSet.find(getHostnameForProc(i)) != daemonSet.end())
+                 missingRanks_.insert(getMpiRankForProc(i));
+diff --git a/src/STAT_FrontEnd.h b/src/STAT_FrontEnd.h
+index 5500af9..8489a08 100644
+--- a/src/STAT_FrontEnd.h
++++ b/src/STAT_FrontEnd.h
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STAT_GraphRoutines.C b/src/STAT_GraphRoutines.C
+index fc436aa..2dfc4f0 100644
+--- a/src/STAT_GraphRoutines.C
++++ b/src/STAT_GraphRoutines.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STAT_GraphRoutines.h b/src/STAT_GraphRoutines.h
+index 4431812..96ef4d8 100644
+--- a/src/STAT_GraphRoutines.h
++++ b/src/STAT_GraphRoutines.h
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STAT_IncMRNet.h b/src/STAT_IncMRNet.h
+index 172a2b7..b5b62f9 100644
+--- a/src/STAT_IncMRNet.h
++++ b/src/STAT_IncMRNet.h
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STAT_merge.C b/src/STAT_merge.C
+index 0b34602..3207b79 100644
+--- a/src/STAT_merge.C
++++ b/src/STAT_merge.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STAT_timer.C b/src/STAT_timer.C
+index 892b2e9..e8b65b0 100644
+--- a/src/STAT_timer.C
++++ b/src/STAT_timer.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/STAT_timer.h b/src/STAT_timer.h
+index df6d971..5b5f8da 100644
+--- a/src/STAT_timer.h
++++ b/src/STAT_timer.h
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/to.C b/src/to.C
+index 46511fb..e55baa4 100644
+--- a/src/to.C
++++ b/src/to.C
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.
+diff --git a/src/to.h b/src/to.h
+index 07283bb..c54332e 100644
+--- a/src/to.h
++++ b/src/to.h
+@@ -1,5 +1,5 @@
+ /*
+-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
++Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
+ Produced at the Lawrence Livermore National Laboratory
+ Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
+ LLNL-CODE-750488.

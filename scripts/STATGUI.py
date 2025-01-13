@@ -3,7 +3,7 @@
 """@package STATGUI
 A GUI for driving the Stack Trace Analysis Tool."""
 
-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
 LLNL-CODE-750488.
@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
 __version_major__ = 4
-__version_minor__ = 0
-__version_revision__ = 2
+__version_minor__ = 2
+__version_revision__ = 1
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import STAThelper
@@ -42,15 +42,13 @@ from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_
 
 import sys
 import os
-dlopenflags_set = False
-try:
-    import DLFCN
-    sys.setdlopenflags(DLFCN.RTLD_NOW | DLFCN.RTLD_GLOBAL)
-    dlopenflags_set = True
-except:
-    pass
-if dlopenflags_set == False:
-    sys.setdlopenflags(os.RTLD_NOW | os.RTLD_GLOBAL)
+import ctypes
+
+HAVE_DLOPEN = hasattr(sys, 'getdlopenflags')
+if HAVE_DLOPEN is True:
+    dlflags = sys.getdlopenflags()
+    new_dlflags = ctypes.RTLD_GLOBAL | dlflags
+    sys.setdlopenflags(new_dlflags)
 
 from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_GDB_ATTACH, STAT_SERIAL_GDB_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
 HAVE_OPENMP_SUPPORT = True
@@ -95,7 +93,7 @@ import argparse
 try:
     import xdot
 except:
-    raise Exception('STATview requires xdot\nxdot can be downloaded from https://github.com/jrfonseca/xdot.py\n')
+    raise Exception('STATview requires xdot\nxdot can be downloaded from https://github.com/jrfonseca/xdot.py\nWhen installing STAT via Spack, please be sure to `spack activate py-xdot`')
 try:
     # xdot 0.9: compatibility wrapper
     xdot_ui_actions = xdot.ui.actions
@@ -208,8 +206,8 @@ class STATGUI(STATDotWindow):
         except:
             gdb_path = 'gdb'
         options = {'Remote Host':                      "localhost",
-                   'Remote Host Shell':                "rsh",
-                   'Serial Remote Host Shell':                "rsh",
+                   'Remote Host Shell':                "ssh",
+                   'Serial Remote Host Shell':         "ssh",
                    'Resource Manager':                 "Auto",
                    'PID':                              None,
                    'Launcher Exe':                     '',
@@ -415,8 +413,9 @@ host[1-10,12,15-20];otherhost[30]
                 self.options['PID'] = int(args.attach.split(':')[-1])
                 if args.attach.find(':') != -1:
                     self.options['Remote Host'] = args.attach.split(':')[0]
-                if args.gdb is not None:
-                    self.options['GDB BE'] = True
+                if HAVE_GDB_SUPPORT:
+                    if args.gdb is not None:
+                        self.options['GDB BE'] = True
                 stat_wait_dialog.show_wait_dialog_and_run(self.attach_cb, (None, False, False, STAT_ATTACH), self.attach_task_list)
                 return
             elif args.serial is not None:
@@ -770,9 +769,9 @@ host[1-10,12,15-20];otherhost[30]
                 output = commands.getoutput('ps xww')
             else:
                 if pid_list != '':
-                    output = commands.getoutput('%s %s ps ww -p %s' % (self.options['Remote Host Shell'], self.options['Remote Host'], pid_list))
+                    output = commands.getoutput('%s %s ps ww -p %s' % (my_rsh, self.options['Remote Host'], pid_list))
                 else:
-                    output = commands.getoutput('%s %s ps xww' % (self.options['Remote Host Shell'], self.options['Remote Host']))
+                    output = commands.getoutput('%s %s ps xww' % (my_rsh, self.options['Remote Host']))
                 if output.find('Hostname not found') != -1 or output.find('PID') == -1:
                     show_error_dialog('Failed to get process listing for %s:\n\t %s' % (self.options['Remote Host'], output), attach_dialog)
                     return False
@@ -2182,7 +2181,7 @@ host[1-10,12,15-20];otherhost[30]
         eq_dialog.vbox.pack_start(self.separator, False, True, 5)
         box2 = gtk.HButtonBox()
 
-        debuggers = ['TotalView', 'DDT']
+        debuggers = ['TotalView', 'DDT bulk attach', 'DDT host:PID attach']
         for debugger in debuggers:
             button = gtk.Button(" Attach %s \n to Subset " % debugger)
             button.connect("clicked", self.launch_debugger_cb, (debugger, eq_dialog))
@@ -2370,23 +2369,31 @@ host[1-10,12,15-20];otherhost[30]
                 else:
                     exe = exe.split()[0]
                 arg_list.append(exe)
-        elif debugger == 'DDT':
+        elif debugger == 'DDT bulk attach' or debugger == 'DDT host:PID attach':
             filepath = self.options['DDT Path']
             if not filepath or not os.access(filepath, os.X_OK):
                 show_error_dialog('Failed to locate executable ddt\ndefault: %s\n' % filepath, self)
                 return
 
             arg_list.append(filepath)
-            arg_list.append("--attach-mpi")
-            arg_list.append(str(self.proctab.launcher_pid))
-            arg_list.append("--subset")
-            rank_list_arg = ''
-            for rank in subset_list:
-                if rank == subset_list[0]:
-                    rank_list_arg += '%d' % rank
-                else:
-                    rank_list_arg += ',%d' % rank
-            arg_list.append(rank_list_arg)
+            if debugger == 'DDT bulk attach':
+                arg_list.append("--attach-mpi")
+                arg_list.append(str(self.proctab.launcher_pid))
+                arg_list.append("--subset")
+                rank_list_arg = ''
+                for rank in subset_list:
+                    if rank == subset_list[0]:
+                        rank_list_arg += '%d' % rank
+                    else:
+                        rank_list_arg += ',%d' % rank
+                arg_list.append(rank_list_arg)
+            else:
+                arg_list.append("--attach")
+                hplist = self.proctab.process_list
+                attach_list_arg = ''
+                for rank in subset_list:
+                    attach_list_arg += hplist[rank][1]+':'+'%d' % hplist[rank][2]+','
+                arg_list.append(attach_list_arg[:-1])
             arg_list.append(self.executable_path)
 
         for arg in self.options['Additional Debugger Args'].split():

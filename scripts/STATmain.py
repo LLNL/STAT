@@ -3,7 +3,7 @@
 """@package STATview
 Visualizes dot graphs outputted by STAT."""
 
-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
 LLNL-CODE-750488.
@@ -21,13 +21,26 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
 __version_major__ = 4
-__version_minor__ = 0
-__version_revision__ = 2
+__version_minor__ = 2
+__version_revision__ = 1
 __version__ = "%d.%d.%d" % (__version_major__, __version_minor__, __version_revision__)
 
 import sys
+import ctypes
 import os
 import argparse
+
+HAVE_DLOPEN = hasattr(sys, 'getdlopenflags')
+if HAVE_DLOPEN is True:
+    dlflags = sys.getdlopenflags()
+    new_dlflags = ctypes.RTLD_GLOBAL | dlflags
+    sys.setdlopenflags(new_dlflags)
+
+HAVE_GDB_SUPPORT = True
+try:
+    from STAT import STAT_SAMPLE_CUDA_QUICK
+except:
+    HAVE_GDB_SUPPORT = False
 HAVE_STATVIEW = True
 import_exception = None
 try:
@@ -41,11 +54,6 @@ try:
 except Exception as e:
     HAVE_STATGUI = False
     import_exception = e
-HAVE_GDB_SUPPORT = True
-try:
-    from STAT import STAT_SAMPLE_CUDA_QUICK
-except:
-    HAVE_GDB_SUPPORT = False
 from STAThelper import exec_and_exit
 from core_file_merger import STATmerge_main
 

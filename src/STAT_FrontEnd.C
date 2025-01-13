@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
 LLNL-CODE-750488.
@@ -456,7 +456,7 @@ void beConnectCb(Event *event, void *dummy)
 
 void nodeRemovedCb(Event *event, void *statObjectPtr)
 {
-    STAT_FrontEnd* statObject = (STAT_FrontEnd*)statObjectPtr;
+    STAT_FrontEnd* statObject = (STAT_FrontEnd *)statObjectPtr;
     StatError_t statError;
 
 
@@ -2037,7 +2037,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     }
 
     /* Add the nodes and IDs to the list of hosts */
-    for (i = 0, counter = 0; i < procsPerNode_; i++)
+    for (i = 1, counter = 0; i < procsPerNode_; i++)
     {
         for (communicationNodeSetIter = communicationNodeSet_.begin(); communicationNodeSetIter != communicationNodeSet_.end(); communicationNodeSetIter++, counter++)
         {
@@ -2636,7 +2636,7 @@ StatError_t STAT_FrontEnd::gatherImpl(StatProt_t type, bool blocking)
 StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
 {
     static int sMergeCount = -1;
-    int tag, totalWidth, intRet, dummyRank, offset, nodeId;
+    int tag, totalWidth, intRet, dummyRank, offset, nodeId, numProcs;
     uint64_t byteArrayLen;
     unsigned int sampleType;
     char outFile[BUFSIZE], perfData[BUFSIZE], outSuffix[BUFSIZE], *byteArray = NULL;
@@ -2713,7 +2713,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
     gEndTime.setTime();
     addPerfData("\tMerge", (gEndTime - gStartTime).getDoubleTime());
 
-    int numProcs = getNumProcs();
+    numProcs = getNumProcs();
     
     if (sampleType & STAT_SAMPLE_COUNT_REP)
     {
@@ -3842,7 +3842,7 @@ StatError_t increaseSysLimits()
 StatError_t STAT_FrontEnd::setRanksList()
 {
     unsigned int i;
-    int intRet;
+    int intRet, numProcs;
     map<int, RemapNode_t*> childOrder;
     map<int, RemapNode_t*>::iterator childOrderIter;
     list<int>::iterator remapRanksListIter;
@@ -3910,7 +3910,7 @@ StatError_t STAT_FrontEnd::setRanksList()
         for (applicationNodeMultiSetIter = applicationNodeMultiSet_.begin(); applicationNodeMultiSetIter != applicationNodeMultiSet_.end(); applicationNodeMultiSetIter++)
             if (leafInfo_.daemons.find(*applicationNodeMultiSetIter) == leafInfo_.daemons.end() && daemonIpAddrs.find(*applicationNodeMultiSetIter) == daemonIpAddrs.end())
                 daemonSet.insert(*applicationNodeMultiSetIter);
-        int numProcs = getNumProcs();
+        numProcs = getNumProcs();
         for (i = 0; i < numProcs; i++)
             if (daemonSet.find(getHostnameForProc(i)) != daemonSet.end())
                 missingRanks_.insert(getMpiRankForProc(i));

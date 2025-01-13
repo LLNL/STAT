@@ -8,7 +8,7 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
      RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=/usr/lib64/dyninst"],
     [CXXFLAGS="$CXXFLAGS"
      STACKWALKERPREFIX="${withval}"]
-  )  
+  )
 
   AC_ARG_WITH(elfutils,
     [AS_HELP_STRING([--with-elfutils=prefix],
@@ -113,6 +113,12 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
     )
   fi
   AC_MSG_RESULT([$dyninst_vers_10])
+
+  AC_CHECK_HEADER(local_var.h,
+    [AC_DEFINE([LOCAL_VAR_H], [], [local_var.h])],
+    [],
+    AC_INCLUDES_DEFAULT
+  )
 
   AC_CHECK_HEADER(Symtab.h,
     [],

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
 LLNL-CODE-750488.
@@ -49,14 +49,17 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "STAT_GraphRoutines.h"
 #include "graphlib.h"
 
-
+#include "dyninstversion.h"
 #include "Symtab.h"
 #include "walker.h"
 #include "procstate.h"
 #include "frame.h"
 #include "swk_errors.h"
 #include "Type.h"
-#include "local_var.h"
+
+#ifdef LOCAL_VAR_H
+  #include "local_var.h"
+#endif
 #include "Variable.h"
 #include "Function.h"
 #ifdef SW_VERSION_8_0_0
@@ -500,7 +503,7 @@ class STAT_BackEnd
 #if DYNINST_MAJOR_VERSION >= 10
         tbb::concurrent_vector<Dyninst::SymtabAPI::Field *, std::allocator<Dyninst::SymtabAPI::Field*> > *getComponents(Dyninst::SymtabAPI::Type *type);
 #else
-        std::vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
+        Dyninst::dyn_c_vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
 #endif
 
         //! Get Python script level frame info

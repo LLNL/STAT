@@ -3,7 +3,7 @@
 A helper script to translate resource manager job IDs into hostname:PID pairs
 suitable for the Stack Trace Analysis Tool."""
 
-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
 LLNL-CODE-750488.
@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
 __version_major__ = 4
-__version_minor__ = 0
-__version_revision__ = 2
+__version_minor__ = 2
+__version_revision__ = 1
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import subprocess
@@ -78,11 +78,14 @@ def jobid_to_hostname_pid(rm, jobid, remoteshell):
             if lines == []:
                 continue
             lines = ret.splitlines()
-            fmt = lines[0].split()
-            pid_index = fmt.index('PID')
-            for line in lines[1:]:
-                if line.find(rms[rm]) != -1:
-                    pids.append(int(line.split()[pid_index]))
+            try:
+                fmt = lines[0].split()
+                pid_index = fmt.index('PID')
+                for line in lines[1:]:
+                    if line.find(rms[rm]) != -1:
+                        pids.append(int(line.split()[pid_index]))
+            except:
+                pass
     if pids != []:
         return remotehost, rms[rm], pids
     return None, None, []

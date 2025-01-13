@@ -62,6 +62,10 @@ export LIBALPS_ENABLE_DSL=1
 export STAT_DAEMON_PATH=$prefix/bin/STATD
 export STAT_FILTER_PATH=$prefix/lib/STAT_FilterDefinitions.so
 export PATH=$PATH:$prefix/bin
-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
+if test -n "$PYTHONPATH" ; then
+    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
+else
+    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
+fi
 
 exec @STATPYTHON@ @pythondir@/STATmain.py $@

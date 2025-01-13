@@ -32,5 +32,9 @@ if test -z "$STAT_CONNECT_TIMEOUT" ; then
     export STAT_CONNECT_TIMEOUT=120
 fi
 
-export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
+if test -n "$PYTHONPATH" ; then
+    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
+else
+    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
+fi
 exec @STATPYTHON@ @pythondir@/STATmain.py bench $@

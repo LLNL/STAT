@@ -3,7 +3,7 @@
 """@package STATview
 Visualizes dot graphs outputted by STAT."""
 
-__copyright__ = """Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC."""
+__copyright__ = """Copyright (c) 2007-2022, Lawrence Livermore National Security, LLC."""
 __license__ = """Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee <lee218@llnl.gov>, Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
 LLNL-CODE-750488.
@@ -21,8 +21,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 """
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
 __version_major__ = 4
-__version_minor__ = 0
-__version_revision__ = 2
+__version_minor__ = 2
+__version_revision__ = 1
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import sys
@@ -34,6 +34,7 @@ try:
     from gdb import GdbDriver
     from cuda_gdb import CudaGdbDriver
     from roc_gdb import RocGdbDriver
+    from oneapi_gdb import OneAPIGdbDriver
 except Exception as e:
     print(e)
 gdb_instances = {}
@@ -58,6 +59,8 @@ def new_gdb_instance(pid, gdb_type='gdb'):
                 os.environ['TMPDIR'] = os.environ['CTI_OLD_TMPDIR']
         elif 'rocgdb' in os.environ['STAT_GDB']:
             gdb = RocGdbDriver(pid, 'error', 'stderr')
+        elif 'gdb-oneapi' in os.environ['STAT_GDB']:
+            gdb = OneAPIGdbDriver(pid, 'error', 'stderr')
         else:
             gdb = GdbDriver(pid, 'error', 'stderr')
     except:

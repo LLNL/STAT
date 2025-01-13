@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2007-2018, Lawrence Livermore National Security, LLC.
+Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 Written by Gregory Lee [lee218@llnl.gov], Dorian Arnold, Matthew LeGendre, Dong Ahn, Bronis de Supinski, Barton Miller, Martin Schulz, Niklas Nielson, Nicklas Bo Jensen, Jesper Nielson, and Sven Karlsson.
 LLNL-CODE-750488.
@@ -743,7 +743,7 @@ StatError_t STAT_BackEnd::addSerialProcess(const char *pidString)
     if (strcmp(remoteHost.c_str(), "localhost") == 0 || strcmp(remoteHost.c_str(), localHostName_) == 0 || strcmp(remoteHost.c_str(), localIp_) == 0)
     {
         proctabSize_++;
-        proctab_ = (StatBackEndProcInfo_t*)realloc(proctab_, proctabSize_ * sizeof(StatBackEndProcInfo_t));
+        proctab_ = (StatBackEndProcInfo_t *)realloc(proctab_, proctabSize_ * sizeof(StatBackEndProcInfo_t));
         if (proctab_ == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to allocate memory for the process table\n", strerror(errno));
@@ -1918,6 +1918,7 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
     vector<localVar *> vars;
     vector<localVar *>::iterator varsIter;
 
+#ifdef LOCAL_VAR_H
     frame.getName(frameName);
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Searching for variable %s in frame %s\n", variableName, frameName.c_str());
 
@@ -1966,8 +1967,10 @@ StatError_t STAT_BackEnd::getVariable(const Frame &frame, char *variableName, ch
             }
         }
     }
-
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Found variable %s in frame %s\n", variableName, frameName.c_str());
+#else //#ifdef LOCAL_VAR_H
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "local variable header not found\n");
+#endif
     return STAT_OK;
 }
 
@@ -3554,7 +3557,7 @@ void STAT_BackEnd::swDebugBufferToFile()
 #if DYNINST_MAJOR_VERSION >= 10
 Dyninst::dyn_c_vector<Field*> *STAT_BackEnd::getComponents(Type *type)
 #else
-vector<Field *> *STAT_BackEnd::getComponents(Type *type)
+dyn_c_vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 #endif
 {
     typeTypedef *tt = NULL;
@@ -3562,7 +3565,7 @@ vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 #if DYNINST_MAJOR_VERSION >= 10
     tbb::concurrent_vector<Field*, std::allocator<Field*> > *components = NULL;
 #else
-    vector<Field *> *components = NULL;
+    dyn_c_vector<Field *> *components = NULL;
 #endif
 
     tt = type->getTypedefType();
@@ -3610,7 +3613,7 @@ StatError_t STAT_BackEnd::getPythonFrameInfo(Walker *proc, const Frame &frame, c
 #if DYNINST_MAJOR_VERSION >= 10
     tbb::concurrent_vector<Field*, std::allocator<Field*> > *components = NULL;
 #else
-    vector<Field *> *components = NULL;
+    dyn_c_vector<Field *> *components = NULL;
 #endif
     Field *field = NULL;
 #ifdef SW_VERSION_8_0_0
@@ -4150,7 +4153,7 @@ StatError_t STAT_BackEnd::statBenchCreateTraces(unsigned int maxDepth, int nTask
     if (init == 0)
     {
         proctabSize_ = nTasks;
-        proctab_ = (StatBackEndProcInfo_t*)malloc(proctabSize_ * sizeof(StatBackEndProcInfo_t));
+        proctab_ = (StatBackEndProcInfo_t *)malloc(proctabSize_ * sizeof(StatBackEndProcInfo_t));
         if (proctab_ == NULL)
         {
             printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to allocate %d bytes for proctab_\n", proctabSize_);
