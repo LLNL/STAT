@@ -2004,7 +2004,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
         }
     }
 
-    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering and merging %d traces from each task\n", nTraces);
+    printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering and merging %d traces from all tasks of size: %d\n", nTraces, proctabSize_);
 
 #ifdef STAT_GDB_BE
     if (usingGdb_ == true)
@@ -2071,6 +2071,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                     return STAT_ALLOCATE_ERROR;
                 }
                 edge->bitVector[j / STAT_BITVECTOR_BITS] |= STAT_GRAPH_BIT(j % STAT_BITVECTOR_BITS);
+				printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering %d task traces having MPIRANK: %d\n", j, proctab_[j].mpirank);				
 
                 pArgs = Py_BuildValue("(i)", proctab_[j].pid);
                 if (!pArgs)
