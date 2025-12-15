@@ -192,6 +192,7 @@ class GdbDriver(object):
         except Empty:
             if extraJunk != '':
                 logging.debug('got junk at end of last command: %s\n' % extraJunk)
+        return extraJunk
 
     def attach(self):
         """Attaches to the target process"""
