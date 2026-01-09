@@ -21,11 +21,7 @@ AC_DEFUN([X_AC_BOOST], [
       else
         AC_SUBST(LIBBOOSTDIR, [$with_boost_path/lib])
       fi
-<<<<<<< HEAD
       AC_SUBST(LIBBOOST,["-lboost_thread"])
-=======
-      AC_SUBST(LIBBOOST,["-lboost_date_time -lboost_thread -lboost_filesystem -lboost_program_options -lboost_regex -lboost_system -lboost_system -lboost_wave"])
->>>>>>> develop
       AC_DEFINE(HAVE_BOOST_TO,1,[Define 1 if a compatible boost package is found])	
       boost_found="yes"
     elif test -f "$with_boost_path"/include/boost-1_37/boost/algorithm/string.hpp ; then 
