@@ -48,6 +48,7 @@ AC_DEFUN([X_AC_BOOST], [
     else
       boost_found="no"
     fi
+  fi
   if test "$boost_found" = no; then
     AC_MSG_ERROR([boost is required. Specify boost prefix with --with-boost])
   fi

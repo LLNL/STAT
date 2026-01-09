@@ -3563,13 +3563,8 @@ dyn_c_vector<Field *> *STAT_BackEnd::getComponents(Type *type)
 {
     typeTypedef *tt = NULL;
     typeStruct *ts = NULL;
-<<<<<<< HEAD
-#if DYNINST_MAJOR_VERSION >= 10
-    tbb::concurrent_vector<Field*, std::allocator<Field*> > *components = NULL;
-=======
 #if DYNINST_MAJOR_VERSION == 10 && DYNINST_MINOR_VERSION <= 1
     tbb::concurrent_vector<Field *> *components = NULL;
->>>>>>> develop
 #else
     dyn_c_vector<Field *> *components = NULL;
 #endif

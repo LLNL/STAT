@@ -947,10 +947,6 @@ class STAT_FrontEnd
         unsigned int topologySize_;                         /*!< the size of the MRNet topology */
         unsigned int logging_;                              /*!< the logging level */
         unsigned int nDaemonsPerNode_;                      /*!< the number of daemons per node */
-<<<<<<< HEAD
-        int jobId_;                                         /*!< the batch job ID */
-=======
->>>>>>> develop
         int mrnetOutputLevel_;                              /*!< the MRNet output level */
         char **launcherArgv_;                               /*!< the job launch arguments */
         char *toolDaemonExe_;                               /*!< the path to the STATD daemon executable */
