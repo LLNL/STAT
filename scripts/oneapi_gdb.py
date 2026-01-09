@@ -23,16 +23,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 __author__ = ["Abdul Basit Ijaz <abdul.b.ijaz@intel.com>", "Matti Puputti <matti.puputti@intel.com>", "M. Oguzhan Karakaya <oguzhan.karakaya@intel.com>"]
 __version_major__ = 4
 __version_minor__ = 1
-__version_revision__ = 0
+__version_revision__ = 2
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import sys
 import os
 import logging
 import re
-import signal
-import time
-
 from gdb import GdbDriver, check_lines
 
 def clean_cpp_template_brackets_and_call_signature(string):
@@ -100,52 +97,6 @@ class OneAPIGdbDriver(GdbDriver):
 
     gdb_command = 'gdb-oneapi'
 
-    def resume(self):
-        """Resumes the debug target process and consume the resume
-        output. Send the continue command again in case unexpected
-        stop is seen while waiting for the gdb response."""
-        logging.info('gdb-oneapi resume PID %d' %(self.pid))
-        command = "continue\n"
-        ret = self.subprocess.stdin.write(command)
-        self.subprocess.stdin.flush()
-
-        retries = 0
-        while True:
-            output = self.flushInput()
-            retries += 1
-
-            if output != '' and "received signal SIGTRAP" in output:
-                logging.info('gdb-oneapi resume PID %d again' %(self.pid))
-                self.subprocess.stdin.write(command)
-                self.subprocess.stdin.flush()
-            elif output != '':
-                return True
-
-            logging.debug(f'GDB output discarding attempt #{retries}')
-            time.sleep(0.1)
-
-        return True
-
-    def pause(self):
-        """Pauses the debug target process and consume the output from gdb"""
-        logging.info('GDB-oneapi pause PID %d' %(self.pid))
-        os.kill(self.pid, signal.SIGINT)
-
-        retries = 0
-        while True:
-            output = self.flushInput()
-            retries += 1
-
-            if output != '' and "received signal SIGINT" in output:
-                return True
-
-            time.sleep(0.1)
-            retries += 1
-            logging.info(f'GDB output discarding attempt #{retries}')
-
-        return True
-
-    
     def get_thread_list(self):
         """
         Gets the list of threads in the target process. For

@@ -3,7 +3,7 @@
 
 AC_PREREQ(2.59)
 AC_COPYRIGHT([Copyright (c) 2007-2020, Lawrence Livermore National Security, LLC.])
-AC_INIT([STAT], [4.2.1])
+AC_INIT([STAT], [4.2.2])
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_HEADER([config.h])
@@ -53,7 +53,7 @@ AC_ARG_ENABLE(rpath,
 )
 if test "$WITH_RPATH" = "yes"
 then
-  LDFLAGS="$RPATH_FLAGS $LDFLAGS"
+  LDFLAGS="-Wl,-rpath=${prefix}/lib $RPATH_FLAGS $LDFLAGS"
 else
   LDFLAGS="$LDFLAGS"
 fi
@@ -101,6 +101,10 @@ then
 PKG_PROG_PKG_CONFIG
 PKG_CHECK_MODULES([CRAY_CTI_FE],[common_tools_fe],[],[AC_MSG_ERROR([libcommontools_fe.so not found.])])
 PKG_CHECK_MODULES([CRAY_CTI_BE],[common_tools_be],[],[AC_MSG_ERROR([libcommontools_be.so not found.])])
+else
+X_AC_LAUNCHMON
+X_AC_RM_COMM
+X_AC_MRNET
 fi
 
 AC_ARG_WITH(alias-suffix,

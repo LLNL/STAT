@@ -68,4 +68,11 @@ else
     export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 fi
 
+export PATH=$PATH:@DOTBINDIR@
+if test -n "$PYTHONPATH" ; then
+    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
+else
+    export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
+fi
+
 exec @STATPYTHON@ @pythondir@/STATmain.py $@

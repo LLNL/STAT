@@ -7,12 +7,15 @@ if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
 fi
 
-export PATH=$PATH:$prefix/bin
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$prefix/lib
+export PATH=$PATH:@DOTBINDIR@
 if test -n "$PYTHONPATH" ; then
     export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
 else
     export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 fi
 
-exec @STATPYTHON@ @pythondir@/STATmain.py view $@
+if test -n @GSETTINGS_SCHEMA_DIR@ ; then
+    export GSETTINGS_SCHEMA_DIR=@GSETTINGS_SCHEMA_DIR@
+fi
+
+exec @STATPYTHON@ -s @pythondir@/STATmain.py view $@

@@ -500,8 +500,8 @@ class STAT_BackEnd
             \param type - the struct type
             \return the vector of the struct's components on success
         */
-#if DYNINST_MAJOR_VERSION >= 10
-        tbb::concurrent_vector<Dyninst::SymtabAPI::Field *, std::allocator<Dyninst::SymtabAPI::Field*> > *getComponents(Dyninst::SymtabAPI::Type *type);
+#if DYNINST_MAJOR_VERSION == 10 && DYNINST_MINOR_VERSION <= 1
+        tbb::concurrent_vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
 #else
         Dyninst::dyn_c_vector<Dyninst::SymtabAPI::Field *> *getComponents(Dyninst::SymtabAPI::Type *type);
 #endif

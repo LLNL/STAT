@@ -57,10 +57,6 @@ if test -z "$STAT_CONNECT_TIMEOUT" ; then
     export STAT_CONNECT_TIMEOUT=600
 fi
 
-export LIBALPS_ENABLE_DSL=1
-export STAT_DAEMON_PATH=$prefix/bin/STATD
-export STAT_FILTER_PATH=$prefix/lib/STAT_FilterDefinitions.so
-export PATH=$PATH:$prefix/bin
 if test -n "$PYTHONPATH" ; then
     export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
 else

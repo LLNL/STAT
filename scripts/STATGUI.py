@@ -22,7 +22,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
 __version_major__ = 4
 __version_minor__ = 2
-__version_revision__ = 1
+__version_revision__ = 2
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import STAThelper
@@ -221,13 +221,14 @@ class STATGUI(STATDotWindow):
                    'Daemons per Node':                 1,
                    'Tool Daemon Path':                 self.STAT.getToolDaemonExe(),
                    'Filter Path':                      self.STAT.getFilterPath(),
-                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun|mpiexec|jsrun|flux',
+                   'Job Launcher':                     'mpirun|srun|sattach|orterun|aprun|runjob|wreckrun|mpiexec|jsrun|job|flux',
                    'Job ID':                           '',
                    'Filter Ranks':                     '',
                    'Filter Hosts':                     '',
                    'Filter Full Command Line':         False,
                    'Filter Full Command Line ':        False, # this option is for serial attach and adds a space at the end to avoid conflict
                    'Log Dir':                          os.environ['HOME'],
+                   'Output Job ID':                    '',
                    'Log Frontend':                     False,
                    'Log Backend':                      False,
                    'Log CP':                           False,
@@ -355,6 +356,8 @@ class STATGUI(STATDotWindow):
                     self.options['Log Backend'] = True
             if args.mrnetprintf is True:
                 self.options['Use MRNet Printf'] = True
+            if args.jobid is not None:
+                self.options['Output Job ID'] = args.jobid
             if args.sleep is not None:
                 sys.stdout.write('sleeping for %d seconds\n' % (args.sleep))
                 time.sleep(args.sleep)
@@ -1425,6 +1428,8 @@ host[1-10,12,15-20];otherhost[30]
             os.environ['STAT_GROUP_OPS'] = "1"
         self.STAT.setProcsPerNode(self.options['Communication Processes per Node'])
         self.STAT.setNDaemonsPerNode(self.options['Daemons per Node'])
+        if self.options['Output Job ID'] != '':
+            self.STAT.setJobId(self.options['Output Job ID'])
         stat_wait_dialog.update_progress_bar(0.05)
 
         self.STAT.setApplicationOption(application_option)

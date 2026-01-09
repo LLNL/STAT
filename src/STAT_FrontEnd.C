@@ -99,12 +99,12 @@ STAT_FrontEnd::STAT_FrontEnd()
     if (envValue != NULL)
         setenv("MRNET_DEBUG_LOG_DIRECTORY", envValue, 1);
 
-    /* Set MRNet rsh command */
+    /* Set MRNet and LMON rsh command */
     envValue = getenv("STAT_XPLAT_RSH");
     if (envValue != NULL)
         setenv("XPLAT_RSH", envValue, 1);
 
-    /* Set the mrnet_commnode paths based on STAT env vars */
+    /* Set the launchmon and mrnet_commnode paths based on STAT env vars */
     envValue = getenv("STAT_MRNET_COMM_PATH");
     if (envValue != NULL)
     {
@@ -220,7 +220,7 @@ STAT_FrontEnd::STAT_FrontEnd()
 #ifdef STAT_PROCS_PER_NODE
     procsPerNode_ = STAT_PROCS_PER_NODE;
 #else
-    procsPerNode_ = 1;
+    procsPerNode_ = 64;
 #endif
     envValue = getenv("STAT_PROCS_PER_NODE");
     if (envValue != NULL)
@@ -1808,10 +1808,10 @@ StatError_t STAT_FrontEnd::createOutputDir()
     /* Create run-specific results directory with a unique name */
     for (fileNameCount = 0; fileNameCount < STAT_MAX_FILENAME_ID; fileNameCount++)
     {
-        if (jobId_ == 0)
+        if (jobId_ == NULL)
             snprintf(outDir_, BUFSIZE, "%s/%s.%04d", resultsDirectory, applExe_, fileNameCount);
         else
-            snprintf(outDir_, BUFSIZE, "%s/%s.%d.%04d", resultsDirectory, applExe_, jobId_, fileNameCount);
+            snprintf(outDir_, BUFSIZE, "%s/%s.%s.%04d", resultsDirectory, applExe_, jobId_, fileNameCount);
         intRet = mkdir(outDir_, S_IRUSR | S_IWUSR | S_IXUSR);
         if (intRet == 0)
             break;
@@ -1824,10 +1824,10 @@ StatError_t STAT_FrontEnd::createOutputDir()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Output directory %s created\n", outDir_);
 
     /* Generate the file prefix for output files */
-    if (jobId_ == 0)
+    if (jobId_ == NULL)
         snprintf(filePrefix_, BUFSIZE, "%s.%04d", applExe_, fileNameCount);
     else
-        snprintf(filePrefix_, BUFSIZE, "%s.%d.%04d", applExe_, jobId_, fileNameCount);
+        snprintf(filePrefix_, BUFSIZE, "%s.%s.%04d", applExe_, jobId_, fileNameCount);
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generated file prefix: %s\n", outDir_);
 
     return STAT_OK;
@@ -3632,13 +3632,25 @@ unsigned int STAT_FrontEnd::getNumApplNodes()
 }
 
 
-void STAT_FrontEnd::setJobId(unsigned int jobId)
+StatError_t STAT_FrontEnd::setJobId(const char *jobId)
 {
-    jobId_ = jobId;
+    if (jobId != NULL)
+    {
+        printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Setting job ID to %s\n", jobId);
+        if (jobId_ != NULL)
+            free(jobId_);
+        jobId_ = strdup(jobId);
+        if (jobId_ == NULL)
+        {
+            printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s: Failed to set job ID path with strdup() to %s\n", strerror(errno), jobId);
+            return STAT_ALLOCATE_ERROR;
+        }
+    }
+    return STAT_OK;
 }
 
 
-unsigned int STAT_FrontEnd::getJobId()
+const char *STAT_FrontEnd::getJobId()
 {
     return jobId_;
 }

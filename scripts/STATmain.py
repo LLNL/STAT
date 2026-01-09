@@ -22,7 +22,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
 __version_major__ = 4
 __version_minor__ = 2
-__version_revision__ = 1
+__version_revision__ = 2
 __version__ = "%d.%d.%d" % (__version_major__, __version_minor__, __version_revision__)
 
 import sys
@@ -99,6 +99,7 @@ if __name__ == '__main__':
         gui_parser.add_argument("-y", "--pythontrace", help="gather Python script level stack traces", action="store_true")
         gui_parser.add_argument("-U", "--countrep", help="only gather count and a single representative", action="store_true")
         gui_parser.add_argument("-d", "--debugdaemons", help="launch the daemons under the debugger", action="store_true")
+        gui_parser.add_argument("-j", "--jobid", help="append specified job ID to output directory name")
         gui_parser.add_argument("-L", "--logdir", help="logging output directory")
         gui_parser.add_argument("-l", "--log", help="enable debug logging", choices=['FE', 'BE', 'CP'], action="append")
         if HAVE_GDB_SUPPORT:
