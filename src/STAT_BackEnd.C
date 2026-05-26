@@ -2323,16 +2323,21 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
     bool boolRet;
     char buf[BUFSIZE], fileName[BUFSIZE], *pyFun = NULL, *pySource = NULL;
     string name;
+    vector<string> namesVector;
     Address addr;
     StatError_t statError;
 
     if (!(sampleType_ & STAT_SAMPLE_MODULE_OFFSET))
     {
-        boolRet = frame.getName(name);
-        if (boolRet == false)
-            name = "[unknown]";
-        else if (name == "")
-            name = "[empty]";
+        name = "[unknown]";
+        Function *func = getFunctionForFrame(frame);
+        if (func != NULL)
+        {
+            for (auto iter = func->pretty_names_begin(); iter != func->pretty_names_end(); ++iter)
+                namesVector.push_back(iter->c_str());
+            sort(namesVector.begin(), namesVector.end());
+            name = *(namesVector.begin());
+        }
         nodeAttrs["function"] = name;
     }
 
