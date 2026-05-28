@@ -22,7 +22,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
 __version_major__ = 4
 __version_minor__ = 2
-__version_revision__ = 2
+__version_revision__ = 3
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import string
@@ -76,7 +76,6 @@ import_error = ''
 try:
     import gtk
     import gobject
-    import pango
     gtk_wrap_new_with_label_from_widget = gtk.RadioButton
     gtk_wrap_new_from_widget = gtk.RadioButton
     has_gtk = True
@@ -89,7 +88,6 @@ except RuntimeError as e:
 except Exception as e:
     import_error = e
     pass #raise Exception('%s\nThere was a problem loading the gtk module.\n' % repr(e))
-
 if has_gtk == False:
     try:
         import gi
@@ -131,12 +129,19 @@ try:
     from STAThelper import which, color_to_string, DecomposedNode, decompose_node, HAVE_PYGMENTS, is_mpi, escaped_label, has_source_and_not_collapsed, has_module_offset_and_not_collapsed, label_has_source, label_has_module_offset, label_collapsed, translate, expr, node_attr_to_label, edge_attr_to_label, get_truncated_edge_label, get_num_tasks
 except Exception as e:
     raise Exception('%s\nThere was a problem loading the STAThelper module.\n' % repr(e))
+HAVE_PANGO = True
 if HAVE_PYGMENTS:
     import pygments
     from pygments.lexers import CLexer
     from pygments.lexers import CppLexer
     from pygments.lexers import FortranLexer
     from STAThelper import STATviewFormatter
+    try:
+        import gi
+        gi.require_version("Pango", "1.0")
+        from gi.repository import Pango
+    except:
+        HAVE_PANGO = False
 # Check for optional modules
 ## A variable to determine whether we have the temporal ordering module
 HAVE_TOMOD = True
@@ -1362,6 +1367,7 @@ class STATGraph(xdot_ui_elements.Graph):
 
     def view_source(self, node, item=0):
         """Generate a window that displays the source code for the node."""
+        fore_color_tags = []
         # find the source file name and line number
         if not "source" in node.attrs.keys():
             show_error_dialog('Cannot determine source file, please run STAT with the -i option to get source file and line number information\n')
@@ -1478,9 +1484,14 @@ class STATGraph(xdot_ui_elements.Graph):
                     else:  # default to C
                         pygments.highlight(file.read(), CLexer(), STATviewFormatter())
                     lines = STAThelper.pygments_lines
-                    source_view.get_buffer().create_tag('bold_tag', weight=pango.WEIGHT_BOLD)
-                    source_view.get_buffer().create_tag('italics_tag', style=pango.STYLE_ITALIC)
-                    source_view.get_buffer().create_tag('underline_tag', underline=pango.UNDERLINE_SINGLE)
+                    if HAVE_PANGO:
+                        source_view.get_buffer().create_tag('bold_tag', weight=Pango.Weight.BOLD)
+                        source_view.get_buffer().create_tag('italics_tag', style=Pango.Style.ITALIC)
+                        source_view.get_buffer().create_tag('underline_tag', underline=Pango.Underline.SINGLE)
+                    else:
+                        source_view.get_buffer().create_tag('bold_tag')
+                        source_view.get_buffer().create_tag('italics_tag')
+                        source_view.get_buffer().create_tag('underline_tag')
                 else:
                     lines = file.readlines()
         except IOError as e:
@@ -1511,10 +1522,12 @@ class STATGraph(xdot_ui_elements.Graph):
                     foreground = gtk.gdk.color_parse(font_color_string)
                     background = gtk.gdk.color_parse(fill_color_string)
                     fore_color_tag = "color_fore%d%s" % (lineNum, font_color_string)
-                    try:
-                        source_view.get_buffer().create_tag(fore_color_tag, foreground_gdk=foreground)
-                    except:
-                        pass
+                    if fore_color_tag not in fore_color_tags:
+                        fore_color_tags.append(fore_color_tag)
+                        try:
+                            source_view.get_buffer().create_tag(fore_color_tag, foreground_gdk=foreground)
+                        except:
+                            pass
                     back_color_tag = "color_back%d%s" % (lineNum, fill_color_string)
                     try:
                         source_view.get_buffer().create_tag(back_color_tag, background_gdk=background)
@@ -1531,10 +1544,12 @@ class STATGraph(xdot_ui_elements.Graph):
                     pygments_color, bold, italics, underline = format_tuple
                     foreground = gtk.gdk.color_parse(pygments_color)
                     fore_color_tag = "color_fore%d%s" % (lineNum, pygments_color)
-                    try:
-                        source_view.get_buffer().create_tag(fore_color_tag, foreground_gdk=foreground)
-                    except:
-                        pass
+                    if fore_color_tag not in fore_color_tags:
+                        fore_color_tags.append(fore_color_tag)
+                        try:
+                            source_view.get_buffer().create_tag(fore_color_tag, foreground_gdk=foreground)
+                        except:
+                            pass
                     args = [iterator, source_string, fore_color_tag, "monospace"]
                     if bold:
                         args.append('bold_tag')
@@ -4493,6 +4508,7 @@ enterered as a regular expression.
 
     def on_node_clicked(self, widget, button_clicked, event):
         """Callback to handle clicking of a node."""
+        fore_color_tags = []
         if isinstance(event, STATNode):
             node = event
         else:
@@ -4538,7 +4554,12 @@ enterered as a regular expression.
             iterator = text_view_buffer.get_iter_at_offset(0)
             fore_color_tag = "color_fore%s" % (font_color_string)
             foreground = gtk.gdk.color_parse(font_color_string)
-            text_view_buffer.create_tag(fore_color_tag, foreground_gdk=foreground)
+            if fore_color_tag not in fore_color_tags:
+                fore_color_tags.append(fore_color_tag)
+                try:
+                    text_view_buffer.create_tag(fore_color_tag, foreground_gdk=foreground)
+                except:
+                    pass
             background = gtk.gdk.color_parse(fill_color_string)
             back_color_tag = "color_back%s" % (fill_color_string)
             text_view_buffer.create_tag(back_color_tag, background_gdk=background)

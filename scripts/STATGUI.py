@@ -22,21 +22,24 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 __author__ = ["Gregory Lee <lee218@llnl.gov>", "Dorian Arnold", "Matthew LeGendre", "Dong Ahn", "Bronis de Supinski", "Barton Miller", "Martin Schulz", "Niklas Nielson", "Nicklas Bo Jensen", "Jesper Nielson"]
 __version_major__ = 4
 __version_minor__ = 2
-__version_revision__ = 2
+__version_revision__ = 3
 __version__ = "%d.%d.%d" %(__version_major__, __version_minor__, __version_revision__)
 
 import STAThelper
 from STAThelper import var_spec_to_string, get_task_list, get_proctab, HAVE_PYGMENTS, exec_and_exit
+HAVE_PANGO = True
 if HAVE_PYGMENTS:
     import pygments
-    try:
-        import pango
-    except:
-        pass
     from pygments.lexers import CLexer
     from pygments.lexers import CppLexer
     from pygments.lexers import FortranLexer
     from STAThelper import STATviewFormatter
+    try:
+        import gi
+        gi.require_version("Pango", "1.0")
+        from gi.repository import Pango
+    except:
+        HAVE_PANGO = False
 import STATview
 from STATview import STATDotWindow, stat_wait_dialog, show_error_dialog, search_paths, STAT_LOGO, run_gtk_main_loop
 
@@ -114,7 +117,6 @@ import_error = ''
 try:
     import gtk
     import gobject
-    import pango
     gtk_wrap_new_with_label_from_widget = gtk.RadioButton
     gtk_wrap_new_from_widget = gtk.RadioButton
     has_gtk = True
@@ -138,7 +140,7 @@ if has_gtk == False:
         from gi.repository import GdkPixbuf
         gtk.POLICY_AUTOMATIC = gtk.PolicyType.AUTOMATIC
         gtk.POLICY_NEVER = gtk.PolicyType.NEVER
-        gtk.Orientation.VERTICAL = gtk.Orientation.VERTICAL
+        #gtk.Orientation.VERTICAL = gtk.Orientation.VERTICAL
         gtk.POS_TOP = gtk.PositionType.TOP
         gtk.gdk = gdk
         gtk.ORIENTATION_VERTICAL = gtk.Orientation.VERTICAL
@@ -1949,9 +1951,14 @@ host[1-10,12,15-20];otherhost[30]
             if HAVE_PYGMENTS:
                 text_view_buffer.create_tag("monospace", family="monospace")
                 pygments.highlight(dysect_session_file.read(), CppLexer(), STATviewFormatter())
-                text_view_buffer.create_tag('bold_tag', weight=pango.WEIGHT_BOLD)
-                text_view_buffer.create_tag('italics_tag', style=pango.STYLE_ITALIC)
-                text_view_buffer.create_tag('underline_tag', underline=pango.UNDERLINE_SINGLE)
+                if HAVE_PANGO:
+                    text_view_buffer.create_tag('bold_tag', weight=Pango.Weight.BOLD)
+                    text_view_buffer.create_tag('italics_tag', style=Pango.Style.ITALIC)
+                    text_view_buffer.create_tag('underline_tag', underline=Pango.Underline.SINGLE)
+                else:
+                    text_view_buffer.create_tag('bold_tag')
+                    text_view_buffer.create_tag('italics_tag')
+                    text_view_buffer.create_tag('underline_tag')
                 lines = STAThelper.pygments_lines
                 iterator = text_view_buffer.get_iter_at_offset(0)
                 width = len(str(len(lines)))
