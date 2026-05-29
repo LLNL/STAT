@@ -118,7 +118,8 @@ typedef enum {
     STAT_SAMPLE_ERROR,
     STAT_TERMINATE_ERROR,
     STAT_FILE_ERROR,
-    STAT_CTI_ERROR,
+    STAT_LMON_ERROR,
+    STAT_CTI_ERROR,	
     STAT_ARG_ERROR,
     STAT_VERSION_ERROR,
     STAT_NOT_LAUNCHED_ERROR,
@@ -188,6 +189,9 @@ typedef enum {
             break; \
         case STAT_FILE_ERROR: \
             fprintf(outFp, "STAT_FILE_ERROR"); \
+            break; \
+        case STAT_LMON_ERROR: \
+            fprintf(outFp, "STAT_LMON_ERROR"); \
             break; \
         case STAT_CTI_ERROR: \
             fprintf(outFp, "STAT_CTI_ERROR"); \

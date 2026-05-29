@@ -40,7 +40,8 @@ public:
     virtual StatError_t STATBench_resetProctab(unsigned int nTasks);
 
     virtual bool haveGlobalRanks() { return true; }
-
+    virtual const char* daemonExitedMsg();
+    virtual const char* appExitedMsg();	
 
 private:
     StatError_t attach();

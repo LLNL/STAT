@@ -622,6 +622,17 @@ StatError_t STAT_ctiFrontEnd::STATBench_resetProctab(unsigned int nTasks) {
     return STAT_OK;
 }
 
+const char* STAT_ctiFrontEnd::daemonExitedMsg()
+{
+    return "CTI detected the daemons have exited\n";
+}
+
+const char* STAT_ctiFrontEnd::appExitedMsg()
+{
+    return "CTI detected the daemons have exited\n";
+}
+
+
 #ifdef USE_CTI
 STAT_FrontEnd* STAT_FrontEnd::make()
 {

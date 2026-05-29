@@ -749,7 +749,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking)
         sConnectAttempt = sConnectAttempt + 1;
         if (daemonsHaveExited())
         {
-            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
             return STAT_DAEMON_ERROR;
         }
         if (sConnectAttempt < sConnectTimeout * 100)
@@ -767,7 +767,7 @@ StatError_t STAT_FrontEnd::connectMrnetTree(bool blocking)
         {
             if (daemonsHaveExited())
             {
-                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
                 return STAT_DAEMON_ERROR;
             }
             if (gNumCallbacks == nApplNodes_ * nDaemonsPerNode_)
@@ -1364,7 +1364,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
         {
             if (daemonsHaveExited())
             {
-                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
                 isPendingAck_ = false;
                 return STAT_DAEMON_ERROR;
             }
@@ -1387,7 +1387,7 @@ StatError_t STAT_FrontEnd::receiveAck(bool blocking)
         {
             if (daemonsHaveExited())
             {
-                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
                 isPendingAck_ = false;
                 return STAT_DAEMON_ERROR;
             }
@@ -2190,7 +2190,7 @@ StatError_t STAT_FrontEnd::checkVersion()
         {
             if (daemonsHaveExited())
             {
-                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
                 return STAT_DAEMON_ERROR;
             }
             usleep(1000);
@@ -2260,12 +2260,12 @@ StatError_t STAT_FrontEnd::attachApplication(bool blocking)
     }
     if (isKilled())
     {
-        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "CTI detected the application has exited\n");
+        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, appExitedMsg());
         return STAT_APPLICATION_EXITED;
     }
     if (daemonsHaveExited())
     {
-        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
         return STAT_DAEMON_ERROR;
     }
 
@@ -2338,12 +2338,12 @@ StatError_t STAT_FrontEnd::pause(bool blocking)
     }
     if (isKilled())
     {
-        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "CTI detected the application has exited\n");
+        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, appExitedMsg());
         return STAT_APPLICATION_EXITED;
     }
     if (daemonsHaveExited())
     {
-        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
         return STAT_DAEMON_ERROR;
     }
 
@@ -2414,12 +2414,12 @@ StatError_t STAT_FrontEnd::resume(bool blocking)
     }
     if (isKilled())
     {
-        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "CTI detected the application has exited\n");
+        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, appExitedMsg());
         return STAT_APPLICATION_EXITED;
     }
     if (daemonsHaveExited())
     {
-        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
         return STAT_DAEMON_ERROR;
     }
 
@@ -2489,12 +2489,12 @@ StatError_t STAT_FrontEnd::sampleStackTraces(unsigned int sampleType, unsigned i
     }
     if (isKilled())
     {
-        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "CTI detected the application has exited\n");
+        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, appExitedMsg());
         return STAT_APPLICATION_EXITED;
     }
     if (daemonsHaveExited())
     {
-        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
         return STAT_DAEMON_ERROR;
     }
 
@@ -2595,7 +2595,7 @@ StatError_t STAT_FrontEnd::gatherImpl(StatProt_t type, bool blocking)
     }
     if (daemonsHaveExited())
     {
-        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
         return STAT_DAEMON_ERROR;
     }
 
@@ -2660,7 +2660,7 @@ StatError_t STAT_FrontEnd::receiveStackTraces(bool blocking)
         {
             if (daemonsHaveExited())
             {
-                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
                 return STAT_DAEMON_ERROR;
             }
             if (blocking == true)
@@ -3025,12 +3025,12 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
     }
     if (isKilled())
     {
-        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "CTI detected the application has exited\n");
+        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, appExitedMsg());
         return NULL;
     }
     if (daemonsHaveExited())
     {
-        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
         return NULL;
     }
 
@@ -3067,7 +3067,7 @@ char *STAT_FrontEnd::getNodeInEdge(int nodeId)
             {
                 if (daemonsHaveExited())
                 {
-                    printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+                    printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
                     return NULL;
                 }
                 usleep(1000);
@@ -3317,14 +3317,14 @@ StatError_t STAT_FrontEnd::detachApplication(int *stopList, int stopListSize, bo
     if (isKilled())
     {
 #ifndef DYSECTAPI
-        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "CTI detected the application has exited\n");
+        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, appExitedMsg());
         return STAT_APPLICATION_EXITED;
 #endif
     }
     if (daemonsHaveExited())
     {
 #ifndef DYSECTAPI
-        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
 #endif
         return STAT_DAEMON_ERROR;
     }
@@ -3487,12 +3487,12 @@ StatError_t STAT_FrontEnd::terminateApplication(bool blocking)
     }
     if (isKilled())
     {
-        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "CTI detected the application has exited\n");
+        printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, appExitedMsg());
         return STAT_APPLICATION_EXITED;
     }
     if (daemonsHaveExited())
     {
-        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+        printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
         return STAT_DAEMON_ERROR;
     }
 
@@ -4376,12 +4376,12 @@ StatError_t STAT_FrontEnd::statBenchCreateStackTraces(unsigned int maxDepth, uns
         {
             if (isKilled())
             {
-                printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, "CTI detected the application has exited\n");
+                printMsg(STAT_APPLICATION_EXITED, __FILE__, __LINE__, appExitedMsg());
                 return STAT_APPLICATION_EXITED;
             }
             if (daemonsHaveExited())
             {
-                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "CTI detected the daemons have exited\n");
+                printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, daemonExitedMsg());
                 return STAT_DAEMON_ERROR;
             }
             usleep(1000);

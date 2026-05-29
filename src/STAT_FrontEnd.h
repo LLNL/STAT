@@ -935,6 +935,9 @@ class STAT_FrontEnd
 
         virtual bool haveGlobalRanks() = 0;
 
+        virtual const char* daemonExitedMsg() = 0;
+        virtual const char* appExitedMsg() = 0;	
+
         /****************/
         /* Private data */
         /****************/
