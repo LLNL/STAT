@@ -137,6 +137,7 @@ if __name__ == "__main__":
     os.environ['STAT_USAGE_LOG'] = '/dev/null'
     os.environ['STAT_CHECK_NODE_ACCESS'] = '1'
     os.environ['STAT_CONNECT_TIMEOUT'] = '30'
+    os.environ['LMON_FE_ENGINE_TIMEOUT'] = '30'
     parser = argparse.ArgumentParser()
     parser.add_argument("-l", "--launcher", help="the job launcher to use (i.e., mpirun, srun, etc.), default=mpirun", default="mpirun")
     parser.add_argument("-n", "--numtasks", help="The number of MPI tasks, default=16", type=int, default=16)

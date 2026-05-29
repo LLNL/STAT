@@ -14,15 +14,9 @@ then
 else
 	export LD_LIBRARY_PATH=$prefix/lib:$LD_LIBRARY_PATH
 fi
-
-if test -n "$STAT_MOM_NODE"; then
-  export ESWRAP_LOGIN=$STAT_MOM_NODE
+if test -z "$STAT_LMON_REMOTE_LOGIN" ; then
+    export STAT_LMON_REMOTE_LOGIN=@rshcmd@
 fi
-if test -n "$ESWRAP_LOGIN"; then
-   ssh -X -q $ESWRAP_LOGIN "cd `pwd`; $0 $@"
-   exit
-fi
-
 if test -z "$STAT_XPLAT_RSH" ; then
     export STAT_XPLAT_RSH=@rshcmd@
 fi
@@ -40,14 +34,35 @@ if test -z "$STAT_MRNET_COMM_PATH" ; then
     if test -n "$MRNET_PREFIX" ; then
         export STAT_MRNET_COMM_PATH=$MRNET_PREFIX/bin/mrnet_commnode
     else
-        export STAT_MRNET_COMM_PATH=$prefix/bin/mrnet_commnode
+        export STAT_MRNET_COMM_PATH=@MRNETCOMMNODEBIN@
+    fi
+fi
+if test -z "$STAT_LMON_PREFIX" ; then
+    if test -n "$LMON_PREFIX" ; then
+        export STAT_LMON_PREFIX=$LMON_PREFIX
+    else
+        export STAT_LMON_PREFIX=@LAUNCHMONPREFIX@
+    fi
+fi
+if test -z "$STAT_LMON_LAUNCHMON_ENGINE_PATH" ; then
+    if test -n "$LMON_PREFIX" ; then
+        export STAT_LMON_LAUNCHMON_ENGINE_PATH=$LMON_PREFIX/bin/launchmon
+    else
+        export STAT_LMON_LAUNCHMON_ENGINE_PATH=@LAUNCHMONBIN@
+    fi
+fi
+if test -z "$STAT_LMON_NEWLAUNCHMON_ENGINE_PATH" ; then
+    if test -n "$LMON_PREFIX" ; then
+        export STAT_LMON_NEWLAUNCHMON_ENGINE_PATH=$LMON_PREFIX/bin/newlaunchmon
+    else
+        export STAT_LMON_NEWLAUNCHMON_ENGINE_PATH=@NEWLAUNCHMONBIN@
     fi
 fi
 if test -z "$DYNINSTAPI_RT_LIB" ; then
     if test -n "$STACKWALKER_PREFIX" ; then
         export DYNINSTAPI_RT_LIB=$STACKWALKER_PREFIX/lib/libdyninstAPI_RT.so
     else
-        export DYNINSTAPI_RT_LIB=$prefix/lib/libdyninstAPI_RT.so
+        export DYNINSTAPI_RT_LIB=@STACKWALKERPREFIX@/lib/libdyninstAPI_RT.so
     fi
 fi
 if test -z "$STAT_MRNET_DEBUG_LOG_DIRECTORY" ; then
@@ -55,6 +70,9 @@ if test -z "$STAT_MRNET_DEBUG_LOG_DIRECTORY" ; then
 fi
 if test -z "$STAT_CONNECT_TIMEOUT" ; then
     export STAT_CONNECT_TIMEOUT=600
+fi
+if test -z "$LMON_FE_ENGINE_TIMEOUT" ; then
+    export LMON_FE_ENGINE_TIMEOUT=600
 fi
 
 if test -n "$PYTHONPATH" ; then

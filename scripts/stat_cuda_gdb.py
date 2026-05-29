@@ -52,11 +52,8 @@ def new_gdb_instance(pid, gdb_type='gdb'):
         os.environ["TMPDIR"]="/var/tmp"
 
     try:
-        if 'cuda' in os.environ['STAT_GDB']:
+        if 'cuda-gdb' in os.environ['STAT_GDB']:
             gdb = CudaGdbDriver(pid, 'error', 'stderr')
-            if 'CTI_OLD_TMPDIR' in os.environ:
-                # cuda-gdb does not work with the local CTI tmp dir
-                os.environ['TMPDIR'] = os.environ['CTI_OLD_TMPDIR']
         elif 'rocgdb' in os.environ['STAT_GDB']:
             gdb = RocGdbDriver(pid, 'error', 'stderr')
         elif 'gdb-oneapi' in os.environ['STAT_GDB']:
@@ -102,25 +99,18 @@ def get_all_device_traces(pid, retries=5, retry_frequency=1000, cuda_quick=0):
     if type(gdb_instances[pid]) != CudaGdbDriver:
         return ''
     ret = ''
-
-    kernels = gdb_instances[pid].get_cuda_kernels()
-    for kernel in kernels:
-        if not gdb_instances[pid].cuda_kernel_focus(kernel):
-            logging.info('focus on kernel ' + str(kernel) + ' failed')
-            continue
-
-        threads = gdb_instances[pid].get_cuda_threads(retries, retry_frequency)
-        for thread in threads:
-            ret += '#count#%d\n' %(thread['count'])
-            if cuda_quick == 1:
-                ret += '?@%s:%d\n' %(thread['filename'], thread['linenum'])
-            else:
-                gdb_instances[pid].cuda_block_thread_focus(thread['start_block'], thread['start_thread'])
-                bt = gdb_instances[pid].cuda_bt()
-                bt.reverse()
-                for frame in bt:
-                    ret += '%s@%s:%d\n' %(frame['function'], frame['source'], frame['linenum'])
-            ret += '#endtrace\n'
+    threads = gdb_instances[pid].get_cuda_threads(retries, retry_frequency)
+    for thread in threads:
+        ret += '#count#%d\n' %(thread['count'])
+        if cuda_quick == 1:
+            ret += '?@%s:%d\n' %(thread['filename'], thread['linenum'])
+        else:
+            gdb_instances[pid].cuda_block_thread_focus(thread['start_block'], thread['start_thread'])
+            bt = gdb_instances[pid].cuda_bt()
+            bt.reverse()
+            for frame in bt:
+                ret += '%s@%s:%d\n' %(frame['function'], frame['source'], frame['linenum'])
+        ret += '#endtrace\n'
     return ret
 
 if __name__ == "__main__":

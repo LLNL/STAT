@@ -194,15 +194,12 @@ class CudaGdbDriver(GdbDriver):
                 if ('in' in split_line):
                     function_index = split_line.index('in') + 1
                 if ('at' in split_line):
-                    source_line_index = len(split_line) - split_line[::-1].index('at')
+                    source_line_index = split_line.index('at') + 1
                 function = split_line[function_index] # do we want to strip off args?
                 #function = split_line[function_index].split('(')[0]
                 source_line = split_line[source_line_index].split(':')
-                if len(source_line) == 2:
-                    source = source_line[0]
-                    linenum = int(source_line[1])
-                else:
-                    source = 'unknown'
+                source = source_line[0]
+                linenum = int(source_line[1])
             except Exception as e:
                 logging.debug('Failed to get frame info from "%s": %s' %(line, repr(e)))
                 error = True
