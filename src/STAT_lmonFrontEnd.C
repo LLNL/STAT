@@ -735,12 +735,12 @@ int STAT_lmonFrontEnd::getMpiRankForProc(int procIdx)
 {
     return proctab_[procIdx].mpirank;
 }
-const char* STAT_ctiFrontEnd::daemonExitedMsg()
+const char* STAT_lmonFrontEnd::daemonExitedMsg()
 {
     return "LMON detected the daemons have exited\n";
 }
 
-const char* STAT_ctiFrontEnd::appExitedMsg()
+const char* STAT_lmonFrontEnd::appExitedMsg()
 {
     return "LMON detected the daemons have exited\n";
 }
