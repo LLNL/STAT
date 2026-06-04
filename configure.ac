@@ -31,6 +31,7 @@ X_AC_ARCH
 X_AC_BOOST
 X_AC_DEBUGLIBS
 X_AC_GRAPHLIB
+X_AC_MRNET
 X_AC_FGFS
 X_AC_CALLPATH
 
@@ -96,15 +97,15 @@ AC_ARG_WITH(cti,
 	 WITH_CTI=no]
 )
 
+
 if test "$WITH_CTI" = "yes"
 then
-PKG_PROG_PKG_CONFIG
-PKG_CHECK_MODULES([CRAY_CTI_FE],[common_tools_fe],[],[AC_MSG_ERROR([libcommontools_fe.so not found.])])
-PKG_CHECK_MODULES([CRAY_CTI_BE],[common_tools_be],[],[AC_MSG_ERROR([libcommontools_be.so not found.])])
+  PKG_PROG_PKG_CONFIG
+  PKG_CHECK_MODULES([CRAY_CTI_FE],[common_tools_fe],[],[AC_MSG_ERROR([libcommontools_fe.so not found.])])
+  PKG_CHECK_MODULES([CRAY_CTI_BE],[common_tools_be],[],[AC_MSG_ERROR([libcommontools_be.so not found.])])
 else
-X_AC_LAUNCHMON
-X_AC_RM_COMM
-X_AC_MRNET
+  X_AC_LAUNCHMON
+  X_AC_RM_COMM
 fi
 
 AC_ARG_WITH(alias-suffix,
