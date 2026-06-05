@@ -17,14 +17,6 @@ fi
 if test -z "$STAT_LMON_REMOTE_LOGIN" ; then
     export STAT_LMON_REMOTE_LOGIN=@rshcmd@
 fi
-if test -n "$STAT_MOM_NODE"; then
-  export ESWRAP_LOGIN=$STAT_MOM_NODE
-fi
-if test -n "$ESWRAP_LOGIN"; then
-   ssh -X -q $ESWRAP_LOGIN "cd `pwd`; $0 $@"
-   exit
-fi
-
 if test -z "$STAT_XPLAT_RSH" ; then
     export STAT_XPLAT_RSH=@rshcmd@
 fi
@@ -88,10 +80,14 @@ if test -n "$PYTHONPATH" ; then
 else
     export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@
 fi
-
-export LIBALPS_ENABLE_DSL=1
-export STAT_DAEMON_PATH=$prefix/bin/STATD
-export STAT_FILTER_PATH=$prefix/lib/STAT_FilterDefinitions.so
-export PATH=$PATH:$prefix/bin
+if test -n "$STAT_INSTALL_DIR"; then
+    if test -z "$STAT_DAEMON_PATH" ; then
+	export STAT_DAEMON_PATH=$prefix/bin/STATD
+    fi
+    if test -z "$STAT_FILTER_PATH" ; then
+	export STAT_FILTER_PATH=$prefix/lib/STAT_FilterDefinitions.so
+    fi
+    export PATH=$PATH:$prefix/bin
+fi    
 
 exec @STATPYTHON@ @pythondir@/STATmain.py cl $@

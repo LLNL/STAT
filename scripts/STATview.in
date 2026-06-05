@@ -7,9 +7,7 @@ if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
 fi
 
-export PATH=$PATH:$prefix/bin
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$prefix/lib
-
+export PATH=$PATH:@DOTBINDIR@
 if test -n "$PYTHONPATH" ; then
     export PYTHONPATH=@pythondir@:@pyexecdir@:@PYTHONPATH@:$PYTHONPATH
 else
