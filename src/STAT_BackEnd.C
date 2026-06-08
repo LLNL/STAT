@@ -2330,6 +2330,7 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
     if (!(sampleType_ & STAT_SAMPLE_MODULE_OFFSET))
     {
         name = "[unknown]";
+#if DYNINST_MAJOR_VERSION >= 13
         Function *func = getFunctionForFrame(frame);
         if (func != NULL)
         {
@@ -2339,13 +2340,16 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
                 name = *(namesVector.begin());
             else
             {
+#endif
                 boolRet = frame.getName(name);
                 if (boolRet == false)
                     name = "[unknown]";
                 else if (name == "")
                     name = "[empty]";
+#if DYNINST_MAJOR_VERSION >= 13
             }
         }
+#endif
         nodeAttrs["function"] = name;
     }
 
