@@ -2333,10 +2333,18 @@ std::string STAT_BackEnd::getFrameName(map<string, string> &nodeAttrs, const Fra
         Function *func = getFunctionForFrame(frame);
         if (func != NULL)
         {
-            for (auto iter = func->pretty_names_begin(); iter != func->pretty_names_end(); ++iter)
-                namesVector.push_back(iter->c_str());
+            namesVector.insert(namesVector.begin(), func->pretty_names_begin(), func->pretty_names_end());
             sort(namesVector.begin(), namesVector.end());
-            name = *(namesVector.begin());
+            if (!namesVector.empty())
+                name = *(namesVector.begin());
+            else
+            {
+                boolRet = frame.getName(name);
+                if (boolRet == false)
+                    name = "[unknown]";
+                else if (name == "")
+                    name = "[empty]";
+            }
         }
         nodeAttrs["function"] = name;
     }
