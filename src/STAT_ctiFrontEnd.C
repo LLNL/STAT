@@ -8,15 +8,16 @@ STAT_ctiFrontEnd::STAT_ctiFrontEnd() : appId_(0), session_(0), hosts_(nullptr),
 {
     std::string temp;
     if (XPlat::NetUtils::GetLocalHostName(temp) == 0)
-    {
         snprintf(hostname_, BUFSIZE, "%s", temp.c_str());
-    }
 
     // Ensure CTI can initialize
-    if (auto hostname = cti_getHostname()) {
+    if (auto hostname = cti_getHostname())
+    {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "CTI initialized with hostname %s\n", hostname);
         free(hostname);
-    } else {
+    }
+    else
+    {
         ctiError();
         exit(STAT_SYSTEM_ERROR);
     }
@@ -24,12 +25,11 @@ STAT_ctiFrontEnd::STAT_ctiFrontEnd() : appId_(0), session_(0), hosts_(nullptr),
 
 STAT_ctiFrontEnd::~STAT_ctiFrontEnd()
 {
-    if (hosts_) cti_destroyHostsList(hosts_);
+    if (hosts_)
+        cti_destroyHostsList(hosts_);
 
     if (appId_ != 0 && cti_appIsValid(appId_))
-    {
         cti_deregisterApp(appId_);
-    }
 }
 
 StatError_t STAT_ctiFrontEnd::setupForSerialAttach()
@@ -44,11 +44,11 @@ StatError_t STAT_ctiFrontEnd::attach()
     void* vops = nullptr;
     auto wlm = cti_open_ops(&vops);
 
-    if (!vops) {
+    if (!vops)
         return ctiError();
-    }
 
-    switch (wlm) {
+    switch (wlm)
+    {
     case CTI_WLM_SLURM:
     {
         auto ops = static_cast<cti_slurm_ops_t *>(vops);
@@ -68,7 +68,8 @@ StatError_t STAT_ctiFrontEnd::attach()
     {
         auto ops = static_cast<cti_ssh_ops_t *>(vops);
         appId_ = ops->registerLauncherPid((pid_t)launcherPid_);
-        if (!appId_) {
+        if (!appId_)
+        {
             return ctiError();
         }
         break;
@@ -77,14 +78,11 @@ StatError_t STAT_ctiFrontEnd::attach()
     {
         auto ops = static_cast<cti_alps_ops_t *>(vops);
         uint64_t apid = ops->getApid((pid_t)launcherPid_);
-        if (apid == 0) {
+        if (apid == 0)
             return ctiError();
-        }
         appId_ = ops->registerApid(apid);
         if (appId_ == 0)
-        {
             return ctiError();
-        }
         break;
     }
 
@@ -93,16 +91,14 @@ StatError_t STAT_ctiFrontEnd::attach()
         auto ops = static_cast<cti_pals_ops_t*>(vops);
 
         char* apid = ops->getApid((pid_t)launcherPid_);
-        if (!apid) {
+        if (!apid)
             return ctiError();
-        }
 
         appId_ = ops->registerApid(apid);
 
         free(apid);
-        if (!appId_) {
+        if (!appId_)
             return ctiError();
-        }
         break;
     }
 
@@ -111,16 +107,14 @@ StatError_t STAT_ctiFrontEnd::attach()
         auto ops = static_cast<cti_flux_ops_t*>(vops);
 
         char* jobid = ops->getJobid((pid_t)launcherPid_);
-        if (!jobid) {
+        if (!jobid)
             return ctiError();
-        }
 
         appId_ = ops->registerJob(jobid);
 
         free(jobid);
-        if (!appId_) {
+        if (!appId_)
             return ctiError();
-        }
         break;
     }
 
@@ -137,7 +131,8 @@ StatError_t STAT_ctiFrontEnd::launch()
 
     // launcherArgv_ is null terminated.   But the stat documentation tells you to include
     // the launcher in the argument list, so I'll ignore the first one.
-    if (launcherArgc_ < 3) {
+    if (launcherArgc_ < 3)
+    {
         printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "No application given for launch\n");
         return STAT_ARG_ERROR;
     }
@@ -145,9 +140,8 @@ StatError_t STAT_ctiFrontEnd::launch()
     const char* env[] = { nullptr };
     appId_ = cti_launchAppBarrier(launcherArgv_+1, -1, -1, nullptr, nullptr, env);
     //appId_ = cti_launchApp(launcherArgv_+1, -1, -1, nullptr, nullptr, env);
-    if (!appId_) {
+    if (!appId_)
         return ctiError();
-    }
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Application launched successfully\n");
     return STAT_OK;
@@ -155,7 +149,8 @@ StatError_t STAT_ctiFrontEnd::launch()
 
 StatError_t STAT_ctiFrontEnd::postAttachApplication()
 {
-    if (applicationOption_ == STAT_LAUNCH && appId_) {
+    if (applicationOption_ == STAT_LAUNCH && appId_)
+    {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Releasing app barrier\n");
         if (cti_releaseAppBarrier(appId_))
             return ctiError();
@@ -172,12 +167,14 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
 {
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launching daemons with CTI\n");
     
-    if (!toolDaemonExe_) {
+    if (!toolDaemonExe_)
+    {
         printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Tool daemon path not set\n");
         return STAT_ARG_ERROR;
     }
 
-    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH) {
+    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH)
+    {
         printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Serial launch is not supported in CTI\n");
         return STAT_ARG_ERROR;
     }
@@ -186,22 +183,27 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to job\n");
 
     StatError_t statError = STAT_OK;
-    if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_GDB_ATTACH) {
+    if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_GDB_ATTACH)
+    {
         statError = attach();
-        if (statError != STAT_OK) {
+        if (statError != STAT_OK)
             return statError;
-        }
 
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attached to job\n");
 
-    } else if (applicationOption_ == STAT_LAUNCH) {
+    }
+    else if (applicationOption_ == STAT_LAUNCH)
+    {
         statError = launch();
-        if (statError != STAT_OK) {
+        if (statError != STAT_OK)
+        {
             return statError;
         }
 
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launched the job\n");
-    } else {
+    }
+    else
+    {
         printMsg(STAT_ARG_ERROR, __FILE__, __LINE__, "Launch option %d it not supported by CTI\n",
                  applicationOption_);
         return STAT_ARG_ERROR;
@@ -219,7 +221,8 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     int daemonArgc = 1;
     char **daemonArgv = nullptr;
 
-    if (applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH) {
+    if (applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH)
+    {
         const char* pythonPath = getenv("PYTHONPATH");
         if (!pythonPath)
             pythonPath = ":";
@@ -246,7 +249,8 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     daemonArgv[daemonArgc - 1] = NULL;
 
     statError = addDaemonLogArgs(daemonArgc, daemonArgv);
-    if (statError != STAT_OK) {
+    if (statError != STAT_OK)
+    {
         printMsg(statError, __FILE__, __LINE__, "Failed to add daemon logging args\n");
         return statError;
     }
@@ -273,7 +277,8 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     if (cti_addManifestLibrary(manifest, filterPath_))
         return ctiError();
 
-    if (applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH) {
+    if (applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH)
+    {
         char* cpFilterPath = strdup(filterPath_);
         char* libDir = dirname(cpFilterPath);
         std::string cudaLib;
@@ -284,10 +289,13 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
             return ctiError();
 
         std::string python_path = pythonPath;
-        if (python_path.find("python3.6") != std::string::npos) {
+        if (python_path.find("python3.6") != std::string::npos)
+        {
           cudaLib = std::string(libDir) + "/python3.6/site-packages/cuda_gdb.py";
           gdbLib  = std::string(libDir) + "/python3.6/site-packages/gdb.py";
-        } else if (python_path.find("python3.9") != std::string::npos) {
+        }
+        else if (python_path.find("python3.9") != std::string::npos)
+        {
           cudaLib = std::string(libDir) + "/python3.9/site-packages/cuda_gdb.py";
           gdbLib  = std::string(libDir) + "/python3.9/site-packages/gdb.py";
         }
@@ -304,7 +312,8 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Launching tool %s.\n", toolExe);
 
-    if (cti_execToolDaemon(manifest, toolExe, daemonArgv, nullptr)) {
+    if (cti_execToolDaemon(manifest, toolExe, daemonArgv, nullptr))
+    {
         free(cpExe);
         return ctiError();
     }
@@ -314,13 +323,14 @@ StatError_t STAT_ctiFrontEnd::launchDaemons()
     isLaunched_ = true;
 
     statError = getProcInfo();
-    if (statError != STAT_OK) {
+    if (statError != STAT_OK)
         return statError;
-    }
 
-    if (strcmp(outDir_, "NULL") == 0 || strcmp(filePrefix_, "NULL") == 0) {
+    if (strcmp(outDir_, "NULL") == 0 || strcmp(filePrefix_, "NULL") == 0)
+    {
         statError = createOutputDir();
-        if (statError != STAT_OK) {
+        if (statError != STAT_OK)
+        {
             printMsg(statError, __FILE__, __LINE__, "Failed to create output directory\n");
             return statError;
         }
@@ -353,7 +363,8 @@ StatError_t STAT_ctiFrontEnd::getProcInfo()
     // protocol to fix up the bookkeeping after the backends are connected to MRNet, but I'm not
     // sure it's really worth it.
     int totNumPEs = 0;
-    for (int i=0, totNumPEs=0; i<nApplNodes_; ++i) {
+    for (int i=0, totNumPEs=0; i<nApplNodes_; ++i)
+    {
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "host %s has %d pes\n",
                  hosts_->hosts[i].hostname, hosts_->hosts[i].numPes);
                  
@@ -362,8 +373,10 @@ StatError_t STAT_ctiFrontEnd::getProcInfo()
     }
 
     std::string applName;
-    if (cti_binaryList_t* binList = cti_getAppBinaryList(appId_)) {
-        for (char** binIt = binList->binaries; *binIt; ++binIt) {
+    if (cti_binaryList_t* binList = cti_getAppBinaryList(appId_))
+    {
+        for (char** binIt = binList->binaries; *binIt; ++binIt)
+        {
             char* bin = *binIt;
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "binary = %s\n", bin);
 
@@ -375,7 +388,8 @@ StatError_t STAT_ctiFrontEnd::getProcInfo()
         cti_destroyBinaryList(binList);
     }
 
-    if (applName.empty()) {
+    if (applName.empty())
+    {
         printMsg(STAT_CTI_ERROR, __FILE__, __LINE__, "did not get application name\n");
         applName = "unknown";
     }
@@ -391,13 +405,15 @@ StatError_t STAT_ctiFrontEnd::sendDaemonInfo()
     
     // the backend processes can't connect to mrnet without the parent information, so
     // we need to ship enough information via the cti manifest to infer the connectivity
-    if (leafInfo_.leafCps.empty()) {
+    if (leafInfo_.leafCps.empty())
+    {
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "MRNet tree was not created\n");
         return STAT_SYSTEM_ERROR;
     }
 
     std::string connectFileDir = std::string(outDir_) + "/" + filePrefix_ + ".daemons";
-    if (mkdir(connectFileDir.c_str(), S_IRWXU)) {
+    if (mkdir(connectFileDir.c_str(), S_IRWXU))
+    {
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "could not create directory %s\n",
                  connectFileDir.c_str());
         return STAT_SYSTEM_ERROR;
@@ -405,7 +421,8 @@ StatError_t STAT_ctiFrontEnd::sendDaemonInfo()
 
     std::string connectFile = connectFileDir + "/daemoninfo.txt";
     std::ofstream str(connectFile.c_str());
-    if (!str) {
+    if (!str)
+    {
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "could not create file %s\n",
                  connectFile.c_str());
         return STAT_SYSTEM_ERROR;
@@ -417,7 +434,8 @@ StatError_t STAT_ctiFrontEnd::sendDaemonInfo()
 
     // print out the hosts to parent index info
     str << numHosts << "\n";
-    for (int i=0; i<numHosts; ++i) {
+    for (int i=0; i<numHosts; ++i)
+    {
         auto host = hosts_->hosts[i];
         int rank = i + topologySize_;
         int parentIdx = (numParents * i) / numHosts;
@@ -428,11 +446,13 @@ StatError_t STAT_ctiFrontEnd::sendDaemonInfo()
     // mrnet parent nodes
     str << leafInfo_.leafCps.size() << "\n";
 
-    for ( auto node : leafInfo_.leafCps) {
+    for ( auto node : leafInfo_.leafCps)
+    {
         str << node->get_HostName() << " " << node->get_Port() << " " << node->get_Rank() << "\n";
     }
 
-    if (!str) {
+    if (!str)
+    {
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "writing daemon info file %s failed\n",
                  connectFile.c_str());
         return STAT_SYSTEM_ERROR;
@@ -444,17 +464,14 @@ StatError_t STAT_ctiFrontEnd::sendDaemonInfo()
     
     // and ship the file.
     cti_manifest_id_t manifest = cti_createManifest(session_);
-    if (!manifest) {
+    if (!manifest)
         return ctiError();
-    }
 
-    if (cti_addManifestFile(manifest, connectFile.c_str())) {
+    if (cti_addManifestFile(manifest, connectFile.c_str()))
         return ctiError();
-    }
 
-    if (cti_sendManifest(manifest)) {
+    if (cti_sendManifest(manifest))
         return ctiError();
-    }
 
     return STAT_OK;
 }
@@ -475,16 +492,17 @@ StatError_t STAT_ctiFrontEnd::createMRNetNetwork(const char* topologyFileName)
 
 void STAT_ctiFrontEnd::detachFromLauncher(const char* errMsg)
 {
-    if (session_) {
-        if (cti_destroySession(session_)) {
+    if (session_)
+    {
+        if (cti_destroySession(session_))
             printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "Detach failed %s\n", errMsg);
-        } else { 
+        else
             session_ = 0;
-        }
     }
 }
 
-void STAT_ctiFrontEnd::shutDown() {
+void STAT_ctiFrontEnd::shutDown()
+{
     
     if (network_ != NULL && isConnected_ == true)
         shutdownMrnetTree();
@@ -493,18 +511,23 @@ void STAT_ctiFrontEnd::shutDown() {
     isLaunched_ = false;
 }
 
-bool STAT_ctiFrontEnd::daemonsHaveExited() {
+bool STAT_ctiFrontEnd::daemonsHaveExited()
+{
     return !cti_appIsValid(appId_);
 }
-bool STAT_ctiFrontEnd::isKilled() {
+bool STAT_ctiFrontEnd::isKilled()
+{
     return !cti_appIsValid(appId_);
 }
 
-int STAT_ctiFrontEnd::getNumProcs() {
+int STAT_ctiFrontEnd::getNumProcs()
+{
     return nApplProcs_;
 }
-const char* STAT_ctiFrontEnd::getHostnameForProc(int procIdx) {
-    if (!hosts_) {
+const char* STAT_ctiFrontEnd::getHostnameForProc(int procIdx)
+{
+    if (!hosts_)
+    {
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "proc table is not initialized\n");
         return "invalid process";
     }
@@ -512,7 +535,8 @@ const char* STAT_ctiFrontEnd::getHostnameForProc(int procIdx) {
     // for STATBench, 
     procIdx /= tasksPerPE_;     
 
-    if (procIdx < 0 || procIdx >= nApplProcs_) {
+    if (procIdx < 0 || procIdx >= nApplProcs_)
+    {
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "invalid procIdx in getHostnameForProc\n");
         return "invalid process";
     }
@@ -526,9 +550,8 @@ const char* STAT_ctiFrontEnd::getHostnameForProc(int procIdx) {
 int STAT_ctiFrontEnd::getMpiRankForProc(int procIdx)
 {
     static int cnt = 0;
-    if (!cnt++) {
+    if (!cnt++)
         printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using pseudo mpi rank for CTI\n");
-    }
     return procIdx;
 }
 
@@ -538,16 +561,21 @@ StatError_t STAT_ctiFrontEnd::dumpProctab()
     snprintf(fileName, BUFSIZE, "%s/%s.ptab", outDir_, filePrefix_);
 
     FILE* file = fopen(fileName, "w");
-    if (!file) {
+    if (!file)
+    {
         printMsg(STAT_FILE_ERROR, __FILE__, __LINE__, "%s: fopen failed to create ptab file %s\n", strerror(errno), fileName);
         return STAT_FILE_ERROR;
     }
 
-    if (!hosts_) {
+    if (!hosts_)
+    {
         fprintf(file, "host names are unavailable\n");
-    } else {
+    }
+    else
+    {
         int totPEs = 0;
-        for (int i=0, n=hosts_->numHosts; i<n; ++i) {
+        for (int i=0, n=hosts_->numHosts; i<n; ++i)
+        {
             int pes = hosts_->hosts[i].numPes;
             fprintf(file, "%d - %d : %s" , totPEs, totPEs+pes-1, hosts_->hosts[i].hostname);
             totPEs += pes;
@@ -580,13 +608,15 @@ StatError_t STAT_ctiFrontEnd::setAppNodeList()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating application node list\n");
     applicationNodeMultiSet_.clear();
 
-    if (!hosts_) {
+    if (!hosts_)
+    {
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "host table is not available\n");
         return STAT_SYSTEM_ERROR;
     }
 
     int numHosts = hosts_->numHosts;
-    for (int i=0; i<numHosts; ++i) {
+    for (int i=0; i<numHosts; ++i)
+    {
         applicationNodeMultiSet_.insert(hosts_->hosts[i].hostname);
     }
 
@@ -600,14 +630,17 @@ StatError_t STAT_ctiFrontEnd::STATBench_setAppNodeList()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Generating application node list\n");
     applicationNodeMultiSet_.clear();
 
-    if (!hosts_) {
+    if (!hosts_)
+    {
         printMsg(STAT_SYSTEM_ERROR, __FILE__, __LINE__, "host table is not available\n");
         return STAT_SYSTEM_ERROR;
     }
 
-    for (int i=0, n=hosts_->numHosts; i<n; ++i) {
+    for (int i=0, n=hosts_->numHosts; i<n; ++i)
+    {
         const std::string host = hosts_->hosts[i].hostname;
-        for (int j=0, numPEs=hosts_->hosts[i].numPes; j<numPEs; ++j) {
+        for (int j=0, numPEs=hosts_->hosts[i].numPes; j<numPEs; ++j)
+        {
             applicationNodeMultiSet_.insert(host);
         }
     }
@@ -616,7 +649,8 @@ StatError_t STAT_ctiFrontEnd::STATBench_setAppNodeList()
 
     return STAT_OK;
 }
-StatError_t STAT_ctiFrontEnd::STATBench_resetProctab(unsigned int nTasks) {
+StatError_t STAT_ctiFrontEnd::STATBench_resetProctab(unsigned int nTasks)
+{
     tasksPerPE_ = nTasks;
     nApplProcs_ = nApplNodes_ * nTasks;
     return STAT_OK;
