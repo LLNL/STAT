@@ -27,9 +27,9 @@ AC_DEFUN([X_AC_DEBUGLIBS], [
       [Add the compile and link search paths for stackwalker]
     )],
     [CXXFLAGS="$CXXFLAGS -I${withval}/include"
-     LDFLAGS="$LDFLAGS -L${withval}/lib"
+     LDFLAGS="$LDFLAGS -L${withval}/lib -L${withval}/lib64"
      STACKWALKERPREFIX="${withval}"
-     RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib"],
+     RPATH_FLAGS="$RPATH_FLAGS -Wl,-rpath=${withval}/lib -Wl,-rpath=${withval}/lib64"],
     [CXXFLAGS="$CXXFLAGS"
      STACKWALKERPREFIX="${withval}"]
   )
