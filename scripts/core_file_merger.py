@@ -125,7 +125,7 @@ class Gdb(object):
         line = ''
         lines = []
         while True:
-            ch = self.subprocess.stdout.read(1).decode('utf-8')
+            ch = self.subprocess.stdout.read(1).decode('utf-8', errors='replace')
             if ch == '\n':
                 lines.append(line)
                 ch = ''
@@ -196,7 +196,7 @@ class GdbOneapi(Gdb):
         else:
             target_string += " %s/%s" % (self.coredir, self.corefile)
         args.append(target_string)
-        self.subprocess = subprocess.Popen(args, universal_newlines=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.subprocess = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         return self.readlines()
 
 
@@ -206,7 +206,7 @@ class CoreFile:
          group(1) = value of the frame number
          group(2) = name of the function
          group(3) = source file and line number in format "file:line"  --this value may be None"""
-    __reFrame = re.compile(r"#(\d+)\s+(?:0x\S+\s+in\s+)?(\S+)\s+\(.*\)(?:\s+at\s+(\S+:\d+))?")
+    __reFrame = re.compile(r"#(\d+)\s+(?:0x\S+\s+in\s+)?(.*?)\s+\(.*\)(?:\s+at\s+(\S+:\d+))?")
     __options = None
     _next_rank = 0
     _files = []
